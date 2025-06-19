@@ -3,19 +3,21 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ConsensusDisplay } from './consensus-display'
+import { EnhancedConsensusDisplay } from './enhanced-consensus-display-v3'
 import { ModelSelector } from './model-selector'
-import { ConsensusResult, ModelConfig } from '@/types/consensus'
+import { ResponseModesSelector } from './response-modes-selector'
+import { ConsensusResult, ModelConfig, EnhancedConsensusResponse } from '@/types/consensus'
 import { Send, Loader2 } from 'lucide-react'
 
 export function QueryInterface() {
   const [prompt, setPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [result, setResult] = useState<ConsensusResult | null>(null)
+  const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
+  const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('normal')
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>([
-    { provider: 'openai', model: 'gpt-4-turbo-preview', enabled: true },
-    { provider: 'anthropic', model: 'claude-3-opus-20240229', enabled: true },
-    { provider: 'google', model: 'gemini-pro', enabled: true },
+    { provider: 'anthropic', model: 'claude-opus-4-20250514', enabled: true },
+    { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', enabled: true },
+    { provider: 'anthropic', model: 'claude-3-5-haiku-20241022', enabled: true },
   ])
 
   const handleSubmit = async () => {
@@ -31,6 +33,7 @@ export function QueryInterface() {
         body: JSON.stringify({
           prompt,
           models: selectedModels.filter(m => m.enabled),
+          responseMode,
         }),
       })
 
@@ -57,6 +60,13 @@ export function QueryInterface() {
           models={selectedModels}
           onChange={setSelectedModels}
         />
+        
+        <div className="mt-4">
+          <ResponseModesSelector
+            mode={responseMode}
+            onChange={setResponseMode}
+          />
+        </div>
         
         <div className="mt-4">
           <label htmlFor="prompt" className="block text-sm font-medium mb-2">
@@ -93,7 +103,7 @@ export function QueryInterface() {
         </div>
       </div>
 
-      {result && <ConsensusDisplay result={result} />}
+      {result && <EnhancedConsensusDisplay result={result} />}
     </div>
   )
 }

@@ -12,6 +12,7 @@ export interface ModelResponse {
   };
   timestamp: Date;
   error?: string;
+  tokensUsed?: number; // For new enhanced response
 }
 
 export interface ConsensusResult {
@@ -23,6 +24,9 @@ export interface ConsensusResult {
     summary: string; // AI-generated summary of consensus
     disagreements: string[]; // Key points of disagreement
     confidence: number; // Overall confidence in consensus
+    unifiedAnswer?: string; // Judge model unified answer
+    agreements?: string[]; // Key agreements from judge
+    judgeTokensUsed?: number; // Tokens used by judge model
   };
   performance: {
     avgResponseTime: number;
@@ -30,6 +34,9 @@ export interface ConsensusResult {
     totalTokens: number;
   };
   timestamp: Date;
+  mode?: 'concise' | 'normal' | 'detailed'; // Response mode
+  totalTokensUsed?: number; // Total tokens across all models
+  estimatedCost?: number; // Cost estimation in USD
 }
 
 export interface ModelConfig {
@@ -45,4 +52,26 @@ export interface QueryRequest {
   prompt: string;
   models: ModelConfig[];
   includeReasoning?: boolean;
+  responseMode?: 'concise' | 'normal' | 'detailed'; // New smart minimization
+}
+
+// New enhanced response structure
+export interface EnhancedConsensusResponse {
+  query: string;
+  mode: string;
+  responses: {
+    model: string;
+    response: string;
+    tokensUsed: number;
+    responseTime: number;
+  }[];
+  consensus: {
+    unifiedAnswer: string;
+    confidence: number;
+    agreements: string[];
+    disagreements: string[];
+    judgeTokensUsed: number;
+  };
+  totalTokensUsed: number;
+  estimatedCost: number;
 }
