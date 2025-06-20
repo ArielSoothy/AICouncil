@@ -13,6 +13,14 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google'],
   },
+  webpack: (config, { isServer }) => {
+    // Ensure proper module resolution for Vercel deployment
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': '.',
+    }
+    return config
+  },
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
