@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { providerRegistry } from '../../../lib/ai-providers/index'
+import { providerRegistry } from '@/lib/ai-providers'
 
 export async function GET() {
   try {

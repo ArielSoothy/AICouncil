@@ -23,9 +23,6 @@
       "@/*": ["./*"],
       "@/components/*": ["./components/*"],
       "@/lib/*": ["./lib/*"],
-      "@/lib/ai-providers": ["./lib/ai-providers/index"],
-      "@/lib/utils": ["./lib/utils"],
-      "@/lib/rate-limit": ["./lib/rate-limit"],
       "@/types/*": ["./types/*"],
       "@/app/*": ["./app/*"]
     }

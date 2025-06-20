@@ -17,8 +17,12 @@ const nextConfig = {
     // Ensure proper module resolution for Vercel deployment
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': '.',
+      '@': __dirname,
     }
+    
+    // Add extension resolution to help with module loading
+    config.resolve.extensions = ['.ts', '.tsx', '.js', '.jsx', '.json', ...config.resolve.extensions]
+    
     return config
   },
   env: {
