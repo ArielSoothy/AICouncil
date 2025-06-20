@@ -23,6 +23,9 @@ const nextConfig = {
     // Add extension resolution to help with module loading
     config.resolve.extensions = ['.ts', '.tsx', '.js', '.jsx', '.json', ...config.resolve.extensions]
     
+    // Ensure modules are resolved correctly
+    config.resolve.modules = ['node_modules', __dirname]
+    
     return config
   },
   env: {
