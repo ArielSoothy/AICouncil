@@ -1,20 +1,18 @@
-import { google } from '@ai-sdk/google';
-import { generateText } from 'ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
 
 export class GoogleProvider implements AIProvider {
   name = 'Google';
   models = [
-    'gemini-pro',
-    'gemini-pro-vision',
-    'gemini-1.5-pro-latest'
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-8b'
   ];
 
   isConfigured(): boolean {
-    return !!(process.env.GOOGLE_AI_API_KEY && 
-             process.env.GOOGLE_AI_API_KEY !== 'your_google_ai_api_key_here' &&
-             process.env.GOOGLE_AI_API_KEY.length > 10);
+    return !!(process.env.GOOGLE_GENERATIVE_AI_API_KEY && 
+             process.env.GOOGLE_GENERATIVE_AI_API_KEY !== 'your_google_ai_api_key_here' &&
+             process.env.GOOGLE_GENERATIVE_AI_API_KEY.length > 10);
   }
 
   async query(prompt: string, config: ModelConfig): Promise<ModelResponse> {
@@ -25,32 +23,38 @@ export class GoogleProvider implements AIProvider {
         throw new Error('Google AI API key not configured');
       }
 
-      const result = await generateText({
-        model: google(config.model),
-        prompt,
-        temperature: config.temperature || 0.7,
-        maxTokens: config.maxTokens || 1000,
-        topP: config.topP || 1,
-      });
+      console.log('Google AI: Attempting query with model:', config.model);
+      console.log('Google AI: API key configured:', !!process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+
+      // Initialize the Google AI client
+      const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
+      const model = genAI.getGenerativeModel({ model: config.model });
+      
+      // Generate content
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
 
       const responseTime = Date.now() - startTime;
+      console.log('Google AI: Success! Response length:', text.length);
 
       return {
         id: `google-${Date.now()}`,
         provider: 'google',
         model: config.model,
-        response: result.text,
-        confidence: this.calculateConfidence(result),
+        response: text,
+        confidence: this.calculateConfidence(text),
         responseTime,
         tokens: {
-          prompt: result.usage?.promptTokens || 0,
-          completion: result.usage?.completionTokens || 0,
-          total: result.usage?.totalTokens || 0,
+          prompt: 0, // Google AI doesn't provide token usage in free tier
+          completion: 0,
+          total: 0,
         },
         timestamp: new Date(),
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;
+      console.error('Google AI Error:', error);
       
       return {
         id: `google-error-${Date.now()}`,
@@ -66,10 +70,10 @@ export class GoogleProvider implements AIProvider {
     }
   }
 
-  private calculateConfidence(result: any): number {
+  private calculateConfidence(text: string): number {
     // Google-specific confidence calculation
-    const responseLength = result.text.length;
-    const hasGoodLength = responseLength > 50 && responseLength < 2500;
+    const responseLength = text.length;
+    const hasGoodLength = responseLength > 2 && responseLength < 2500;
     
     return hasGoodLength ? 0.82 : 0.62;
   }

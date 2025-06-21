@@ -33,8 +33,14 @@ const TOKEN_COSTS = {
   'claude-3-haiku-20240307': { input: 0.00025, output: 0.00125 }, // $0.25/MTok → $1.25/MTok
   
   // Google Gemini
-  'gemini-pro': { input: 0.0, output: 0.0 }, // Free tier
-  'gemini-pro-vision': { input: 0.0, output: 0.0 }, // Free tier
+  // Google Models (All FREE on free tier)
+  'gemini-2.5-flash': { input: 0.0, output: 0.0 }, // Free tier
+  'gemini-2.5-flash-lite-preview-06-17': { input: 0.0, output: 0.0 }, // Free tier
+  'gemini-2.0-flash': { input: 0.0, output: 0.0 }, // Free tier
+  'gemini-2.0-flash-lite': { input: 0.0, output: 0.0 }, // Free tier
+  'gemini-1.5-flash': { input: 0.0, output: 0.0 }, // Free tier
+  'gemini-1.5-flash-8b': { input: 0.0, output: 0.0 }, // Free tier
+  'gemini-1.5-pro': { input: 0.0, output: 0.0 }, // Free tier
 }
 
 // Model expertise scoring for weighted analysis
@@ -55,8 +61,14 @@ const MODEL_EXPERTISE = {
   'claude-3-sonnet-20240229': { reasoning: 0.85, factual: 0.9, creative: 0.9, speed: 0.7 },
   'claude-3-opus-20240229': { reasoning: 0.95, factual: 0.9, creative: 0.9, speed: 0.3 },
   // Other models
-  'gemini-pro': { reasoning: 0.75, factual: 0.8, creative: 0.6, speed: 0.95 },
-  'gemini-pro-vision': { reasoning: 0.75, factual: 0.8, creative: 0.6, speed: 0.95 }
+  // Google Models
+  'gemini-2.5-flash': { reasoning: 0.9, factual: 0.92, creative: 0.85, speed: 0.9 },
+  'gemini-2.5-flash-lite-preview-06-17': { reasoning: 0.75, factual: 0.8, creative: 0.7, speed: 0.99 },
+  'gemini-2.0-flash': { reasoning: 0.85, factual: 0.9, creative: 0.8, speed: 0.95 },
+  'gemini-2.0-flash-lite': { reasoning: 0.75, factual: 0.8, creative: 0.7, speed: 0.98 },
+  'gemini-1.5-flash': { reasoning: 0.8, factual: 0.85, creative: 0.7, speed: 0.98 },
+  'gemini-1.5-flash-8b': { reasoning: 0.75, factual: 0.8, creative: 0.65, speed: 0.99 },
+  'gemini-1.5-pro': { reasoning: 0.9, factual: 0.95, creative: 0.8, speed: 0.7 }
 }
 
 // Smart minimization system prompts
