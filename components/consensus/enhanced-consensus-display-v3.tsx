@@ -175,8 +175,8 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
                 )}
               </button>
             </div>
-            <div className="text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg max-h-96 overflow-y-auto">
-              <p className="whitespace-pre-wrap leading-relaxed">
+            <div className="text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg min-h-[200px] max-h-[600px] overflow-y-auto">
+              <p className="whitespace-pre-wrap leading-relaxed text-base">
                 {isElaborated ? detailedAnswer : result.consensus.conciseAnswer}
               </p>
             </div>

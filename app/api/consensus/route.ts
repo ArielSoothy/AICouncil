@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: QueryRequest = await request.json()
-    const { prompt, models, responseMode = 'normal' } = body
+    const { prompt, models, responseMode = 'concise' } = body
 
     if (!prompt?.trim()) {
       return NextResponse.json(

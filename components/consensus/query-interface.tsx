@@ -13,7 +13,7 @@ export function QueryInterface() {
   const [prompt, setPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
-  const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('normal')
+  const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>([
     { provider: 'anthropic', model: 'claude-opus-4-20250514', enabled: true },
     { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', enabled: true },
