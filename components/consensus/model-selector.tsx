@@ -127,11 +127,11 @@ export function ModelSelector({ models, onChange }: ModelSelectorProps) {
 
   const addModel = () => {
     const newModel: ModelConfig = {
-      provider: 'anthropic',
-      model: 'claude-3-haiku-20240307',
+      provider: 'google',
+      model: 'gemini-1.5-flash',
       enabled: true
     }
-    onChange([...models, newModel])
+    onChange([newModel, ...models]) // Add at the top
   }
 
   const removeModel = (index: number) => {
