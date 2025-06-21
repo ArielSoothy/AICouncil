@@ -26,6 +26,12 @@ const nextConfig = {
     // Ensure modules are resolved correctly
     config.resolve.modules = ['node_modules', __dirname]
     
+    // Force resolve specific problematic modules
+    config.resolve.alias['../../../lib/ai-providers'] = require('path').resolve(__dirname, 'lib/ai-providers')
+    config.resolve.alias['../../../lib/rate-limit'] = require('path').resolve(__dirname, 'lib/rate-limit.ts')
+    config.resolve.alias['../../../lib/utils'] = require('path').resolve(__dirname, 'lib/utils.ts')
+    config.resolve.alias['../../../types/consensus'] = require('path').resolve(__dirname, 'types/consensus.ts')
+    
     return config
   },
   env: {

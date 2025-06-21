@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { providerRegistry } from '../../../lib/ai-providers'
+import { providerRegistry } from '../../../lib/ai-providers/index'
 import { QueryRequest, ConsensusResult, ModelResponse, EnhancedConsensusResponse } from '../../../types/consensus'
 import { checkRateLimit, getRateLimitHeaders } from '../../../lib/rate-limit'
 import { calculateConsensusScore, generateConsensusId } from '../../../lib/utils'
