@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { providerRegistry } from '@/lib/ai-providers/index'
-import { QueryRequest, ConsensusResult, ModelResponse, EnhancedConsensusResponse } from '@/types/consensus'
+import { QueryRequest, ConsensusResult, ModelResponse, EnhancedConsensusResponse, StructuredModelResponse } from '@/types/consensus'
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit'
 import { calculateConsensusScore, generateConsensusId } from '@/lib/utils'
+import { generateModelPrompt, parseModelResponse, ResponseLength } from '@/lib/prompt-system'
+import { generateJudgePrompt, parseJudgeResponse, JudgeResponseMode, ConciseJudgeResult, JudgeAnalysis } from '@/lib/judge-system'
 import { anthropic } from '@ai-sdk/anthropic'
 import { openai } from '@ai-sdk/openai'
 import { generateText } from 'ai'
@@ -80,7 +82,7 @@ function calculateCost(model: string, inputTokens: number, outputTokens: number)
   return (inputTokens / 1000 * costs.input) + (outputTokens / 1000 * costs.output)
 }
 
-async function runJudgeAnalysis(query: string, responses: ModelResponse[]): Promise<{
+async function runJudgeAnalysis(query: string, responses: StructuredModelResponse[], responseMode: JudgeResponseMode = 'concise'): Promise<{
   unifiedAnswer: string;
   conciseAnswer: string;
   normalAnswer?: string;
@@ -90,6 +92,7 @@ async function runJudgeAnalysis(query: string, responses: ModelResponse[]): Prom
   agreements: string[];
   disagreements: string[];
   judgeTokensUsed: number;
+  judgeAnalysis?: JudgeAnalysis | ConciseJudgeResult;
 }> {
   const successfulResponses = responses.filter(r => !r.error && r.response.trim())
   
@@ -112,7 +115,7 @@ async function runJudgeAnalysis(query: string, responses: ModelResponse[]): Prom
     if (process.env.ANTHROPIC_API_KEY && 
         process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here' &&
         process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-')) {
-      return await runClaudeOpusJudge(query, successfulResponses)
+      return await runEnhancedClaudeJudge(query, successfulResponses, responseMode)
     }
   } catch (error) {
     console.log('Claude Opus 4 judge failed, trying GPT-4o fallback:', error)
@@ -123,7 +126,7 @@ async function runJudgeAnalysis(query: string, responses: ModelResponse[]): Prom
     if (process.env.OPENAI_API_KEY && 
         process.env.OPENAI_API_KEY !== 'your_openai_api_key_here' &&
         process.env.OPENAI_API_KEY.startsWith('sk-')) {
-      return await runGPT4oJudge(query, successfulResponses)
+      return await runEnhancedGPTJudge(query, successfulResponses, responseMode)
     }
   } catch (error) {
     console.log('GPT-4o judge failed, using heuristic analysis:', error)
@@ -133,152 +136,158 @@ async function runJudgeAnalysis(query: string, responses: ModelResponse[]): Prom
   return runHeuristicJudge(query, successfulResponses)
 }
 
-async function runClaudeOpusJudge(query: string, responses: ModelResponse[]) {
-  const responseData = responses.map((r, i) => ({
-    index: i + 1,
-    model: r.model,
-    response: r.response,
-    expertise: MODEL_EXPERTISE[r.model as keyof typeof MODEL_EXPERTISE] || { reasoning: 0.7, factual: 0.7, creative: 0.7, speed: 0.7 }
-  }))
-
-  const promptContent = `Analyze these AI responses for the query: "${query}"
-
-${responseData.map(r => `Response ${r.index} (${r.model}): "${r.response}"`).join('\n\n')}
-
-Model Expertise Scores:
-${responseData.map(r => `${r.model}: Reasoning=${r.expertise.reasoning}, Factual=${r.expertise.factual}, Creative=${r.expertise.creative}`).join('\n')}
-
-Provide your analysis in this exact JSON format:
-{
-  "concise": "Brief 1-2 sentence answer with the key consensus point",
-  "confidence": 85,
-  "agreements": ["Point 1 all models agree on", "Point 2 all models agree on"],
-  "disagreements": ["Any significant conflicts if present"],
-  "recommendation": "Which response is most accurate/helpful and why (1 sentence)"
-}`
-
+async function runEnhancedClaudeJudge(query: string, responses: StructuredModelResponse[], mode: JudgeResponseMode = 'concise') {
+  const promptContent = generateJudgePrompt(responses, query, mode)
+  
   const result = await generateText({
-    model: anthropic('claude-opus-4-20250514'), // Try the latest Claude Opus 4 first
+    model: anthropic('claude-opus-4-20250514'),
     messages: [
       {
         role: 'system',
-        content: 'You are an expert meta-analysis AI. Analyze multiple AI responses and provide a structured consensus analysis. Always respond with valid JSON only.'
+        content: mode === 'concise' 
+          ? 'You are an expert consensus analyzer. Always respond with valid JSON only.' 
+          : 'You are the Chief Decision Synthesizer for Consensus AI. Provide thorough analysis in the exact format requested.'
       },
       {
         role: 'user',
         content: promptContent
       }
     ],
-    maxTokens: 400,
+    maxTokens: mode === 'concise' ? 300 : 800,
     temperature: 0.2
   })
 
-  // Parse JSON response
-  try {
-    // Clean the response text to handle markdown code blocks
-    let cleanText = result.text.trim()
-    
-    // Remove markdown code blocks if present
-    if (cleanText.startsWith('```json')) {
-      cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '')
-    } else if (cleanText.startsWith('```')) {
-      cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '')
-    }
-    
-    const analysis = JSON.parse(cleanText)
+  const analysis = parseJudgeResponse(result.text, mode)
+  const tokensUsed = result.usage?.totalTokens || 0
+  
+  if (mode === 'concise') {
+    const conciseResult = analysis as ConciseJudgeResult
     return {
-      unifiedAnswer: analysis.concise, // Use concise as the main unified answer
-      conciseAnswer: analysis.concise,
-      normalAnswer: undefined, // Don't generate until requested
-      detailedAnswer: undefined, // Don't generate until requested
-      elaborationLevel: 'concise' as const, // Start with concise level
-      confidence: Math.min(Math.max(analysis.confidence || 75, 0), 100),
-      agreements: Array.isArray(analysis.agreements) ? analysis.agreements.slice(0, 3) : [],
-      disagreements: Array.isArray(analysis.disagreements) ? analysis.disagreements.slice(0, 3) : [],
-      judgeTokensUsed: result.usage?.totalTokens || 0
+      unifiedAnswer: conciseResult.bestAnswer,
+      conciseAnswer: conciseResult.bestAnswer,
+      normalAnswer: undefined,
+      detailedAnswer: undefined,
+      elaborationLevel: 'concise' as const,
+      confidence: conciseResult.confidence,
+      agreements: [`${conciseResult.consensusScore}% consensus achieved`],
+      disagreements: conciseResult.riskLevel !== 'None' ? [`Risk level: ${conciseResult.riskLevel}`] : [],
+      judgeTokensUsed: tokensUsed,
+      judgeAnalysis: { ...conciseResult, tokenUsage: tokensUsed }
     }
-  } catch (parseError) {
-    console.error('Failed to parse Claude Opus response:', parseError)
-    console.error('Raw response:', result.text)
-    throw new Error('Judge response parsing failed')
+  } else {
+    const detailedResult = analysis as JudgeAnalysis
+    return {
+      unifiedAnswer: detailedResult.synthesis.bestAnswer,
+      conciseAnswer: detailedResult.synthesis.bestAnswer.substring(0, 100) + '...',
+      normalAnswer: undefined,
+      detailedAnswer: detailedResult.synthesis.bestAnswer,
+      elaborationLevel: 'detailed' as const,
+      confidence: detailedResult.synthesis.confidence,
+      agreements: detailedResult.answerDistribution.majorityPosition ? [detailedResult.answerDistribution.majorityPosition] : [],
+      disagreements: detailedResult.answerDistribution.outlierPositions,
+      judgeTokensUsed: tokensUsed,
+      judgeAnalysis: { ...detailedResult, tokenUsage: tokensUsed }
+    }
   }
 }
 
-async function runGPT4oJudge(query: string, responses: ModelResponse[]) {
-  const responseData = responses.map((r, i) => ({
-    index: i + 1,
-    model: r.model,
-    response: r.response
-  }))
-
-  const promptContent = `Analyze these AI responses for: "${query}"
-
-${responseData.map(r => `Response ${r.index} (${r.model}): "${r.response}"`).join('\n\n')}
-
-Respond with JSON:
-{
-  "concise": "Brief 1-2 sentence answer with key consensus",
-  "confidence": 85,
-  "agreements": ["agreement 1", "agreement 2"],
-  "disagreements": ["disagreement 1"]
-}`
-
+async function runEnhancedGPTJudge(query: string, responses: StructuredModelResponse[], mode: JudgeResponseMode = 'concise') {
+  const promptContent = generateJudgePrompt(responses, query, mode)
+  
   const result = await generateText({
     model: openai('gpt-4o'),
     messages: [
       {
         role: 'system',
-        content: 'You are a meta-analysis AI. Provide structured consensus analysis as JSON only.'
+        content: mode === 'concise' 
+          ? 'You are an expert consensus analyzer. Always respond with valid JSON only.' 
+          : 'You are the Chief Decision Synthesizer for Consensus AI. Provide thorough analysis in the exact format requested.'
       },
       {
         role: 'user',
         content: promptContent
       }
     ],
-    maxTokens: 350,
+    maxTokens: mode === 'concise' ? 300 : 800,
     temperature: 0.2
   })
 
-  try {
-    const analysis = JSON.parse(result.text)
+  const analysis = parseJudgeResponse(result.text, mode)
+  const tokensUsed = result.usage?.totalTokens || 0
+  
+  if (mode === 'concise') {
+    const conciseResult = analysis as ConciseJudgeResult
     return {
-      unifiedAnswer: analysis.concise || analysis.consensus || "GPT-4o analysis completed",
-      conciseAnswer: analysis.concise || (analysis.consensus ? analysis.consensus.substring(0, 100) + '...' : "Brief analysis completed"),
-      normalAnswer: undefined, // Don't generate until requested
-      detailedAnswer: undefined, // Don't generate until requested
+      unifiedAnswer: conciseResult.bestAnswer,
+      conciseAnswer: conciseResult.bestAnswer,
+      normalAnswer: undefined,
+      detailedAnswer: undefined,
       elaborationLevel: 'concise' as const,
-      confidence: Math.min(Math.max(analysis.confidence || 75, 0), 100),
-      agreements: Array.isArray(analysis.agreements) ? analysis.agreements.slice(0, 3) : [],
-      disagreements: Array.isArray(analysis.disagreements) ? analysis.disagreements.slice(0, 3) : [],
-      judgeTokensUsed: result.usage?.totalTokens || 0
+      confidence: conciseResult.confidence,
+      agreements: [`${conciseResult.consensusScore}% consensus achieved`],
+      disagreements: conciseResult.riskLevel !== 'None' ? [`Risk level: ${conciseResult.riskLevel}`] : [],
+      judgeTokensUsed: tokensUsed,
+      judgeAnalysis: { ...conciseResult, tokenUsage: tokensUsed }
     }
-  } catch (parseError) {
-    console.error('Failed to parse GPT-4o response:', parseError)
-    throw new Error('Judge response parsing failed')
+  } else {
+    const detailedResult = analysis as JudgeAnalysis
+    return {
+      unifiedAnswer: detailedResult.synthesis.bestAnswer,
+      conciseAnswer: detailedResult.synthesis.bestAnswer.substring(0, 100) + '...',
+      normalAnswer: undefined,
+      detailedAnswer: detailedResult.synthesis.bestAnswer,
+      elaborationLevel: 'detailed' as const,
+      confidence: detailedResult.synthesis.confidence,
+      agreements: detailedResult.answerDistribution.majorityPosition ? [detailedResult.answerDistribution.majorityPosition] : [],
+      disagreements: detailedResult.answerDistribution.outlierPositions,
+      judgeTokensUsed: tokensUsed,
+      judgeAnalysis: { ...detailedResult, tokenUsage: tokensUsed }
+    }
   }
 }
 
-function runHeuristicJudge(query: string, responses: ModelResponse[]) {
+function runHeuristicJudge(query: string, responses: StructuredModelResponse[]) {
   const responseCount = responses.length
-  const avgLength = responses.reduce((sum, r) => sum + r.response.length, 0) / responseCount
+  const validResponses = responses.filter(r => r.parsed?.mainAnswer)
   
-  // Calculate confidence based on response count and quality
-  let confidence = 50 + (responseCount * 8) // Base confidence increases with more responses
-  confidence = Math.min(confidence, 85) // Cap heuristic confidence lower than AI judges
+  // Calculate confidence based on response count and parsed confidence scores
+  let confidence = 40 + (responseCount * 5) // Base confidence increases with more responses
+  if (validResponses.length > 0) {
+    const avgModelConfidence = validResponses.reduce((sum, r) => sum + (r.parsed?.confidence || 50), 0) / validResponses.length
+    confidence = Math.min(confidence + (avgModelConfidence * 0.3), 75) // Cap heuristic confidence
+  }
+  confidence = Math.min(confidence, 75) // Cap heuristic confidence lower than AI judges
   
-  // Detect common themes for agreements
+  // Extract main answers for analysis
+  const mainAnswers = validResponses.map(r => r.parsed?.mainAnswer || r.response)
+  
+  // Detect common themes for agreements (simple keyword matching)
+  const agreementsList: string[] = []
+  const allEvidence = validResponses.flatMap(r => r.parsed?.keyEvidence || [])
+  
+  // Group similar evidence points
+  if (allEvidence.length > 0) {
+    agreementsList.push(`${allEvidence.length} evidence points provided across responses`)
+  }
+  
   const commonWords = ['important', 'benefits', 'helps', 'improves', 'reduces', 'increases', 'provides']
-  const agreements = commonWords.filter(word => 
-    responses.filter(r => r.response.toLowerCase().includes(word)).length >= Math.ceil(responseCount * 0.6)
-  ).slice(0, 3).map(word => `Multiple models mention ${word}-related aspects`)
+  const wordAgreements = commonWords.filter(word => 
+    validResponses.filter(r => (r.parsed?.mainAnswer || r.response).toLowerCase().includes(word)).length >= Math.ceil(responseCount * 0.6)
+  ).slice(0, 2).map(word => `Multiple models mention ${word}-related aspects`)
+  
+  agreementsList.push(...wordAgreements)
 
   // Simple disagreement detection
   const disagreements = responseCount > 1 ? 
     ['Variation in response detail and emphasis'] : []
 
-  const firstResponse = responses[0].response
-  const conciseVersion = firstResponse.length > 100 ? 
-    firstResponse.substring(0, 100) + '...' : firstResponse
+  // Use best available answer
+  const bestAnswer = validResponses.length > 0 ? 
+    (validResponses[0].parsed?.mainAnswer || validResponses[0].response) :
+    responses[0].response
+    
+  const conciseVersion = bestAnswer.length > 100 ? 
+    bestAnswer.substring(0, 100) + '...' : bestAnswer
 
   return {
     unifiedAnswer: conciseVersion,
@@ -287,7 +296,7 @@ function runHeuristicJudge(query: string, responses: ModelResponse[]) {
     detailedAnswer: undefined, // Don't generate until requested
     elaborationLevel: 'concise' as const,
     confidence,
-    agreements: agreements.length > 0 ? agreements : [`${responseCount} models provided valid responses`],
+    agreements: agreementsList.length > 0 ? agreementsList : [`${responseCount} models provided valid responses`],
     disagreements,
     judgeTokensUsed: 0
   }
@@ -336,10 +345,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Enhanced prompt with system instruction
-    const enhancedPrompt = `${modeConfig.systemPrompt}\n\nUser Query: ${prompt}`
+    // Generate structured prompt using the new system
+    const structuredPrompt = generateModelPrompt(prompt, responseMode as ResponseLength)
 
-    // Query all models in parallel with smart minimization
+    // Query all models in parallel with structured prompts
     const startTime = Date.now()
     const responses = await Promise.allSettled(
       models.map(async (config) => {
@@ -348,23 +357,33 @@ export async function POST(request: NextRequest) {
           throw new Error(`Provider ${config.provider} not found`)
         }
         
-        // Override maxTokens with response mode setting
+        // Enhanced config with appropriate max tokens for structured responses
+        // Concise mode uses very few tokens for brief, list-style responses
         const enhancedConfig = {
           ...config,
-          maxTokens: modeConfig.maxTokens
+          maxTokens: responseMode === 'concise' ? 100 : responseMode === 'normal' ? 400 : 800
         }
         
-        return provider.query(enhancedPrompt, enhancedConfig)
+        return provider.query(structuredPrompt, enhancedConfig)
       })
     )
 
-    // Process responses
-    const modelResponses: ModelResponse[] = responses.map((result, index) => {
+    // Process responses with structured parsing
+    const modelResponses: StructuredModelResponse[] = responses.map((result, index) => {
       if (result.status === 'fulfilled') {
         const response = result.value
-        return {
+        const baseResponse: ModelResponse = {
           ...response,
           tokensUsed: response.tokens.total
+        }
+        
+        // Parse structured response
+        const parsed = parseModelResponse(response.response)
+        
+        return {
+          ...baseResponse,
+          parsed,
+          rawStructuredResponse: response.response
         }
       } else {
         return {
@@ -383,7 +402,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Run judge analysis
-    const judgeAnalysis = await runJudgeAnalysis(prompt, modelResponses)
+    const judgeAnalysis = await runJudgeAnalysis(prompt, modelResponses, responseMode as JudgeResponseMode)
 
     // Calculate total tokens and cost
     let totalTokensUsed = modelResponses.reduce((sum, r) => sum + r.tokens.total, 0)
@@ -429,7 +448,8 @@ export async function POST(request: NextRequest) {
         confidence: judgeAnalysis.confidence,
         agreements: judgeAnalysis.agreements,
         disagreements: judgeAnalysis.disagreements,
-        judgeTokensUsed: judgeAnalysis.judgeTokensUsed
+        judgeTokensUsed: judgeAnalysis.judgeTokensUsed,
+        judgeAnalysis: judgeAnalysis.judgeAnalysis
       },
       totalTokensUsed,
       estimatedCost: Math.round(estimatedCost * 100000) / 100000 // Round to 5 decimal places

@@ -1,3 +1,6 @@
+// Import judge system types
+import { JudgeAnalysis, ConciseJudgeResult } from '@/lib/judge-system'
+
 export interface ModelResponse {
   id: string;
   provider: string;
@@ -75,7 +78,31 @@ export interface EnhancedConsensusResponse {
     agreements: string[];
     disagreements: string[];
     judgeTokensUsed: number;
+    judgeAnalysis?: JudgeAnalysis | ConciseJudgeResult; // Enhanced judge analysis data
   };
   totalTokensUsed: number;
   estimatedCost: number;
+}
+
+// Structured response data extracted from model outputs
+export interface ParsedModelResponse {
+  mainAnswer: string;
+  confidence: number;
+  keyEvidence: string[];
+  limitations: string[];
+}
+
+// Enhanced model response with structured parsing
+export interface StructuredModelResponse extends ModelResponse {
+  parsed?: ParsedModelResponse;
+  rawStructuredResponse?: string; // The full structured response from model
+}
+
+// Judge analysis interface for consensus response
+export interface JudgeAnalysisResponse {
+  id: string;
+  consensusId: string;
+  analysis: JudgeAnalysis;
+  conciseResults: ConciseJudgeResult[];
+  timestamp: Date;
 }

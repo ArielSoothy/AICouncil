@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { EnhancedConsensusResponse } from '@/types/consensus'
+import { JudgeAnalysisDisplay } from './judge-analysis-display'
 import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface EnhancedConsensusDisplayProps {
@@ -216,6 +217,12 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
           </div>
         </div>
       </div>
+
+      {/* Enhanced Judge Analysis */}
+      <JudgeAnalysisDisplay 
+        analysis={result.consensus.judgeAnalysis} 
+        mode={result.mode as 'concise' | 'normal' | 'detailed'} 
+      />
 
       {/* Options Ranking Table - Extracted from Unified Answer */}
       <div className="model-card">
@@ -520,6 +527,9 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
             const modelCost = estimateModelCost(response.model, response.tokensUsed)
             const tier = modelCosts[response.model as keyof typeof modelCosts]?.tier || 'budget'
             
+            // Check if we should show structured details (only for normal/detailed modes)
+            const showDetails = result.mode !== 'concise'
+            
             return (
               <div key={index} className={`border border-gray-200 dark:border-gray-700 rounded-lg p-4 border-l-4 ${tierColors[tier]}`}>
                 <div className="flex items-center justify-between mb-3">
@@ -528,13 +538,17 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
                   </h3>
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <span>{response.responseTime}ms</span>
-                    <span>•</span>
-                    <span>{response.tokensUsed} tokens</span>
-                    <span>•</span>
-                    <span>~{wordCount} words</span>
+                    {showDetails && (
+                      <>
+                        <span>•</span>
+                        <span>{response.tokensUsed} tokens</span>
+                        <span>•</span>
+                        <span>~{wordCount} words</span>
+                      </>
+                    )}
                   </div>
                 </div>
-                {modelCost > 0 && (
+                {showDetails && modelCost > 0 && (
                   <div className="mb-3 flex items-center justify-between">
                     <span className="text-xs text-gray-600 dark:text-gray-400">Individual Cost:</span>
                     <span className="text-xs font-mono text-green-600 dark:text-green-400">
@@ -542,7 +556,7 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
                     </span>
                   </div>
                 )}
-                <div className="text-sm text-gray-700 dark:text-gray-300 max-h-40 overflow-y-auto">
+                <div className={`text-sm text-gray-700 dark:text-gray-300 ${showDetails ? 'max-h-40 overflow-y-auto' : ''}`}>
                   <p className="whitespace-pre-wrap">{response.response}</p>
                 </div>
               </div>
