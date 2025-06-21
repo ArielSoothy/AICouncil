@@ -37,6 +37,6 @@ next-env.d.ts
 
 # Python virtual environment (legacy)
 bin/
-lib/
+lib/python3.9/
 pyvenv.cfg
 CACHEDIR.TAG
