@@ -83,8 +83,9 @@ function calculateCost(model: string, inputTokens: number, outputTokens: number)
 async function runJudgeAnalysis(query: string, responses: ModelResponse[]): Promise<{
   unifiedAnswer: string;
   conciseAnswer: string;
+  normalAnswer?: string;
   detailedAnswer?: string;
-  isElaborated?: boolean;
+  elaborationLevel: 'concise' | 'normal' | 'detailed';
   confidence: number;
   agreements: string[];
   disagreements: string[];
@@ -96,8 +97,9 @@ async function runJudgeAnalysis(query: string, responses: ModelResponse[]): Prom
     return {
       unifiedAnswer: "No valid responses to analyze.",
       conciseAnswer: "No valid responses to analyze.",
-      detailedAnswer: "No valid responses were received from any of the AI models.",
-      isElaborated: false,
+      normalAnswer: undefined,
+      detailedAnswer: undefined,
+      elaborationLevel: 'concise' as const,
       confidence: 0,
       agreements: [],
       disagreements: [],
@@ -149,7 +151,6 @@ ${responseData.map(r => `${r.model}: Reasoning=${r.expertise.reasoning}, Factual
 Provide your analysis in this exact JSON format:
 {
   "concise": "Brief 1-2 sentence answer with the key consensus point",
-  "detailed": "Comprehensive unified answer combining the best insights with full reasoning (200-300 words)",
   "confidence": 85,
   "agreements": ["Point 1 all models agree on", "Point 2 all models agree on"],
   "disagreements": ["Any significant conflicts if present"],
@@ -188,8 +189,9 @@ Provide your analysis in this exact JSON format:
     return {
       unifiedAnswer: analysis.concise, // Use concise as the main unified answer
       conciseAnswer: analysis.concise,
-      detailedAnswer: analysis.detailed + (analysis.recommendation ? `\n\nRecommendation: ${analysis.recommendation}` : ''),
-      isElaborated: false, // Default to showing concise
+      normalAnswer: undefined, // Don't generate until requested
+      detailedAnswer: undefined, // Don't generate until requested
+      elaborationLevel: 'concise' as const, // Start with concise level
       confidence: Math.min(Math.max(analysis.confidence || 75, 0), 100),
       agreements: Array.isArray(analysis.agreements) ? analysis.agreements.slice(0, 3) : [],
       disagreements: Array.isArray(analysis.disagreements) ? analysis.disagreements.slice(0, 3) : [],
@@ -216,7 +218,6 @@ ${responseData.map(r => `Response ${r.index} (${r.model}): "${r.response}"`).joi
 Respond with JSON:
 {
   "concise": "Brief 1-2 sentence answer with key consensus",
-  "detailed": "Comprehensive unified answer (200-300 words)",
   "confidence": 85,
   "agreements": ["agreement 1", "agreement 2"],
   "disagreements": ["disagreement 1"]
@@ -243,8 +244,9 @@ Respond with JSON:
     return {
       unifiedAnswer: analysis.concise || analysis.consensus || "GPT-4o analysis completed",
       conciseAnswer: analysis.concise || (analysis.consensus ? analysis.consensus.substring(0, 100) + '...' : "Brief analysis completed"),
-      detailedAnswer: analysis.detailed || analysis.consensus || "Detailed analysis completed",
-      isElaborated: false,
+      normalAnswer: undefined, // Don't generate until requested
+      detailedAnswer: undefined, // Don't generate until requested
+      elaborationLevel: 'concise' as const,
       confidence: Math.min(Math.max(analysis.confidence || 75, 0), 100),
       agreements: Array.isArray(analysis.agreements) ? analysis.agreements.slice(0, 3) : [],
       disagreements: Array.isArray(analysis.disagreements) ? analysis.disagreements.slice(0, 3) : [],
@@ -281,8 +283,9 @@ function runHeuristicJudge(query: string, responses: ModelResponse[]) {
   return {
     unifiedAnswer: conciseVersion,
     conciseAnswer: conciseVersion,
-    detailedAnswer: `Heuristic analysis of ${responseCount} responses: ${firstResponse}`,
-    isElaborated: false,
+    normalAnswer: undefined, // Don't generate until requested
+    detailedAnswer: undefined, // Don't generate until requested
+    elaborationLevel: 'concise' as const,
     confidence,
     agreements: agreements.length > 0 ? agreements : [`${responseCount} models provided valid responses`],
     disagreements,
@@ -420,8 +423,9 @@ export async function POST(request: NextRequest) {
       consensus: {
         unifiedAnswer: judgeAnalysis.unifiedAnswer,
         conciseAnswer: judgeAnalysis.conciseAnswer,
+        normalAnswer: judgeAnalysis.normalAnswer,
         detailedAnswer: judgeAnalysis.detailedAnswer,
-        isElaborated: judgeAnalysis.isElaborated,
+        elaborationLevel: judgeAnalysis.elaborationLevel,
         confidence: judgeAnalysis.confidence,
         agreements: judgeAnalysis.agreements,
         disagreements: judgeAnalysis.disagreements,

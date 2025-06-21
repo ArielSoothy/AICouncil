@@ -65,15 +65,36 @@ const estimateModelCost = (model: string, tokensUsed: number): number => {
 }
 
 export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayProps) {
-  const [isElaborated, setIsElaborated] = useState(false)
+  const [currentLevel, setCurrentLevel] = useState<'concise' | 'normal' | 'detailed'>(result.consensus.elaborationLevel)
+  const [normalAnswer, setNormalAnswer] = useState(result.consensus.normalAnswer || '')
   const [detailedAnswer, setDetailedAnswer] = useState(result.consensus.detailedAnswer || '')
   const [isElaborating, setIsElaborating] = useState(false)
 
-  const handleElaborate = async () => {
-    if (detailedAnswer && !isElaborating) {
-      setIsElaborated(!isElaborated)
-      return
+  const getCurrentAnswer = () => {
+    switch (currentLevel) {
+      case 'concise': return result.consensus.conciseAnswer
+      case 'normal': return normalAnswer
+      case 'detailed': return detailedAnswer
+      default: return result.consensus.conciseAnswer
     }
+  }
+
+  const getNextLevel = () => {
+    if (currentLevel === 'concise') return 'normal'
+    if (currentLevel === 'normal') return 'detailed'
+    return null
+  }
+
+  const getButtonText = () => {
+    if (isElaborating) return 'Re-thinking...'
+    const nextLevel = getNextLevel()
+    if (!nextLevel) return 'Maximum Detail'
+    return nextLevel === 'normal' ? 'Elaborate' : 'Elaborate Long'
+  }
+
+  const handleElaborate = async () => {
+    const nextLevel = getNextLevel()
+    if (!nextLevel || isElaborating) return
 
     setIsElaborating(true)
     try {
@@ -85,7 +106,8 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
         body: JSON.stringify({
           query: result.query,
           responses: result.responses,
-          conciseAnswer: result.consensus.conciseAnswer
+          currentLevel: currentLevel,
+          currentAnswer: getCurrentAnswer()
         })
       })
 
@@ -94,12 +116,26 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
       }
 
       const data = await response.json()
-      setDetailedAnswer(data.detailedAnswer)
-      setIsElaborated(true)
+      
+      if (data.newLevel === 'normal') {
+        setNormalAnswer(data.elaboratedAnswer)
+        setCurrentLevel('normal')
+      } else if (data.newLevel === 'detailed') {
+        setDetailedAnswer(data.elaboratedAnswer)
+        setCurrentLevel('detailed')
+      }
+      
     } catch (error) {
       console.error('Error elaborating:', error)
-      setDetailedAnswer(`${result.consensus.conciseAnswer}\n\nDetailed analysis: This represents the consensus view based on multiple AI responses. The analysis incorporates insights from ${result.responses.length} different models to provide a balanced perspective.`)
-      setIsElaborated(true)
+      // Provide fallback message
+      const fallbackMessage = `Failed to elaborate to ${nextLevel} level. Please try again.`
+      if (nextLevel === 'normal') {
+        setNormalAnswer(fallbackMessage)
+        setCurrentLevel('normal')
+      } else if (nextLevel === 'detailed') {
+        setDetailedAnswer(fallbackMessage)
+        setCurrentLevel('detailed')
+      }
     } finally {
       setIsElaborating(false)
     }
@@ -150,34 +186,31 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-medium">
-                {isElaborated ? 'Detailed Analysis' : 'Consensus Answer'}
+                {currentLevel === 'concise' ? 'Consensus Answer' : 
+                 currentLevel === 'normal' ? 'Detailed Analysis' : 
+                 'Comprehensive Analysis'}
               </h4>
               <button
                 onClick={handleElaborate}
-                disabled={isElaborating}
+                disabled={isElaborating || !getNextLevel()}
                 className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isElaborating ? (
                   <>
                     <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full"></div>
-                    Elaborating...
-                  </>
-                ) : isElaborated ? (
-                  <>
-                    <ChevronUp className="h-3 w-3" />
-                    Show Less
+                    {getButtonText()}
                   </>
                 ) : (
                   <>
                     <ChevronDown className="h-3 w-3" />
-                    Elaborate
+                    {getButtonText()}
                   </>
                 )}
               </button>
             </div>
             <div className="text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg min-h-[200px] max-h-[600px] overflow-y-auto">
               <p className="whitespace-pre-wrap leading-relaxed text-base">
-                {isElaborated ? detailedAnswer : result.consensus.conciseAnswer}
+                {getCurrentAnswer()}
               </p>
             </div>
           </div>

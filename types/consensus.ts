@@ -68,8 +68,9 @@ export interface EnhancedConsensusResponse {
   consensus: {
     unifiedAnswer: string;
     conciseAnswer: string;     // Short summary (1-2 sentences) - now required
-    detailedAnswer?: string;   // Full analysis when elaborated
-    isElaborated?: boolean;    // Whether detailed answer was requested
+    normalAnswer?: string;     // Normal mode answer when elaborated once
+    detailedAnswer?: string;   // Detailed analysis when elaborated twice
+    elaborationLevel: 'concise' | 'normal' | 'detailed'; // Current elaboration level
     confidence: number;
     agreements: string[];
     disagreements: string[];

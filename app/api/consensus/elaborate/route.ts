@@ -9,17 +9,28 @@ interface ElaborateRequest {
     model: string;
     response: string;
   }>;
-  conciseAnswer: string;
+  currentLevel: 'concise' | 'normal' | 'detailed';
+  currentAnswer: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: ElaborateRequest = await request.json()
-    const { query, responses, conciseAnswer } = body
+    const { query, responses, currentLevel, currentAnswer } = body
 
-    if (!query?.trim() || !responses?.length || !conciseAnswer?.trim()) {
+    if (!query?.trim() || !responses?.length || !currentLevel || !currentAnswer?.trim()) {
       return NextResponse.json(
-        { error: 'Query, responses, and concise answer are required' },
+        { error: 'Query, responses, current level, and current answer are required' },
+        { status: 400 }
+      )
+    }
+
+    // Determine the next elaboration level
+    const nextLevel = currentLevel === 'concise' ? 'normal' : 'detailed'
+    
+    if (currentLevel === 'detailed') {
+      return NextResponse.json(
+        { error: 'Already at maximum elaboration level' },
         { status: 400 }
       )
     }
@@ -29,7 +40,7 @@ export async function POST(request: NextRequest) {
       if (process.env.ANTHROPIC_API_KEY && 
           process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here' &&
           process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-')) {
-        return await elaborateWithClaudeOpus(query, responses, conciseAnswer)
+        return await elaborateWithClaudeOpus(query, responses, currentAnswer, nextLevel)
       }
     } catch (error) {
       console.log('Claude Opus 4 elaboration failed, trying GPT-4o fallback:', error)
@@ -40,7 +51,7 @@ export async function POST(request: NextRequest) {
       if (process.env.OPENAI_API_KEY && 
           process.env.OPENAI_API_KEY !== 'your_openai_api_key_here' &&
           process.env.OPENAI_API_KEY.startsWith('sk-')) {
-        return await elaborateWithGPT4o(query, responses, conciseAnswer)
+        return await elaborateWithGPT4o(query, responses, currentAnswer, nextLevel)
       }
     } catch (error) {
       console.log('GPT-4o elaboration failed:', error)
@@ -48,7 +59,8 @@ export async function POST(request: NextRequest) {
 
     // Final fallback
     return NextResponse.json({
-      detailedAnswer: `${conciseAnswer}\n\nDetailed analysis: Based on ${responses.length} AI responses, this represents the consensus view with additional context and reasoning.`,
+      elaboratedAnswer: `${currentAnswer}\n\nAdditional context: Based on ${responses.length} AI responses, this represents the consensus view with expanded reasoning for ${nextLevel} level analysis.`,
+      newLevel: nextLevel,
       judgeTokensUsed: 0
     })
 
@@ -61,26 +73,27 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function elaborateWithClaudeOpus(query: string, responses: Array<{model: string, response: string}>, conciseAnswer: string) {
-  const promptContent = `You previously provided this concise answer: "${conciseAnswer}"
+async function elaborateWithClaudeOpus(query: string, responses: Array<{model: string, response: string}>, currentAnswer: string, targetLevel: 'normal' | 'detailed') {
+  const levelDescription = targetLevel === 'normal' ? 
+    'balanced answer with good detail and reasoning (150-200 words)' : 
+    'comprehensive analysis with full reasoning, implications, and insights (300-500 words)'
 
-For the query: "${query}"
+  const promptContent = `You are re-analyzing these AI responses to provide a ${targetLevel} level answer.
 
-Based on these AI responses:
+Query: "${query}"
+
+Current answer: "${currentAnswer}"
+
+AI Responses to analyze:
 ${responses.map((r, i) => `Response ${i + 1} (${r.model}): "${r.response}"`).join('\n\n')}
 
-Now provide a comprehensive, detailed elaboration that:
-1. Expands on the concise answer with full reasoning
-2. Incorporates insights from all responses
-3. Explains nuances, context, and implications
-4. Addresses potential counterarguments or edge cases
-5. Provides actionable insights where relevant
+Please RE-THINK and provide a fresh ${targetLevel} analysis. Do NOT just expand the current answer - analyze the original responses again and provide a ${levelDescription}.
 
 Respond with JSON:
 {
-  "detailed": "Your comprehensive 300-500 word elaboration",
+  "analysis": "Your fresh ${targetLevel} analysis",
   "keyInsights": ["insight 1", "insight 2", "insight 3"],
-  "implications": ["implication 1", "implication 2"]
+  "reasoning": "Why this ${targetLevel} analysis differs or improves from the previous level"
 }`
 
   const result = await generateText({
@@ -109,16 +122,17 @@ Respond with JSON:
     
     const analysis = JSON.parse(cleanText)
     
-    let detailedAnswer = analysis.detailed
+    let elaboratedAnswer = analysis.analysis
     if (analysis.keyInsights?.length > 0) {
-      detailedAnswer += `\n\nKey Insights:\n${analysis.keyInsights.map((insight: string) => `• ${insight}`).join('\n')}`
+      elaboratedAnswer += `\n\nKey Insights:\n${analysis.keyInsights.map((insight: string) => `• ${insight}`).join('\n')}`
     }
-    if (analysis.implications?.length > 0) {
-      detailedAnswer += `\n\nImplications:\n${analysis.implications.map((impl: string) => `• ${impl}`).join('\n')}`
+    if (analysis.reasoning) {
+      elaboratedAnswer += `\n\nReasoning: ${analysis.reasoning}`
     }
 
     return NextResponse.json({
-      detailedAnswer,
+      elaboratedAnswer,
+      newLevel: targetLevel,
       judgeTokensUsed: result.usage?.totalTokens || 0
     })
     
@@ -128,17 +142,22 @@ Respond with JSON:
   }
 }
 
-async function elaborateWithGPT4o(query: string, responses: Array<{model: string, response: string}>, conciseAnswer: string) {
-  const promptContent = `Elaborate on this concise answer: "${conciseAnswer}"
+async function elaborateWithGPT4o(query: string, responses: Array<{model: string, response: string}>, currentAnswer: string, targetLevel: 'normal' | 'detailed') {
+  const levelDescription = targetLevel === 'normal' ? 
+    'balanced answer (150-200 words)' : 
+    'comprehensive analysis (300-500 words)'
 
-For query: "${query}"
+  const promptContent = `Re-analyze for ${targetLevel} level answer.
 
-Based on responses:
+Query: "${query}"
+Current: "${currentAnswer}"
+
+Responses:
 ${responses.map((r, i) => `${i + 1}. ${r.model}: ${r.response}`).join('\n')}
 
-Provide detailed JSON:
+Provide fresh ${levelDescription} analysis as JSON:
 {
-  "detailed": "Comprehensive 300-500 word elaboration",
+  "analysis": "Your re-thought ${targetLevel} analysis",
   "keyPoints": ["point 1", "point 2", "point 3"]
 }`
 
@@ -160,13 +179,14 @@ Provide detailed JSON:
 
   try {
     const analysis = JSON.parse(result.text)
-    let detailedAnswer = analysis.detailed
+    let elaboratedAnswer = analysis.analysis
     if (analysis.keyPoints?.length > 0) {
-      detailedAnswer += `\n\nKey Points:\n${analysis.keyPoints.map((point: string) => `• ${point}`).join('\n')}`
+      elaboratedAnswer += `\n\nKey Points:\n${analysis.keyPoints.map((point: string) => `• ${point}`).join('\n')}`
     }
 
     return NextResponse.json({
-      detailedAnswer,
+      elaboratedAnswer,
+      newLevel: targetLevel,
       judgeTokensUsed: result.usage?.totalTokens || 0
     })
     
