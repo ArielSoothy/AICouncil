@@ -10,14 +10,13 @@ import { ConsensusResult, ModelConfig, EnhancedConsensusResponse } from '@/types
 import { Send, Loader2 } from 'lucide-react'
 
 export function QueryInterface() {
-  const [prompt, setPrompt] = useState('')
+  const [prompt, setPrompt] = useState('What are the top 3 AI coding tools for solo entrepreneurs ranked?')
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>([
-    { provider: 'anthropic', model: 'claude-opus-4-20250514', enabled: true },
-    { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', enabled: true },
     { provider: 'anthropic', model: 'claude-3-5-haiku-20241022', enabled: true },
+    { provider: 'anthropic', model: 'claude-3-haiku-20240307', enabled: true },
   ])
 
   const handleSubmit = async () => {
@@ -74,12 +73,15 @@ export function QueryInterface() {
           </label>
           <Textarea
             id="prompt"
-            placeholder="Ask a question that you'd like multiple AI models to answer..."
+            placeholder="What are the top 3 AI coding tools for solo entrepreneurs ranked?"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows={4}
             className="resize-none"
           />
+          <div className="text-xs text-gray-500 mt-1">
+            💡 Concise mode: Ultra-brief answers (lists, phrases). Normal/Detailed: Full analysis with evidence.
+          </div>
         </div>
         
         <div className="flex justify-end mt-4">
