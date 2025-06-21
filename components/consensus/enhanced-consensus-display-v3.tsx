@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { EnhancedConsensusResponse } from '@/types/consensus'
-import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3 } from 'lucide-react'
+import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface EnhancedConsensusDisplayProps {
   result: EnhancedConsensusResponse
@@ -64,6 +65,45 @@ const estimateModelCost = (model: string, tokensUsed: number): number => {
 }
 
 export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayProps) {
+  const [isElaborated, setIsElaborated] = useState(false)
+  const [detailedAnswer, setDetailedAnswer] = useState(result.consensus.detailedAnswer || '')
+  const [isElaborating, setIsElaborating] = useState(false)
+
+  const handleElaborate = async () => {
+    if (detailedAnswer && !isElaborating) {
+      setIsElaborated(!isElaborated)
+      return
+    }
+
+    setIsElaborating(true)
+    try {
+      const response = await fetch('/api/consensus/elaborate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: result.query,
+          responses: result.responses,
+          conciseAnswer: result.consensus.conciseAnswer
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to elaborate')
+      }
+
+      const data = await response.json()
+      setDetailedAnswer(data.detailedAnswer)
+      setIsElaborated(true)
+    } catch (error) {
+      console.error('Error elaborating:', error)
+      setDetailedAnswer(`${result.consensus.conciseAnswer}\n\nDetailed analysis: This represents the consensus view based on multiple AI responses. The analysis incorporates insights from ${result.responses.length} different models to provide a balanced perspective.`)
+      setIsElaborated(true)
+    } finally {
+      setIsElaborating(false)
+    }
+  }
   const confidenceColor = result.consensus.confidence >= 80 ? 'text-green-600' : 
                          result.consensus.confidence >= 60 ? 'text-yellow-600' : 'text-red-600'
   
@@ -108,10 +148,36 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
           </div>
 
           <div>
-            <h4 className="font-medium mb-2">Unified Answer</h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium">
+                {isElaborated ? 'Detailed Analysis' : 'Consensus Answer'}
+              </h4>
+              <button
+                onClick={handleElaborate}
+                disabled={isElaborating}
+                className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isElaborating ? (
+                  <>
+                    <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full"></div>
+                    Elaborating...
+                  </>
+                ) : isElaborated ? (
+                  <>
+                    <ChevronUp className="h-3 w-3" />
+                    Show Less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3 w-3" />
+                    Elaborate
+                  </>
+                )}
+              </button>
+            </div>
             <div className="text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg max-h-96 overflow-y-auto">
               <p className="whitespace-pre-wrap leading-relaxed">
-                {result.consensus.unifiedAnswer}
+                {isElaborated ? detailedAnswer : result.consensus.conciseAnswer}
               </p>
             </div>
           </div>

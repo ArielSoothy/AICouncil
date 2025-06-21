@@ -67,6 +67,9 @@ export interface EnhancedConsensusResponse {
   }[];
   consensus: {
     unifiedAnswer: string;
+    conciseAnswer: string;     // Short summary (1-2 sentences) - now required
+    detailedAnswer?: string;   // Full analysis when elaborated
+    isElaborated?: boolean;    // Whether detailed answer was requested
     confidence: number;
     agreements: string[];
     disagreements: string[];
