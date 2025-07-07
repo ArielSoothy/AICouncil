@@ -5,6 +5,12 @@ import { AIProvider } from './types';
 export class GoogleProvider implements AIProvider {
   name = 'Google';
   models = [
+    // Current Generation (Free)
+    'gemini-2.5-pro',
+    'gemini-2.5-flash', 
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    // Deprecated but still working
     'gemini-1.5-flash',
     'gemini-1.5-flash-8b'
   ];

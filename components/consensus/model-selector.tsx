@@ -28,7 +28,16 @@ const availableModels = {
     'claude-2.1',
     'claude-2.0'
   ],
-  google: ['gemini-1.5-flash', 'gemini-1.5-flash-8b'],
+  google: [
+    // Current Generation (Free)
+    'gemini-2.5-pro',
+    'gemini-2.5-flash', 
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    // Deprecated but still working
+    'gemini-1.5-flash', 
+    'gemini-1.5-flash-8b'
+  ],
 }
 
 // Model pricing per 1K tokens (input → output)
@@ -61,6 +70,10 @@ const modelCosts = {
   'claude-2.0': { input: 0.008, output: 0.024, tier: 'balanced' },
   
   // Google Models (All FREE on free tier)
+  'gemini-2.5-pro': { input: 0.0, output: 0.0, tier: 'free' },
+  'gemini-2.5-flash': { input: 0.0, output: 0.0, tier: 'free' },
+  'gemini-2.0-flash': { input: 0.0, output: 0.0, tier: 'free' },
+  'gemini-2.0-flash-lite': { input: 0.0, output: 0.0, tier: 'free' },
   'gemini-1.5-flash': { input: 0.0, output: 0.0, tier: 'free' },
   'gemini-1.5-flash-8b': { input: 0.0, output: 0.0, tier: 'free' },
 }
