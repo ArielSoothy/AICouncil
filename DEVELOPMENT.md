@@ -174,6 +174,42 @@ components/
 └── consensus/       # Feature-specific components
 ```
 
+## 🚀 Deployment Guide
+
+### Current Setup
+- **Platform**: Vercel
+- **Project**: `ai-council-new`
+- **Auto-deploy**: Enabled via git push to main branch
+- **Production URLs**: 
+  - https://ai-council-emjyvz0ut-ariels-projects-62f6e5f2.vercel.app
+  - https://ai-council-m1yiwc2wk-ariels-projects-62f6e5f2.vercel.app
+
+### Manual Deployment
+```bash
+# Deploy to production
+vercel --prod
+
+# Deploy to preview
+vercel
+
+# Check deployment status
+vercel ls
+
+# View logs
+vercel logs
+```
+
+### Environment Variables
+Set these in Vercel Dashboard → Project Settings → Environment Variables:
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GOOGLE_AI_API_KEY`
+
+### Security Notes
+- ⚠️ Previous project "aicouncil" had unknown deployer - avoid using it
+- ✅ Current project "ai-council-new" is secure and controlled by you
+- Always verify the deployer username before trusting deployments
+
 ## 🐛 Common Issues & Solutions
 
 ### TypeScript Errors
@@ -194,20 +230,104 @@ components/
 
 ## 📈 Post-MVP Features
 
-### V2 Features (Future)
-- User authentication with NextAuth.js
-- Response history and saved queries
-- Advanced consensus algorithms
-- Custom model configurations
-- Team collaboration features
-- API usage analytics
+### V2 Core Features (Priority)
+- **Database & Caching System**
+  - Database to save questions for intelligent caching (avoid re-prompting identical queries)
+  - User database for authentication and profiles
+  - Prompt history storage and retrieval
+  - Cost tracking database for pricing model optimization
 
-### Scaling Considerations
-- Redis for caching and rate limiting
-- Database for user data and history
-- CDN for static assets
-- Monitoring and logging
-- Load balancing for high traffic
+- **User Authentication & Management**
+  - User login/registration system
+  - User profiles and preferences
+  - Response history per user
+  - User rating system for answers
+  - User feedback collection system
+
+- **Enhanced AI Models & Providers**
+  - Add all major AI companies (DeepSeek, xAI, etc.) with all available models
+  - Connect models to internet for real-time search and updated information
+  - Sub-model creation and customization features
+  - Model "IQ" levels and weighting system for consensus decisions
+
+### V3 Advanced Features
+- **Premium Feature: Multi-Layer Review**
+  - Premium models review and re-evaluate responses from all other models
+  - Advanced consensus algorithms with model intelligence weighting
+  - Freemium model with free models for basic queries
+
+- **Data Analytics & Intelligence**
+  - Collect prompts and answers for trend analysis
+  - Understand which models perform best for specific query types
+  - User behavior analytics and preferences
+  - Cost analysis and pricing optimization data
+
+- **User Experience Enhancements**
+  - Simplified cost display (levels instead of per-1M token costs)
+  - Model "IQ" rating system for user clarity
+  - Clean and simplified UI/UX design
+  - Mobile-first responsive design optimization
+  - Restrict responses to text only (no voice, video, images)
+
+- **Gamification & Engagement**
+  - Reward system: earn premium prompts after using normal cost queries
+  - User prompt history dashboard
+  - Rating and feedback mechanisms
+  - Achievement system for engagement
+
+### V4 Business & Integration Features
+- **Monetization**
+  - Payment system integration
+  - Subscription tiers and freemium model
+  - Cost tracking for accurate pricing models
+  - Revenue analytics dashboard
+
+- **External Integrations**
+  - WhatsApp bot integration
+  - API for third-party integrations
+  - Webhook support for notifications
+
+- **Platform Management**
+  - Branding update: Change "Consensus AI" to "Council AI" throughout
+  - GitHub license review and selection for commercial use
+  - Vercel deployment management and understanding
+  - Project cleanup and optimization
+
+### V5 Enterprise & Scaling
+- **Advanced Features**
+  - Team collaboration features
+  - Custom model configurations
+  - Advanced analytics dashboards
+  - A/B testing framework for consensus algorithms
+
+- **Infrastructure & Scaling**
+  - Redis for caching and rate limiting
+  - CDN for static assets
+  - Monitoring and logging systems
+  - Load balancing for high traffic
+  - Database optimization and scaling
+
+### Platform Audit & Optimization (Immediate)
+- **Project Review**
+  - Consolidate redundant markdown files
+  - Apply best practices throughout codebase
+  - Update README with current features
+  - Clean up unused components and files
+
+- **Deployment Management** ✅ COMPLETED
+  - ✅ Current Vercel project: `ai-council-new` 
+  - ✅ Production URLs: 
+    - https://ai-council-emjyvz0ut-ariels-projects-62f6e5f2.vercel.app
+    - https://ai-council-m1yiwc2wk-ariels-projects-62f6e5f2.vercel.app
+  - ✅ Deployed by: `arielsoothy` (verified secure deployer)
+  - ✅ Connected to GitHub: `https://github.com/ArielSoothy/AICouncil.git`
+  - ✅ Auto-deployment: Enabled via git push
+  - ⚠️ Security Note: Previous project "aicouncil" had unknown deployer - now using secure "ai-council-new"
+
+- **Legal & Licensing**
+  - Review GitHub license options for commercial use
+  - Understand licensing implications for profit-based usage
+  - Document compliance requirements
 
 ## 📚 Resources
 
