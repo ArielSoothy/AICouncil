@@ -1,0 +1,40 @@
+
+> consensus-ai@0.1.0 dev
+> next dev
+
+   ▲ Next.js 14.1.0
+   - Local:        http://localhost:3000
+   - Environments: .env.local
+
+ ✓ Ready in 1351ms
+ ✓ Compiled /middleware in 100ms (136 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 745ms (745 modules)
+ ✓ Compiled in 56ms (362 modules)
+ ✓ Compiled /api/consensus in 145ms (475 modules)
+Google AI: Attempting query with model: gemini-1.5-flash
+Google AI: API key configured: true
+Google AI: Attempting query with model: gemini-1.5-flash-8b
+Google AI: API key configured: true
+Google AI: Success! Response length: 57
+Google AI: Success! Response length: 65
+ ✓ Compiled /api/conversations in 106ms (577 modules)
+ ✓ Compiled /dashboard in 183ms (935 modules)
+ ⚠ Unsupported metadata viewport is configured in metadata export in /dashboard?_rsc=9ehs5. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled in 118ms (366 modules)
+ ✓ Compiled in 71ms (366 modules)
+ ✓ Compiled /dashboard in 73ms (357 modules)
+ ⚠ Unsupported metadata viewport is configured in metadata export in /dashboard. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled /api/conversations in 50ms (479 modules)
+ ✓ Compiled / in 64ms (511 modules)
+ ⚠ Unsupported metadata viewport is configured in metadata export in /?_rsc=1t3es. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled /api/consensus in 168ms (583 modules)
+Google AI: Attempting query with model: gemini-1.5-flash
+Google AI: API key configured: true
+Google AI: Attempting query with model: gemini-1.5-flash-8b
+Google AI: API key configured: true
+Google AI: Success! Response length: 57
+Google AI: Success! Response length: 56

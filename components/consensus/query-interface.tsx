@@ -43,6 +43,23 @@ export function QueryInterface() {
 
       const consensusResult = await response.json()
       setResult(consensusResult)
+
+      // Save conversation to database if user is authenticated
+      try {
+        await fetch('/api/conversations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: prompt,
+            responses: consensusResult,
+          }),
+        })
+      } catch (saveError) {
+        console.error('Failed to save conversation:', saveError)
+        // Don't block the user if saving fails
+      }
     } catch (error) {
       console.error('Error:', error)
       // TODO: Add proper error handling/toast

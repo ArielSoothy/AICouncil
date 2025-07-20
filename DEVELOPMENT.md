@@ -140,6 +140,12 @@ npm run type-check
 # Build and test production bundle
 npm run build
 npm start
+
+# Deploy to production (after git push)
+git add .
+git commit -m "Your commit message"
+git push origin main
+vercel --prod  # REQUIRED: Manual deployment for private repo
 ```
 
 ### Adding New AI Providers
@@ -179,14 +185,17 @@ components/
 ### Current Setup
 - **Platform**: Vercel
 - **Project**: `ai-council-new`
-- **Auto-deploy**: Enabled via git push to main branch
+- **Repository**: Private GitHub repo (requires manual deployment)
+- **Auto-deploy**: ❌ NOT ENABLED (private repo limitation)
+- **Deployment Method**: Manual via CLI
 - **Production URLs**: 
+  - https://ai-council-bztsjoi55-ariels-projects-62f6e5f2.vercel.app (latest)
   - https://ai-council-emjyvz0ut-ariels-projects-62f6e5f2.vercel.app
   - https://ai-council-m1yiwc2wk-ariels-projects-62f6e5f2.vercel.app
 
-### Manual Deployment
+### Manual Deployment (Required)
 ```bash
-# Deploy to production
+# Deploy to production (REQUIRED after each change)
 vercel --prod
 
 # Deploy to preview
@@ -199,6 +208,12 @@ vercel ls
 vercel logs
 ```
 
+### Why Manual Deployment?
+- **Private Repository**: GitHub repo is private for security
+- **Vercel Limitation**: Auto-deployment requires webhooks/permissions for private repos
+- **Chosen Solution**: Manual deployment for better control and privacy
+- **Alternative**: Could make repo public or configure private repo access in Vercel dashboard
+
 ### Environment Variables
 Set these in Vercel Dashboard → Project Settings → Environment Variables:
 - `OPENAI_API_KEY`
@@ -209,6 +224,47 @@ Set these in Vercel Dashboard → Project Settings → Environment Variables:
 - ⚠️ Previous project "aicouncil" had unknown deployer - avoid using it
 - ✅ Current project "ai-council-new" is secure and controlled by you
 - Always verify the deployer username before trusting deployments
+
+## 🌐 Web Search API Capabilities
+
+### Current Status (July 2025)
+All major AI providers now offer built-in web search APIs with transparent pricing:
+
+| Provider | Models | Web Search API | Cost | Implementation |
+|----------|---------|---------------|------|----------------|
+| **OpenAI** | GPT-4o, GPT-3.5, o-series | ✅ YES | No additional cost* | Responses API with `web_search` tool |
+| **Anthropic** | Claude 3.5/3.7 Sonnet, Claude 3.5 Haiku | ✅ YES | **$10 per 1,000 searches** | `web_search_20250305` tool |
+| **Google** | Gemini 1.5 Pro/Flash, Gemini 2.0/2.5 | ✅ YES | **$35 per 1,000 searches** | "Grounding with Google Search" |
+| **Perplexity** | Sonar, Sonar Pro | ✅ YES | Sonar: $5/1k, Sonar Pro: $3/750k input | Native web search core feature |
+
+*OpenAI: No additional cost beyond standard tokens (as of March 2025)
+
+### Strategic Implications
+
+**Cost Considerations:**
+- **Most Affordable**: OpenAI (free with tokens) → Anthropic ($10/1k) → Perplexity ($5/1k) → Google ($35/1k)
+- **Significant cost differences** between providers
+- **Not everyone needs web search** - premium feature opportunity
+
+**Product Differentiation:**
+- **Unique Value**: Consensus across web-enabled models
+- **Real-time intelligence** vs knowledge cutoff models
+- **Citation transparency** - all providers return source links
+
+### Implementation Strategy
+
+**Phase 1 (Current): No Web Search**
+- ✅ Base models for consensus comparison
+- ✅ Lower costs, simpler implementation
+- ✅ Focus on core consensus mechanism
+
+**Phase 2 (Future): Web-Enhanced Premium**
+- Start with cheapest provider: **Anthropic Claude ($10/1k searches)**
+- Market as "AI Council with Real-Time Intelligence"
+- Premium tier pricing justified by web access costs
+- Optional web search toggle per query
+
+**Technical Feasibility**: ✅ **CONFIRMED** - Infrastructure exists, costs are transparent
 
 ## 🐛 Common Issues & Solutions
 
@@ -246,7 +302,11 @@ Set these in Vercel Dashboard → Project Settings → Environment Variables:
 
 - **Enhanced AI Models & Providers**
   - Add all major AI companies (DeepSeek, xAI, etc.) with all available models
-  - Connect models to internet for real-time search and updated information
+  - **Web Search Integration**: Real-time internet access for updated information
+    - OpenAI: Free with tokens (Responses API)
+    - Anthropic: $10/1k searches (most cost-effective)
+    - Google: $35/1k searches (premium option)
+    - Perplexity: $5/1k searches (specialized web search)
   - Sub-model creation and customization features
   - Model "IQ" levels and weighting system for consensus decisions
 
@@ -255,6 +315,13 @@ Set these in Vercel Dashboard → Project Settings → Environment Variables:
   - Premium models review and re-evaluate responses from all other models
   - Advanced consensus algorithms with model intelligence weighting
   - Freemium model with free models for basic queries
+
+- **Web Search Premium Tier**
+  - Optional web search toggle per query
+  - "AI Council with Real-Time Intelligence" branding
+  - Tiered pricing based on web search usage
+  - Citation transparency with source links
+  - Start with Anthropic Claude ($10/1k searches) for cost-effectiveness
 
 - **Data Analytics & Intelligence**
   - Collect prompts and answers for trend analysis
@@ -279,8 +346,12 @@ Set these in Vercel Dashboard → Project Settings → Environment Variables:
 - **Monetization**
   - Payment system integration
   - Subscription tiers and freemium model
-  - Cost tracking for accurate pricing models
-  - Revenue analytics dashboard
+  - **Web Search Premium Pricing**:
+    - Basic: No web search (free/low cost)
+    - Premium: Limited web searches per month
+    - Enterprise: Unlimited web searches
+  - Cost tracking for accurate pricing models (including web search costs)
+  - Revenue analytics dashboard with web search usage metrics
 
 - **External Integrations**
   - WhatsApp bot integration
@@ -317,12 +388,13 @@ Set these in Vercel Dashboard → Project Settings → Environment Variables:
 - **Deployment Management** ✅ COMPLETED
   - ✅ Current Vercel project: `ai-council-new` 
   - ✅ Production URLs: 
+    - https://ai-council-bztsjoi55-ariels-projects-62f6e5f2.vercel.app (latest)
     - https://ai-council-emjyvz0ut-ariels-projects-62f6e5f2.vercel.app
     - https://ai-council-m1yiwc2wk-ariels-projects-62f6e5f2.vercel.app
   - ✅ Deployed by: `arielsoothy` (verified secure deployer)
-  - ✅ Connected to GitHub: `https://github.com/ArielSoothy/AICouncil.git`
-  - ✅ Auto-deployment: Enabled via git push
-  - ⚠️ Security Note: Previous project "aicouncil" had unknown deployer - now using secure "ai-council-new"
+  - ✅ Connected to GitHub: `https://github.com/ArielSoothy/AICouncil.git` (private repo)
+  - ⚠️ Manual deployment required: `vercel --prod` (private repo limitation)
+  - ✅ Security Note: Previous project "aicouncil" had unknown deployer - now using secure "ai-council-new"
 
 - **Legal & Licensing**
   - Review GitHub license options for commercial use
