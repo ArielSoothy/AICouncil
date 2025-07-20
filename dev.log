@@ -55,3 +55,9 @@ Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
  ✓ Compiled in 90ms (756 modules)
  ⚠ Unsupported metadata viewport is configured in metadata export in /dashboard?_rsc=1586t. Please move it to viewport export instead.
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled in 240ms (758 modules)
+ ⚠ Unsupported metadata viewport is configured in metadata export in /dashboard?_rsc=1586t. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ✓ Compiled in 111ms (758 modules)
+ ⚠ Unsupported metadata viewport is configured in metadata export in /dashboard?_rsc=1586t. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport

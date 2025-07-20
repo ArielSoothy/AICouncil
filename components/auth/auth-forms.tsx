@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export function AuthForms() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -10,20 +11,47 @@ export function AuthForms() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   
-  const { signUp, signIn } = useAuth()
+  const { signUp, signIn, user } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Check if URL indicates signup mode
+  useEffect(() => {
+    if (searchParams.get('mode') === 'signup') {
+      setIsSignUp(true)
+    }
+  }, [searchParams])
+
+  // Redirect to main page when user is authenticated
+  useEffect(() => {
+    if (user && !loading) {
+      router.push('/')
+    }
+  }, [user, loading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccessMessage('')
 
-    const { error } = isSignUp 
-      ? await signUp(email, password)
-      : await signIn(email, password)
-
-    if (error) {
-      setError(error.message)
+    if (isSignUp) {
+      const { error } = await signUp(email, password)
+      if (error) {
+        setError(error.message)
+      } else {
+        setSuccessMessage('Check your email for a confirmation link to complete your signup!')
+        setEmail('')
+        setPassword('')
+      }
+    } else {
+      const { error } = await signIn(email, password)
+      if (error) {
+        setError(error.message)
+      }
+      // If successful, the useEffect above will handle redirect
     }
     
     setLoading(false)
@@ -76,6 +104,12 @@ export function AuthForms() {
           {error && (
             <div className="text-red-600 text-sm text-center">
               {error}
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="text-green-600 text-sm text-center bg-green-50 p-3 rounded-md">
+              {successMessage}
             </div>
           )}
 
