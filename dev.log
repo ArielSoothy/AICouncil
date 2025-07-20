@@ -38,3 +38,6 @@ Google AI: Attempting query with model: gemini-1.5-flash-8b
 Google AI: API key configured: true
 Google AI: Success! Response length: 57
 Google AI: Success! Response length: 56
+ ✓ Compiled in 331ms (756 modules)
+ ⚠ Unsupported metadata viewport is configured in metadata export in /dashboard?_rsc=1586t. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
