@@ -38,10 +38,19 @@ export function Header() {
               </Button>
             </>
           ) : (
-            <Button variant="ghost" size="sm">
-              <User className="h-4 w-4 mr-2" />
-              Guest Mode
-            </Button>
+            <div className="flex gap-2">
+              <Link href="/auth">
+                <Button variant="outline" size="sm">
+                  <User className="h-4 w-4 mr-2" />
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/auth?mode=signup">
+                <Button size="sm">
+                  Get Started
+                </Button>
+              </Link>
+            </div>
           )}
           <Button variant="ghost" size="icon">
             <Settings className="h-4 w-4" />

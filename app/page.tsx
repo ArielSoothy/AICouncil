@@ -69,8 +69,13 @@ function LandingPage() {
             <p className="text-muted-foreground mb-6">
               Join our pilot program and experience the power of AI consensus analysis.
             </p>
-            <div className="text-sm text-muted-foreground">
-              Sign up or sign in to start using Consensus AI →
+            <div className="flex justify-center gap-4">
+              <a href="/auth?mode=signup" className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6">
+                Get Started Free
+              </a>
+              <a href="/auth" className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-input hover:bg-accent hover:text-accent-foreground h-10 px-6">
+                Sign In
+              </a>
             </div>
           </div>
         </div>
