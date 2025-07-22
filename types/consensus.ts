@@ -43,7 +43,7 @@ export interface ConsensusResult {
 }
 
 export interface ModelConfig {
-  provider: 'openai' | 'anthropic' | 'google';
+  provider: '' | 'openai' | 'anthropic' | 'google' | 'groq';
   model: string;
   enabled: boolean;
   temperature?: number;

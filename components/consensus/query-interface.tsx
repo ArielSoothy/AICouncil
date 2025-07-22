@@ -15,9 +15,7 @@ export function QueryInterface() {
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>([
-    { provider: 'google', model: 'gemini-1.5-flash', enabled: true },
-    { provider: 'google', model: 'gemini-1.5-flash-8b', enabled: true },
-    { provider: 'anthropic', model: 'claude-3-haiku-20240307', enabled: true },
+    { provider: '', model: '', enabled: false },
   ])
 
   const handleSubmit = async () => {

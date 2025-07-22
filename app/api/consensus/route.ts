@@ -39,7 +39,12 @@ const TOKEN_COSTS = {
   'gemini-2.0-flash-lite': { input: 0.0, output: 0.0 },
   'gemini-1.5-flash': { input: 0.0, output: 0.0 },
   'gemini-1.5-flash-8b': { input: 0.0, output: 0.0 },
-  'gemini-1.5-pro': { input: 0.0, output: 0.0 }
+  'gemini-1.5-pro': { input: 0.0, output: 0.0 },
+  
+  // Groq Models (FREE - 5B tokens/day limit)
+  'llama-3.3-70b-versatile': { input: 0.0, output: 0.0 },
+  'llama-3.1-8b-instant': { input: 0.0, output: 0.0 },
+  'gemma2-9b-it': { input: 0.0, output: 0.0 }
 }
 
 // Model expertise scoring for weighted analysis
@@ -66,7 +71,12 @@ const MODEL_EXPERTISE = {
   'gemini-2.0-flash-lite': { reasoning: 0.75, factual: 0.8, creative: 0.7, speed: 0.98 },
   'gemini-1.5-flash': { reasoning: 0.8, factual: 0.85, creative: 0.7, speed: 0.98 },
   'gemini-1.5-flash-8b': { reasoning: 0.75, factual: 0.8, creative: 0.65, speed: 0.99 },
-  'gemini-1.5-pro': { reasoning: 0.9, factual: 0.95, creative: 0.8, speed: 0.7 }
+  'gemini-1.5-pro': { reasoning: 0.9, factual: 0.95, creative: 0.8, speed: 0.7 },
+  
+  // Groq Models (High speed, good performance)
+  'llama-3.3-70b-versatile': { reasoning: 0.88, factual: 0.85, creative: 0.82, speed: 0.98 },
+  'llama-3.1-8b-instant': { reasoning: 0.75, factual: 0.78, creative: 0.72, speed: 0.99 },
+  'gemma2-9b-it': { reasoning: 0.78, factual: 0.8, creative: 0.75, speed: 0.95 }
 }
 
 // Smart minimization system prompts

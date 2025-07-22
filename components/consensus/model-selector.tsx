@@ -38,6 +38,12 @@ const availableModels = {
     'gemini-1.5-flash', 
     'gemini-1.5-flash-8b'
   ],
+  groq: [
+    // Tier 1 Models
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'gemma2-9b-it'
+  ],
 }
 
 // Model pricing per 1K tokens (input → output)
@@ -76,6 +82,11 @@ const modelCosts = {
   'gemini-2.0-flash-lite': { input: 0.0, output: 0.0, tier: 'free' },
   'gemini-1.5-flash': { input: 0.0, output: 0.0, tier: 'free' },
   'gemini-1.5-flash-8b': { input: 0.0, output: 0.0, tier: 'free' },
+  
+  // Groq Models (FREE - 5B tokens/day limit)
+  'llama-3.3-70b-versatile': { input: 0.0, output: 0.0, tier: 'free' },
+  'llama-3.1-8b-instant': { input: 0.0, output: 0.0, tier: 'free' },
+  'gemma2-9b-it': { input: 0.0, output: 0.0, tier: 'free' },
 }
 
 const tierColors = {
@@ -97,7 +108,8 @@ const tierLabels = {
 const providerNames = {
   openai: 'OpenAI',
   anthropic: 'Anthropic',
-  google: 'Google AI'
+  google: 'Google AI',
+  groq: 'Groq'
 }
 
 // Cost efficiency calculation (lower is better, cost per token)
@@ -133,18 +145,18 @@ export function ModelSelector({ models, onChange }: ModelSelectorProps) {
 
   const changeProvider = (index: number, provider: string) => {
     const updated = [...models]
-    updated[index].provider = provider as 'openai' | 'anthropic' | 'google'
-    updated[index].model = availableModels[provider as keyof typeof availableModels][0]
+    updated[index].provider = provider as '' | 'openai' | 'anthropic' | 'google' | 'groq'
+    updated[index].model = '' // Don't auto-select first model
     onChange(updated)
   }
 
   const addModel = () => {
     const newModel: ModelConfig = {
-      provider: 'google',
-      model: 'gemini-1.5-flash',
-      enabled: true
+      provider: '',
+      model: '',
+      enabled: false
     }
-    onChange([newModel, ...models]) // Add at the top
+    onChange([...models, newModel]) // Add at the bottom
   }
 
   const removeModel = (index: number) => {
@@ -189,6 +201,7 @@ export function ModelSelector({ models, onChange }: ModelSelectorProps) {
                   disabled={!config.enabled}
                   className="w-full text-sm bg-background border border-input rounded px-2 py-1 disabled:opacity-50"
                 >
+                  <option value="">Choose Provider</option>
                   {Object.entries(providerNames).map(([key, name]) => (
                     <option key={key} value={key}>
                       {name}
@@ -205,6 +218,7 @@ export function ModelSelector({ models, onChange }: ModelSelectorProps) {
                   disabled={!config.enabled}
                   className="w-full text-sm bg-background border border-input rounded px-2 py-1 disabled:opacity-50"
                 >
+                  <option value="">Choose Model</option>
                   {availableModels[config.provider]?.map((model) => {
                     const cost = modelCosts[model as keyof typeof modelCosts]
                     const costDisplay = cost ? 
