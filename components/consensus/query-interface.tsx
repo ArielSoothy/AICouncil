@@ -15,7 +15,14 @@ export function QueryInterface() {
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>([
-    { provider: '', model: '', enabled: false },
+    // 3 Best Free Groq Models
+    { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
+    { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
+    { provider: 'groq', model: 'gemma2-9b-it', enabled: true },
+    // 3 Best Free Google Models
+    { provider: 'google', model: 'gemini-2.5-pro', enabled: true },
+    { provider: 'google', model: 'gemini-2.5-flash', enabled: true },
+    { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
   ])
 
   const handleSubmit = async () => {

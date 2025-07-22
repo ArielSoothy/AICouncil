@@ -154,7 +154,7 @@ export function ModelSelector({ models, onChange }: ModelSelectorProps) {
     const newModel: ModelConfig = {
       provider: '',
       model: '',
-      enabled: false
+      enabled: true  // Auto-check new models for easier UX
     }
     onChange([...models, newModel]) // Add at the bottom
   }
