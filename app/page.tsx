@@ -6,9 +6,9 @@ import { AuthWrapper } from '@/components/auth/auth-wrapper'
 import { LandingPage } from '@/components/landing/landing-page'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
@@ -74,5 +74,17 @@ function MainApp() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <HomePageContent />
+    </Suspense>
   )
 }

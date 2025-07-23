@@ -3,11 +3,11 @@
 import { QueryInterface } from '@/components/consensus/query-interface'
 import { Header } from '@/components/ui/header'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
 
-export default function AppPage() {
+function AppPageContent() {
   const searchParams = useSearchParams();
   const isGuestMode = searchParams.get('mode') === 'guest';
   const [guestSession, setGuestSession] = useState(false);
@@ -106,5 +106,17 @@ function MainApp({ userTier }: MainAppProps) {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function AppPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <AppPageContent />
+    </Suspense>
   )
 }

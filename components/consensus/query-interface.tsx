@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { EnhancedConsensusDisplay } from './enhanced-consensus-display-v3'
@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
 import { Send, Loader2 } from 'lucide-react'
 
-export function QueryInterface() {
+function QueryInterfaceContent() {
   const { userTier } = useAuth()
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
@@ -253,5 +253,17 @@ export function QueryInterface() {
 
       {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} />}
     </div>
+  )
+}
+
+export function QueryInterface() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <QueryInterfaceContent />
+    </Suspense>
   )
 }
