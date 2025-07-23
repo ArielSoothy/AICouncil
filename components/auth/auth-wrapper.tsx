@@ -12,15 +12,9 @@ interface AuthWrapperProps {
 
 export function AuthWrapper({ children, fallback, allowAnonymous = false }: AuthWrapperProps) {
   const { user, loading } = useAuth()
-
-  // If allowing anonymous access, don't block on loading
-  if (allowAnonymous) {
-    return <>{children}</>
-  }
+  const [showFallback, setShowFallback] = React.useState(false)
 
   // Add timeout to prevent infinite loading - after 2 seconds show fallback
-  const [showFallback, setShowFallback] = React.useState(false)
-  
   React.useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) {
@@ -31,6 +25,11 @@ export function AuthWrapper({ children, fallback, allowAnonymous = false }: Auth
     
     return () => clearTimeout(timer)
   }, [loading])
+
+  // If allowing anonymous access, don't block on loading
+  if (allowAnonymous) {
+    return <>{children}</>
+  }
 
   if (loading && !showFallback) {
     return (

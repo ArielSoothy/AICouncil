@@ -12,7 +12,7 @@ import { useSearchParams } from 'next/navigation'
 import { Send, Loader2 } from 'lucide-react'
 
 export function QueryInterface() {
-  const { userTier, premiumCredits, usePremiumCredit, loading: authLoading } = useAuth()
+  const { userTier } = useAuth()
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
   
@@ -59,15 +59,7 @@ export function QueryInterface() {
   const handleSubmit = async () => {
     if (!prompt.trim() || isLoading) return
 
-    // Check if using premium query and handle credit usage
-    let creditUsed = false
-    if (usePremiumQuery && userTier === 'free') {
-      creditUsed = await usePremiumCredit()
-      if (!creditUsed) {
-        alert('No premium credits available! Please provide feedback to earn more credits.')
-        return
-      }
-    }
+    // Premium queries not implemented yet - skip credit check
 
     setIsLoading(true)
     try {
@@ -152,13 +144,13 @@ export function QueryInterface() {
                   className="w-4 h-4 accent-purple-600"
                 />
                 <label htmlFor="premium-query" className="text-sm font-medium">
-                  🚀 Premium Query ({premiumCredits} credits available)
+                  🚀 Premium Query (0 credits available)
                 </label>
               </div>
             </div>
             <p className="text-xs leading-relaxed">
               Use a premium credit to access ALL premium models (GPT-4, Claude Opus 4, etc.) with advanced consensus analysis. 
-              {premiumCredits === 0 && (
+              {true && (
                 <span className="font-medium text-orange-600"> No credits left - provide feedback to earn +2 credits!</span>
               )}
             </p>

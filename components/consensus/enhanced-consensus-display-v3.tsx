@@ -98,7 +98,7 @@ function ModelResponseCard({ response, mode }: ModelResponseCardProps) {
             {response.model.split('/').pop() || response.model}
           </h3>
           {hasInternetAccess(response.model) && (
-            <Globe className="h-3 w-3 text-blue-400" title="Has internet access" />
+            <Globe className="h-3 w-3 text-blue-400" />
           )}
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">

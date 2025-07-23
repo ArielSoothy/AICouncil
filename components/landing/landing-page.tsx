@@ -136,7 +136,7 @@ export function LandingPage({ onTryGuest, onSignIn, onSignUp }: LandingPageProps
           
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="text-xl">Query: "{demoQuery}"</CardTitle>
+              <CardTitle className="text-xl">Query: &ldquo;{demoQuery}&rdquo;</CardTitle>
             </CardHeader>
             <CardContent>
               {/* Consensus Result */}
@@ -149,7 +149,7 @@ export function LandingPage({ onTryGuest, onSignIn, onSignUp }: LandingPageProps
                     {demoResults.confidence}% Confident
                   </Badge>
                 </div>
-                <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">"{demoResults.consensus}"</p>
+                <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">&ldquo;{demoResults.consensus}&rdquo;</p>
                 
                 <div className="grid md:grid-cols-3 gap-4 text-sm">
                   <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
