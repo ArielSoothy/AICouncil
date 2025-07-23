@@ -10,6 +10,9 @@ CREATE TABLE public.users (
   email TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   subscription_tier TEXT DEFAULT 'free' CHECK (subscription_tier IN ('free', 'pro', 'enterprise')),
+  premium_credits INTEGER DEFAULT 5, -- Free users get 5 premium credits to try ALL models
+  queries_today INTEGER DEFAULT 0, -- Track daily usage
+  last_query_date DATE DEFAULT CURRENT_DATE, -- Reset daily counter
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

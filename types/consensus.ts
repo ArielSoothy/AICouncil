@@ -56,6 +56,8 @@ export interface QueryRequest {
   models: ModelConfig[];
   includeReasoning?: boolean;
   responseMode?: 'concise' | 'normal' | 'detailed'; // New smart minimization
+  usePremiumQuery?: boolean; // Use premium credit for all models access
+  isGuestMode?: boolean; // Guest mode flag
 }
 
 // New enhanced response structure

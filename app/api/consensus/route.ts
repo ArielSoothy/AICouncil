@@ -5,9 +5,12 @@ import { checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit'
 import { calculateConsensusScore, generateConsensusId } from '@/lib/utils'
 import { generateModelPrompt, parseModelResponse, ResponseLength } from '@/lib/prompt-system'
 import { generateJudgePrompt, parseJudgeResponse, JudgeResponseMode, ConciseJudgeResult, JudgeAnalysis } from '@/lib/judge-system'
+import { getJudgeModel, canUseModel, getQueryLimit } from '@/lib/user-tiers'
 import { anthropic } from '@ai-sdk/anthropic'
 import { openai } from '@ai-sdk/openai'
+import { google } from '@ai-sdk/google'
 import { generateText } from 'ai'
+import { createClient } from '@/lib/supabase/server'
 
 // Cost calculation per 1K tokens (in USD) - Updated with official 2025 pricing
 const TOKEN_COSTS = {
@@ -102,7 +105,7 @@ function calculateCost(model: string, inputTokens: number, outputTokens: number)
   return (inputTokens / 1000 * costs.input) + (outputTokens / 1000 * costs.output)
 }
 
-async function runJudgeAnalysis(query: string, responses: StructuredModelResponse[], responseMode: JudgeResponseMode = 'concise'): Promise<{
+async function runJudgeAnalysis(query: string, responses: StructuredModelResponse[], responseMode: JudgeResponseMode = 'concise', userTier: 'guest' | 'free' | 'pro' | 'enterprise' = 'free'): Promise<{
   unifiedAnswer: string;
   conciseAnswer: string;
   normalAnswer?: string;
@@ -130,26 +133,36 @@ async function runJudgeAnalysis(query: string, responses: StructuredModelRespons
     }
   }
 
-  // Try Claude Opus 4 first (best judge)
+  // Get tier-appropriate judge model
+  const judgeModel = getJudgeModel(userTier)
+  
+  // Use tier-based judge model
   try {
-    if (process.env.ANTHROPIC_API_KEY && 
-        process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here' &&
-        process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-')) {
-      return await runEnhancedClaudeJudge(query, successfulResponses, responseMode)
+    if (judgeModel.startsWith('gemini-')) {
+      // Free tier: Use Gemini models (fast and free)
+      try {
+        return await runEnhancedGeminiJudge(query, successfulResponses, responseMode, judgeModel)
+      } catch (geminiError) {
+        console.log(`Gemini judge failed, falling back to Groq:`, geminiError)
+        // Fallback to fast Groq model for free tier
+        return await runEnhancedGroqJudge(query, successfulResponses, responseMode)
+      }
+    } else if (judgeModel === 'claude-opus-4-20250514') {
+      // Pro/Enterprise: Use Claude Opus 4 if available
+      if (process.env.ANTHROPIC_API_KEY && 
+          process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here' &&
+          process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-')) {
+        return await runEnhancedClaudeJudge(query, successfulResponses, responseMode)
+      }
+      // Fallback to GPT-4o if Claude not available
+      if (process.env.OPENAI_API_KEY && 
+          process.env.OPENAI_API_KEY !== 'your_openai_api_key_here' &&
+          process.env.OPENAI_API_KEY.startsWith('sk-')) {
+        return await runEnhancedGPTJudge(query, successfulResponses, responseMode)
+      }
     }
   } catch (error) {
-    console.log('Claude Opus 4 judge failed, trying GPT-4o fallback:', error)
-  }
-
-  // Fallback to GPT-4o
-  try {
-    if (process.env.OPENAI_API_KEY && 
-        process.env.OPENAI_API_KEY !== 'your_openai_api_key_here' &&
-        process.env.OPENAI_API_KEY.startsWith('sk-')) {
-      return await runEnhancedGPTJudge(query, successfulResponses, responseMode)
-    }
-  } catch (error) {
-    console.log('GPT-4o judge failed, using heuristic analysis:', error)
+    console.log(`${judgeModel} judge failed, using heuristic fallback:`, error)
   }
 
   // Final fallback: Heuristic analysis
@@ -211,11 +224,132 @@ async function runEnhancedClaudeJudge(query: string, responses: StructuredModelR
   }
 }
 
+async function runEnhancedGroqJudge(query: string, responses: StructuredModelResponse[], mode: JudgeResponseMode = 'concise') {
+  const promptContent = generateJudgePrompt(responses, query, mode)
+  
+  // Use the existing Groq provider through our provider registry
+  const groqProvider = providerRegistry.getProvider('groq')
+  if (!groqProvider) {
+    throw new Error('Groq provider not available')
+  }
+  
+  try {
+    // Create a system-aware prompt by combining system instruction with user prompt
+    const systemInstruction = mode === 'concise' 
+      ? 'You are an expert consensus analyzer. Always respond with valid JSON only.' 
+      : 'You are the Chief Decision Synthesizer for Consensus AI. Provide thorough analysis in the exact format requested.'
+    
+    const fullPrompt = `${systemInstruction}\n\n${promptContent}`
+    
+    const result = await groqProvider.query(
+      fullPrompt,
+      {
+        provider: 'groq',
+        model: 'llama-3.3-70b-versatile',
+        enabled: true,
+        maxTokens: mode === 'concise' ? 300 : 800,
+        temperature: 0.2
+      }
+    )
+    
+    const analysis = parseJudgeResponse(result.response, mode)
+    const tokensUsed = result.tokensUsed || result.tokens?.total || 0
+    
+    if (mode === 'concise') {
+      const conciseResult = analysis as ConciseJudgeResult
+      return {
+        unifiedAnswer: conciseResult.bestAnswer,
+        conciseAnswer: conciseResult.bestAnswer,
+        normalAnswer: undefined,
+        detailedAnswer: undefined,
+        elaborationLevel: 'concise' as const,
+        confidence: conciseResult.confidence,
+        agreements: [`${conciseResult.consensusScore}% consensus achieved`],
+        disagreements: conciseResult.riskLevel !== 'None' ? [`Risk level: ${conciseResult.riskLevel}`] : [],
+        judgeTokensUsed: tokensUsed,
+        judgeAnalysis: { ...conciseResult, tokenUsage: tokensUsed }
+      }
+    } else {
+      const detailedResult = analysis as JudgeAnalysis
+      return {
+        unifiedAnswer: detailedResult.synthesis.bestAnswer,
+        conciseAnswer: detailedResult.synthesis.bestAnswer.substring(0, 100) + '...',
+        normalAnswer: undefined,
+        detailedAnswer: detailedResult.synthesis.bestAnswer,
+        elaborationLevel: 'detailed' as const,
+        confidence: detailedResult.synthesis.confidence,
+        agreements: detailedResult.answerDistribution.majorityPosition ? [detailedResult.answerDistribution.majorityPosition] : [],
+        disagreements: detailedResult.answerDistribution.outlierPositions,
+        judgeTokensUsed: tokensUsed,
+        judgeAnalysis: { ...detailedResult, tokenUsage: tokensUsed }
+      }
+    }
+  } catch (error) {
+    console.error('Groq judge failed:', error)
+    throw error // Re-throw to trigger further fallback
+  }
+}
+
 async function runEnhancedGPTJudge(query: string, responses: StructuredModelResponse[], mode: JudgeResponseMode = 'concise') {
   const promptContent = generateJudgePrompt(responses, query, mode)
   
   const result = await generateText({
     model: openai('gpt-4o'),
+    messages: [
+      {
+        role: 'system',
+        content: mode === 'concise' 
+          ? 'You are an expert consensus analyzer. Always respond with valid JSON only.' 
+          : 'You are the Chief Decision Synthesizer for Consensus AI. Provide thorough analysis in the exact format requested.'
+      },
+      {
+        role: 'user',
+        content: promptContent
+      }
+    ],
+    maxTokens: mode === 'concise' ? 300 : 800,
+    temperature: 0.2
+  })
+
+  const analysis = parseJudgeResponse(result.text, mode)
+  const tokensUsed = result.usage?.totalTokens || 0
+  
+  if (mode === 'concise') {
+    const conciseResult = analysis as ConciseJudgeResult
+    return {
+      unifiedAnswer: conciseResult.bestAnswer,
+      conciseAnswer: conciseResult.bestAnswer,
+      normalAnswer: undefined,
+      detailedAnswer: undefined,
+      elaborationLevel: 'concise' as const,
+      confidence: conciseResult.confidence,
+      agreements: [`${conciseResult.consensusScore}% consensus achieved`],
+      disagreements: conciseResult.riskLevel !== 'None' ? [`Risk level: ${conciseResult.riskLevel}`] : [],
+      judgeTokensUsed: tokensUsed,
+      judgeAnalysis: { ...conciseResult, tokenUsage: tokensUsed }
+    }
+  } else {
+    const detailedResult = analysis as JudgeAnalysis
+    return {
+      unifiedAnswer: detailedResult.synthesis.bestAnswer,
+      conciseAnswer: detailedResult.synthesis.bestAnswer.substring(0, 100) + '...',
+      normalAnswer: undefined,
+      detailedAnswer: detailedResult.synthesis.bestAnswer,
+      elaborationLevel: 'detailed' as const,
+      confidence: detailedResult.synthesis.confidence,
+      agreements: detailedResult.answerDistribution.majorityPosition ? [detailedResult.answerDistribution.majorityPosition] : [],
+      disagreements: detailedResult.answerDistribution.outlierPositions,
+      judgeTokensUsed: tokensUsed,
+      judgeAnalysis: { ...detailedResult, tokenUsage: tokensUsed }
+    }
+  }
+}
+
+async function runEnhancedGeminiJudge(query: string, responses: StructuredModelResponse[], mode: JudgeResponseMode = 'concise', modelName: string = 'gemini-2.0-flash') {
+  const promptContent = generateJudgePrompt(responses, query, mode)
+  
+  const result = await generateText({
+    model: google(modelName),
     messages: [
       {
         role: 'system',
@@ -324,6 +458,29 @@ function runHeuristicJudge(query: string, responses: StructuredModelResponse[]) 
 
 export async function POST(request: NextRequest) {
   try {
+    // Get user session and tier (optional for now - default to free)
+    let userTier: 'guest' | 'free' | 'pro' | 'enterprise' = 'free'
+    
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        // Get user tier from database if authenticated
+        const { data: profile } = await supabase
+          .from('users')
+          .select('subscription_tier')
+          .eq('id', user.id)
+          .single()
+        
+        userTier = profile?.subscription_tier || 'free'
+      }
+    } catch (authError) {
+      // If auth fails, continue with free tier
+      console.log('Auth check failed, using free tier:', authError)
+      userTier = 'free'
+    }
+
     // Get client IP for rate limiting
     const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
     
@@ -340,7 +497,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body: QueryRequest = await request.json()
-    const { prompt, models, responseMode = 'concise' } = body
+    const { prompt, models, responseMode = 'concise', usePremiumQuery = false, isGuestMode = false } = body
+    
+    // Override tier if in guest mode
+    if (isGuestMode) {
+      userTier = 'guest'
+    }
 
     if (!prompt?.trim()) {
       return NextResponse.json(
@@ -353,6 +515,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'At least one model must be selected' },
         { status: 400 }
+      )
+    }
+
+    // For premium queries on free tier, treat as Pro tier for model validation
+    const effectiveTier = (usePremiumQuery && userTier === 'free') ? 'pro' : userTier
+    
+    // Validate models are available for user's tier (or premium query tier)
+    const filteredModels = models.filter(model => 
+      model.enabled && canUseModel(effectiveTier, model.provider, model.model)
+    )
+    
+    if (filteredModels.length === 0) {
+      return NextResponse.json(
+        { error: 'No valid models selected for your subscription tier' },
+        { status: 403 }
       )
     }
 
@@ -371,7 +548,7 @@ export async function POST(request: NextRequest) {
     // Query all models in parallel with structured prompts
     const startTime = Date.now()
     const responses = await Promise.allSettled(
-      models.map(async (config) => {
+      filteredModels.map(async (config) => {
         const provider = providerRegistry.getProvider(config.provider)
         if (!provider) {
           throw new Error(`Provider ${config.provider} not found`)
@@ -421,8 +598,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Run judge analysis
-    const judgeAnalysis = await runJudgeAnalysis(prompt, modelResponses, responseMode as JudgeResponseMode)
+    // Run judge analysis using effective tier for premium queries
+    const judgeAnalysis = await runJudgeAnalysis(prompt, modelResponses, responseMode as JudgeResponseMode, effectiveTier)
 
     // Calculate total tokens and cost
     let totalTokensUsed = modelResponses.reduce((sum, r) => sum + r.tokens.total, 0)

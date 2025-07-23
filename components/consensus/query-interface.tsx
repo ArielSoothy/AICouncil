@@ -7,26 +7,67 @@ import { EnhancedConsensusDisplay } from './enhanced-consensus-display-v3'
 import { ModelSelector } from './model-selector'
 import { ResponseModesSelector } from './response-modes-selector'
 import { ConsensusResult, ModelConfig, EnhancedConsensusResponse } from '@/types/consensus'
+import { useAuth } from '@/contexts/auth-context'
+import { useSearchParams } from 'next/navigation'
 import { Send, Loader2 } from 'lucide-react'
 
 export function QueryInterface() {
+  const { userTier, premiumCredits, usePremiumCredit, loading: authLoading } = useAuth()
+  const searchParams = useSearchParams()
+  const isGuestMode = searchParams.get('mode') === 'guest'
+  
+  // Override userTier for guest mode
+  const effectiveUserTier = isGuestMode ? 'guest' : userTier
   const [prompt, setPrompt] = useState('What are the top 3 AI coding tools for solo entrepreneurs ranked?')
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
-  const [selectedModels, setSelectedModels] = useState<ModelConfig[]>([
-    // 3 Best Free Groq Models
-    { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
-    { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
-    { provider: 'groq', model: 'gemma2-9b-it', enabled: true },
-    // 3 Best Free Google Models
-    { provider: 'google', model: 'gemini-2.5-pro', enabled: true },
-    { provider: 'google', model: 'gemini-2.5-flash', enabled: true },
-    { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
-  ])
+  const [usePremiumQuery, setUsePremiumQuery] = useState(false)
+  const [conversationId, setConversationId] = useState<string | null>(null)
+  
+  // Default models based on user tier
+  const getDefaultModels = (): ModelConfig[] => {
+    if (effectiveUserTier === 'guest') {
+      // Guest mode: All 6 free models for impressive demo
+      return [
+        // 3 Best Free Groq Models
+        { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
+        { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
+        { provider: 'groq', model: 'gemma2-9b-it', enabled: true },
+        // 3 Best Free Google Models
+        { provider: 'google', model: 'gemini-2.5-pro', enabled: true },
+        { provider: 'google', model: 'gemini-2.5-flash', enabled: true },
+        { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
+      ]
+    }
+    
+    // Free tier: All free models (6 models)
+    return [
+      // 3 Best Free Groq Models
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
+      { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
+      { provider: 'groq', model: 'gemma2-9b-it', enabled: true },
+      // 3 Best Free Google Models
+      { provider: 'google', model: 'gemini-2.5-pro', enabled: true },
+      { provider: 'google', model: 'gemini-2.5-flash', enabled: true },
+      { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
+    ]
+  }
+
+  const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(getDefaultModels())
 
   const handleSubmit = async () => {
     if (!prompt.trim() || isLoading) return
+
+    // Check if using premium query and handle credit usage
+    let creditUsed = false
+    if (usePremiumQuery && userTier === 'free') {
+      creditUsed = await usePremiumCredit()
+      if (!creditUsed) {
+        alert('No premium credits available! Please provide feedback to earn more credits.')
+        return
+      }
+    }
 
     setIsLoading(true)
     try {
@@ -39,6 +80,8 @@ export function QueryInterface() {
           prompt,
           models: selectedModels.filter(m => m.enabled),
           responseMode,
+          usePremiumQuery,
+          isGuestMode,
         }),
       })
 
@@ -51,7 +94,7 @@ export function QueryInterface() {
 
       // Save conversation to database if user is authenticated
       try {
-        await fetch('/api/conversations', {
+        const saveResponse = await fetch('/api/conversations', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -61,6 +104,11 @@ export function QueryInterface() {
             responses: consensusResult,
           }),
         })
+        
+        if (saveResponse.ok) {
+          const conversation = await saveResponse.json()
+          setConversationId(conversation.id)
+        }
       } catch (saveError) {
         console.error('Failed to save conversation:', saveError)
         // Don't block the user if saving fails
@@ -81,6 +129,7 @@ export function QueryInterface() {
         <ModelSelector
           models={selectedModels}
           onChange={setSelectedModels}
+          usePremiumQuery={usePremiumQuery}
         />
         
         <div className="mt-4">
@@ -89,6 +138,88 @@ export function QueryInterface() {
             onChange={setResponseMode}
           />
         </div>
+
+        {/* Premium Query Toggle for Free Tier Users (not Guest) */}
+        {effectiveUserTier === 'free' && !isGuestMode && (
+          <div className="mt-4 p-4 premium-query-dark rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="premium-query"
+                  checked={usePremiumQuery}
+                  onChange={(e) => setUsePremiumQuery(e.target.checked)}
+                  className="w-4 h-4 accent-purple-600"
+                />
+                <label htmlFor="premium-query" className="text-sm font-medium">
+                  🚀 Premium Query ({premiumCredits} credits available)
+                </label>
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed">
+              Use a premium credit to access ALL premium models (GPT-4, Claude Opus 4, etc.) with advanced consensus analysis. 
+              {premiumCredits === 0 && (
+                <span className="font-medium text-orange-600"> No credits left - provide feedback to earn +2 credits!</span>
+              )}
+            </p>
+            
+            {/* Premium Model Showcase */}
+            {usePremiumQuery && (
+              <div className="mt-3 p-3 bg-card/50 rounded-md border border-border">
+                <div className="text-xs font-medium text-purple-200 mb-2">🎯 Premium models now available:</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                    <span className="text-foreground">Claude Opus 4 🏆</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                    <span className="text-foreground">GPT-4o 💎</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    <span className="text-foreground">Claude Sonnet 4 ⚖️</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span className="text-foreground">GPT-4 Turbo 💎</span>
+                  </div>
+                </div>
+                <p className="text-xs text-purple-300 mt-2 italic">
+                  Experience the power of flagship AI models with advanced reasoning and consensus analysis!
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Guest Upgrade Prompt */}
+        {isGuestMode && (
+          <div className="mt-4 p-4 guest-upgrade-dark rounded-lg">
+            <div className="text-center">
+              <h3 className="text-sm font-medium mb-2">
+                🔒 Want access to premium models like GPT-4 and Claude?
+              </h3>
+              <p className="text-xs mb-3">
+                Sign up for free and get 5 premium queries daily to try ALL models with advanced consensus analysis!
+              </p>
+              <div className="flex justify-center gap-2">
+                <a 
+                  href="/auth?mode=signup" 
+                  className="px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors"
+                >
+                  Sign Up Free
+                </a>
+                <a 
+                  href="/auth" 
+                  className="px-3 py-1 bg-white dark:bg-gray-800 text-green-600 dark:text-green-400 border border-green-600 dark:border-green-400 text-xs rounded-md hover:bg-green-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Sign In
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="mt-4">
           <label htmlFor="prompt" className="block text-sm font-medium mb-2">
@@ -100,9 +231,9 @@ export function QueryInterface() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows={4}
-            className="resize-none"
+            className="resize-none ai-input"
           />
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-muted-foreground mt-1">
             💡 Concise mode: Ultra-brief answers (lists, phrases). Normal/Detailed: Full analysis with evidence.
           </div>
         </div>
@@ -111,7 +242,7 @@ export function QueryInterface() {
           <Button
             onClick={handleSubmit}
             disabled={!prompt.trim() || isLoading || !selectedModels.some(m => m.enabled)}
-            className="min-w-[120px]"
+            className="min-w-[120px] ai-button"
           >
             {isLoading ? (
               <>
@@ -128,7 +259,7 @@ export function QueryInterface() {
         </div>
       </div>
 
-      {result && <EnhancedConsensusDisplay result={result} />}
+      {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} />}
     </div>
   )
 }

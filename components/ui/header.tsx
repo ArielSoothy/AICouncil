@@ -1,6 +1,6 @@
 'use client'
 
-import { Brain, Settings, User, LogOut, BarChart3 } from 'lucide-react'
+import { Brain, User, LogOut, BarChart3 } from 'lucide-react'
 import { Button } from './button'
 import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
@@ -52,9 +52,6 @@ export function Header() {
               </Link>
             </div>
           )}
-          <Button variant="ghost" size="icon">
-            <Settings className="h-4 w-4" />
-          </Button>
         </div>
       </div>
     </header>

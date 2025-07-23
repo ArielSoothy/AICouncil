@@ -40,6 +40,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if user already provided feedback for this conversation
+    const { data: existingFeedback } = await supabase
+      .from('feedback')
+      .select('id')
+      .eq('conversation_id', conversation_id)
+      .limit(1)
+    
+    if (existingFeedback && existingFeedback.length > 0) {
+      return NextResponse.json(
+        { error: 'Feedback already provided for this conversation', creditsEarned: 0 },
+        { status: 400 }
+      )
+    }
+
     // Insert feedback
     const feedbackData: FeedbackInsert = {
       conversation_id,
@@ -57,7 +71,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(feedback, { status: 201 })
+    // Reward user with premium credits (2 credits per feedback)
+    const creditsToAdd = 2
+    
+    // Get current user data
+    const { data: userData } = await supabase
+      .from('users')
+      .select('premium_credits')
+      .eq('id', user.id)
+      .single()
+
+    const currentCredits = userData?.premium_credits || 0
+    
+    // Update premium credits
+    const { error: creditError } = await supabase
+      .from('users')
+      .update({ premium_credits: currentCredits + creditsToAdd })
+      .eq('id', user.id)
+
+    if (creditError) {
+      console.error('Error updating premium credits:', creditError)
+      // Don't fail the feedback submission if credit update fails
+    }
+
+    return NextResponse.json({ 
+      ...feedback, 
+      creditsEarned: creditError ? 0 : creditsToAdd,
+      message: creditError ? 'Feedback saved but credit reward failed' : 'Feedback saved and credits earned!'
+    }, { status: 201 })
   } catch (error) {
     return NextResponse.json(
       { error: 'Internal server error' },

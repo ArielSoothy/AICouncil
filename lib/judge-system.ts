@@ -181,23 +181,46 @@ export function parseJudgeResponse(response: string, mode: JudgeResponseMode): J
     try {
       // Clean and parse JSON response
       let cleanText = response.trim()
+      
+      // Remove markdown code blocks
       if (cleanText.startsWith('```json')) {
         cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '')
       } else if (cleanText.startsWith('```')) {
         cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '')
       }
       
+      // Extract JSON from text if it's embedded in other content
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        cleanText = jsonMatch[0]
+      }
+      
+      // Remove any trailing text after JSON
+      const jsonEnd = cleanText.lastIndexOf('}')
+      if (jsonEnd !== -1) {
+        cleanText = cleanText.substring(0, jsonEnd + 1)
+      }
+      
+      console.log('Attempting to parse judge JSON:', cleanText)
+      
       const parsed = JSON.parse(cleanText)
-      return {
-        consensusScore: Math.min(Math.max(parsed.consensusScore || 0, 0), 100),
+      
+      // Validate required fields and provide defaults
+      const result = {
+        consensusScore: Math.min(Math.max(parsed.consensusScore || 50, 0), 100),
         bestAnswer: parsed.bestAnswer || 'Unable to synthesize response',
-        confidence: Math.min(Math.max(parsed.confidence || 0, 0), 100),
-        actionable: parsed.actionable || 'Caution',
-        riskLevel: parsed.riskLevel || 'Medium',
+        confidence: Math.min(Math.max(parsed.confidence || 50, 0), 100),
+        actionable: ['Yes', 'Caution', 'No'].includes(parsed.actionable) ? parsed.actionable : 'Caution',
+        riskLevel: ['None', 'Low', 'Medium', 'High', 'Critical'].includes(parsed.riskLevel) ? parsed.riskLevel : 'Medium',
         tokenUsage: 0 // Will be filled by caller
       } as ConciseJudgeResult
+      
+      console.log('Successfully parsed judge response:', result)
+      return result
+      
     } catch (error) {
       console.error('Failed to parse concise judge response:', error)
+      console.error('Raw response was:', response)
       return {
         consensusScore: 50,
         bestAnswer: 'Unable to parse judge analysis',

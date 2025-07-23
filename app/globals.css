@@ -27,25 +27,26 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    /* ChatGPT/Claude inspired dark theme */
+    --background: 217 19% 7%;  /* Deep dark blue-gray like ChatGPT */
+    --foreground: 213 27% 84%; /* Light gray text */
+    --card: 215 22% 10%;       /* Slightly lighter than background */
+    --card-foreground: 213 27% 84%;
+    --popover: 215 22% 10%;
+    --popover-foreground: 213 27% 84%;
+    --primary: 199 89% 48%;    /* Claude blue accent */
+    --primary-foreground: 215 22% 10%;
+    --secondary: 215 19% 16%;  /* Medium dark gray */
+    --secondary-foreground: 213 27% 84%;
+    --muted: 215 19% 16%;
+    --muted-foreground: 215 13% 65%; /* Muted text */
+    --accent: 199 89% 48%;     /* Same as primary for consistency */
+    --accent-foreground: 215 22% 10%;
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 215 22% 10%;
+    --border: 215 19% 16%;     /* Subtle borders */
+    --input: 215 19% 16%;
+    --ring: 199 89% 48%;       /* Focus ring matches primary */
   }
 }
 
@@ -60,23 +61,128 @@
 
 @layer components {
   .consensus-gradient {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 50%, #7c3aed 100%);
   }
   
   .model-card {
-    @apply bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow;
+    @apply bg-card border border-border rounded-xl p-6 shadow-sm hover:shadow-lg transition-all duration-200 hover:border-primary/20;
   }
   
   .confidence-high {
-    @apply text-green-600 dark:text-green-400;
+    @apply text-emerald-500 dark:text-emerald-400;
   }
   
   .confidence-medium {
-    @apply text-yellow-600 dark:text-yellow-400;
+    @apply text-amber-500 dark:text-amber-400;
   }
   
   .confidence-low {
-    @apply text-red-600 dark:text-red-400;
+    @apply text-red-500 dark:text-red-400;
+  }
+  
+  /* ChatGPT/Claude inspired input styles */
+  .ai-input {
+    @apply bg-secondary border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200;
+  }
+  
+  /* Modern button styles */
+  .ai-button {
+    @apply bg-primary text-primary-foreground rounded-lg px-4 py-2 font-medium hover:bg-primary/90 transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+  
+  .ai-button-secondary {
+    @apply bg-secondary text-secondary-foreground rounded-lg px-4 py-2 font-medium hover:bg-secondary/80 border border-border transition-all duration-200;
+  }
+  
+  /* Message bubble styles like ChatGPT */
+  .ai-message {
+    @apply bg-card border border-border rounded-xl p-4 hover:bg-card/80 transition-colors duration-200;
+  }
+  
+  /* Subtle glow effect */
+  .ai-glow {
+    box-shadow: 0 0 0 1px hsl(var(--border)), 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .ai-glow:hover {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2), 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Dark theme overrides for problematic components */
+  .dark .bg-white {
+    @apply bg-card;
+  }
+  
+  .dark .bg-gray-50 {
+    @apply bg-secondary;
+  }
+  
+  .dark .bg-blue-50 {
+    @apply bg-blue-950/20;
+  }
+  
+  .dark .bg-green-50 {
+    @apply bg-green-950/20;
+  }
+  
+  .dark .bg-purple-50 {
+    @apply bg-purple-950/20;
+  }
+  
+  .dark .bg-yellow-50 {
+    @apply bg-yellow-950/20;
+  }
+  
+  .dark .text-gray-500 {
+    @apply text-muted-foreground;
+  }
+  
+  .dark .text-gray-600 {
+    @apply text-foreground;
+  }
+  
+  .dark .text-gray-700 {
+    @apply text-foreground;
+  }
+
+  /* Premium query section dark theme */
+  .premium-query-dark {
+    @apply bg-gradient-to-r from-purple-950/30 to-blue-950/30 border-purple-800/30;
+  }
+  
+  .premium-query-dark h3,
+  .premium-query-dark label {
+    @apply text-purple-200;
+  }
+  
+  .premium-query-dark p {
+    @apply text-purple-300/80;
+  }
+
+  /* Guest upgrade section dark theme */
+  .guest-upgrade-dark {
+    @apply bg-gradient-to-r from-green-950/30 to-blue-950/30 border-green-800/30;
+  }
+  
+  .guest-upgrade-dark h3 {
+    @apply text-green-200;
+  }
+  
+  .guest-upgrade-dark p {
+    @apply text-green-300/80;
+  }
+
+  /* Feedback section dark theme */
+  .feedback-dark {
+    @apply bg-blue-950/20 border-blue-800/30;
+  }
+  
+  .feedback-dark h3 {
+    @apply text-blue-200;
+  }
+  
+  .feedback-dark p {
+    @apply text-blue-300/80;
   }
 }
 

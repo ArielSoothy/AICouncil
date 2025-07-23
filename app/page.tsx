@@ -1,83 +1,76 @@
+'use client';
+
 import { QueryInterface } from '@/components/consensus/query-interface'
 import { Header } from '@/components/ui/header'
 import { AuthWrapper } from '@/components/auth/auth-wrapper'
+import { LandingPage } from '@/components/landing/landing-page'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useAuth } from '@/contexts/auth-context'
+import { useEffect } from 'react'
 
 export default function HomePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading } = useAuth();
+  
+  // If user is authenticated and there's a redirect parameter, redirect them
+  useEffect(() => {
+    if (!loading && user) {
+      const redirect = searchParams.get('redirect');
+      if (redirect === 'app') {
+        router.push('/app');
+      }
+    }
+  }, [user, loading, searchParams, router]);
+
+  const handleTryGuest = () => {
+    // Create guest session and redirect to main app
+    router.push('/app?mode=guest');
+  };
+
+  const handleSignIn = () => {
+    router.push('/auth?redirect=/app');
+  };
+
+  const handleSignUp = () => {
+    router.push('/auth?mode=signup&redirect=/app');
+  };
+
   return (
-    <AuthWrapper fallback={<LandingPage />}>
-      <div className="flex flex-col min-h-screen">
-        <Header />
-        <main className="flex-1 container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold tracking-tight mb-4 consensus-gradient bg-clip-text text-transparent">
-                Consensus AI
-              </h1>
-              <p className="text-xl text-muted-foreground mb-2">
-                Multi-Model AI Decision Engine
-              </p>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                Query multiple AI models simultaneously and analyze their consensus. 
-                Get better insights by comparing responses from OpenAI, Anthropic, Google AI and more.
-              </p>
-            </div>
-            
-            <QueryInterface />
-          </div>
-        </main>
-      </div>
+    <AuthWrapper 
+      fallback={
+        <LandingPage 
+          onTryGuest={handleTryGuest}
+          onSignIn={handleSignIn}
+          onSignUp={handleSignUp}
+        />
+      }
+    >
+      <MainApp />
     </AuthWrapper>
   )
 }
 
-function LandingPage() {
+function MainApp() {
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="mb-12">
-            <h1 className="text-5xl font-bold tracking-tight mb-6 consensus-gradient bg-clip-text text-transparent">
-              Consensus AI
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold tracking-tight mb-4 consensus-gradient bg-clip-text text-transparent">
+              AI Council
             </h1>
-            <p className="text-2xl text-muted-foreground mb-4">
+            <p className="text-xl text-muted-foreground mb-2">
               Multi-Model AI Decision Engine
             </p>
-            <p className="text-lg text-muted-foreground max-w-3xl mx-auto mb-8">
-              Get better insights by querying multiple AI models simultaneously. 
-              Compare responses from OpenAI, Anthropic, Google AI and analyze their consensus.
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Query multiple AI models simultaneously and analyze their consensus. 
+              Get better insights by comparing responses from OpenAI, Anthropic, Google AI and more.
             </p>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-6 shadow-sm">
-              <h3 className="text-xl font-semibold mb-3">🤖 Multi-Model</h3>
-              <p className="text-muted-foreground">Query GPT, Claude, and Gemini simultaneously for comprehensive insights</p>
-            </div>
-            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-6 shadow-sm">
-              <h3 className="text-xl font-semibold mb-3">📊 Consensus Analysis</h3>
-              <p className="text-muted-foreground">See where AI models agree and disagree with confidence scoring</p>
-            </div>
-            <div className="bg-white/70 backdrop-blur-sm rounded-lg p-6 shadow-sm">
-              <h3 className="text-xl font-semibold mb-3">💾 Save History</h3>
-              <p className="text-muted-foreground">Keep track of all your queries and responses in your personal dashboard</p>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-8 shadow-sm">
-            <h2 className="text-2xl font-bold mb-4">Ready to get started?</h2>
-            <p className="text-muted-foreground mb-6">
-              Join our pilot program and experience the power of AI consensus analysis.
-            </p>
-            <div className="flex justify-center gap-4">
-              <a href="/auth?mode=signup" className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6">
-                Get Started Free
-              </a>
-              <a href="/auth" className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-input hover:bg-accent hover:text-accent-foreground h-10 px-6">
-                Sign In
-              </a>
-            </div>
-          </div>
+          
+          <QueryInterface />
         </div>
       </main>
     </div>

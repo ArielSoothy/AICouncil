@@ -2,11 +2,14 @@
 
 import { ModelConfig } from '@/types/consensus'
 import { Button } from '@/components/ui/button'
-import { Plus, Trash2, DollarSign } from 'lucide-react'
+import { Plus, Trash2, DollarSign, Globe } from 'lucide-react'
+import { getAvailableModels, getAllModelsWithTierInfo, canUseModel, hasInternetAccess } from '@/lib/user-tiers'
+import { useAuth } from '@/contexts/auth-context'
 
 interface ModelSelectorProps {
   models: ModelConfig[]
   onChange: (models: ModelConfig[]) => void
+  usePremiumQuery?: boolean
 }
 
 const availableModels = {
@@ -130,7 +133,16 @@ const getEfficiencyBadge = (model: string): string => {
   return '🏆' // Flagship
 }
 
-export function ModelSelector({ models, onChange }: ModelSelectorProps) {
+export function ModelSelector({ models, onChange, usePremiumQuery = false }: ModelSelectorProps) {
+  const { userTier, loading } = useAuth()
+  
+  // Show ALL models with tier info, using effective tier for premium queries
+  const currentTier = loading ? 'free' : (userTier || 'free')
+  const effectiveTier = (usePremiumQuery && currentTier === 'free') ? 'pro' : currentTier
+  const allModelsWithTierInfo = getAllModelsWithTierInfo(effectiveTier)
+  
+  // For provider dropdown, show all providers
+  const availableProviders = allModelsWithTierInfo.map(p => p.provider)
   const toggleModel = (index: number) => {
     const updated = [...models]
     updated[index].enabled = !updated[index].enabled
@@ -139,6 +151,14 @@ export function ModelSelector({ models, onChange }: ModelSelectorProps) {
 
   const changeModel = (index: number, model: string) => {
     const updated = [...models]
+    
+    // Check if user can use this model with effective tier
+    if (!canUseModel(effectiveTier, updated[index].provider, model)) {
+      // Show upgrade prompt instead
+      alert(`This model requires a Pro subscription. Upgrade to access premium models like ${model}.`)
+      return
+    }
+    
     updated[index].model = model
     onChange(updated)
   }
@@ -202,9 +222,9 @@ export function ModelSelector({ models, onChange }: ModelSelectorProps) {
                   className="w-full text-sm bg-background border border-input rounded px-2 py-1 disabled:opacity-50"
                 >
                   <option value="">Choose Provider</option>
-                  {Object.entries(providerNames).map(([key, name]) => (
-                    <option key={key} value={key}>
-                      {name}
+                  {availableProviders.map((provider) => (
+                    <option key={provider} value={provider}>
+                      {providerNames[provider as keyof typeof providerNames]}
                     </option>
                   ))}
                 </select>
@@ -219,14 +239,25 @@ export function ModelSelector({ models, onChange }: ModelSelectorProps) {
                   className="w-full text-sm bg-background border border-input rounded px-2 py-1 disabled:opacity-50"
                 >
                   <option value="">Choose Model</option>
-                  {availableModels[config.provider]?.map((model) => {
-                    const cost = modelCosts[model as keyof typeof modelCosts]
+                  {allModelsWithTierInfo.find(p => p.provider === config.provider)?.models?.map((modelInfo) => {
+                    const cost = modelCosts[modelInfo.name as keyof typeof modelCosts]
                     const costDisplay = cost ? 
                       (cost.input === 0 && cost.output === 0 ? 'FREE' : 
                        `$${cost.input.toFixed(4)}/$${cost.output.toFixed(4)} per 1K`) : ''
+                    
+                    const internetIcon = hasInternetAccess(modelInfo.name) ? ' 🌐' : ''
+                    const label = modelInfo.available 
+                      ? `${modelInfo.name}${internetIcon} ${costDisplay ? `(${costDisplay})` : ''}`
+                      : `${modelInfo.name}${internetIcon} (PRO ONLY) ${costDisplay ? `- ${costDisplay}` : ''}`
+                    
                     return (
-                      <option key={model} value={model}>
-                        {model} {costDisplay && `(${costDisplay})`}
+                      <option 
+                        key={modelInfo.name} 
+                        value={modelInfo.name}
+                        disabled={!modelInfo.available}
+                        style={!modelInfo.available ? { color: '#999', fontStyle: 'italic' } : {}}
+                      >
+                        {label}
                       </option>
                     )
                   })}
@@ -308,6 +339,7 @@ export function ModelSelector({ models, onChange }: ModelSelectorProps) {
       <div className="text-xs text-muted-foreground space-y-1">
         <div>💡 Tip: Add multiple models from the same provider to compare their responses directly!</div>
         <div>💰 Cost shown per 1K tokens (input/output). Flagship models offer best performance but cost more.</div>
+        <div>🌐 Models with globe icon have internet access for real-time information.</div>
         <div>🏷️ Efficiency badges: 🆓 Free • 💰 Great Value • ⚖️ Balanced • 💎 Premium • 🏆 Flagship</div>
       </div>
     </div>

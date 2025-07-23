@@ -7,13 +7,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 
 export function AuthForms() {
   const [isSignUp, setIsSignUp] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  // Default test credentials for development
+  const [email, setEmail] = useState(process.env.NODE_ENV === 'development' ? 'arielsoothy@gmail.com' : '')
+  const [password, setPassword] = useState(process.env.NODE_ENV === 'development' ? 'test1234' : '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   
-  const { signUp, signIn, user } = useAuth()
+  const { signUp, signIn, user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -26,35 +27,64 @@ export function AuthForms() {
 
   // Redirect to main page when user is authenticated
   useEffect(() => {
-    if (user && !loading) {
-      router.push('/')
+    console.log('Auth state:', { user: user?.id, authLoading, formLoading: loading })
+    if (user && !authLoading) {
+      // Check for redirect parameter in URL
+      const redirect = searchParams.get('redirect') || '/app'
+      console.log('Auth redirect triggered:', { user: user.id, redirect })
+      // Clear loading state immediately when user is detected
+      setLoading(false)
+      // Small delay to ensure auth state is properly set
+      setTimeout(() => {
+        router.push(redirect)
+      }, 100)
     }
-  }, [user, loading, router])
+  }, [user, authLoading, loading, router, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('Form submitted:', { email, isSignUp })
     setLoading(true)
     setError('')
     setSuccessMessage('')
 
-    if (isSignUp) {
-      const { error } = await signUp(email, password)
-      if (error) {
-        setError(error.message)
+    try {
+      if (isSignUp) {
+        console.log('Attempting sign up...')
+        const { error } = await signUp(email, password)
+        if (error) {
+          console.error('Sign up error:', error)
+          setError(error.message)
+        } else {
+          console.log('Sign up successful')
+          setSuccessMessage('Check your email for a confirmation link to complete your signup!')
+          setEmail('')
+          setPassword('')
+        }
+        setLoading(false)
       } else {
-        setSuccessMessage('Check your email for a confirmation link to complete your signup!')
-        setEmail('')
-        setPassword('')
+        console.log('Attempting sign in...')
+        const { error } = await signIn(email, password)
+        console.log('Sign in result:', { error: error?.message })
+        
+        if (error) {
+          console.error('Sign in error:', error)
+          setError(error.message)
+          setLoading(false)
+        } else {
+          console.log('Sign-in successful, user should be updated in context')
+          // Set a safety timeout to clear loading state if auth state doesn't update
+          setTimeout(() => {
+            console.log('Safety timeout: clearing loading state')
+            setLoading(false)
+          }, 5000)
+        }
       }
-    } else {
-      const { error } = await signIn(email, password)
-      if (error) {
-        setError(error.message)
-      }
-      // If successful, the useEffect above will handle redirect
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      setError('An unexpected error occurred')
+      setLoading(false)
     }
-    
-    setLoading(false)
   }
 
   return (
@@ -71,7 +101,7 @@ export function AuthForms() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Email address
             </label>
             <input
@@ -80,13 +110,13 @@ export function AuthForms() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="Enter your email"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Password
             </label>
             <input
@@ -95,20 +125,20 @@ export function AuthForms() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               placeholder="Enter your password"
               minLength={6}
             />
           </div>
 
           {error && (
-            <div className="text-red-600 text-sm text-center">
+            <div className="text-red-600 dark:text-red-400 text-sm text-center bg-red-50 dark:bg-red-900/20 p-3 rounded-md border border-red-200 dark:border-red-800">
               {error}
             </div>
           )}
 
           {successMessage && (
-            <div className="text-green-600 text-sm text-center bg-green-50 p-3 rounded-md">
+            <div className="text-green-600 dark:text-green-400 text-sm text-center bg-green-50 dark:bg-green-900/20 p-3 rounded-md border border-green-200 dark:border-green-800">
               {successMessage}
             </div>
           )}
@@ -129,7 +159,7 @@ export function AuthForms() {
               setIsSignUp(!isSignUp)
               setError('')
             }}
-            className="text-sm text-blue-600 hover:text-blue-500"
+            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
           >
             {isSignUp 
               ? 'Already have an account? Sign in'

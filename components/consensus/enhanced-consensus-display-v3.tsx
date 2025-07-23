@@ -3,10 +3,13 @@
 import { useState } from 'react'
 import { EnhancedConsensusResponse } from '@/types/consensus'
 import { JudgeAnalysisDisplay } from './judge-analysis-display'
-import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp } from 'lucide-react'
+import { FeedbackForm } from './feedback-form'
+import { hasInternetAccess } from '@/lib/user-tiers'
+import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp, Globe } from 'lucide-react'
 
 interface EnhancedConsensusDisplayProps {
   result: EnhancedConsensusResponse
+  conversationId?: string | null
 }
 
 // Model pricing per 1K tokens (input → output) - same as in model selector
@@ -45,11 +48,11 @@ const modelCosts = {
 }
 
 const tierColors = {
-  free: 'border-l-green-500',
-  budget: 'border-l-blue-500',
-  balanced: 'border-l-orange-500',
-  premium: 'border-l-purple-500',
-  flagship: 'border-l-red-500'
+  free: 'border-l-gray-400',
+  budget: 'border-l-gray-500',
+  balanced: 'border-l-gray-600',
+  premium: 'border-l-gray-700',
+  flagship: 'border-l-gray-800 dark:border-l-gray-400'
 }
 
 // Function to estimate cost for a model response
@@ -65,7 +68,91 @@ const estimateModelCost = (model: string, tokensUsed: number): number => {
   return ((inputTokens * cost.input) + (outputTokens * cost.output)) / 1000
 }
 
-export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayProps) {
+// Model Response Card Component with expand/collapse functionality
+interface ModelResponseCardProps {
+  response: { model: string; response: string; tokensUsed: number; responseTime: number }
+  mode: string
+}
+
+function ModelResponseCard({ response, mode }: ModelResponseCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const avgTokensPerWord = 1.3
+  const wordCount = Math.round(response.tokensUsed / avgTokensPerWord)
+  const modelCost = estimateModelCost(response.model, response.tokensUsed)
+  const tier = modelCosts[response.model as keyof typeof modelCosts]?.tier || 'budget'
+  const showDetails = mode !== 'concise'
+  
+  // Extract concise answer (first line or sentence)
+  const fullResponse = response.response
+  const sentences = fullResponse.split(/[.!?]+/).filter(s => s.trim().length > 0)
+  const conciseAnswer = sentences[0]?.trim() + (sentences.length > 1 ? '...' : '') || fullResponse.substring(0, 100) + (fullResponse.length > 100 ? '...' : '')
+  
+  const shouldShowExpand = fullResponse.length > 150 || sentences.length > 1
+  
+  return (
+    <div className={`ai-message border-l-4 ${tierColors[tier]} hover:shadow-md transition-all duration-200 min-h-[200px]`}>
+      {/* Model Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-primary">
+            {response.model.split('/').pop() || response.model}
+          </h3>
+          {hasInternetAccess(response.model) && (
+            <Globe className="h-3 w-3 text-blue-400" title="Has internet access" />
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{response.responseTime}ms</span>
+          {showDetails && (
+            <>
+              <span>•</span>
+              <span>{response.tokensUsed}tok</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Cost Display */}
+      {showDetails && modelCost > 0 && (
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Cost:</span>
+          <span className="text-xs font-mono text-emerald-400">
+            ${modelCost.toFixed(5)}
+          </span>
+        </div>
+      )}
+
+      {/* Response Content */}
+      <div className={`text-foreground leading-relaxed ${mode === 'concise' ? 'text-base' : 'text-sm'}`}>
+        <div className="whitespace-pre-wrap">
+          {isExpanded || !shouldShowExpand ? fullResponse : conciseAnswer}
+        </div>
+        
+        {/* Expand/Collapse Button */}
+        {shouldShowExpand && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="mt-2 flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="h-3 w-3" />
+                Show less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-3 w-3" />
+                Show more
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedConsensusDisplayProps) {
   const [currentLevel, setCurrentLevel] = useState<'concise' | 'normal' | 'detailed'>(result.consensus.elaborationLevel)
   const [normalAnswer, setNormalAnswer] = useState(result.consensus.normalAnswer || '')
   const [detailedAnswer, setDetailedAnswer] = useState(result.consensus.detailedAnswer || '')
@@ -168,17 +255,14 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
           {/* Confidence Score Display */}
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium">Confidence Score</h4>
-              <span className={`text-2xl font-bold ${confidenceColor}`}>
+              <h4 className="font-medium text-gray-900 dark:text-gray-100">Confidence Score</h4>
+              <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {result.consensus.confidence}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
               <div 
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  result.consensus.confidence >= 80 ? 'bg-green-500' : 
-                  result.consensus.confidence >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                }`}
+                className="h-2 rounded-full transition-all duration-300 bg-gray-600 dark:bg-gray-400"
                 style={{ width: confidenceBarWidth }}
               ></div>
             </div>
@@ -209,7 +293,7 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
                 )}
               </button>
             </div>
-            <div className="text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg min-h-[200px] max-h-[600px] overflow-y-auto">
+            <div className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-6 rounded-lg min-h-[200px] max-h-[600px] overflow-y-auto border border-gray-200 dark:border-gray-700">
               <p className="whitespace-pre-wrap leading-relaxed text-base">
                 {getCurrentAnswer()}
               </p>
@@ -326,17 +410,13 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
                     
                     return (
                       <tr key={index} className={`border-b border-gray-100 dark:border-gray-800 ${
-                        index === 0 ? 'bg-green-50 dark:bg-green-900/10' : 
-                        index === 1 ? 'bg-blue-50 dark:bg-blue-900/10' : 
-                        index === 2 ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''
+                        index === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : 
+                        index === 1 ? 'bg-gray-25 dark:bg-gray-800/30' : 
+                        index === 2 ? 'bg-gray-25 dark:bg-gray-800/20' : ''
                       }`}>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <span className={`text-lg font-bold ${
-                            index === 0 ? 'text-green-600' : 
-                            index === 1 ? 'text-blue-600' : 
-                            index === 2 ? 'text-yellow-600' : 'text-gray-600'
-                          }`}>
+                          <span className="text-lg font-bold text-gray-700 dark:text-gray-300">
                             #{index + 1}
                           </span>
                           {index === 0 && <span className="text-lg">🏆</span>}
@@ -351,29 +431,19 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex flex-col items-center">
-                          <span className={`text-xl font-bold ${
-                            option.confidence >= 80 ? 'text-green-600' :
-                            option.confidence >= 60 ? 'text-yellow-600' : 'text-red-600'
-                          }`}>
+                          <span className="text-xl font-bold text-gray-800 dark:text-gray-200">
                             {Math.round(option.confidence)}%
                           </span>
                           <div className="w-16 bg-gray-200 rounded-full h-1 mt-1">
                             <div 
-                              className={`h-1 rounded-full ${
-                                option.confidence >= 80 ? 'bg-green-500' :
-                                option.confidence >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                              }`}
+                              className="h-1 rounded-full bg-gray-600 dark:bg-gray-400"
                               style={{ width: `${option.confidence}%` }}
                             ></div>
                           </div>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          option.mentions >= result.responses.length * 0.8 ? 'text-green-600 bg-green-50 dark:bg-green-900/20' :
-                          option.mentions >= result.responses.length * 0.5 ? 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' :
-                          'text-red-600 bg-red-50 dark:bg-red-900/20'
-                        }`}>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700">
                           {modelAgreement}
                         </span>
                       </td>
@@ -497,10 +567,10 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
         
         <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-4">
-            <div className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-sm font-medium">
+            <div className="px-3 py-1 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full text-sm font-medium text-gray-700 dark:text-gray-300">
               Mode: {result.mode}
             </div>
-            <div className="px-3 py-1 bg-purple-100 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-full text-sm">
+            <div className="px-3 py-1 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full text-sm text-gray-700 dark:text-gray-300">
               Judge Tokens: {result.consensus.judgeTokensUsed}
             </div>
           </div>
@@ -520,47 +590,9 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
       {/* Model Responses Section - Individual model answers */}
       <div className="model-card">
         <h2 className="text-lg font-semibold mb-4">Individual Model Responses</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className={`grid gap-4 ${result.mode === 'concise' ? 'md:grid-cols-1 lg:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
           {result.responses.map((response, index) => {
-            const avgTokensPerWord = 1.3 // Rough estimate
-            const wordCount = Math.round(response.tokensUsed / avgTokensPerWord)
-            const modelCost = estimateModelCost(response.model, response.tokensUsed)
-            const tier = modelCosts[response.model as keyof typeof modelCosts]?.tier || 'budget'
-            
-            // Check if we should show structured details (only for normal/detailed modes)
-            const showDetails = result.mode !== 'concise'
-            
-            return (
-              <div key={index} className={`border border-gray-200 dark:border-gray-700 rounded-lg p-4 border-l-4 ${tierColors[tier]}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                    {response.model}
-                  </h3>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>{response.responseTime}ms</span>
-                    {showDetails && (
-                      <>
-                        <span>•</span>
-                        <span>{response.tokensUsed} tokens</span>
-                        <span>•</span>
-                        <span>~{wordCount} words</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                {showDetails && modelCost > 0 && (
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-xs text-gray-600 dark:text-gray-400">Individual Cost:</span>
-                    <span className="text-xs font-mono text-green-600 dark:text-green-400">
-                      ${modelCost.toFixed(5)}
-                    </span>
-                  </div>
-                )}
-                <div className={`text-sm text-gray-700 dark:text-gray-300 ${showDetails ? 'max-h-40 overflow-y-auto' : ''}`}>
-                  <p className="whitespace-pre-wrap">{response.response}</p>
-                </div>
-              </div>
-            )
+            return <ModelResponseCard key={index} response={response} mode={result.mode} />
           })}
         </div>
       </div>
@@ -574,22 +606,30 @@ export function EnhancedConsensusDisplay({ result }: EnhancedConsensusDisplayPro
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400">Total Models</h4>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{result.responses.length}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{result.responses.length}</p>
           </div>
           <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400">Total Tokens</h4>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{result.totalTokensUsed}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{result.totalTokensUsed}</p>
           </div>
           <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400">Judge Tokens</h4>
-            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{result.consensus.judgeTokensUsed}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{result.consensus.judgeTokensUsed}</p>
           </div>
           <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400">Estimated Cost</h4>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">${result.estimatedCost.toFixed(5)}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">${result.estimatedCost.toFixed(5)}</p>
           </div>
         </div>
       </div>
+
+      {/* Feedback Section */}
+      <FeedbackForm 
+        conversationId={conversationId || "general"} 
+        onSuccess={() => {
+          // Feedback submitted successfully - credits should be automatically updated via context
+        }} 
+      />
     </div>
   )
 }
