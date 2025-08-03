@@ -4,49 +4,58 @@
 
 @layer base {
   :root {
+    /* OpenAI-inspired light theme */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 215 25% 18%;  /* OpenAI dark text */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 25% 18%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 25% 18%;
+    --primary: 158 64% 52%;     /* OpenAI green #10a37f */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 97%;   /* Light gray background */
+    --secondary-foreground: 215 25% 18%;
+    --muted: 210 20% 97%;
+    --muted-foreground: 215 13% 45%;  /* Muted text */
+    --accent: 210 20% 97%;
+    --accent-foreground: 215 25% 18%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 85%;      /* Subtle border */
+    --input: 220 13% 85%;
+    --ring: 158 64% 52%;        /* OpenAI green focus */
     --radius: 0.75rem;
+    
+    /* OpenAI-specific colors */
+    --openai-green: 158 64% 52%;
+    --openai-green-hover: 158 64% 45%;
+    --openai-text: 215 25% 18%;
+    --openai-text-muted: 215 13% 45%;
+    --openai-border: 220 13% 85%;
+    --openai-bg-soft: 210 20% 97%;
   }
 
   .dark {
-    /* ChatGPT/Claude inspired dark theme */
-    --background: 217 19% 7%;  /* Deep dark blue-gray like ChatGPT */
-    --foreground: 213 27% 84%; /* Light gray text */
-    --card: 215 22% 10%;       /* Slightly lighter than background */
-    --card-foreground: 213 27% 84%;
-    --popover: 215 22% 10%;
-    --popover-foreground: 213 27% 84%;
-    --primary: 199 89% 48%;    /* Claude blue accent */
-    --primary-foreground: 215 22% 10%;
-    --secondary: 215 19% 16%;  /* Medium dark gray */
-    --secondary-foreground: 213 27% 84%;
-    --muted: 215 19% 16%;
-    --muted-foreground: 215 13% 65%; /* Muted text */
-    --accent: 199 89% 48%;     /* Same as primary for consistency */
-    --accent-foreground: 215 22% 10%;
+    /* OpenAI black theme - exact match to API pricing page */
+    --background: 0 0% 6%;     /* True black background like OpenAI */
+    --foreground: 0 0% 100%;   /* Pure white text */
+    --card: 0 0% 10%;          /* Very dark gray cards */
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 158 64% 52%;    /* OpenAI green */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 15%;     /* Dark gray for secondary elements */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%; /* Light gray muted text */
+    --accent: 158 64% 52%;     /* OpenAI green accent */
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 75% 60%;
-    --destructive-foreground: 215 22% 10%;
-    --border: 215 19% 16%;     /* Subtle borders */
-    --input: 215 19% 16%;
-    --ring: 199 89% 48%;       /* Focus ring matches primary */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;        /* Subtle gray borders */
+    --input: 0 0% 15%;
+    --ring: 158 64% 52%;       /* OpenAI green focus ring */
   }
 }
 
@@ -189,5 +198,106 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+/* OpenAI-style Components */
+@layer components {
+  .openai-card {
+    @apply bg-card border border-border rounded-xl shadow-sm hover:shadow-lg transition-all duration-200;
+  }
+
+  .openai-card-hover {
+    @apply hover:border-primary/30 hover:shadow-xl;
+  }
+
+  .openai-button-primary {
+    @apply bg-white hover:bg-gray-100 text-black font-medium px-8 py-4 rounded-full transition-all duration-200 hover:shadow-lg inline-flex items-center justify-center gap-2 min-w-[140px] !important;
+  }
+
+  .openai-button-secondary {
+    @apply bg-transparent hover:bg-white/5 text-white border border-white/30 hover:border-white/50 font-medium px-8 py-4 rounded-full transition-all duration-200 inline-flex items-center justify-center gap-2 min-w-[140px] !important;
+  }
+
+  .openai-input {
+    @apply w-full px-4 py-3 border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all duration-200;
+  }
+
+  .openai-hero {
+    @apply bg-background;
+  }
+
+  .openai-nav {
+    @apply bg-white/80 backdrop-blur-md border-b border-border sticky top-0 z-50;
+  }
+
+  .openai-heading {
+    @apply font-bold text-foreground leading-tight;
+  }
+
+  .openai-text {
+    @apply text-muted-foreground leading-relaxed;
+  }
+
+  .openai-gradient-text {
+    @apply bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent;
+  }
+
+  .openai-table {
+    @apply w-full bg-white rounded-lg overflow-hidden shadow-sm border border-border;
+  }
+
+  .openai-table th {
+    @apply bg-gray-50 px-6 py-4 text-left font-semibold text-foreground border-b border-border;
+  }
+
+  .openai-table td {
+    @apply px-6 py-4 border-b border-border last:border-b-0;
+  }
+
+  .openai-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .openai-badge-success {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .openai-badge-warning {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+
+  .openai-spinner {
+    @apply w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin;
+  }
+
+  /* Clean, minimal layout like OpenAI */
+  .openai-container {
+    @apply max-w-6xl mx-auto px-6 py-8;
+  }
+
+  .openai-section {
+    @apply py-16;
+  }
+
+  .openai-grid {
+    @apply grid gap-6 md:grid-cols-2 lg:grid-cols-3;
+  }
+
+  /* Typography matching OpenAI */
+  .openai-title {
+    @apply openai-heading text-4xl md:text-5xl lg:text-6xl;
+  }
+
+  .openai-subtitle {
+    @apply openai-heading text-2xl md:text-3xl;
+  }
+
+  .openai-body {
+    @apply openai-text text-lg;
+  }
+
+  .openai-caption {
+    @apply text-sm text-muted-foreground;
   }
 }

@@ -144,8 +144,14 @@ async function runJudgeAnalysis(query: string, responses: StructuredModelRespons
         return await runEnhancedGeminiJudge(query, successfulResponses, responseMode, judgeModel)
       } catch (geminiError) {
         console.log(`Gemini judge failed, falling back to Groq:`, geminiError)
-        // Fallback to fast Groq model for free tier
-        return await runEnhancedGroqJudge(query, successfulResponses, responseMode)
+        // Fallback to fast Groq model for free tier if configured
+        const groqProvider = providerRegistry.getProvider('groq')
+        if (groqProvider && groqProvider.isConfigured()) {
+          return await runEnhancedGroqJudge(query, successfulResponses, responseMode)
+        } else {
+          console.log('Groq not configured, using heuristic fallback')
+          // If Groq not configured, skip to heuristic
+        }
       }
     } else if (judgeModel === 'claude-opus-4-20250514') {
       // Pro/Enterprise: Use Claude Opus 4 if available

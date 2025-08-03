@@ -17,12 +17,24 @@ import {
   Info
 } from 'lucide-react'
 
+interface ElaborateProps {
+  currentLevel: 'concise' | 'normal' | 'detailed'
+  normalAnswer: string
+  detailedAnswer: string
+  isElaborating: boolean
+  getCurrentAnswer: () => string
+  getNextLevel: () => 'normal' | 'detailed' | null
+  getButtonText: () => string
+  handleElaborate: () => Promise<void>
+}
+
 interface JudgeAnalysisDisplayProps {
   analysis: JudgeAnalysis | ConciseJudgeResult | undefined
   mode: 'concise' | 'normal' | 'detailed'
+  elaborateProps?: ElaborateProps
 }
 
-export function JudgeAnalysisDisplay({ analysis, mode }: JudgeAnalysisDisplayProps) {
+export function JudgeAnalysisDisplay({ analysis, mode, elaborateProps }: JudgeAnalysisDisplayProps) {
   const [showDetailed, setShowDetailed] = useState(false)
 
   if (!analysis) return null
@@ -66,7 +78,7 @@ export function JudgeAnalysisDisplay({ analysis, mode }: JudgeAnalysisDisplayPro
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           {/* Consensus Score */}
           <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
             <div className="w-2 h-8 bg-blue-500 dark:bg-blue-400 rounded"></div>
@@ -74,6 +86,17 @@ export function JudgeAnalysisDisplay({ analysis, mode }: JudgeAnalysisDisplayPro
               <div className="text-sm text-gray-600 dark:text-gray-300">Consensus</div>
               <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                 {conciseAnalysis.consensusScore}%
+              </div>
+            </div>
+          </div>
+
+          {/* Confidence Score */}
+          <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
+            <div className="w-2 h-8 bg-green-500 dark:bg-green-400 rounded"></div>
+            <div>
+              <div className="text-sm text-gray-600 dark:text-gray-300">Confidence</div>
+              <div className="text-lg font-semibold text-green-600 dark:text-green-400">
+                {conciseAnalysis.confidence}%
               </div>
             </div>
           </div>
@@ -102,9 +125,30 @@ export function JudgeAnalysisDisplay({ analysis, mode }: JudgeAnalysisDisplayPro
         </div>
 
         <div className="p-3 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
-          <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Judge Synthesis</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm text-gray-600 dark:text-gray-300">Judge Synthesis</div>
+            {elaborateProps && (
+              <button
+                onClick={elaborateProps.handleElaborate}
+                disabled={elaborateProps.isElaborating || !elaborateProps.getNextLevel()}
+                className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {elaborateProps.isElaborating ? (
+                  <>
+                    <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full"></div>
+                    {elaborateProps.getButtonText()}
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3 w-3" />
+                    {elaborateProps.getButtonText()}
+                  </>
+                )}
+              </button>
+            )}
+          </div>
           <div className="text-gray-800 dark:text-gray-100">
-            {conciseAnalysis.bestAnswer}
+            {elaborateProps ? elaborateProps.getCurrentAnswer() : conciseAnalysis.bestAnswer}
           </div>
           <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Confidence: {conciseAnalysis.confidence}%
@@ -177,12 +221,33 @@ export function JudgeAnalysisDisplay({ analysis, mode }: JudgeAnalysisDisplayPro
 
       {/* Best Answer Synthesis */}
       <div className="mb-4 p-3 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
-        <div className="flex items-center gap-2 mb-2">
-          <Brain className="w-5 h-5 text-green-600 dark:text-green-400" />
-          <span className="font-medium text-gray-900 dark:text-gray-100">Best Answer Synthesis</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Brain className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <span className="font-medium text-gray-900 dark:text-gray-100">Best Answer Synthesis</span>
+          </div>
+          {elaborateProps && (
+            <button
+              onClick={elaborateProps.handleElaborate}
+              disabled={elaborateProps.isElaborating || !elaborateProps.getNextLevel()}
+              className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {elaborateProps.isElaborating ? (
+                <>
+                  <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full"></div>
+                  {elaborateProps.getButtonText()}
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3 w-3" />
+                  {elaborateProps.getButtonText()}
+                </>
+              )}
+            </button>
+          )}
         </div>
         <div className="text-gray-800 dark:text-gray-100 mb-2">
-          {detailedAnalysis.synthesis?.bestAnswer}
+          {elaborateProps ? elaborateProps.getCurrentAnswer() : detailedAnalysis.synthesis?.bestAnswer}
         </div>
         <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
           <span>Confidence: {detailedAnalysis.synthesis?.confidence}%</span>

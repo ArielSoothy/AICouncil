@@ -275,23 +275,6 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
                  currentLevel === 'normal' ? 'Detailed Analysis' : 
                  'Comprehensive Analysis'}
               </h4>
-              <button
-                onClick={handleElaborate}
-                disabled={isElaborating || !getNextLevel()}
-                className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isElaborating ? (
-                  <>
-                    <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full"></div>
-                    {getButtonText()}
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-3 w-3" />
-                    {getButtonText()}
-                  </>
-                )}
-              </button>
             </div>
             <div className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-6 rounded-lg min-h-[200px] max-h-[600px] overflow-y-auto border border-gray-200 dark:border-gray-700">
               <p className="whitespace-pre-wrap leading-relaxed text-base">
@@ -305,7 +288,17 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
       {/* Enhanced Judge Analysis */}
       <JudgeAnalysisDisplay 
         analysis={result.consensus.judgeAnalysis} 
-        mode={result.mode as 'concise' | 'normal' | 'detailed'} 
+        mode={result.mode as 'concise' | 'normal' | 'detailed'}
+        elaborateProps={{
+          currentLevel,
+          normalAnswer,
+          detailedAnswer,
+          isElaborating,
+          getCurrentAnswer,
+          getNextLevel,
+          getButtonText,
+          handleElaborate
+        }}
       />
 
       {/* Options Ranking Table - Extracted from Unified Answer */}

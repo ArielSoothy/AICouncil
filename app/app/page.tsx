@@ -67,10 +67,10 @@ function MainApp({ userTier }: MainAppProps) {
   };
 
   const tierColors = {
-    guest: "text-gray-600",
-    free: "text-green-600",
-    pro: "text-blue-600", 
-    max: "text-purple-600"
+    guest: "text-gray-300 bg-gray-800",
+    free: "text-green-400 bg-green-900/20",
+    pro: "text-blue-400 bg-blue-900/20", 
+    max: "text-purple-400 bg-purple-900/20"
   };
 
   return (
@@ -91,7 +91,7 @@ function MainApp({ userTier }: MainAppProps) {
             </p>
             
             {/* Tier Display */}
-            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 ${tierColors[userTier]}`}>
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${tierColors[userTier]}`}>
               {tierDisplay[userTier]}
             </div>
             

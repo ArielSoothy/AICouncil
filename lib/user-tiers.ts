@@ -16,7 +16,7 @@ export const TIER_CONFIGS: Record<UserTier, TierConfig> = {
     price: '$0',
     queryLimit: 999, // Unlimited queries with free models
     availableProviders: ['google', 'groq'],
-    judgeModel: 'gemini-2.0-flash',
+    judgeModel: 'gemini-1.5-flash',
     features: [
       '3 free AI models (unlimited)',
       'Basic consensus analysis',
@@ -30,7 +30,7 @@ export const TIER_CONFIGS: Record<UserTier, TierConfig> = {
     queryLimit: 100, // queries per day with free models
     premiumCredits: 5, // Premium queries to sample ALL models
     availableProviders: ['google', 'groq'], // Free models unlimited
-    judgeModel: 'gemini-2.0-flash', // Fast free judge model (was gemini-2.5-pro)
+    judgeModel: 'gemini-1.5-flash', // Fast free judge model (gemini-2.0-flash not available yet)
     features: [
       '6 free AI models (unlimited)',
       '5 premium credits (try ALL models)',

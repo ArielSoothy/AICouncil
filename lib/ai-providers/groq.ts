@@ -22,8 +22,16 @@ export class GroqProvider implements AIProvider {
     
     try {
       if (!this.isConfigured()) {
-        throw new Error('Groq API key not configured');
+        console.error('Groq API key not configured properly:', {
+          keyExists: !!process.env.GROQ_API_KEY,
+          keyPrefix: process.env.GROQ_API_KEY?.substring(0, 4) || 'none',
+          keyStartsWithGsk: process.env.GROQ_API_KEY?.startsWith('gsk_') || false
+        })
+        throw new Error('Groq API key not configured properly');
       }
+
+      console.log('Groq: Attempting query with model:', config.model)
+      console.log('Groq: API key configured:', this.isConfigured())
 
       const result = await generateText({
         model: groq(config.model),
@@ -34,6 +42,14 @@ export class GroqProvider implements AIProvider {
       });
 
       const responseTime = Date.now() - startTime;
+
+      console.log('Groq: Success! Response length:', result.text?.length || 0)
+
+      // Check for empty response
+      if (!result.text || result.text.trim().length === 0) {
+        console.error('Groq returned empty response')
+        throw new Error('Groq returned empty response')
+      }
 
       return {
         id: `groq-${Date.now()}`,

@@ -182,6 +182,19 @@ export function parseJudgeResponse(response: string, mode: JudgeResponseMode): J
       // Clean and parse JSON response
       let cleanText = response.trim()
       
+      // Check for empty response
+      if (!cleanText) {
+        console.error('Empty response from judge model')
+        return {
+          consensusScore: 50,
+          bestAnswer: 'Unable to analyze - empty response from judge model',
+          confidence: 30,
+          actionable: 'No',
+          riskLevel: 'High',
+          tokenUsage: 0
+        } as ConciseJudgeResult
+      }
+      
       // Remove markdown code blocks
       if (cleanText.startsWith('```json')) {
         cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '')
