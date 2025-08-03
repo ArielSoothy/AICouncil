@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Database } from '@/types/database'
 
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
+
 type FeedbackInsert = Database['public']['Tables']['feedback']['Insert']
 
 export async function POST(request: NextRequest) {

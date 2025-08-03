@@ -12,6 +12,9 @@ import { google } from '@ai-sdk/google'
 import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
 
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
+
 // Cost calculation per 1K tokens (in USD) - Updated with official 2025 pricing
 const TOKEN_COSTS = {
   'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },

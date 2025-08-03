@@ -4,6 +4,9 @@ import { openai } from '@ai-sdk/openai'
 import { google } from '@ai-sdk/google'
 import { generateText } from 'ai'
 
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
+
 interface ElaborateRequest {
   query: string;
   responses: Array<{

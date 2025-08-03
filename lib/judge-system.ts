@@ -130,9 +130,9 @@ ${r.parsed?.limitations?.length ? `Limitations: ${r.parsed.limitations.join(', '
   const outputFormat = mode === 'concise' ? `
 Provide ONLY a JSON response with this structure:
 {
-  "consensusScore": 85,
+  "consensusScore": [0-100 number based on actual semantic agreement],
   "bestAnswer": "Your synthesized response in 1-2 sentences",
-  "confidence": 85,
+  "confidence": [0-100 number based on response quality and agreement],
   "actionable": "Yes|Caution|No",
   "riskLevel": "None|Low|Medium|High|Critical",
   "keyRisks": ["Risk 1", "Risk 2"],
