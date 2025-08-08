@@ -108,7 +108,7 @@ export const FREE_TIER_MODELS = {
 
 // All available models (for display purposes)
 export const ALL_MODELS = {
-  openai: ['gpt-4-turbo-preview', 'gpt-4', 'gpt-4o', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'],
+  openai: ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'o3', 'o4-mini', 'gpt-4o', 'gpt-4o-realtime-preview', 'gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'],
   anthropic: [
     'claude-opus-4-20250514',
     'claude-sonnet-4-20250514',

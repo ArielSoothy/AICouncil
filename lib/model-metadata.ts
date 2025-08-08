@@ -14,9 +14,19 @@ export type ModelBenchmark = {
 // Pricing per model (1K tokens)
 export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   // OpenAI
+  'gpt-5': { input: 0.00125, output: 0.01, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
+  'gpt-5-mini': { input: 0.000125, output: 0.001, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
+  'gpt-5-nano': { input: 0.000025, output: 0.0002, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
+  'gpt-4.1': { input: 0.002, output: 0.008, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
+  'gpt-4.1-mini': { input: 0.0004, output: 0.0016, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
+  'gpt-4.1-nano': { input: 0.0001, output: 0.0004, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
+  'o3': { input: 0.002, output: 0.008, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
+  'o4-mini': { input: 0.0011, output: 0.0044, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
+  'gpt-4o': { input: 0.0025, output: 0.01, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
+  'gpt-4o-realtime-preview': { input: 0.005, output: 0.02, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
+  // Legacy/compat
   'gpt-4': { input: 0.03, output: 0.06, source: 'OpenAI pricing', lastUpdated: '2025-05-01' },
   'gpt-4-turbo-preview': { input: 0.01, output: 0.03, source: 'OpenAI pricing', lastUpdated: '2024-12-01' },
-  'gpt-4o': { input: 0.005, output: 0.015, source: 'OpenAI GPT-4o pricing (per 1M: $5/$15)', lastUpdated: '2025-04-21' },
   'gpt-3.5-turbo': { input: 0.0015, output: 0.002, source: 'OpenAI pricing', lastUpdated: '2024-11-01' },
   'gpt-3.5-turbo-16k': { input: 0.001, output: 0.002, source: 'OpenAI pricing', lastUpdated: '2024-11-01' },
 
