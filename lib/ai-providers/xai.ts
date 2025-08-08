@@ -6,6 +6,10 @@ import { AIProvider } from './types';
 export class XAIProvider implements AIProvider {
   name = 'xAI';
   models = [
+    'grok-4-0709',
+    'grok-3',
+    'grok-3-mini',
+    // legacy/alt
     'grok-2-latest',
     'grok-2-mini'
   ];

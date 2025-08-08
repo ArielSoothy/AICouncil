@@ -122,7 +122,11 @@ export const ALL_MODELS = {
     'claude-2.0'
   ],
   google: FREE_TIER_MODELS.google,
-  groq: FREE_TIER_MODELS.groq
+  groq: FREE_TIER_MODELS.groq,
+  xai: ['grok-4-0709', 'grok-3', 'grok-3-mini', 'grok-2-latest', 'grok-2-mini'],
+  perplexity: ['sonar-pro', 'sonar-small'],
+  mistral: ['mistral-large-latest', 'mistral-small-latest'],
+  cohere: ['command-r-plus', 'command-r']
 }
 
 export function getAvailableModels(userTier: UserTier | null): { provider: string; models: string[] }[] {

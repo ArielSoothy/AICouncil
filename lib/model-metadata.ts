@@ -47,6 +47,9 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   'gemma2-9b-it': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-05-01' },
 
   // xAI (approx from public calculators; verify in console as xAI evolves)
+  'grok-4-0709': { input: 0.003, output: 0.015, source: 'xAI pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-07-22' },
+  'grok-3': { input: 0.003, output: 0.015, source: 'xAI pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-07-22' },
+  'grok-3-mini': { input: 0.0003, output: 0.0005, source: 'xAI pricing per 1M ($0.30 in / $0.50 out)', lastUpdated: '2025-07-22' },
   'grok-2-latest': { input: 0.002, output: 0.01, source: 'xAI Grok-2 calc (indicative)', lastUpdated: '2025-04-20' },
   'grok-2-mini': { input: 0.0005, output: 0.0025, source: 'xAI Grok-2 mini calc (indicative)', lastUpdated: '2025-04-20' },
 
@@ -92,6 +95,9 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   'gemma2-9b-it': { arenaTier: 'B', aaii: 1120, mmlu: 68, source: 'Community evals', lastUpdated: '2024-08-01' },
 
   // xAI
+  'grok-4-0709': { arenaTier: 'S', aaii: 1300, mmlu: 88, source: 'xAI/pricing page (approx)', lastUpdated: '2025-07-22' },
+  'grok-3': { arenaTier: 'A', aaii: 1250, mmlu: 86, source: 'xAI/pricing page (approx)', lastUpdated: '2025-07-22' },
+  'grok-3-mini': { arenaTier: 'B', aaii: 1150, mmlu: 75, source: 'xAI/pricing page (approx)', lastUpdated: '2025-07-22' },
   'grok-2-latest': { arenaTier: 'S', aaii: 1273, mmlu: 87, source: 'OpenLM.ai Arena/xAI blog', lastUpdated: '2025-03-01' },
   'grok-2-mini': { arenaTier: 'A', aaii: 1220, mmlu: 86, source: 'Calculators/xAI', lastUpdated: '2025-03-01' },
 
