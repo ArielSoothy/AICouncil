@@ -72,7 +72,7 @@ MISTRAL_API_KEY=
 COHERE_API_KEY=
 ```
 
-Fill in your API keys:
+Fill in your API keys (placeholders for all supported providers):
 - **ANTHROPIC_API_KEY** - Required for Claude models and primary judge analysis
 - **OPENAI_API_KEY** - Required for GPT models and fallback judge analysis
 - **GOOGLE_GENERATIVE_AI_API_KEY** - Required for Gemini models (free tier available)
@@ -82,7 +82,16 @@ Fill in your API keys:
 - **MISTRAL_API_KEY** - Required for Mistral models
 - **COHERE_API_KEY** - Required for Cohere Command models
 
-**Note**: The app works with any combination of API keys. Judge analysis requires either Anthropic or OpenAI keys for optimal performance.
+Additional providers supported (optional):
+```
+GROQ_API_KEY=
+XAI_API_KEY=
+PERPLEXITY_API_KEY=
+MISTRAL_API_KEY=
+COHERE_API_KEY=
+```
+
+You can add these to `.env.local`. The app works with any combination of keys; only configured providers/models are shown. Judge analysis works best with Anthropic or OpenAI keys.
 
 3. **Run the development server:**
 ```bash
