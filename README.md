@@ -32,9 +32,10 @@ A comprehensive multi-model AI decision engine that provides clear, actionable d
 - **Performance Metrics**: Response times, token usage, and cost breakdown
 
 ### 🔄 Multi-Provider Support
-- **OpenAI**: GPT-3.5, GPT-4, GPT-4o with latest models
+- **OpenAI**: GPT-5 family (gpt-5/mini/nano), GPT-4.1 (mini/nano), o-series (o3, o4-mini), GPT-4o (incl. realtime)
 - **Anthropic**: Full Claude family (Claude 4, 3.7, 3.5, 3, 2 series)
 - **Google**: Gemini Flash models are free (demo tier); Gemini Pro is paid and excluded from guest/free defaults
+- **xAI**: Grok-4-0709, Grok-3, Grok-3-mini
 - **Dynamic model selection** with real-time availability checking
 
 ## 🚀 Quick Start

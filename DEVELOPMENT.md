@@ -36,7 +36,7 @@ Open http://localhost:3000
 
 ### ✅ Phase 2: Core Features (COMPLETED)
 - [x] **AI provider integrations** ✅ ALL TESTED & WORKING
-  - [x] OpenAI connection (GPT-4, GPT-3.5, GPT-4o)
+  - [x] OpenAI connection (GPT-5 family, GPT-4.1, o-series, GPT-4o incl. realtime)
   - [x] Anthropic connection (Claude 4, 3.7, 3.5, 3, 2 series)
   - [x] Google AI connection (Gemini models - FREE)
 - [x] **API routes implementation** ✅ FULLY IMPLEMENTED
@@ -156,6 +156,7 @@ vercel --prod  # REQUIRED: Manual deployment for private repo
 2. Implement `AIProvider` interface
 3. Register in `lib/ai-providers/index.ts`
 4. Add to model selector options
+ 5. Update `lib/model-metadata.ts` with pricing/benchmarks and `ALL_MODELS` in `lib/user-tiers.ts`
 
 ### Debugging
 - Check browser console for client errors
