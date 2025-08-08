@@ -40,14 +40,16 @@ Open http://localhost:3000
   - [x] Anthropic connection (Claude 4, 3.7, 3.5, 3, 2 series)
   - [x] Google AI connection (Gemini models - FREE)
 - [x] **API routes implementation** ✅ FULLY IMPLEMENTED
-  - [x] `/api/consensus` endpoint with enhanced response structure
+- [x] `/api/consensus` endpoint with enhanced response structure
+- [x] `/api/consensus/normalize` semantic grouping for ranked options
+- [x] `/api/consensus/why` AI one-liner per model explaining top pick
   - [x] `/api/models` endpoint with metadata
 - [x] **UI components** ✅ FULLY IMPLEMENTED
-  - [x] Enhanced query interface with mode selection
+- [x] Enhanced query interface with mode selection
   - [x] Model selector with cost transparency and tier display
   - [x] Unified answer display with scrollable layout
-  - [x] Ranked options table with confidence scores
-  - [x] Individual model responses section
+- [x] Ranked options table with confidence scores and normalization
+- [x] Individual model responses section with minimal tokens and one-line rationale
   - [x] Advanced consensus analysis display
 - [x] **Rate limiting** ✅ BUILT-IN
 - [x] **Error handling** ✅ COMPREHENSIVE
@@ -114,7 +116,7 @@ Expected response: Enhanced consensus with unified answer, ranked options, and i
 ### Cost Optimization
 - **Model Mixing**: Use a combination of flagship, premium, and budget models
 - **Response Modes**: Choose appropriate mode (concise/normal/detailed) for your needs
-- **Free Models**: Google Gemini models are completely free
+- **Free Models**: Gemini Flash models are free (demo tier). Gemini Pro is paid and excluded from guest/free defaults.
 - **Real-time Costs**: Monitor costs in the model selector before querying
 
 ### UI Features  

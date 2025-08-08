@@ -5,7 +5,7 @@ A comprehensive multi-model AI decision engine that provides clear, actionable d
 ## ✨ Key Features
 
 ### 🎯 Smart Response Modes
-- **Concise Mode**: Max 50 words, direct answers (~75 tokens) - ideal for quick decisions
+- **Concise Mode**: Single-word/minimal-token ranked list (e.g., "1. MBA 2. MSc 3. BSc"). No sentences.
 - **Normal Mode**: 100-150 words, balanced detail (~200 tokens) - comprehensive yet concise
 - **Detailed Mode**: Full explanations with examples (~500 tokens) - in-depth analysis
 
@@ -34,7 +34,7 @@ A comprehensive multi-model AI decision engine that provides clear, actionable d
 ### 🔄 Multi-Provider Support
 - **OpenAI**: GPT-3.5, GPT-4, GPT-4o with latest models
 - **Anthropic**: Full Claude family (Claude 4, 3.7, 3.5, 3, 2 series)
-- **Google**: Gemini models (completely free)
+- **Google**: Gemini Flash models are free (demo tier); Gemini Pro is paid and excluded from guest/free defaults
 - **Dynamic model selection** with real-time availability checking
 
 ## 🚀 Quick Start
@@ -99,7 +99,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 - Mix different tiers for balanced cost and performance
 
 ### 2. Choose Response Mode
-- **Concise**: Quick decisions with minimal detail
+- **Concise**: Single-word/minimal-token outputs (ranked) for fastest decisions
 - **Normal**: Balanced analysis for most use cases  
 - **Detailed**: Comprehensive analysis with examples
 
@@ -119,6 +119,8 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 /app
   /api
     /consensus/             # Main orchestration endpoint with judge analysis
+    /consensus/normalize/   # Semantic normalization for ranked options (groups similar answers)
+    /consensus/why/         # AI one-liner per model: why its #1 pick
     /models/               # Available models endpoint
   layout.tsx              # Root layout with Tailwind and fonts
   page.tsx               # Main query interface
@@ -128,7 +130,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
   /consensus/            # Core app components
     query-interface.tsx           # Main query form and model selection
     model-selector.tsx           # Model selection with cost display
-    enhanced-consensus-display-v3.tsx  # Results display with ranking
+    enhanced-consensus-display-v3.tsx  # Results display with ranking (consolidated)
     response-modes-selector.tsx   # Concise/Normal/Detailed selector
 
 /lib
@@ -154,15 +156,18 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 ### 📊 Enhanced Results Display
 - **Unified Answer**: AI judge synthesizes all responses into clear consensus
 - **Ranked Options Table**: Quick-scan 1-liner alternatives with confidence scores
+- **Model Influence**: Visible model weights (0.5–1.0) and how they affect rankings
 - **Model Agreement**: Visual indicators show how much models agree/disagree
-- **Individual Responses**: Full detailed answers from each selected model
+- **Individual Responses**: Per-model cards with minimal tokens and an AI one-line rationale for the top pick
 - **Performance Metrics**: Response times, token usage, and costs per model
 
 ### 🧠 Intelligent Judge Analysis
 - **Primary Judge**: Claude Opus 4 with structured JSON analysis
 - **Fallback Judge**: GPT-4o if Claude is unavailable
 - **Heuristic Fallback**: Basic analysis if both AI judges fail
-- **Model Weighting**: Accounts for model expertise and tier when generating consensus
+- **Model Weighting**: Accounts for model expertise and tier when generating consensus; weights surfaced in UI
+- **Normalization**: `/api/consensus/normalize` merges semantically equivalent options for accurate counts
+- **Top-pick Rationale**: `/api/consensus/why` returns a concise reason per model for its first choice
 - **Confidence Scoring**: 0-100% confidence in the unified answer
 
 ## 🚦 Development Status
@@ -316,7 +321,8 @@ The `/api/consensus` endpoint returns a comprehensive response with all analysis
 | GPT-4 | $0.03 | $0.06 | 💎 Premium |
 | GPT-3.5 Turbo | $0.0005 | $0.0015 | 💰 Budget |
 | **Google Models** ||||
-| All Gemini Models | $0.00 | $0.00 | 🆓 Free |
+| Gemini Flash (1.5/2.0/2.5) | $0.00 | $0.00 | 🆓 Free (demo tier) |
+| Gemini 2.5 Pro | varies | varies | 💎 Paid |
 
 ## 🤝 Contributing
 

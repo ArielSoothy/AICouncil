@@ -34,6 +34,8 @@ Where used:
 - `GET /api/models` → lists available models based on configured keys
   - Test: `curl http://localhost:3000/api/models`
 - `POST /api/consensus` → orchestrates multi-model query + judge analysis
+ - `POST /api/consensus/normalize` → semantic normalization for ranked options
+ - `POST /api/consensus/why` → AI one-line rationale per model for its #1 pick
   - Example:
     ```bash
     curl -X POST http://localhost:3000/api/consensus \
@@ -56,6 +58,7 @@ Where used:
 - Providers: `lib/ai-providers/{openai,anthropic,google,groq}.ts`
 - Judge system: `lib/judge-system.ts`
 - Prompt system: `lib/prompt-system.ts`
+- Model benchmarks/weights: `lib/model-metadata.ts`
 - Types: `types/consensus.ts`
 
 ### Supabase Setup (summary)
@@ -83,6 +86,7 @@ Where used:
 ### Notes
 - The Google API env var in code is `GOOGLE_GENERATIVE_AI_API_KEY`.
 - The app adapts to whichever provider keys are present; at least one is enough for basic model calls.
+- Gemini Flash models are treated as FREE for guest/free. Gemini Pro is paid and excluded from guest/free defaults.
 
 ### Local Setup Status (this machine)
 - Node.js and npm: installed (verified)
