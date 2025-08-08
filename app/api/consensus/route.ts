@@ -11,6 +11,7 @@ import { openai } from '@ai-sdk/openai'
 import { google } from '@ai-sdk/google'
 import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
+import { MODEL_COSTS_PER_1K, MODEL_POWER } from '@/lib/model-metadata'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
@@ -102,9 +103,9 @@ const RESPONSE_MODES = {
 }
 
 function calculateCost(model: string, inputTokens: number, outputTokens: number): number {
-  const costs = TOKEN_COSTS[model as keyof typeof TOKEN_COSTS]
+  const meta = MODEL_COSTS_PER_1K[model]
+  const costs = meta || TOKEN_COSTS[model as keyof typeof TOKEN_COSTS]
   if (!costs) return 0
-  
   return (inputTokens / 1000 * costs.input) + (outputTokens / 1000 * costs.output)
 }
 
@@ -413,13 +414,21 @@ function runHeuristicJudge(query: string, responses: StructuredModelResponse[]) 
   const responseCount = responses.length
   const validResponses = responses.filter(r => r.parsed?.mainAnswer)
   
-  // Calculate confidence based on response count and parsed confidence scores
-  let confidence = 40 + (responseCount * 5) // Base confidence increases with more responses
+  // Calculate weighted confidence using model power weights
+  const baseConfidence = 40 + (responseCount * 5)
+  let weightedConfidence = baseConfidence
   if (validResponses.length > 0) {
-    const avgModelConfidence = validResponses.reduce((sum, r) => sum + (r.parsed?.confidence || 50), 0) / validResponses.length
-    confidence = Math.min(confidence + (avgModelConfidence * 0.3), 75) // Cap heuristic confidence
+    const { totalWeight, weightedSum } = validResponses.reduce((acc, r) => {
+      const weight = MODEL_POWER[r.model] || 0.7
+      const modelConf = r.parsed?.confidence ?? 50
+      acc.totalWeight += weight
+      acc.weightedSum += weight * modelConf
+      return acc
+    }, { totalWeight: 0, weightedSum: 0 } as { totalWeight: number; weightedSum: number })
+    const avgWeighted = totalWeight > 0 ? weightedSum / totalWeight : 60
+    weightedConfidence = Math.min(baseConfidence + (avgWeighted * 0.3), 80)
   }
-  confidence = Math.min(confidence, 75) // Cap heuristic confidence lower than AI judges
+  const confidence = Math.min(weightedConfidence, 80)
   
   // Extract main answers for analysis
   const mainAnswers = validResponses.map(r => r.parsed?.mainAnswer || r.response)
@@ -444,10 +453,14 @@ function runHeuristicJudge(query: string, responses: StructuredModelResponse[]) 
   const disagreements = responseCount > 1 ? 
     ['Variation in response detail and emphasis'] : []
 
-  // Use best available answer
-  const bestAnswer = validResponses.length > 0 ? 
-    (validResponses[0].parsed?.mainAnswer || validResponses[0].response) :
-    responses[0].response
+  // Choose best answer from highest power-weighted confidence product
+  let bestAnswer = responses[0]?.response || 'No valid responses'
+  if (validResponses.length > 0) {
+    const best = validResponses
+      .map(r => ({ r, score: (MODEL_POWER[r.model] || 0.7) * (r.parsed?.confidence ?? 50) }))
+      .sort((a, b) => b.score - a.score)[0]
+    bestAnswer = best?.r.parsed?.mainAnswer || best?.r.response || bestAnswer
+  }
     
   const conciseVersion = bestAnswer.length > 100 ? 
     bestAnswer.substring(0, 100) + '...' : bestAnswer
@@ -527,8 +540,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For premium queries on free tier, treat as Pro tier for model validation
-    const effectiveTier = (usePremiumQuery && userTier === 'free') ? 'pro' : userTier
+    // Premium queries disabled for free/guest tiers
+    const effectiveTier = userTier
     
     // Validate models are available for user's tier (or premium query tier)
     const filteredModels = models.filter(model => 

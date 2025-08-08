@@ -1,5 +1,4 @@
-// Simple Supabase connection check
-const fetch = require('node:fetch')
+// Simple Supabase connection check (Node 18+ has global fetch)
 
 const SUPABASE_URL = 'https://dslmwsdbkaciwljnxxjt.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbG13c2Ria2FjaXdsam54eGp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNDY4OTMsImV4cCI6MjA2ODYyMjg5M30.q-TkknclI61oSO8VH_tR73uDC-sFuZtrI-9ZEvMeARM'

@@ -77,7 +77,6 @@ export const TIER_CONFIGS: Record<UserTier, TierConfig> = {
 // Guest tier model whitelist (same as free tier for impressive demo)
 export const GUEST_TIER_MODELS = {
   google: [
-    'gemini-2.5-pro',
     'gemini-2.5-flash', 
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
@@ -94,7 +93,6 @@ export const GUEST_TIER_MODELS = {
 // Free tier model whitelist
 export const FREE_TIER_MODELS = {
   google: [
-    'gemini-2.5-pro',
     'gemini-2.5-flash', 
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',

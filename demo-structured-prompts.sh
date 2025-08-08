@@ -19,7 +19,7 @@ npx tsx test-prompt-system.ts
 
 echo ""
 echo "🌐 Demo Server Running:"
-echo "Open http://localhost:3001 to test the full system"
+echo "Open http://localhost:3000 to test the full system"
 echo ""
 
 echo "💡 Try asking questions like:"

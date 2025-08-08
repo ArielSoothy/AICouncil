@@ -4,6 +4,7 @@ import { ModelConfig } from '@/types/consensus'
 import { Button } from '@/components/ui/button'
 import { Plus, Trash2, DollarSign, Globe } from 'lucide-react'
 import { getAvailableModels, getAllModelsWithTierInfo, canUseModel, hasInternetAccess } from '@/lib/user-tiers'
+import { MODEL_COSTS_PER_1K, MODEL_POWER } from '@/lib/model-metadata'
 import { useAuth } from '@/contexts/auth-context'
 
 interface ModelSelectorProps {
@@ -47,50 +48,30 @@ const availableModels = {
     'llama-3.1-8b-instant',
     'gemma2-9b-it'
   ],
+  xai: ['grok-2-latest', 'grok-2-mini'],
+  perplexity: ['sonar-pro', 'sonar-small'],
+  mistral: ['mistral-large-latest', 'mistral-small-latest'],
+  cohere: ['command-r-plus', 'command-r']
 }
 
-// Model pricing per 1K tokens (input → output)
-const modelCosts = {
-  // OpenAI Models
-  'gpt-3.5-turbo': { input: 0.0005, output: 0.0015, tier: 'budget' },
-  'gpt-3.5-turbo-16k': { input: 0.001, output: 0.002, tier: 'budget' },
-  'gpt-4': { input: 0.03, output: 0.06, tier: 'premium' },
-  'gpt-4o': { input: 0.01, output: 0.03, tier: 'premium' },
-  'gpt-4-turbo-preview': { input: 0.01, output: 0.03, tier: 'premium' },
-  
-  // Claude 4 Series (2025) - Flagship
-  'claude-opus-4-20250514': { input: 0.015, output: 0.075, tier: 'flagship' },
-  'claude-sonnet-4-20250514': { input: 0.003, output: 0.015, tier: 'balanced' },
-  
-  // Claude 3.7 Series (2025)
-  'claude-3-7-sonnet-20250219': { input: 0.003, output: 0.015, tier: 'balanced' },
-  
-  // Claude 3.5 Series (2024)
-  'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015, tier: 'balanced' },
-  'claude-3-5-haiku-20241022': { input: 0.0008, output: 0.004, tier: 'budget' },
-  
-  // Claude 3 Series (Legacy)
-  'claude-3-opus-20240229': { input: 0.015, output: 0.075, tier: 'flagship' },
-  'claude-3-sonnet-20240229': { input: 0.003, output: 0.015, tier: 'balanced' },
-  'claude-3-haiku-20240307': { input: 0.00025, output: 0.00125, tier: 'budget' },
-  
-  // Claude 2 Series
-  'claude-2.1': { input: 0.008, output: 0.024, tier: 'balanced' },
-  'claude-2.0': { input: 0.008, output: 0.024, tier: 'balanced' },
-  
-  // Google Models (All FREE on free tier)
-  'gemini-2.5-pro': { input: 0.0, output: 0.0, tier: 'free' },
-  'gemini-2.5-flash': { input: 0.0, output: 0.0, tier: 'free' },
-  'gemini-2.0-flash': { input: 0.0, output: 0.0, tier: 'free' },
-  'gemini-2.0-flash-lite': { input: 0.0, output: 0.0, tier: 'free' },
-  'gemini-1.5-flash': { input: 0.0, output: 0.0, tier: 'free' },
-  'gemini-1.5-flash-8b': { input: 0.0, output: 0.0, tier: 'free' },
-  
-  // Groq Models (FREE - 5B tokens/day limit)
-  'llama-3.3-70b-versatile': { input: 0.0, output: 0.0, tier: 'free' },
-  'llama-3.1-8b-instant': { input: 0.0, output: 0.0, tier: 'free' },
-  'gemma2-9b-it': { input: 0.0, output: 0.0, tier: 'free' },
-}
+// Derive model pricing and tier from centralized metadata
+const modelCosts: Record<string, { input: number; output: number; tier: 'free' | 'budget' | 'balanced' | 'premium' | 'flagship' }> = {} as any
+Object.entries(MODEL_COSTS_PER_1K).forEach(([model, cost]) => {
+  const input = cost.input
+  const output = cost.output
+  const avg = (input + output) / 2
+  const tier = avg === 0
+    ? 'free'
+    : avg < 0.002
+      ? 'budget'
+      : avg < 0.01
+        ? 'balanced'
+        : avg < 0.05
+          ? 'premium'
+          : 'flagship'
+  ;
+  modelCosts[model] = { input, output, tier }
+})
 
 const tierColors = {
   free: 'text-green-600 bg-green-50 dark:bg-green-900/20',
@@ -112,7 +93,11 @@ const providerNames = {
   openai: 'OpenAI',
   anthropic: 'Anthropic',
   google: 'Google AI',
-  groq: 'Groq'
+  groq: 'Groq',
+  xai: 'xAI (Grok)',
+  perplexity: 'Perplexity',
+  mistral: 'Mistral',
+  cohere: 'Cohere'
 }
 
 // Cost efficiency calculation (lower is better, cost per token)
@@ -138,7 +123,8 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false }: Mod
   
   // Show ALL models with tier info, using effective tier for premium queries
   const currentTier = loading ? 'free' : (userTier || 'free')
-  const effectiveTier = (usePremiumQuery && currentTier === 'free') ? 'pro' : currentTier
+  // Disallow premium upgrade for free/guest tiers in UI
+  const effectiveTier = currentTier
   const allModelsWithTierInfo = getAllModelsWithTierInfo(effectiveTier)
   
   // For provider dropdown, show all providers
@@ -165,7 +151,7 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false }: Mod
 
   const changeProvider = (index: number, provider: string) => {
     const updated = [...models]
-    updated[index].provider = provider as '' | 'openai' | 'anthropic' | 'google' | 'groq'
+    updated[index].provider = provider as '' | 'openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'perplexity' | 'mistral' | 'cohere'
     updated[index].model = '' // Don't auto-select first model
     onChange(updated)
   }
@@ -222,7 +208,7 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false }: Mod
                   className="w-full text-sm bg-background border border-input rounded px-2 py-1 disabled:opacity-50"
                 >
                   <option value="">Choose Provider</option>
-                  {availableProviders.map((provider) => (
+                   {availableProviders.map((provider) => (
                     <option key={provider} value={provider}>
                       {providerNames[provider as keyof typeof providerNames]}
                     </option>
@@ -246,9 +232,11 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false }: Mod
                        `$${cost.input.toFixed(4)}/$${cost.output.toFixed(4)} per 1K`) : ''
                     
                     const internetIcon = hasInternetAccess(modelInfo.name) ? ' 🌐' : ''
+                    const weight = MODEL_POWER[modelInfo.name as keyof typeof MODEL_POWER]
+                    const weightTag = weight ? ` W:${weight.toFixed(2)}` : ''
                     const label = modelInfo.available 
-                      ? `${modelInfo.name}${internetIcon} ${costDisplay ? `(${costDisplay})` : ''}`
-                      : `${modelInfo.name}${internetIcon} (PRO ONLY) ${costDisplay ? `- ${costDisplay}` : ''}`
+                      ? `${modelInfo.name}${internetIcon} ${costDisplay ? `(${costDisplay})` : ''}${weightTag}`
+                      : `${modelInfo.name}${internetIcon} (PRO ONLY) ${costDisplay ? `- ${costDisplay}` : ''}${weightTag}`
                     
                     return (
                       <option 
@@ -265,7 +253,7 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false }: Mod
               </div>
             </div>
 
-            {/* Cost and Tier Display */}
+            {/* Cost, Tier and Weight Display */}
             {config.enabled && modelCosts[config.model as keyof typeof modelCosts] && (
               <div className="flex-shrink-0">
                 <div className="text-xs space-y-1">
@@ -278,6 +266,10 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false }: Mod
                     <span className="text-lg" title="Cost efficiency indicator">
                       {getEfficiencyBadge(config.model)}
                     </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <span>Weight:</span>
+                    <span className="font-mono">{(MODEL_POWER[config.model as keyof typeof MODEL_POWER] || 0.7).toFixed(2)}</span>
                   </div>
                   <div className="text-muted-foreground">
                     {modelCosts[config.model as keyof typeof modelCosts]?.input === 0 && 

@@ -9,13 +9,14 @@ npm install
 
 ### 2. Environment Setup
 ```bash
-cp .env.example .env.local
+# If example exists, copy it; otherwise run setup to generate a minimal file
+[ -f .env.local.example ] && cp .env.local.example .env.local || ./setup.sh
 ```
 
 Edit `.env.local` with your API keys:
-- **OpenAI**: Get from https://platform.openai.com/api-keys
-- **Anthropic**: Get from https://console.anthropic.com/
-- **Google AI**: Get from https://makersuite.google.com/app/apikey
+- **OpenAI**: Get from https://platform.openai.com/api-keys (OPENAI_API_KEY)
+- **Anthropic**: Get from https://console.anthropic.com/ (ANTHROPIC_API_KEY)
+- **Google AI**: Get from https://makersuite.google.com/app/apikey (GOOGLE_GENERATIVE_AI_API_KEY)
 
 ### 3. Start Development Server
 ```bash

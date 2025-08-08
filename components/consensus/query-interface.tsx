@@ -34,10 +34,10 @@ function QueryInterfaceContent() {
         { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
         { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
         { provider: 'groq', model: 'gemma2-9b-it', enabled: true },
-        // 3 Best Free Google Models
-        { provider: 'google', model: 'gemini-2.5-pro', enabled: true },
+        // 3 Free Google Models (no Pro on guest)
         { provider: 'google', model: 'gemini-2.5-flash', enabled: true },
         { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
+        { provider: 'google', model: 'gemini-1.5-flash', enabled: true },
       ]
     }
     
@@ -47,10 +47,10 @@ function QueryInterfaceContent() {
       { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
       { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
       { provider: 'groq', model: 'gemma2-9b-it', enabled: true },
-      // 3 Best Free Google Models
-      { provider: 'google', model: 'gemini-2.5-pro', enabled: true },
+      // 3 Free Google Models (no Pro on free tier by default)
       { provider: 'google', model: 'gemini-2.5-flash', enabled: true },
       { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
+      { provider: 'google', model: 'gemini-1.5-flash', enabled: true },
     ]
   }
 
@@ -131,59 +131,7 @@ function QueryInterfaceContent() {
           />
         </div>
 
-        {/* Premium Query Toggle for Free Tier Users (not Guest) */}
-        {effectiveUserTier === 'free' && !isGuestMode && (
-          <div className="mt-4 p-4 premium-query-dark rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="premium-query"
-                  checked={usePremiumQuery}
-                  onChange={(e) => setUsePremiumQuery(e.target.checked)}
-                  className="w-4 h-4 accent-purple-600"
-                />
-                <label htmlFor="premium-query" className="text-sm font-medium">
-                  🚀 Premium Query (0 credits available)
-                </label>
-              </div>
-            </div>
-            <p className="text-xs leading-relaxed">
-              Use a premium credit to access ALL premium models (GPT-4, Claude Opus 4, etc.) with advanced consensus analysis. 
-              {true && (
-                <span className="font-medium text-orange-600"> No credits left - provide feedback to earn +2 credits!</span>
-              )}
-            </p>
-            
-            {/* Premium Model Showcase */}
-            {usePremiumQuery && (
-              <div className="mt-3 p-3 bg-card/50 rounded-md border border-border">
-                <div className="text-xs font-medium text-purple-200 mb-2">🎯 Premium models now available:</div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                    <span className="text-foreground">Claude Opus 4 🏆</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                    <span className="text-foreground">GPT-4o 💎</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                    <span className="text-foreground">Claude Sonnet 4 ⚖️</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                    <span className="text-foreground">GPT-4 Turbo 💎</span>
-                  </div>
-                </div>
-                <p className="text-xs text-purple-300 mt-2 italic">
-                  Experience the power of flagship AI models with advanced reasoning and consensus analysis!
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Premium Query is disabled for free/guest tiers */}
 
         {/* Guest Upgrade Prompt */}
         {isGuestMode && (

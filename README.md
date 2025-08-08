@@ -54,13 +54,33 @@ npm install
 
 2. **Set up environment variables:**
 ```bash
-cp .env.example .env.local
+# If an example exists
+[ -f .env.local.example ] && cp .env.local.example .env.local || ./setup.sh
+```
+
+If no example file exists, create `.env.local` with at least:
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GOOGLE_GENERATIVE_AI_API_KEY=
+GROQ_API_KEY=
+XAI_API_KEY=
+PERPLEXITY_API_KEY=
+MISTRAL_API_KEY=
+COHERE_API_KEY=
 ```
 
 Fill in your API keys:
 - **ANTHROPIC_API_KEY** - Required for Claude models and primary judge analysis
 - **OPENAI_API_KEY** - Required for GPT models and fallback judge analysis
-- **GOOGLE_API_KEY** - Required for Gemini models (free tier available)
+- **GOOGLE_GENERATIVE_AI_API_KEY** - Required for Gemini models (free tier available)
+- **GROQ_API_KEY** - Required for Groq (fast Llama/Gemma)
+- **XAI_API_KEY** - Required for xAI Grok models
+- **PERPLEXITY_API_KEY** - Required for Perplexity Sonar models
+- **MISTRAL_API_KEY** - Required for Mistral models
+- **COHERE_API_KEY** - Required for Cohere Command models
 
 **Note**: The app works with any combination of API keys. Judge analysis requires either Anthropic or OpenAI keys for optimal performance.
 
@@ -174,7 +194,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 # AI Provider APIs (get from respective provider dashboards)
 OPENAI_API_KEY=your_openai_key           # https://platform.openai.com/api-keys
 ANTHROPIC_API_KEY=your_anthropic_key     # https://console.anthropic.com/
-GOOGLE_API_KEY=your_google_key           # https://makersuite.google.com/app/apikey
+GOOGLE_GENERATIVE_AI_API_KEY=your_google_key  # https://makersuite.google.com/app/apikey
 ```
 
 **API Key Requirements:**

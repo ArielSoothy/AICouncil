@@ -24,8 +24,34 @@ npm install
 
 # Create environment file if it doesn't exist
 if [ ! -f .env.local ]; then
-    echo "📝 Creating .env.local from template..."
-    cp .env.example .env.local
+    if [ -f .env.local.example ]; then
+        echo "📝 Creating .env.local from .env.local.example..."
+        cp .env.local.example .env.local
+    elif [ -f .env.example ]; then
+        echo "📝 Creating .env.local from .env.example..."
+        cp .env.example .env.local
+    else
+        echo "📝 Creating minimal .env.local..."
+        cat > .env.local << 'EOF'
+# Supabase (required)
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+# AI Providers (optional)
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+GOOGLE_GENERATIVE_AI_API_KEY=
+GROQ_API_KEY=
+XAI_API_KEY=
+PERPLEXITY_API_KEY=
+MISTRAL_API_KEY=
+COHERE_API_KEY=
+
+# NextAuth (optional)
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=http://localhost:3000
+EOF
+    fi
     echo "⚠️  Please edit .env.local with your API keys before running the app"
 else
     echo "✅ .env.local already exists"

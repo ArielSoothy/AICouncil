@@ -8,7 +8,7 @@
 - ✅ Complete project structure
 - ✅ Environment configuration
 - ✅ Build system working
-- ✅ Development server running at http://localhost:3002
+- ✅ Development server running at http://localhost:3000
 
 ### 🤖 **AI Provider Integrations**
 - ✅ OpenAI integration (GPT-4, GPT-3.5, GPT-4o)
@@ -89,7 +89,7 @@ To activate the AI features, edit `.env.local`:
 # AI Provider APIs
 OPENAI_API_KEY=sk-your-openai-key-here
 ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here  
-GOOGLE_AI_API_KEY=your-google-ai-key-here
+GOOGLE_GENERATIVE_AI_API_KEY=your-google-ai-key-here
 
 # Authentication (for future features)
 NEXTAUTH_SECRET=your-secret-here

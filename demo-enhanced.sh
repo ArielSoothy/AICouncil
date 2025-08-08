@@ -21,7 +21,7 @@ json_payload='{
 echo "📝 Sending query to all three Claude models simultaneously..."
 echo ""
 
-response=$(curl -s -X POST http://localhost:3001/api/consensus \
+response=$(curl -s -X POST http://localhost:3000/api/consensus \
   -H "Content-Type: application/json" \
   -d "$json_payload")
 
@@ -39,4 +39,4 @@ echo "✅ Test multiple models from same provider"
 echo "✅ Compare Claude Opus vs Sonnet vs Haiku"
 echo "✅ Mix and match any providers"
 echo ""
-echo "🌐 Test it yourself at: http://localhost:3001"
+echo "🌐 Test it yourself at: http://localhost:3000"

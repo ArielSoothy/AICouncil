@@ -1,4 +1,5 @@
 import { StructuredModelResponse } from '@/types/consensus'
+import { MODEL_POWER, MODEL_BENCHMARKS } from '@/lib/model-metadata'
 
 export type QueryType = 'financial' | 'technical' | 'medical' | 'legal' | 'general'
 export type JudgeResponseMode = 'concise' | 'normal' | 'detailed'
@@ -118,13 +119,21 @@ export function generateJudgePrompt(
 
 ORIGINAL QUERY: "${userQuery}"
 
-MODEL RESPONSES:
-${successfulResponses.map((r, i) => `
-[${r.model}] (Confidence: ${r.parsed?.confidence || 'Not provided'}):
+MODEL RESPONSES (weighted by benchmark power):
+${successfulResponses.map((r) => {
+  const weight = MODEL_POWER[r.model]
+  const tier = (MODEL_BENCHMARKS[r.model]?.arenaTier) || 'A'
+  const modelConf = r.parsed?.confidence ?? 'Not provided'
+  return `
+[${r.model}] (Confidence: ${modelConf}; PowerWeight: ${weight}; Tier: ${tier}):
 ${r.parsed?.mainAnswer || r.response}
 ${r.parsed?.keyEvidence?.length ? `Evidence: ${r.parsed.keyEvidence.join(', ')}` : ''}
 ${r.parsed?.limitations?.length ? `Limitations: ${r.parsed.limitations.join(', ')}` : ''}
----`).join('\n')}`
+---`
+}).join('\n')}
+
+WEIGHTING RULES:
+- Weight contributions by PowerWeight (0.5–1.0). Prefer high-weight evidence when conflicts arise.`
 
   // Mode-specific output format
   const outputFormat = mode === 'concise' ? `

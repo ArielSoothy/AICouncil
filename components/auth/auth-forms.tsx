@@ -72,12 +72,11 @@ export function AuthForms() {
           setError(error.message)
           setLoading(false)
         } else {
-          console.log('Sign-in successful, user should be updated in context')
-          // Set a safety timeout to clear loading state if auth state doesn't update
-          setTimeout(() => {
-            console.log('Safety timeout: clearing loading state')
-            setLoading(false)
-          }, 5000)
+          console.log('Sign-in successful, navigating...')
+          const redirect = searchParams.get('redirect') || '/app'
+          // Navigate immediately; AuthContext will hydrate user shortly after
+          setLoading(false)
+          router.push(redirect)
         }
       }
     } catch (err) {

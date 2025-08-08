@@ -26,11 +26,20 @@ export function AuthWrapper({ children, fallback, allowAnonymous = false }: Auth
     return () => clearTimeout(timer)
   }, [loading])
 
-  // If allowing anonymous access, don't block on loading
-  if (allowAnonymous) {
-    return <>{children}</>
-  }
+  // If auth finishes or a user is present, ensure fallback is hidden
+  React.useEffect(() => {
+    if (!loading || user) {
+      setShowFallback(false)
+    }
+  }, [loading, user])
 
+  // If allowing anonymous access, don't block on loading
+  if (allowAnonymous) return <>{children}</>
+
+  // If signed in, always render children (ignore fallback state)
+  if (user) return <>{children}</>
+
+  // Otherwise, show loader briefly, then fallback
   if (loading && !showFallback) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -39,9 +48,5 @@ export function AuthWrapper({ children, fallback, allowAnonymous = false }: Auth
     )
   }
 
-  if (!user || showFallback) {
-    return fallback || <AuthForms />
-  }
-
-  return <>{children}</>
+  return fallback || <AuthForms />
 }

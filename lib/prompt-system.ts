@@ -2,25 +2,25 @@ export type ResponseLength = 'concise' | 'normal' | 'detailed';
 
 export const generateModelPrompt = (userQuery: string, responseLength: ResponseLength = 'normal') => {
   const lengthInstructions = {
-    concise: 'Answer with a numbered list or very brief phrase (maximum 10-15 words total).',
+    concise: 'Answer with a ranked numbered list of SINGLE-WORD or MINIMAL-TOKEN items (e.g., "MBA, MSc, BSc"). No sentences.',
     normal: 'Answer in 3-5 sentences with key reasoning and context.',
     detailed: 'Provide comprehensive answer with examples, nuances, and full explanation (6+ sentences).'
   };
 
   // For concise mode, we want extremely brief, list-style responses
   const outputFormat = responseLength === 'concise' ? `
-[MAIN ANSWER]
-${lengthInstructions[responseLength]}
-Examples: 
-- For "top 3 AI coding tools for solo entrepreneurs": "1. GitHub Copilot 2. Cursor 3. Replit"
-- For "best programming language": "Python (versatility, ease)"
-- For yes/no questions: "Yes" or "No" with 1-2 word reason
+ [MAIN ANSWER]
+ ${lengthInstructions[responseLength]}
+ Examples:
+ - best degree for founders? => "1. MBA 2. MSc 3. BSc"
+ - top 3 coding tools => "1. Copilot 2. Cursor 3. Replit"
+ - yes/no => "Yes" or "No"
 
-[CONFIDENCE: XX%]
-Rate your confidence 0-100%
+ [CONFIDENCE: XX%]
+ Rate your confidence 0-100%
 
-CRITICAL: OUTPUT ONLY THE NUMBERED LIST/ANSWER AND CONFIDENCE. NO explanations, disclaimers, notes, context, or meta-commentary whatsoever.
-` : `
+ CRITICAL: OUTPUT ONLY THE NUMBERED LIST WITH SINGLE-WORD/MINIMAL-TOKEN ITEMS AND THE CONFIDENCE. NO sentences, NO explanations, NO meta-commentary.
+ ` : `
 [MAIN ANSWER]
 Provide your clearest answer here. Write as if explaining to an intelligent person who isn't a specialist.
 ${lengthInstructions[responseLength]}
@@ -64,14 +64,14 @@ ${outputFormat}
    - Use clear, simple language - avoid jargon unless essential
    - If the question is ambiguous, state your interpretation clearly
    - Be precise with qualifiers (usually, often, sometimes vs always, never)
-   ${responseLength === 'concise' ? '- FOR CONCISE MODE: NO disclaimers, notes, warnings, or meta-commentary. Output ONLY the numbered list/answer and confidence percentage. Do not add phrases like "Note:", "Please note:", "It\'s worth mentioning:", "Keep in mind:", etc.' : ''}
+    ${responseLength === 'concise' ? '- FOR CONCISE MODE: Only one-word/minimal tokens in the numbered list. No extra words.' : ''}
 
 4. QUALITY CHECK:
    Before responding, verify: "Would an intelligent non-expert understand this answer and trust its reasoning?"
 
 Remember: Accuracy with acknowledged uncertainty is better than confident incorrectness.
 
-${responseLength === 'concise' ? 'FINAL REMINDER FOR CONCISE MODE: Your entire response must be ONLY the numbered list/brief answer followed by confidence percentage. Absolutely NO additional text, explanations, disclaimers, or commentary of any kind.' : ''}
+ ${responseLength === 'concise' ? 'FINAL REMINDER FOR CONCISE MODE: ONLY the numbered list of single-word/minimal-token items and the confidence percentage. Nothing else.' : ''}
 
 Your response should enable other AI systems to identify points of agreement and disagreement for consensus building.
 `;

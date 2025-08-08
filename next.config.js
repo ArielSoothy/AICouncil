@@ -13,7 +13,7 @@ const nextConfig = {
     ignoreDuringBuilds: false,
   },
   experimental: {
-    serverComponentsExternalPackages: ['@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google'],
+    serverComponentsExternalPackages: ['@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@ai-sdk/groq'],
   },
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
