@@ -79,10 +79,20 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
 // Benchmarks and derived power weights (0.0-1.0)
 export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // OpenAI
+  // Updated using Artificial Analysis data (Intelligence Index and MMLU-Pro)
+  // Source: https://artificialanalysis.ai/leaderboards/models
+  'gpt-5': { arenaTier: 'S', aaii: 1069, mmlu: 87, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
+  'gpt-5-mini': { arenaTier: 'A', aaii: 1064, mmlu: 83, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
+  'gpt-5-nano': { arenaTier: 'B', aaii: 1054, mmlu: 77, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
+  'gpt-4.1': { arenaTier: 'A', aaii: 1047, mmlu: 81, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
+  'gpt-4.1-mini': { arenaTier: 'B', aaii: 1042, mmlu: 78, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
+  'gpt-4.1-nano': { arenaTier: 'C', aaii: 1030, mmlu: 66, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
   'gpt-4': { arenaTier: 'A', aaii: 1200, mmlu: 86, source: 'Chatbot Arena/ArtificialAnalysis', lastUpdated: '2025-05-01' },
   'gpt-4-turbo-preview': { arenaTier: 'A', aaii: 1230, mmlu: 83, source: 'ArtificialAnalysis', lastUpdated: '2025-02-01' },
   'gpt-4o': { arenaTier: 'S', aaii: 1297, mmlu: 80, source: 'OpenLM.ai Arena/AA', lastUpdated: '2025-03-26' },
   'gpt-3.5-turbo': { arenaTier: 'B', aaii: 950, mmlu: 70, source: 'Historical averages', lastUpdated: '2024-11-01' },
+  'o3': { arenaTier: 'S', aaii: 1067, mmlu: 85, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
+  'o4-mini': { arenaTier: 'A', aaii: 1065, mmlu: 83, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
 
   // Anthropic
   'claude-opus-4-20250514': { arenaTier: 'S', aaii: 1212, mmlu: 87, source: 'Anthropic/AA', lastUpdated: '2025-05-14' },
@@ -105,7 +115,8 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   'gemma2-9b-it': { arenaTier: 'B', aaii: 1120, mmlu: 68, source: 'Community evals', lastUpdated: '2024-08-01' },
 
   // xAI
-  'grok-4-0709': { arenaTier: 'S', aaii: 1300, mmlu: 88, source: 'xAI/pricing page (approx)', lastUpdated: '2025-07-22' },
+  // Align Grok 4 to AA row (Intelligence ~68, MMLU-Pro ~87). AA index normalized to ~1000+score
+  'grok-4-0709': { arenaTier: 'S', aaii: 1068, mmlu: 87, source: 'ArtificialAnalysis/xAI', lastUpdated: '2025-08-08' },
   'grok-3': { arenaTier: 'A', aaii: 1250, mmlu: 86, source: 'xAI/pricing page (approx)', lastUpdated: '2025-07-22' },
   'grok-3-mini': { arenaTier: 'B', aaii: 1150, mmlu: 75, source: 'xAI/pricing page (approx)', lastUpdated: '2025-07-22' },
   'grok-2-latest': { arenaTier: 'S', aaii: 1273, mmlu: 87, source: 'OpenLM.ai Arena/xAI blog', lastUpdated: '2025-03-01' },

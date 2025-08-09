@@ -443,10 +443,11 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
           Model Influence (weight × mention contributes to ranking confidence). Higher weight = more influence.
           <div className="mt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {result.responses.map((r, i) => {
-              const w = MODEL_POWER[r.model as keyof typeof MODEL_POWER] || 0.7
+              const mk = (r.model.split('/')?.pop() || r.model)
+              const w = MODEL_POWER[mk as keyof typeof MODEL_POWER] || 0.7
               return (
                 <div key={i} className="flex items-center justify-between px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded">
-                  <span className="truncate text-gray-700 dark:text-gray-300">{r.model.split('/').pop() || r.model}</span>
+                  <span className="truncate text-gray-700 dark:text-gray-300">{mk}</span>
                   <span className="font-mono">{w.toFixed(2)}</span>
                 </div>
               )
