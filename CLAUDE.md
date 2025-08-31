@@ -403,6 +403,94 @@ export const revalidate = 3600 // 1 hour
 
 This Vercel setup provides production-ready deployment with optimized performance, proper error handling, and scalable architecture for AI applications.
 
+## 📈 Post-MVP Features Roadmap
+
+### V2 Core Features (Priority)
+- **Database & Caching System**
+  - Database to save questions for intelligent caching (avoid re-prompting identical queries)
+  - User database for authentication and profiles
+  - Prompt history storage and retrieval
+  - Cost tracking database for pricing model optimization
+
+- **User Authentication & Management**
+  - User login/registration system
+  - User profiles and preferences
+  - Response history per user
+  - User rating system for answers
+  - User feedback collection system
+
+- **Enhanced AI Models & Providers**
+  - Add all major AI companies (DeepSeek, xAI, etc.) with all available models
+  - **Web Search Integration**: Real-time internet access for updated information
+    - OpenAI: Free with tokens (Responses API)
+    - Anthropic: $10/1k searches (most cost-effective)
+    - Google: $35/1k searches (premium option)
+    - Perplexity: $5/1k searches (specialized web search)
+  - Sub-model creation and customization features
+  - Model "IQ" levels and weighting system for consensus decisions
+
+### V3 Advanced Features
+- **Premium Feature: Multi-Layer Review**
+  - Premium models review and re-evaluate responses from all other models
+  - Advanced consensus algorithms with model intelligence weighting
+  - Freemium model with free models for basic queries
+
+- **Web Search Premium Tier**
+  - Optional web search toggle per query
+  - "AI Council with Real-Time Intelligence" branding
+  - Tiered pricing based on web search usage
+  - Citation transparency with source links
+  - Start with Anthropic Claude ($10/1k searches) for cost-effectiveness
+
+- **Data Analytics & Intelligence**
+  - Collect prompts and answers for trend analysis
+  - Understand which models perform best for specific query types
+  - User behavior analytics and preferences
+  - Cost analysis and pricing optimization data
+
+- **User Experience Enhancements**
+  - Simplified cost display (levels instead of per-1M token costs)
+  - Model "IQ" rating system for user clarity
+  - Clean and simplified UI/UX design
+  - Mobile-first responsive design optimization
+  - Restrict responses to text only (no voice, video, images)
+
+- **Gamification & Engagement**
+  - Reward system: earn premium prompts after using normal cost queries
+  - User prompt history dashboard
+  - Rating and feedback mechanisms
+  - Achievement system for engagement
+
+### V4 Business & Integration Features
+- **Monetization**
+  - Payment system integration
+  - Subscription tiers and freemium model
+  - **Web Search Premium Pricing**:
+    - Basic: No web search (free/low cost)
+    - Premium: Limited web searches per month
+    - Enterprise: Unlimited web searches
+  - Cost tracking for accurate pricing models (including web search costs)
+  - Revenue analytics dashboard with web search usage metrics
+
+- **External Integrations**
+  - WhatsApp bot integration
+  - API for third-party integrations
+  - Webhook support for notifications
+
+### V5 Enterprise & Scaling
+- **Advanced Features**
+  - Team collaboration features
+  - Custom model configurations
+  - Advanced analytics dashboards
+  - A/B testing framework for consensus algorithms
+
+- **Infrastructure & Scaling**
+  - Redis for caching and rate limiting
+  - CDN for static assets
+  - Monitoring and logging systems
+  - Load balancing for high traffic
+  - Database optimization and scaling
+
 ## Supabase Database & Authentication Setup
 
 This project includes a complete Supabase integration for user authentication, conversation storage, and subscription management with Row Level Security (RLS).

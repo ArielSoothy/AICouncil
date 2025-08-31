@@ -6,17 +6,6 @@ import { AIProvider } from './types';
 export class OpenAIProvider implements AIProvider {
   name = 'OpenAI';
   models = [
-    'gpt-5',
-    'gpt-5-mini',
-    'gpt-5-nano',
-    'gpt-4.1',
-    'gpt-4.1-mini',
-    'gpt-4.1-nano',
-    'o3',
-    'o4-mini',
-    'gpt-4o',
-    'gpt-4o-realtime-preview',
-    // legacy/compat
     'gpt-4-turbo-preview',
     'gpt-4',
     'gpt-3.5-turbo',

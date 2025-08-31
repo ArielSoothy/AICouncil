@@ -439,8 +439,8 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
           Ranked Options with Analysis
         </h2>
         {/* Model Influence Overview */}
-        <div className="mb-3 text-xs text-muted-foreground" title="Weights derive from benchmark tiers and evaluation scores; higher weight models sway ranking more when they agree.">
-          Model Influence (weight × mention contributes to ranking confidence). Higher weight = more influence.
+          <div className="mb-3 text-xs text-muted-foreground" title="Influence derives from rank-based mapping to 0.5–1.0. Higher-ranked models have more sway when they agree.">
+          Model Influence (rank → weight × mentions contributes to ranking confidence). Higher rank = more influence.
           <div className="mt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {result.responses.map((r, i) => {
               const mk = (r.model.split('/')?.pop() || r.model)

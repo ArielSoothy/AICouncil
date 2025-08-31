@@ -90,6 +90,8 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   'gpt-4': { arenaTier: 'A', aaii: 1200, mmlu: 86, source: 'Chatbot Arena/ArtificialAnalysis', lastUpdated: '2025-05-01' },
   'gpt-4-turbo-preview': { arenaTier: 'A', aaii: 1230, mmlu: 83, source: 'ArtificialAnalysis', lastUpdated: '2025-02-01' },
   'gpt-4o': { arenaTier: 'S', aaii: 1297, mmlu: 80, source: 'OpenLM.ai Arena/AA', lastUpdated: '2025-03-26' },
+  // Map realtime preview to gpt-4o for ranking purposes
+  'gpt-4o-realtime-preview': { arenaTier: 'S', aaii: 1297, mmlu: 80, source: 'OpenLM.ai Arena/AA (mapped to gpt-4o)', lastUpdated: '2025-03-26' },
   'gpt-3.5-turbo': { arenaTier: 'B', aaii: 950, mmlu: 70, source: 'Historical averages', lastUpdated: '2024-11-01' },
   'o3': { arenaTier: 'S', aaii: 1067, mmlu: 85, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
   'o4-mini': { arenaTier: 'A', aaii: 1065, mmlu: 83, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
@@ -135,27 +137,70 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   'command-r': { arenaTier: 'B', aaii: 1180, mmlu: 60, source: 'ArtificialAnalysis', lastUpdated: '2024-08-30' },
 };
 
-// Convert arena tier and aaii into a 0..1 weight
-export function computePowerWeight(model: string): number {
+// --- Rank-based system (replaces weight-first approach) ---
+
+// Compute a comparable score from benchmarks for ranking
+function computeBenchmarkScore(model: string): number {
   const b = MODEL_BENCHMARKS[model];
-  if (!b) return 0.7; // default neutral weight
-  const tierBase = b.arenaTier === 'S' ? 0.95 : b.arenaTier === 'A' ? 0.85 : b.arenaTier === 'B' ? 0.72 : 0.6;
-  const aaiiAdj = b.aaii ? Math.min(Math.max((b.aaii - 1000) / 400, -0.1), 0.1) : 0; // small adjustment
-  const mmluAdj = b.mmlu ? Math.min(Math.max((b.mmlu - 75) / 50, -0.08), 0.08) : 0;
-  const w = tierBase + aaiiAdj + mmluAdj;
+  if (!b) return 0;
+  // Primary: AAII if available; Secondary: MMLU; Tier bonus: S>A>B>C
+  const tierBonus = b.arenaTier === 'S' ? 40 : b.arenaTier === 'A' ? 20 : b.arenaTier === 'B' ? 10 : 0;
+  const aaiiScore = typeof b.aaii === 'number' ? b.aaii : 1000; // default baseline
+  const mmluScore = typeof b.mmlu === 'number' ? b.mmlu : 60;    // default baseline
+  return aaiiScore + tierBonus + (mmluScore / 2);
+}
+
+// Precompute ranks for all benchmarked models
+const PRECOMPUTED_RANKS: { model: string; rank: number }[] = (() => {
+  const entries = Object.keys(MODEL_BENCHMARKS)
+    .map((m) => ({ model: m, score: computeBenchmarkScore(m) }))
+    .sort((a, b) => b.score - a.score);
+  return entries.map((e, idx) => ({ model: e.model, rank: idx + 1 }));
+})();
+
+const MODEL_TO_RANK: Record<string, number> = PRECOMPUTED_RANKS.reduce((acc, { model, rank }) => {
+  acc[model] = rank;
+  return acc;
+}, {} as Record<string, number>);
+
+export function getMaxRank(): number {
+  return PRECOMPUTED_RANKS.length > 0 ? PRECOMPUTED_RANKS.length : 10;
+}
+
+export function getModelRank(model: string): number {
+  const direct = MODEL_TO_RANK[model];
+  if (typeof direct === 'number') return direct;
+  // Fallback: try to map common preview/variant names to base model
+  const base = model.replace(/:.*$/, '').replace(/-preview|-beta|-latest/g, '');
+  if (MODEL_TO_RANK[base]) return MODEL_TO_RANK[base];
+  // Default to median rank if unknown
+  const median = Math.ceil((getMaxRank() + 1) / 2);
+  return median;
+}
+
+export function rankToInfluenceWeight(rank: number): number {
+  const maxRank = getMaxRank();
+  if (maxRank <= 1) return 1.0;
+  // Map rank 1..maxRank to weight 1.0..0.5 (linear)
+  const t = (rank - 1) / (maxRank - 1);
+  const w = 1.0 - (t * 0.5);
   return Math.max(0.5, Math.min(1.0, Number(w.toFixed(2))));
 }
 
+// Back-compat alias: MODEL_POWER now derives from ranks
 export const MODEL_POWER: Record<string, number> = new Proxy({}, {
   get(_target, prop: string) {
-    return computePowerWeight(prop);
+    const rank = getModelRank(prop);
+    return rankToInfluenceWeight(rank);
   }
 }) as Record<string, number>;
 
-export function getRankedModels(): { model: string; weight: number }[] {
-  const models = Object.keys(MODEL_BENCHMARKS);
-  return models
-    .map(m => ({ model: m, weight: computePowerWeight(m) }))
+export function getRankedModels(): { model: string; rank: number }[] {
+  return PRECOMPUTED_RANKS.map(({ model, rank }) => ({ model, rank }));
+}
+
+export function getInfluenceWeights(): { model: string; weight: number }[] {
+  return PRECOMPUTED_RANKS.map(({ model, rank }) => ({ model, weight: rankToInfluenceWeight(rank) }))
     .sort((a, b) => b.weight - a.weight);
 }
 
