@@ -300,6 +300,10 @@ CONFIDENCE: [0-100]`
     conclusion: string
     confidence: number
   } {
+    console.log('=== SYNTHESIS PARSING ===')
+    console.log('Full response:', response)
+    console.log('=========================')
+    
     const agreements: string[] = []
     const disagreements: string[] = []
     let conclusion = ''
@@ -320,58 +324,148 @@ CONFIDENCE: [0-100]`
     }
     
     // Parse conclusion - be more generous with the match
-    const conclusionMatch = response.match(/CONCLUSION:?\s*([\s\S]*?)(?=CONFIDENCE:|$)/i)
-    if (conclusionMatch) {
+    const conclusionMatch = response.match(/CONCLUSION:?\s*([\s\S]*?)(?=CONFIDENCE:|INFORMATION REQUEST:|$)/i)
+    if (conclusionMatch && conclusionMatch[1].trim()) {
       conclusion = conclusionMatch[1].trim()
+      console.log('Found conclusion with CONCLUSION label')
     }
     
-    // If no conclusion found with the label, try to extract it differently
+    // If no conclusion found with the label, try multiple patterns
     if (!conclusion) {
-      // Look for the section after disagreements and before confidence
-      const afterDisagreements = response.split(/DISAGREEMENTS?:/i)[1]
-      if (afterDisagreements) {
-        const beforeConfidence = afterDisagreements.split(/CONFIDENCE:/i)[0]
-        if (beforeConfidence) {
-          // Remove any bullet points that were part of disagreements
-          const lines = beforeConfidence.split('\n').filter(line => 
-            !line.trim().startsWith('-') && 
-            !line.trim().startsWith('•') &&
-            line.trim().length > 0
-          )
-          if (lines.length > 0) {
-            conclusion = lines.join('\n').trim()
+      console.log('No CONCLUSION label found, trying alternative patterns...')
+      
+      // Pattern 1: Look for content after DISAGREEMENTS and before CONFIDENCE
+      const afterDisagreementsMatch = response.match(/DISAGREEMENTS?:[\s\S]*?\n\n([\s\S]*?)(?=CONFIDENCE:|INFORMATION REQUEST:|$)/i)
+      if (afterDisagreementsMatch && afterDisagreementsMatch[1]) {
+        const potentialConclusion = afterDisagreementsMatch[1].trim()
+        // Make sure it's not just bullet points
+        if (potentialConclusion && !potentialConclusion.match(/^[-•]/)) {
+          conclusion = potentialConclusion
+          console.log('Found conclusion after disagreements')
+        }
+      }
+      
+      // Pattern 2: Look for "Based on" statements
+      if (!conclusion) {
+        const basedOnMatch = response.match(/Based on[^:]*?[:,]\s*([\s\S]*?)(?=\n\n|CONFIDENCE:|INFORMATION REQUEST:|$)/i)
+        if (basedOnMatch) {
+          conclusion = basedOnMatch[0].trim() // Include the "Based on" part
+          console.log('Found conclusion with "Based on" pattern')
+        }
+      }
+      
+      // Pattern 3: Look for numbered recommendations (1. 2. 3. etc)
+      if (!conclusion) {
+        const numberedMatch = response.match(/(?:^|\n)((?:1\.\s*.+(?:\n(?:2|3|4|5)\.\s*.+)*))(?:\n|$)/m)
+        if (numberedMatch) {
+          conclusion = numberedMatch[1].trim()
+          console.log('Found conclusion with numbered list')
+        }
+      }
+      
+      // Pattern 4: Look for "Recommendations" or "Top" patterns
+      if (!conclusion) {
+        const recommendationMatch = response.match(/(?:Recommendations?|Top \d+|Best options?):?\s*([\s\S]*?)(?=CONFIDENCE:|INFORMATION REQUEST:|$)/i)
+        if (recommendationMatch && recommendationMatch[1].trim()) {
+          conclusion = recommendationMatch[1].trim()
+          console.log('Found conclusion with Recommendations pattern')
+        }
+      }
+      
+      // Pattern 5: Extract main content paragraphs (not bullet points)
+      if (!conclusion) {
+        const lines = response.split('\n')
+        const contentLines: string[] = []
+        let skipNext = false
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim()
+          
+          // Skip headers and bullet points
+          if (line.match(/^(AGREEMENTS?|DISAGREEMENTS?|CONFIDENCE|INFORMATION REQUEST):/i)) {
+            skipNext = true
+            continue
           }
+          if (line.match(/^[-•]/) || line.length < 20) {
+            continue
+          }
+          if (skipNext && line.length < 50) {
+            skipNext = false
+            continue
+          }
+          
+          // This looks like content
+          if (line.length > 30) {
+            contentLines.push(line)
+            skipNext = false
+          }
+        }
+        
+        if (contentLines.length > 0) {
+          conclusion = contentLines.join('\n').trim()
+          console.log('Found conclusion by extracting main content')
         }
       }
     }
     
-    // If still no conclusion, try to find recommendations or "Based on" patterns
-    if (!conclusion) {
-      const recommendationMatch = response.match(/(?:Based on|Recommendations?:|Top \d+|Best options?:)([\s\S]*?)(?=CONFIDENCE:|$)/i)
-      if (recommendationMatch) {
-        conclusion = recommendationMatch[1].trim()
+    // Final fallback: Create a conclusion from the synthesis
+    if (!conclusion || conclusion.length < 20) {
+      console.log('Using fallback conclusion generation')
+      
+      // Try to extract something meaningful from the whole response
+      const cleanedResponse = response
+        .replace(/AGREEMENTS?:[\s\S]*?(?=DISAGREEMENTS?:|CONCLUSION:|$)/i, '')
+        .replace(/DISAGREEMENTS?:[\s\S]*?(?=CONCLUSION:|$)/i, '')
+        .replace(/CONFIDENCE:\s*\d+%?/i, '')
+        .replace(/INFORMATION REQUEST:[\s\S]*$/i, '')
+        .trim()
+      
+      if (cleanedResponse.length > 50) {
+        conclusion = cleanedResponse
+      } else if (agreements.length > 0 || disagreements.length > 0) {
+        // Generate a conclusion from agreements/disagreements
+        conclusion = 'Based on the agent analysis:\n\n'
+        
+        if (agreements.length > 0) {
+          conclusion += 'Key consensus points:\n'
+          agreements.slice(0, 3).forEach(a => {
+            conclusion += `• ${a}\n`
+          })
+        }
+        
+        if (disagreements.length > 0) {
+          if (agreements.length > 0) conclusion += '\n'
+          conclusion += 'Areas requiring further consideration:\n'
+          disagreements.slice(0, 3).forEach(d => {
+            conclusion += `• ${d}\n`
+          })
+        }
+        
+        conclusion += '\nFor detailed insights, review the individual agent responses above.'
+      } else {
+        // Absolute fallback
+        conclusion = 'The agents have completed their analysis. Please review the individual responses above for their detailed perspectives on your query.'
       }
     }
     
-    // Last resort: use everything after disagreements that's not confidence
-    if (!conclusion && response.includes('DISAGREEMENT')) {
-      const parts = response.split(/DISAGREEMENTS?:/i)
-      if (parts[1]) {
-        const content = parts[1].split(/CONFIDENCE:/i)[0]
-        // Clean up the content
-        conclusion = content
-          .split('\n')
-          .filter(line => line.trim().length > 0)
-          .join('\n')
-          .trim()
-      }
-    }
+    // Clean up the conclusion
+    conclusion = conclusion
+      .replace(/^CONCLUSION:?\s*/i, '') // Remove label if still present
+      .replace(/\n{3,}/g, '\n\n') // Normalize newlines
+      .trim()
     
     // Parse confidence
     const confidenceMatch = response.match(/CONFIDENCE:?\s*(\d+)/i)
     if (confidenceMatch) {
       confidence = Math.min(100, Math.max(0, parseInt(confidenceMatch[1])))
     }
+    
+    console.log('=== PARSED RESULTS ===')
+    console.log('Conclusion found:', conclusion ? `Yes (${conclusion.length} chars)` : 'No')
+    console.log('Agreements:', agreements.length)
+    console.log('Disagreements:', disagreements.length)
+    console.log('Confidence:', confidence)
+    console.log('=====================')
     
     return { agreements, disagreements, conclusion, confidence }
   }

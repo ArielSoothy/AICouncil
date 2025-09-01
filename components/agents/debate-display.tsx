@@ -28,6 +28,7 @@ import { formatDebateSummary } from '@/lib/agents/debate-prompts'
 interface DebateDisplayProps {
   session: DebateSession
   onRefinedQuery?: (query: string) => void
+  onFollowUpRound?: (answers: Record<number, string>) => void
 }
 
 const agentIcons = {
@@ -42,7 +43,7 @@ const agentColors = {
   synthesizer: '#10B981'
 }
 
-export function DebateDisplay({ session, onRefinedQuery }: DebateDisplayProps) {
+export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: DebateDisplayProps) {
   const [followUpAnswers, setFollowUpAnswers] = useState<Record<number, string>>({})
   const [showFollowUpInput, setShowFollowUpInput] = useState(false)
   
@@ -173,40 +174,79 @@ export function DebateDisplay({ session, onRefinedQuery }: DebateDisplayProps) {
       </Card>
 
       {/* Debate Content */}
-      <Tabs defaultValue="timeline" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="by-round">By Round</TabsTrigger>
+      <Tabs defaultValue="round-1" className="space-y-4">
+        <TabsList className="w-full flex flex-wrap gap-1">
+          {session.rounds.map((round, idx) => (
+            <TabsTrigger 
+              key={`round-${round.roundNumber}`} 
+              value={`round-${round.roundNumber}`}
+              className="flex items-center gap-1"
+            >
+              Round {round.roundNumber}
+              {round.messages.some(m => m.content.includes('follow-up') || m.content.includes('Additional context')) && (
+                <Badge variant="secondary" className="text-xs ml-1">Follow-up</Badge>
+              )}
+            </TabsTrigger>
+          ))}
+          <TabsTrigger value="timeline" className="ml-auto">Timeline</TabsTrigger>
           <TabsTrigger value="synthesis">Synthesis</TabsTrigger>
         </TabsList>
 
+        {/* Individual Round Tabs */}
+        {session.rounds.map(round => (
+          <TabsContent key={`round-${round.roundNumber}`} value={`round-${round.roundNumber}`} className="space-y-4">
+            <Card className="p-4 bg-muted/30">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-semibold">Round {round.roundNumber}</h3>
+                  {round.messages.some(m => m.content.includes('follow-up') || m.content.includes('Additional context')) && (
+                    <Badge variant="secondary">Follow-up Round</Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    {formatDuration(round.startTime, round.endTime)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MessageSquare className="w-4 h-4" />
+                    {round.messages.length} responses
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Hash className="w-4 h-4" />
+                    {round.messages.reduce((sum, m) => sum + m.tokensUsed, 0)} tokens
+                  </span>
+                </div>
+              </div>
+            </Card>
+            
+            <ScrollArea className="h-[500px] pr-4">
+              <div className="space-y-4">
+                {round.messages.map(message => renderMessage(message))}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        ))}
+        
+        {/* Timeline Tab */}
         <TabsContent value="timeline" className="space-y-4">
           <ScrollArea className="h-[600px] pr-4">
             <div className="space-y-4">
-              {session.rounds.flatMap(round => 
-                round.messages.map(message => renderMessage(message))
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="by-round" className="space-y-4">
-          <ScrollArea className="h-[600px] pr-4">
-            {session.rounds.map(round => (
-              <div key={round.roundNumber} className="mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge variant="outline" className="text-sm">
-                    Round {round.roundNumber}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDuration(round.startTime, round.endTime)}
-                  </span>
-                </div>
-                <div className="space-y-3 pl-4 border-l-2">
+              {session.rounds.map((round, roundIdx) => (
+                <div key={round.roundNumber}>
+                  {roundIdx > 0 && (
+                    <div className="flex items-center gap-2 my-4">
+                      <div className="flex-1 h-px bg-border" />
+                      <Badge variant="outline" className="text-xs">
+                        Round {round.roundNumber}
+                      </Badge>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
                   {round.messages.map(message => renderMessage(message))}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </ScrollArea>
         </TabsContent>
 
@@ -327,8 +367,13 @@ export function DebateDisplay({ session, onRefinedQuery }: DebateDisplayProps) {
                                 ? `${session.query}\n\nContext: ${answersProvided}\n\nBased on the above context and the previous synthesis that suggested: "${session.finalSynthesis?.conclusion?.substring(0, 200)}...", please provide more specific recommendations.`
                                 : session.query
                               
-                              // Trigger new query if callback provided, otherwise copy
-                              if (onRefinedQuery) {
+                              // If we have a follow-up handler, use it to add as new round
+                              if (onFollowUpRound) {
+                                onFollowUpRound(followUpAnswers)
+                                setShowFollowUpInput(false)
+                                setFollowUpAnswers({})
+                              } else if (onRefinedQuery) {
+                                // Otherwise start new debate
                                 onRefinedQuery(refinedQuery)
                                 setShowFollowUpInput(false)
                                 setFollowUpAnswers({})
@@ -342,7 +387,7 @@ export function DebateDisplay({ session, onRefinedQuery }: DebateDisplayProps) {
                             className="flex items-center gap-2"
                           >
                             <ArrowRight className="w-4 h-4" />
-                            Start New Debate with Context
+                            Continue with Follow-up Round
                           </Button>
                           <Button
                             onClick={() => {

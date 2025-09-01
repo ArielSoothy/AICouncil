@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AgentSelector } from './agent-selector'
-import { LLMSelector } from './llm-selector'
+import { LLMPillSelector } from './llm-pill-selector'
 import { DebateDisplay } from './debate-display'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -25,6 +25,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [query, setQuery] = useState('What\'s the best second-hand motorcycle or scooter up to 500cc to buy in Israel for daily commuting?')
   const [selectedAgents, setSelectedAgents] = useState<AgentConfig[]>([])
   const [selectedLLMs, setSelectedLLMs] = useState<Array<{ provider: string; model: string }>>([])
+  const [selectedLLMsRound2, setSelectedLLMsRound2] = useState<Array<{ provider: string; model: string }>>([])
   const [rounds, setRounds] = useState(DEBATE_CONFIG.defaultRounds)
   const [isLoading, setIsLoading] = useState(false)
   const [debateSession, setDebateSession] = useState<DebateSession | null>(null)
@@ -86,7 +87,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     }
   }, [selectedAgents, selectedLLMs, rounds, responseMode, round1Mode])
 
-  const startDebate = async (continueRound2 = false) => {
+  const startDebate = async (continueRound2 = false, followUpAnswers?: Record<number, string>) => {
     // Check query
     if (!continueRound2 && !query.trim()) {
       setError('Please enter a query')
@@ -108,7 +109,11 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     setError(null)
     if (!continueRound2) {
       setDebateSession(null)
-      setActiveTab('debate')
+      // Switch to debate tab with a small delay to ensure UI updates
+      setTimeout(() => {
+        console.log('Switching to debate tab')
+        setActiveTab('debate')
+      }, 100)
     }
     setShowRound2Prompt(false)
 
@@ -119,7 +124,9 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          query,
+          query: followUpAnswers ? 
+            `${query}\n\nAdditional context from follow-up:\n${Object.entries(followUpAnswers).map(([idx, answer]) => 
+              `Q${parseInt(idx) + 1}: ${answer}`).join('\n')}` : query,
           agents: round1Mode === 'llm' && !continueRound2 ? 
             // Convert LLMs to agent configs for LLM mode
             selectedLLMs.map((llm, idx) => ({
@@ -144,7 +151,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           autoRound2,
           disagreementThreshold,
           isGuestMode: userTier === 'guest',
-          continueSession: continueRound2 ? debateSession?.id : undefined
+          continueSession: continueRound2 || followUpAnswers ? debateSession?.id : undefined,
+          isFollowUp: !!followUpAnswers
         }),
       })
 
@@ -312,13 +320,15 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
             </div>
           </Card>
 
-          {/* Show LLM selector for LLM mode, Agent selector for agent mode */}
+          {/* Show LLM selector for LLM mode Round 1, Agent selector for agent mode */}
           {round1Mode === 'llm' ? (
-            <LLMSelector
+            <LLMPillSelector
               selectedModels={selectedLLMs}
               onModelsChange={setSelectedLLMs}
               availableModels={availableModels}
               userTier={userTier}
+              label="Round 1: Fast LLM Models"
+              minSelection={2}
             />
           ) : (
             <AgentSelector
@@ -327,6 +337,26 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
               availableModels={availableModels}
               userTier={userTier}
             />
+          )}
+          
+          {/* Round 2 Agent Selection - Always use agents for deeper debate */}
+          {(autoRound2 || rounds > 1) && (
+            <Card className="p-6 bg-black/40 border-zinc-800">
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">
+                  Round 2: Agent Personas (if disagreement detected)
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Agents will debate with specialized personas for deeper analysis
+                </p>
+                <AgentSelector
+                  selectedAgents={selectedAgents}
+                  onAgentsChange={setSelectedAgents}
+                  availableModels={availableModels}
+                  userTier={userTier}
+                />
+              </div>
+            </Card>
           )}
 
           {/* Cost Estimation Card */}
@@ -444,6 +474,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
             <>
               <DebateDisplay 
                 session={debateSession} 
+                onFollowUpRound={(answers) => {
+                  // Continue the same session with follow-up round
+                  startDebate(false, answers)
+                }}
                 onRefinedQuery={(refinedQuery) => {
                   // Start new debate with refined query
                   setQuery(refinedQuery)
