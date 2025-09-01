@@ -1,6 +1,6 @@
 'use client'
 
-import { Brain, User, LogOut, BarChart3 } from 'lucide-react'
+import { Brain, User, LogOut, BarChart3, Users } from 'lucide-react'
 import { Button } from './button'
 import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
@@ -20,6 +20,12 @@ export function Header() {
         </Link>
         
         <div className="flex items-center gap-2">
+          <Link href="/agents">
+            <Button variant="ghost" size="sm">
+              <Users className="h-4 w-4 mr-2" />
+              Agents
+            </Button>
+          </Link>
           {user ? (
             <>
               <Link href="/dashboard">

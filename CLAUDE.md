@@ -2,6 +2,31 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Status (August 31, 2025)
+
+### ✨ Latest Features - Agent Debate System
+- **Smart Hybrid Mode**: Choose between Fast LLM mode or Deep Agent Personas
+- **Disagreement Detection**: Automatic scoring with user-controlled Round 2 triggers
+- **Cost Transparency**: Real-time tracking, pre-execution estimates ($0.001-$0.01/query)
+- **3 Specialized Agents**: Analyst (data-driven), Critic (skeptical), Synthesizer (balanced)
+- **Beautiful UI**: Clean design with Radix UI components and smooth animations
+- **Enhanced Synthesis**: Always provides actionable answers even with incomplete information
+- **Follow-up Questions**: Interactive UI for refining queries with additional context
+- **Auto Re-query**: Seamlessly starts new debate with refined query including user-provided context
+
+### 🎯 Key Innovations
+- **Adaptive Intelligence**: Simple queries get fast consensus, complex ones trigger debates
+- **User Control**: Manual or automatic Round 2 based on disagreement threshold
+- **Model Flexibility**: Each agent can use different models for optimal results
+- **Cost Optimization**: Only pay for complexity when needed (10x savings on simple queries)
+- **Smart Follow-ups**: When agents need more info, users get specific recommendations PLUS interactive refinement
+- **Default Query**: "What's the best second-hand motorcycle or scooter up to 500cc to buy in Israel for daily commuting?"
+- **Default Mode**: Concise responses (50 words) for faster results
+- **Default Models**: Pre-selected diverse trio:
+  - `llama-3.1-8b-instant` (Groq - Ultra fast)
+  - `llama-3.3-70b-versatile` (Groq - Powerful)  
+  - `gemini-2.5-flash` (Google - Free & capable)
+
 ## Essential Commands
 
 ```bash
@@ -21,6 +46,18 @@ npm run lint         # ESLint code quality checking
 
 ### Core System
 This is a **multi-model AI consensus engine** that queries multiple AI providers simultaneously and synthesizes responses using an advanced judge analysis system. The architecture follows Next.js 14 patterns with TypeScript and implements a sophisticated ranking system based on model benchmarks.
+
+### Agent Debate System (New!)
+- **Location**: `/lib/agents/` - Core agent logic and orchestration
+- **Components**: `/components/agents/` - UI components for debate interface
+- **API**: `/app/api/agents/debate/` - Serverless endpoint for debates
+- **Types**: Fully typed with TypeScript for reliability
+- **Key Files**:
+  - `agent-system.ts`: Orchestrator for managing debate rounds
+  - `debate-prompts.ts`: Specialized prompts for each agent role
+  - `cost-calculator.ts`: Real-time cost estimation and tracking
+  - `debate-interface.tsx`: Main UI with all configuration options
+  - `debate-display.tsx`: Beautiful visualization of debate progression
 
 ### AI Provider Integration
 - **Unified Provider Pattern**: All AI providers implement `AIProvider` interface in `/lib/ai-providers/types.ts`
