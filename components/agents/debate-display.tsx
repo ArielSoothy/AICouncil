@@ -174,7 +174,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
       </Card>
 
       {/* Debate Content */}
-      <Tabs defaultValue="round-1" className="space-y-4">
+      <Tabs defaultValue="synthesis" className="space-y-4">
         <TabsList className="w-full flex flex-wrap gap-1">
           {session.rounds.map((round, idx) => (
             <TabsTrigger 

@@ -46,6 +46,12 @@ export class AnthropicProvider implements AIProvider {
       });
 
       const responseTime = Date.now() - startTime;
+      
+      console.log('=== ANTHROPIC SUCCESS ===');
+      console.log('Response length:', result.text?.length || 0);
+      console.log('Has text:', !!result.text);
+      console.log('First 200 chars:', result.text ? result.text.substring(0, 200) : 'NO TEXT');
+      console.log('=========================');
 
       return {
         id: `anthropic-${Date.now()}`,
@@ -63,6 +69,12 @@ export class AnthropicProvider implements AIProvider {
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;
+      
+      console.error('=== ANTHROPIC PROVIDER ERROR ===');
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('Full error:', error);
+      console.error('Model:', config.model);
+      console.error('================================');
       
       return {
         id: `anthropic-error-${Date.now()}`,

@@ -109,11 +109,9 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     setError(null)
     if (!continueRound2) {
       setDebateSession(null)
-      // Switch to debate tab with a small delay to ensure UI updates
-      setTimeout(() => {
-        console.log('Switching to debate tab')
-        setActiveTab('debate')
-      }, 100)
+      // Switch to debate tab immediately
+      console.log('Switching to debate tab')
+      setActiveTab('debate')
     }
     setShowRound2Prompt(false)
 

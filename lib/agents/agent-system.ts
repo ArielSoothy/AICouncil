@@ -203,40 +203,92 @@ export class AgentDebateOrchestrator {
   }
   
   private async synthesizeDebate(): Promise<void> {
-    // Collect all messages from all rounds
-    const allMessages = this.session.rounds.flatMap(r => r.messages)
-    
-    // Use the most capable available model for synthesis
-    const synthesisModel = this.getBestAvailableModel()
-    if (!synthesisModel) {
-      throw new Error('No model available for synthesis')
+    try {
+      console.log('=== STARTING SYNTHESIS ===')
+      
+      // Collect all messages from all rounds
+      const allMessages = this.session.rounds.flatMap(r => r.messages)
+      console.log('Total messages to synthesize:', allMessages.length)
+      
+      // Use the most capable available model for synthesis
+      const synthesisModel = this.getBestAvailableModel()
+      
+      console.log('=== SYNTHESIS MODEL DEBUG ===')
+      console.log('Selected synthesis model:', synthesisModel)
+      console.log('Available providers:', providerRegistry.getConfiguredProviders().map(p => ({
+        name: p.name,
+        configured: p.isConfigured(),
+        modelCount: p.models.length
+      })))
+      console.log('============================')
+      
+      if (!synthesisModel) {
+        console.error('ERROR: No model available for synthesis!')
+        throw new Error('No model available for synthesis')
+      }
+      
+      const provider = providerRegistry.getProvider(synthesisModel.provider)
+      console.log('Provider retrieved:', provider?.name || 'NONE')
+      console.log('Provider configured:', provider?.isConfigured() || false)
+      
+      if (!provider) {
+        throw new Error('Provider not available for synthesis')
+      }
+      
+      const synthesisPrompt = this.generateSynthesisPrompt(allMessages)
+      
+      console.log('=== SYNTHESIS DEBUG ===')
+      console.log('Using model:', JSON.stringify(synthesisModel))
+      console.log('Provider name:', provider.name)
+      console.log('Prompt length:', synthesisPrompt.length)
+      console.log('First 500 chars of prompt:', synthesisPrompt.substring(0, 500))
+      
+      console.log('Calling provider.query with config:', {
+        ...synthesisModel,
+        maxTokens: 800
+      })
+      
+      const result = await provider.query(synthesisPrompt, {
+        ...synthesisModel,
+        maxTokens: 800
+      })
+      
+      console.log('Provider query returned:', !!result)
+      
+      console.log('Synthesis result:', result)
+      console.log('Response content:', result.response)
+      console.log('Response length:', result.response?.length || 0)
+      console.log('First 500 chars of response:', result.response ? result.response.substring(0, 500) : 'NO RESPONSE')
+      console.log('=======================')
+      
+      // Parse synthesis
+      const synthesis = this.parseSynthesis(result.response || '')
+      
+      this.session.finalSynthesis = {
+        content: synthesis.conclusion,
+        confidence: synthesis.confidence,
+        agreements: synthesis.agreements,
+        disagreements: synthesis.disagreements,
+        conclusion: synthesis.conclusion,
+        tokensUsed: result.tokens.total
+      }
+      
+      this.session.totalTokensUsed += result.tokens.total
+    } catch (error) {
+      console.error('=== SYNTHESIS ERROR ===')
+      console.error('Error during synthesis:', error)
+      console.error('=======================')
+      
+      // Provide a fallback synthesis
+      this.session.finalSynthesis = {
+        content: 'Unable to generate synthesis due to an error. Please review the individual agent responses above.',
+        confidence: 0,
+        agreements: [],
+        disagreements: [],
+        conclusion: 'Unable to generate synthesis due to an error. Please review the individual agent responses above.',
+        tokensUsed: 0
+      }
     }
-    
-    const provider = providerRegistry.getProvider(synthesisModel.provider)
-    if (!provider) {
-      throw new Error('Provider not available for synthesis')
-    }
-    
-    const synthesisPrompt = this.generateSynthesisPrompt(allMessages)
-    
-    const result = await provider.query(synthesisPrompt, {
-      ...synthesisModel,
-      maxTokens: 800
-    })
-    
-    // Parse synthesis
-    const synthesis = this.parseSynthesis(result.response)
-    
-    this.session.finalSynthesis = {
-      content: synthesis.conclusion,
-      confidence: synthesis.confidence,
-      agreements: synthesis.agreements,
-      disagreements: synthesis.disagreements,
-      conclusion: synthesis.conclusion,
-      tokensUsed: result.tokens.total
-    }
-    
-    this.session.totalTokensUsed += result.tokens.total
   }
   
   private generateSynthesisPrompt(messages: AgentMessage[]): string {
@@ -263,13 +315,10 @@ IMPORTANT INSTRUCTIONS:
 Please provide a final synthesis with:
 1. Key agreements between agents
 2. Main disagreements or tensions
-3. Overall conclusion with SPECIFIC RECOMMENDATIONS
+3. Overall conclusion with THE ACTUAL ANSWER TO THE USER'S QUESTION
 4. Confidence level (0-100)
 
-For product/service recommendations, include:
-- Top 3 specific options (even if general)
-- Brief reason for each (1-2 sentences)
-- Clear disclaimers about what additional info would improve the recommendation
+CRITICAL: The CONCLUSION section MUST contain the actual answer to the user's question, not a generic statement.
 
 Format your response as:
 AGREEMENTS:
@@ -281,15 +330,17 @@ DISAGREEMENTS:
 - [Disagreement 2]
 
 CONCLUSION:
-[Provide specific, actionable recommendations even with limited info. For products: list top 3 with reasons]
+[THE ACTUAL ANSWER TO THE QUESTION - BE SPECIFIC]
 
-Example for products:
-Based on available data, here are 3 top options:
-1. [Product Name] - [Brief reason why it's good]
-2. [Product Name] - [Brief reason why it's good]
-3. [Product Name] - [Brief reason why it's good]
+For the query about motorcycles/scooters in Israel, the conclusion should be like:
+"Based on the analysis, the top 3 options for a second-hand motorcycle/scooter up to 500cc in Israel are:
+1. Yamaha TMAX 500/530 - Excellent for commuting with automatic transmission and weather protection
+2. Honda PCX 150 - Fuel efficient, reliable, and widely available in the used market
+3. Kymco Downtown 300i - Good balance of power and practicality with ample storage
 
-Note: These recommendations would be more precise with [specific missing info].
+These models offer the best combination of reliability, fuel economy, and suitability for daily commuting in Israeli conditions."
+
+For other queries, provide similarly specific, actionable answers that directly address what was asked.
 
 CONFIDENCE: [0-100]`
   }
@@ -462,6 +513,7 @@ CONFIDENCE: [0-100]`
     
     console.log('=== PARSED RESULTS ===')
     console.log('Conclusion found:', conclusion ? `Yes (${conclusion.length} chars)` : 'No')
+    console.log('ACTUAL CONCLUSION:', conclusion ? conclusion.substring(0, 200) : 'NONE')
     console.log('Agreements:', agreements.length)
     console.log('Disagreements:', disagreements.length)
     console.log('Confidence:', confidence)
@@ -535,38 +587,94 @@ CONFIDENCE: [0-100]`
   }
   
   private getBestAvailableModel(): AgentConfig | null {
-    // Return the best available model for synthesis
-    // Priority: Claude Opus 4 > GPT-4o > Claude Sonnet > GPT-4 > Others
+    // Return the best FREE model for synthesis
+    // Priority: Gemini 2.0 Flash > Llama 3.3 70B > Gemini 1.5 Pro > any other free model
     const providers = providerRegistry.getConfiguredProviders()
     
-    // Try Claude Opus 4 first
-    const anthropic = providers.find(p => p.name === 'Anthropic')
-    if (anthropic && anthropic.models.includes('claude-opus-4-20250514')) {
-      return {
-        provider: 'anthropic',
-        model: 'claude-opus-4-20250514',
-        enabled: true,
-        agentId: 'synthesizer',
-        persona: this.session.agents[0]
+    // Try Google Gemini first (FREE and powerful)
+    const google = providers.find(p => p.name === 'Google')
+    if (google) {
+      // Try Gemini 2.0 Flash Experimental first (newest and best free model)
+      if (google.models.includes('gemini-2.0-flash-exp')) {
+        console.log('Using Gemini 2.0 Flash for synthesis (FREE)')
+        return {
+          provider: 'google',
+          model: 'gemini-2.0-flash-exp',
+          enabled: true,
+          agentId: 'synthesizer',
+          persona: this.session.agents[0]
+        }
+      }
+      // Try Gemini 1.5 Pro
+      if (google.models.includes('gemini-1.5-pro-latest')) {
+        console.log('Using Gemini 1.5 Pro for synthesis (FREE)')
+        return {
+          provider: 'google',
+          model: 'gemini-1.5-pro-latest',
+          enabled: true,
+          agentId: 'synthesizer',
+          persona: this.session.agents[0]
+        }
+      }
+      // Try Gemini 2.5 Flash
+      if (google.models.includes('gemini-2.5-flash')) {
+        console.log('Using Gemini 2.5 Flash for synthesis (FREE)')
+        return {
+          provider: 'google',
+          model: 'gemini-2.5-flash',
+          enabled: true,
+          agentId: 'synthesizer',
+          persona: this.session.agents[0]
+        }
       }
     }
     
-    // Try GPT-4o
-    const openai = providers.find(p => p.name === 'OpenAI')
-    if (openai && openai.models.includes('gpt-4o')) {
-      return {
-        provider: 'openai',
-        model: 'gpt-4o',
-        enabled: true,
-        agentId: 'synthesizer',
-        persona: this.session.agents[0]
+    // Try Groq next (FREE with rate limits)
+    const groq = providers.find(p => p.name === 'Groq')
+    if (groq) {
+      // Try Llama 3.3 70B (best free Groq model)
+      if (groq.models.includes('llama-3.3-70b-versatile')) {
+        console.log('Using Llama 3.3 70B for synthesis (FREE)')
+        return {
+          provider: 'groq',
+          model: 'llama-3.3-70b-versatile',
+          enabled: true,
+          agentId: 'synthesizer',
+          persona: this.session.agents[0]
+        }
+      }
+      // Try any Llama model
+      const llamaModel = groq.models.find(m => m.includes('llama'))
+      if (llamaModel) {
+        console.log(`Using ${llamaModel} for synthesis (FREE)`)
+        return {
+          provider: 'groq',
+          model: llamaModel,
+          enabled: true,
+          agentId: 'synthesizer',
+          persona: this.session.agents[0]
+        }
       }
     }
     
     // Fallback to any available model
     if (providers.length > 0 && providers[0].models.length > 0) {
+      // Map provider name to lowercase format used elsewhere
+      const providerNameMap: Record<string, string> = {
+        'OpenAI': 'openai',
+        'Anthropic': 'anthropic',
+        'Google': 'google',
+        'Groq': 'groq',
+        'xAI': 'xai',
+        'Mistral': 'mistral',
+        'Cohere': 'cohere',
+        'Perplexity': 'perplexity'
+      }
+      
+      const providerKey = providerNameMap[providers[0].name] || providers[0].name.toLowerCase()
+      
       return {
-        provider: providers[0].name.toLowerCase(),
+        provider: providerKey as any,
         model: providers[0].models[0],
         enabled: true,
         agentId: 'synthesizer',
