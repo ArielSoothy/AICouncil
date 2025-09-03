@@ -23,7 +23,6 @@ import {
   HelpCircle,
   ArrowRight
 } from 'lucide-react'
-import { formatDebateSummary } from '@/lib/agents/debate-prompts'
 
 interface DebateDisplayProps {
   session: DebateSession

@@ -59,7 +59,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     const agentsForCost = round1Mode === 'llm' 
       ? selectedLLMs.map((llm, idx) => ({
           agentId: `llm-${idx}`,
-          provider: llm.provider,
+          provider: llm.provider as '' | 'openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'perplexity' | 'mistral' | 'cohere',
           model: llm.model,
           enabled: true,
           persona: {
@@ -396,7 +396,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
 
           <div className="flex justify-center">
             <Button
-              onClick={startDebate}
+              onClick={() => startDebate()}
               disabled={isLoading || 
                 (round1Mode === 'llm' ? selectedLLMs.length < 2 : selectedAgents.length < DEBATE_CONFIG.minAgents)}
               size="lg"

@@ -99,7 +99,7 @@ export function AgentSelector({
           agents.push({
             agentId,
             persona,
-            provider: state.provider,
+            provider: state.provider as '' | 'openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'perplexity' | 'mistral' | 'cohere',
             model: state.model,
             enabled: true
           })

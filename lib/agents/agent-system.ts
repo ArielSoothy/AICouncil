@@ -83,8 +83,8 @@ export class AgentDebateOrchestrator {
         }
       }
       
-      // Synthesize final conclusion
-      if (this.session.status === 'debating' || this.session.status === 'awaiting-round2') {
+      // Synthesize final conclusion (only if not error status)
+      if (this.session.status !== 'error' && (this.session.status === 'debating' || this.session.status === 'awaiting-round2')) {
         this.session.status = 'synthesizing'
         await this.synthesizeDebate()
         
