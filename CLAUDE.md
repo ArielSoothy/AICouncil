@@ -107,16 +107,18 @@ Transform AI Council from a multi-model consensus tool into the world's premier 
 
 ### 🎯 Key Innovations
 - **Adaptive Intelligence**: Simple queries get fast consensus, complex ones trigger debates
-- **User Control**: Manual or automatic Round 2 based on disagreement threshold
+- **User Control**: Manual or automatic Round 2 based on disagreement threshold (30% default)
 - **Model Flexibility**: Each agent can use different models for optimal results
 - **Cost Optimization**: Only pay for complexity when needed (10x savings on simple queries)
 - **Smart Follow-ups**: When agents need more info, users get specific recommendations PLUS interactive refinement
-- **Default Query**: "What's the best second-hand motorcycle or scooter up to 500cc to buy in Israel for daily commuting?"
-- **Default Mode**: Concise responses (50 words) for faster results
+- **Default Query**: "What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?"
+- **Default Mode**: Concise responses with Top 3 recommendations first format
 - **Default Models**: Pre-selected diverse trio:
   - `llama-3.1-8b-instant` (Groq - Ultra fast)
   - `llama-3.3-70b-versatile` (Groq - Powerful)  
   - `gemini-2.5-flash` (Google - Free & capable)
+- **Comparison Mode**: Enabled by default - shows single model vs consensus vs agent debate
+- **Response Format**: Standardized "Top 3 Recommendations" first, then summary sentence
 
 ## 🚀 Technical Roadmap
 

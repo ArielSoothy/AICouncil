@@ -31,7 +31,7 @@ interface AgentDebateInterfaceProps {
 }
 
 export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
-  const [query, setQuery] = useState('What\'s the best second-hand motorcycle or scooter up to 500cc to buy in Israel for daily commuting?')
+  const [query, setQuery] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
   const [selectedAgents, setSelectedAgents] = useState<AgentConfig[]>([])
   // For ModelSelector compatibility
   const [modelConfigs, setModelConfigs] = useState<ModelConfig[]>([

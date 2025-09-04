@@ -27,7 +27,7 @@ function QueryInterfaceContent() {
   
   // Override userTier for guest mode
   const effectiveUserTier = isGuestMode ? 'guest' : userTier
-  const [prompt, setPrompt] = useState('What are the top 3 AI coding tools for solo entrepreneurs ranked?')
+  const [prompt, setPrompt] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')

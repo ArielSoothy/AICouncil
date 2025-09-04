@@ -464,9 +464,9 @@ Format your response with clear sections using markdown headers (###).`
                 .slice(0, 5) // Limit to 5 key points
             }
             
-            // Extract confidence (only if explicitly provided, otherwise null)
+            // Extract confidence (only if explicitly provided, otherwise default to 80%)
             const confidenceMatch = content.match(/CONFIDENCE:\s*(\d+)/i)
-            const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : null
+            const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) / 100 : 0.80
             
             // Extract follow-up questions if present
             let followUpQuestions: string[] = []
