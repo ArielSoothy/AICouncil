@@ -21,13 +21,15 @@ import {
   Clock,
   Hash,
   HelpCircle,
-  ArrowRight
+  ArrowRight,
+  GitCompare
 } from 'lucide-react'
+import { ComparisonDisplay } from '@/components/consensus/comparison-display'
 
 interface DebateDisplayProps {
   session: DebateSession
   onRefinedQuery?: (query: string) => void
-  onFollowUpRound?: (answers: Record<number, string>) => void
+  onFollowUpRound?: (answers: Record<string | number, string>) => void
 }
 
 const agentIcons = {
@@ -43,7 +45,7 @@ const agentColors = {
 }
 
 export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: DebateDisplayProps) {
-  const [followUpAnswers, setFollowUpAnswers] = useState<Record<number, string>>({})
+  const [followUpAnswers, setFollowUpAnswers] = useState<Record<string | number, string>>({})
   const [showFollowUpInput, setShowFollowUpInput] = useState(false)
   
   const formatTime = (date: Date) => {
@@ -130,6 +132,13 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
     )
   }
 
+  const handleFollowUpSubmit = () => {
+    if (Object.keys(followUpAnswers).length > 0 && onFollowUpRound) {
+      onFollowUpRound(followUpAnswers)
+      setShowFollowUpInput(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Debate Header */}
@@ -137,7 +146,9 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold mb-2">Debate Query</h3>
-            <p className="text-muted-foreground">{session.query}</p>
+            <div className="text-muted-foreground text-sm max-h-32 overflow-y-auto whitespace-pre-wrap break-words">
+              {session.query}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -250,6 +261,22 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
         </TabsContent>
 
         <TabsContent value="synthesis" className="space-y-4">
+          {/* Show comparison if available */}
+          {session.comparisonResponse && session.finalSynthesis && (
+            <ComparisonDisplay 
+              singleModel={session.comparisonResponse}
+              consensus={{
+                response: session.finalSynthesis.conclusion || session.finalSynthesis.content,
+                models: session.agents.map(a => `${a.name} (${a.role})`),
+                confidence: session.finalSynthesis.confidence,
+                tokensUsed: session.totalTokensUsed,
+                responseTime: session.endTime ? 
+                  (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / 1000 : 0,
+                cost: session.estimatedCost
+              }}
+            />
+          )}
+          
           {session.finalSynthesis ? (
             <Card className="p-6 space-y-4">
               <div className="flex items-center justify-between mb-4">
@@ -260,7 +287,21 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
               </div>
 
               <div className="space-y-4">
-                {session.finalSynthesis.agreements.length > 0 && (
+                {/* Show conclusion first as the main answer */}
+                {session.finalSynthesis.conclusion && (
+                  <div>
+                    <h4 className="font-semibold mb-2 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-blue-500" />
+                      Conclusion
+                    </h4>
+                    <div className="text-sm pl-6 text-foreground whitespace-pre-wrap break-words">
+                      {session.finalSynthesis.conclusion}
+                    </div>
+                  </div>
+                )}
+
+                {/* Show agreements if available */}
+                {session.finalSynthesis.agreements && session.finalSynthesis.agreements.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-2 flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -268,13 +309,14 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
                     </h4>
                     <ul className="space-y-1 pl-6">
                       {session.finalSynthesis.agreements.map((agreement, idx) => (
-                        <li key={idx} className="text-sm">{agreement}</li>
+                        <li key={idx} className="text-sm text-muted-foreground list-disc list-inside">{agreement}</li>
                       ))}
                     </ul>
                   </div>
                 )}
 
-                {session.finalSynthesis.disagreements.length > 0 && (
+                {/* Show disagreements if available */}
+                {session.finalSynthesis.disagreements && session.finalSynthesis.disagreements.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-2 flex items-center gap-2">
                       <XCircle className="w-4 h-4 text-red-500" />
@@ -282,56 +324,42 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
                     </h4>
                     <ul className="space-y-1 pl-6">
                       {session.finalSynthesis.disagreements.map((disagreement, idx) => (
-                        <li key={idx} className="text-sm">{disagreement}</li>
+                        <li key={idx} className="text-sm text-muted-foreground list-disc list-inside">{disagreement}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-
-                <div>
-                  <h4 className="font-semibold mb-2 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-blue-500" />
-                    Conclusion
-                  </h4>
-                  <p className="text-sm pl-6 whitespace-pre-wrap">
-                    {session.finalSynthesis.conclusion}
-                  </p>
-                </div>
                 
-                {session.informationRequest?.detected && (
-                  <div className="mt-4 pt-4 border-t">
-                    <h4 className="font-semibold mb-2 flex items-center gap-2">
-                      <HelpCircle className="w-4 h-4 text-yellow-500" />
-                      Follow-up Questions for Better Results
-                    </h4>
-                    <p className="text-sm text-muted-foreground mb-3 pl-6">
-                      The agents identified some information that would help provide more accurate recommendations:
-                    </p>
-                    
-                    {!showFollowUpInput ? (
-                      <>
+                {/* Always show follow-up section */}
+                <div className="mt-4 pt-4 border-t">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-yellow-500" />
+                    Refine Your Results
+                  </h4>
+                  
+                  {/* Show follow-up questions if detected */}
+                  {session.informationRequest?.detected && session.informationRequest?.followUpQuestions && session.informationRequest.followUpQuestions.length > 0 && (
+                    <>
+                      <p className="text-sm text-muted-foreground mb-3 pl-6">
+                        The agents identified some information that would help provide more accurate recommendations:
+                      </p>
+                      {!showFollowUpInput && (
                         <ul className="space-y-1 pl-6 mb-3">
-                          {session.informationRequest.suggestedQuestions.map((question, idx) => (
+                          {session.informationRequest.followUpQuestions.map((question, idx) => (
                             <li key={idx} className="text-sm flex items-start gap-2">
                               <span className="text-yellow-500">•</span>
                               <span>{question}</span>
                             </li>
                           ))}
                         </ul>
-                        <div className="pl-6">
-                          <Button
-                            onClick={() => setShowFollowUpInput(true)}
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-2"
-                          >
-                            <ArrowRight className="w-4 h-4" />
-                            Answer Questions for Better Results
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="pl-6 space-y-3">
+                      )}
+                    </>
+                  )}
+                  
+                  <div className="pl-6 space-y-3">
+                    {/* Show AI-suggested questions if they exist and we're in input mode */}
+                    {showFollowUpInput && session.informationRequest?.detected && (
+                      <>
                         {session.informationRequest.suggestedQuestions.map((question, idx) => (
                           <div key={idx} className="space-y-2">
                             <label className="text-sm font-medium">{question}</label>
@@ -346,12 +374,45 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
                             />
                           </div>
                         ))}
-                        
-                        <div className="flex gap-2 pt-2">
-                          <Button
-                            onClick={() => {
+                        <div className="border-t my-3"></div>
+                      </>
+                    )}
+                    
+                    {/* Always show custom follow-up input */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <HelpCircle className="w-4 h-4" />
+                        Need different results? Add context for a new debate
+                      </label>
+                      <Textarea
+                        placeholder="Any specific requirements, constraints, or additional questions? (e.g., 'I prefer electric scooters', 'Budget is tight', 'Need good storage space')"
+                        value={followUpAnswers['custom'] || ''}
+                        onChange={(e) => setFollowUpAnswers({
+                          ...followUpAnswers,
+                          'custom': e.target.value
+                        })}
+                        className="min-h-[80px] text-sm"
+                      />
+                    </div>
+                    
+                    {/* Show AI questions button if they exist but not expanded */}
+                    {session.informationRequest?.detected && !showFollowUpInput && (
+                      <Button
+                        onClick={() => setShowFollowUpInput(true)}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                        Answer AI-Suggested Questions
+                      </Button>
+                    )}
+                    
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        onClick={() => {
                               // Build refined query with context
-                              const answersProvided = session.informationRequest.suggestedQuestions
+                              const answersProvided = session.informationRequest?.suggestedQuestions
                                 .map((q, idx) => {
                                   const answer = followUpAnswers[idx]
                                   if (answer && answer.trim()) {
@@ -362,8 +423,12 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
                                 .filter(Boolean)
                                 .join('. ')
                               
-                              const refinedQuery = answersProvided 
-                                ? `${session.query}\n\nContext: ${answersProvided}\n\nBased on the above context and the previous synthesis that suggested: "${session.finalSynthesis?.conclusion?.substring(0, 200)}...", please provide more specific recommendations.`
+                              // Add custom question if provided
+                              const customQuestion = followUpAnswers['custom']
+                              const allContext = [answersProvided, customQuestion].filter(Boolean).join('. ')
+                              
+                              const refinedQuery = allContext 
+                                ? `${session.query}\n\nAdditional context: ${allContext}\n\nBased on the above context and the previous synthesis that suggested: "${session.finalSynthesis?.conclusion?.substring(0, 200)}...", please provide more specific recommendations.`
                                 : session.query
                               
                               // If we have a follow-up handler, use it to add as new round
@@ -381,33 +446,34 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
                                 alert('Refined query copied to clipboard! Paste it in a new debate.')
                               }
                             }}
-                            disabled={Object.keys(followUpAnswers).length === 0}
+                            disabled={Object.keys(followUpAnswers).length === 0 || 
+                              !Object.values(followUpAnswers).some(answer => answer && answer.trim())}
                             size="sm"
                             className="flex items-center gap-2"
                           >
                             <ArrowRight className="w-4 h-4" />
-                            Continue with Follow-up Round
+                            Start New Debate with Context
                           </Button>
-                          <Button
-                            onClick={() => {
-                              setShowFollowUpInput(false)
-                              setFollowUpAnswers({})
-                            }}
-                            variant="outline"
-                            size="sm"
-                          >
-                            Cancel
-                          </Button>
+                          {showFollowUpInput && session.informationRequest?.detected && (
+                            <Button
+                              onClick={() => {
+                                setShowFollowUpInput(false)
+                                setFollowUpAnswers({})
+                              }}
+                              variant="outline"
+                              size="sm"
+                            >
+                              Hide AI Questions
+                            </Button>
+                          )}
                         </div>
                         
                         <p className="text-xs text-muted-foreground">
                           Clicking above will start a new debate with your original question plus the context you provided.
                         </p>
                       </div>
-                    )}
                   </div>
-                )}
-              </div>
+                </div>
 
               <div className="pt-4 border-t flex items-center gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">

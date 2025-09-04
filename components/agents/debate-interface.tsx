@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { AgentSelector } from './agent-selector'
 import { LLMPillSelector } from './llm-pill-selector'
+import { ModelSelector } from '@/components/consensus/model-selector'
 import { DebateDisplay } from './debate-display'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -14,8 +15,16 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AgentConfig, DebateSession, DEBATE_CONFIG } from '@/lib/agents/types'
+import { ModelConfig } from '@/types/consensus'
 import { estimateDebateCost, formatCost, calculateDisagreementScore } from '@/lib/agents/cost-calculator'
-import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain } from 'lucide-react'
+import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface AgentDebateInterfaceProps {
   userTier: 'guest' | 'free' | 'pro' | 'enterprise'
@@ -24,13 +33,34 @@ interface AgentDebateInterfaceProps {
 export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [query, setQuery] = useState('What\'s the best second-hand motorcycle or scooter up to 500cc to buy in Israel for daily commuting?')
   const [selectedAgents, setSelectedAgents] = useState<AgentConfig[]>([])
-  const [selectedLLMs, setSelectedLLMs] = useState<Array<{ provider: string; model: string }>>([])
+  // For ModelSelector compatibility
+  const [modelConfigs, setModelConfigs] = useState<ModelConfig[]>([
+    { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
+    { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
+    { provider: 'google', model: 'gemini-2.5-flash', enabled: true }
+  ])
+  
+  // Derive selectedLLMs from modelConfigs for the debate API
+  const selectedLLMs = useMemo(() => 
+    modelConfigs
+      .filter(config => config.enabled)
+      .map(config => ({
+        provider: config.provider,
+        model: config.model
+      })), [modelConfigs])
+  
+  // Memoize the model config handler to prevent re-renders
+  const handleModelConfigChange = useCallback((newConfigs: ModelConfig[]) => {
+    setModelConfigs(newConfigs)
+  }, [])
   const [selectedLLMsRound2, setSelectedLLMsRound2] = useState<Array<{ provider: string; model: string }>>([])
   const [rounds, setRounds] = useState(DEBATE_CONFIG.defaultRounds)
   const [isLoading, setIsLoading] = useState(false)
   const [debateSession, setDebateSession] = useState<DebateSession | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [availableModels, setAvailableModels] = useState<{ provider: string; models: string[] }[]>([])
+  const [includeComparison, setIncludeComparison] = useState(false)
+  const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>(null)
   const [activeTab, setActiveTab] = useState('setup')
   
   // New state for enhanced options
@@ -40,6 +70,57 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
   const [costEstimate, setCostEstimate] = useState<any>(null)
   const [showRound2Prompt, setShowRound2Prompt] = useState(false)
+  
+  // Model status tracking
+  const [modelStatuses, setModelStatuses] = useState<Record<string, {
+    status: 'waiting' | 'thinking' | 'completed' | 'error',
+    startTime?: number,
+    endTime?: number,
+    message?: string
+  }>>({})
+  const [debateStartTime, setDebateStartTime] = useState<number | null>(null)
+  
+  // Use ref to track loading state for setTimeout callbacks
+  const isLoadingRef = useRef(false)
+  
+  // State to track synthesis phase
+  const [isSynthesizing, setIsSynthesizing] = useState(false)
+  // State to store the generated prompt for display
+  const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null)
+  
+  // Timer for updating elapsed time and phase detection
+  useEffect(() => {
+    if (!isLoading || !debateStartTime) {
+      setIsSynthesizing(false)
+      return
+    }
+    
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - debateStartTime) / 1000
+      // Detect synthesis phase after 5 seconds
+      if (elapsed > 5 && !isSynthesizing) {
+        setIsSynthesizing(true)
+      }
+      // Force re-render to update timers
+      setModelStatuses(prev => ({...prev}))
+    }, 100) // Update every 100ms for smooth timer
+    
+    return () => clearInterval(interval)
+  }, [isLoading, debateStartTime, isSynthesizing])
+  
+  // Update ref when isLoading changes
+  useEffect(() => {
+    isLoadingRef.current = isLoading
+  }, [isLoading])
+  
+  // Memoize radio handlers to prevent re-render loops
+  const handleRound1ModeChange = useCallback((v: string) => {
+    setRound1Mode(v as 'llm' | 'agents')
+  }, [])
+  
+  const handleResponseModeChange = useCallback((v: string) => {
+    setResponseMode(v as 'concise' | 'normal' | 'detailed')
+  }, [])
 
   // Fetch available models
   useEffect(() => {
@@ -87,6 +168,291 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     }
   }, [selectedAgents, selectedLLMs, rounds, responseMode, round1Mode])
 
+  // Add state for tracking streaming updates
+  const [streamingUpdates, setStreamingUpdates] = useState<any[]>([])
+  const [currentPhase, setCurrentPhase] = useState<string>('')
+  
+  const startDebateWithStreaming = async (continueRound2 = false, followUpAnswers?: Record<number, string>) => {
+    // Check query
+    if (!continueRound2 && !query.trim()) {
+      setError('Please enter a query')
+      return
+    }
+    
+    // Check model/agent selection based on mode
+    if (!continueRound2) {
+      if (round1Mode === 'llm' && selectedLLMs.length < 2) {
+        setError('Please select at least 2 models for LLM consensus')
+        return
+      } else if (round1Mode === 'agents' && selectedAgents.length < DEBATE_CONFIG.minAgents) {
+        setError(`Please select at least ${DEBATE_CONFIG.minAgents} agents`)
+        return
+      }
+    }
+
+    setIsLoading(true)
+    isLoadingRef.current = true
+    setError(null)
+    setStreamingUpdates([])
+    setCurrentPhase('Connecting...')
+    
+    if (!continueRound2) {
+      setDebateSession(null)
+      setActiveTab('debate')
+      
+      // Initialize model statuses
+      const statuses: Record<string, any> = {}
+      if (round1Mode === 'llm') {
+        selectedLLMs.forEach((llm, idx) => {
+          const modelId = `${llm.provider}-${llm.model}-${idx}`
+          statuses[modelId] = {
+            status: 'waiting',
+            message: 'Waiting to start...',
+            model: llm.model,
+            provider: llm.provider
+          }
+        })
+      } else {
+        selectedAgents.forEach((agent) => {
+          statuses[agent.agentId] = {
+            status: 'waiting',
+            message: 'Waiting to start...',
+            model: agent.model,
+            provider: agent.provider
+          }
+        })
+      }
+      setModelStatuses(statuses)
+      setDebateStartTime(Date.now())
+      setIsSynthesizing(false)
+    }
+    setShowRound2Prompt(false)
+
+    // Generate the full query
+    const fullQuery = followUpAnswers ? 
+      `Original question: ${query}\n\n` +
+      `Previous conclusion: ${debateSession?.finalSynthesis?.content || 'Analysis in progress...'}\n\n` +
+      `Follow-up context:\n${Object.entries(followUpAnswers)
+        .filter(([key, answer]) => answer && answer.trim())
+        .map(([key, answer]) => {
+          if (key === 'custom') {
+            return `Additional request: ${answer}`
+          }
+          const questionIndex = parseInt(key)
+          if (!isNaN(questionIndex)) {
+            const question = debateSession?.informationRequest?.followUpQuestions?.[questionIndex]
+            return question ? `Q: ${question}\nA: ${answer}` : `Answer ${questionIndex + 1}: ${answer}`
+          }
+          return `${key}: ${answer}`
+        }).join('\n')}\n\n` +
+      `Please provide an updated analysis that builds upon the previous conclusion with this new information.` 
+      : query
+    
+    // Store the generated prompt for display only for follow-ups
+    if (followUpAnswers && Object.keys(followUpAnswers).length > 0) {
+      setGeneratedPrompt(fullQuery)
+    } else {
+      setGeneratedPrompt(null)
+    }
+
+    try {
+      // Convert agents for API
+      const apiAgents = round1Mode === 'llm' && !continueRound2 ? 
+        selectedLLMs.map((llm, idx) => ({
+          agentId: `llm-${idx}`,
+          provider: llm.provider,
+          model: llm.model,
+          enabled: true,
+          persona: {
+            id: `llm-${idx}`,
+            role: 'analyst' as const,
+            name: llm.model,
+            description: 'Direct LLM response',
+            traits: [],
+            focusAreas: [],
+            systemPrompt: '',
+            color: '#3B82F6'
+          }
+        })) : selectedAgents
+
+      // Use fetch with SSE
+      const response = await fetch('/api/agents/debate-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: fullQuery,
+          agents: apiAgents,
+          rounds: continueRound2 ? 2 : (autoRound2 ? 1 : rounds),
+          responseMode,
+          round1Mode,
+          autoRound2,
+          disagreementThreshold,
+          isGuestMode: userTier === 'guest',
+          includeComparison: includeComparison && !continueRound2,
+          comparisonModel: includeComparison && !continueRound2 && comparisonModel ? 
+            { provider: comparisonModel.provider, model: comparisonModel.model } : undefined
+        }),
+      })
+      
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to start debate stream')
+      }
+      
+      // Process SSE stream
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let allResponses: any[] = []
+      
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              
+              // Update streaming updates list
+              setStreamingUpdates(prev => [...prev, data])
+              
+              switch (data.type) {
+                case 'connected':
+                  setCurrentPhase('Connected. Starting debate...')
+                  break
+                  
+                case 'round_started':
+                  setCurrentPhase(`Round ${data.round} of ${data.totalRounds}`)
+                  break
+                  
+                case 'model_started':
+                  setModelStatuses(prev => ({
+                    ...prev,
+                    [data.modelId]: {
+                      ...prev[data.modelId],
+                      status: 'thinking',
+                      startTime: data.timestamp,
+                      message: 'Analyzing query...'
+                    }
+                  }))
+                  break
+                  
+                case 'model_thinking':
+                  setModelStatuses(prev => ({
+                    ...prev,
+                    [data.modelId]: {
+                      ...prev[data.modelId],
+                      message: 'Generating response...',
+                      promptPreview: data.promptPreview
+                    }
+                  }))
+                  break
+                  
+                case 'model_completed':
+                  setModelStatuses(prev => ({
+                    ...prev,
+                    [data.modelId]: {
+                      ...prev[data.modelId],
+                      status: 'completed',
+                      endTime: data.timestamp,
+                      duration: data.duration,
+                      responsePreview: data.responsePreview,
+                      keyPoints: data.keyPoints,
+                      tokensUsed: data.tokensUsed,
+                      message: `Completed in ${(data.duration / 1000).toFixed(1)}s`
+                    }
+                  }))
+                  allResponses.push(data)
+                  break
+                  
+                case 'model_error':
+                  setModelStatuses(prev => ({
+                    ...prev,
+                    [data.modelId]: {
+                      ...prev[data.modelId],
+                      status: 'error',
+                      message: data.error
+                    }
+                  }))
+                  break
+                  
+                case 'synthesis_started':
+                  setIsSynthesizing(true)
+                  setCurrentPhase('Creating synthesis...')
+                  break
+                  
+                case 'synthesis_completed':
+                  setCurrentPhase('Debate completed')
+                  // Create debate session from collected data
+                  const session = {
+                    id: crypto.randomUUID(),
+                    query: fullQuery,
+                    agents: apiAgents,
+                    rounds: [{
+                      roundNumber: 1,
+                      startTime: new Date(debateStartTime || Date.now()),
+                      endTime: new Date(),
+                      messages: allResponses.map(r => ({
+                        agentId: r.modelId,
+                        role: 'analyst',
+                        round: r.round || 1,
+                        content: r.fullResponse || r.responsePreview || '',
+                        timestamp: new Date(r.timestamp),
+                        tokensUsed: r.tokensUsed,
+                        model: r.modelName,
+                        keyPoints: [],
+                        evidence: [],
+                        challenges: []
+                      }))
+                    }],
+                    finalSynthesis: {
+                      content: data.synthesis?.content || data.synthesis?.conclusion || 'Synthesis completed',
+                      tokensUsed: data.synthesis?.tokensUsed || 0,
+                      agreements: data.synthesis?.agreements || [],
+                      disagreements: data.synthesis?.disagreements || [],
+                      conclusion: data.synthesis?.conclusion || data.synthesis?.content || '',
+                      confidence: data.synthesis?.confidence || 0
+                    },
+                    startTime: new Date(debateStartTime || Date.now()),
+                    endTime: new Date(),
+                    totalTokensUsed: allResponses.reduce((sum, r) => sum + r.tokensUsed, 0) + (data.synthesis?.tokensUsed || 0),
+                    estimatedCost: 0,
+                    disagreementScore: data.synthesis?.disagreementScore || 0,
+                    status: 'completed' as const,
+                    informationRequest: data.synthesis?.informationRequest || {
+                      detected: false,
+                      followUpQuestions: []
+                    }
+                  }
+                  setDebateSession(session as any)
+                  break
+                  
+                case 'debate_completed':
+                  setIsLoading(false)
+                  isLoadingRef.current = false
+                  setGeneratedPrompt(null)
+                  break
+              }
+            } catch (e) {
+              console.error('Failed to parse SSE data:', e)
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Debate streaming error:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+      setIsLoading(false)
+      isLoadingRef.current = false
+      setGeneratedPrompt(null)
+    }
+  }
+  
+  // Fallback to regular debate if streaming fails
   const startDebate = async (continueRound2 = false, followUpAnswers?: Record<number, string>) => {
     // Check query
     if (!continueRound2 && !query.trim()) {
@@ -106,15 +472,68 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     }
 
     setIsLoading(true)
+    isLoadingRef.current = true
     setError(null)
     if (!continueRound2) {
       setDebateSession(null)
       // Switch to debate tab immediately
       console.log('Switching to debate tab')
       setActiveTab('debate')
+      
+      // Initialize model statuses - all start as "thinking"
+      const statuses: Record<string, any> = {}
+      
+      if (round1Mode === 'llm') {
+        selectedLLMs.forEach((llm, idx) => {
+          const modelId = `${llm.provider}-${llm.model}-${idx}`
+          statuses[modelId] = {
+            status: 'thinking',
+            startTime: Date.now(),
+            message: 'Processing...'
+          }
+        })
+      } else {
+        selectedAgents.forEach((agent) => {
+          statuses[agent.agentId] = {
+            status: 'thinking',
+            startTime: Date.now(),
+            message: 'Processing...'
+          }
+        })
+      }
+      setModelStatuses(statuses)
+      setDebateStartTime(Date.now())
     }
     setShowRound2Prompt(false)
 
+    // Generate the full prompt
+    const fullQuery = followUpAnswers ? 
+      `Original question: ${query}\n\n` +
+      `Previous conclusion: ${debateSession?.finalSynthesis?.content || 'Analysis in progress...'}\n\n` +
+      `Follow-up context:\n${Object.entries(followUpAnswers)
+        .filter(([key, answer]) => answer && answer.trim())
+        .map(([key, answer]) => {
+          if (key === 'custom') {
+            return `Additional request: ${answer}`
+          }
+          const questionIndex = parseInt(key)
+          if (!isNaN(questionIndex)) {
+            // Include the actual follow-up question from the session if available
+            const question = debateSession?.informationRequest?.followUpQuestions?.[questionIndex]
+            return question ? `Q: ${question}\nA: ${answer}` : `Answer ${questionIndex + 1}: ${answer}`
+          }
+          return `${key}: ${answer}`
+        }).join('\n')}\n\n` +
+      `Please provide an updated analysis that builds upon the previous conclusion with this new information.` 
+      : query
+    
+    // Store the generated prompt for display only for follow-ups
+    if (followUpAnswers && Object.keys(followUpAnswers).length > 0) {
+      setGeneratedPrompt(fullQuery)
+    } else {
+      setGeneratedPrompt(null)
+    }
+    
     try {
       const response = await fetch('/api/agents/debate', {
         method: 'POST',
@@ -122,9 +541,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          query: followUpAnswers ? 
-            `${query}\n\nAdditional context from follow-up:\n${Object.entries(followUpAnswers).map(([idx, answer]) => 
-              `Q${parseInt(idx) + 1}: ${answer}`).join('\n')}` : query,
+          query: fullQuery,
           agents: round1Mode === 'llm' && !continueRound2 ? 
             // Convert LLMs to agent configs for LLM mode
             selectedLLMs.map((llm, idx) => ({
@@ -150,7 +567,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           disagreementThreshold,
           isGuestMode: userTier === 'guest',
           continueSession: continueRound2 || followUpAnswers ? debateSession?.id : undefined,
-          isFollowUp: !!followUpAnswers
+          isFollowUp: !!followUpAnswers,
+          includeComparison: includeComparison && !continueRound2,
+          comparisonModel: includeComparison && !continueRound2 && comparisonModel ? 
+            { provider: comparisonModel.provider, model: comparisonModel.model } : undefined
         }),
       })
 
@@ -163,6 +583,18 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       
       if (data.success && data.session) {
         setDebateSession(data.session)
+        
+        // Mark all models as completed
+        const completedStatuses: Record<string, any> = {}
+        Object.keys(modelStatuses).forEach(modelId => {
+          completedStatuses[modelId] = {
+            ...modelStatuses[modelId],
+            status: 'completed',
+            endTime: Date.now(),
+            message: 'Completed'
+          }
+        })
+        setModelStatuses(completedStatuses)
         
         // Check if we should prompt for Round 2
         if (!continueRound2 && data.session.rounds.length === 1 && 
@@ -178,6 +610,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsLoading(false)
+      isLoadingRef.current = false
+      setGeneratedPrompt(null) // Clear prompt after completion
     }
   }
 
@@ -204,8 +638,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
         <TabsContent value="setup" className="space-y-6">
           <Card className="p-6">
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="query" className="text-lg font-semibold mb-2">
+              <div className="space-y-3">
+                <Label htmlFor="query" className="text-lg font-semibold">
                   Debate Query
                 </Label>
                 <Textarea
@@ -216,6 +650,28 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   className="min-h-[100px] text-base"
                   disabled={isLoading}
                 />
+                {/* Start Debate button right-aligned with the query */}
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => startDebateWithStreaming()}
+                    disabled={isLoading || 
+                      (round1Mode === 'llm' ? selectedLLMs.length < 2 : selectedAgents.length < DEBATE_CONFIG.minAgents)}
+                    size="lg"
+                    className="min-w-[200px]"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Starting Debate...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-5 w-5" />
+                        Start Debate
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -223,17 +679,21 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   <Label className="text-base font-semibold mb-2">
                     Round 1 Mode
                   </Label>
-                  <RadioGroup value={round1Mode} onValueChange={(v) => setRound1Mode(v as 'llm' | 'agents')}>
-                    <div className="flex items-center space-x-2 mb-2">
-                      <RadioGroupItem value="llm" id="llm" />
-                      <Label htmlFor="llm" className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroup 
+                    value={round1Mode} 
+                    onValueChange={handleRound1ModeChange}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="llm" id="round1-llm" />
+                      <Label htmlFor="round1-llm" className="flex items-center gap-2 cursor-pointer">
                         <Zap className="w-4 h-4 text-yellow-500" />
                         Fast LLM Mode
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="agents" id="agents" />
-                      <Label htmlFor="agents" className="flex items-center gap-2 cursor-pointer">
+                      <RadioGroupItem value="agents" id="round1-agents" />
+                      <Label htmlFor="round1-agents" className="flex items-center gap-2 cursor-pointer">
                         <Brain className="w-4 h-4 text-blue-500" />
                         Agent Personas (Deep Analysis)
                       </Label>
@@ -250,21 +710,89 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   <Label className="text-base font-semibold mb-2">
                     Response Length
                   </Label>
-                  <RadioGroup value={responseMode} onValueChange={(v) => setResponseMode(v as any)}>
-                    <div className="flex items-center space-x-2 mb-2">
-                      <RadioGroupItem value="concise" id="concise" />
-                      <Label htmlFor="concise" className="cursor-pointer">Concise (50 words)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2 mb-2">
-                      <RadioGroupItem value="normal" id="normal" />
-                      <Label htmlFor="normal" className="cursor-pointer">Normal (150 words)</Label>
+                  <RadioGroup 
+                    value={responseMode} 
+                    onValueChange={handleResponseModeChange}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="concise" id="response-concise" />
+                      <Label htmlFor="response-concise" className="cursor-pointer">Concise (50 words)</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="detailed" id="detailed" />
-                      <Label htmlFor="detailed" className="cursor-pointer">Detailed (300+ words)</Label>
+                      <RadioGroupItem value="normal" id="response-normal" />
+                      <Label htmlFor="response-normal" className="cursor-pointer">Normal (150 words)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="detailed" id="response-detailed" />
+                      <Label htmlFor="response-detailed" className="cursor-pointer">Detailed (300+ words)</Label>
                     </div>
                   </RadioGroup>
                 </div>
+              </div>
+
+              {/* Comparison Mode Toggle */}
+              <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <GitCompare className="w-5 h-5 text-primary" />
+                    <Label htmlFor="comparison-mode-debate" className="font-medium">
+                      Compare with Single Model
+                    </Label>
+                  </div>
+                  <Switch
+                    id="comparison-mode-debate"
+                    checked={includeComparison}
+                    onCheckedChange={(checked) => {
+                      setIncludeComparison(checked)
+                      // Set default comparison model when enabled
+                      if (checked && !comparisonModel) {
+                        const firstEnabled = modelConfigs.find(m => m.enabled)
+                        if (firstEnabled) {
+                          setComparisonModel(firstEnabled)
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                
+                {includeComparison && (
+                  <div className="pl-7">
+                    <Label htmlFor="comparison-model-debate" className="text-sm text-muted-foreground mb-2 block">
+                      Select model for comparison:
+                    </Label>
+                    <Select
+                      value={comparisonModel ? `${comparisonModel.provider}/${comparisonModel.model}` : ''}
+                      onValueChange={(value) => {
+                        const [provider, ...modelParts] = value.split('/')
+                        const model = modelParts.join('/')
+                        const found = modelConfigs.find(m => 
+                          m.provider === provider && m.model === model && m.enabled
+                        )
+                        if (found) {
+                          setComparisonModel(found)
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choose a model..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {modelConfigs.filter(m => m.enabled).map((model) => (
+                          <SelectItem 
+                            key={`${model.provider}/${model.model}`}
+                            value={`${model.provider}/${model.model}`}
+                          >
+                            {model.provider}/{model.model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      See how a single model response compares to the agent debate consensus
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3 pt-4 border-t">
@@ -320,14 +848,26 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
 
           {/* Show LLM selector for LLM mode Round 1, Agent selector for agent mode */}
           {round1Mode === 'llm' ? (
-            <LLMPillSelector
-              selectedModels={selectedLLMs}
-              onModelsChange={setSelectedLLMs}
-              availableModels={availableModels}
-              userTier={userTier}
-              label="Round 1: Fast LLM Models"
-              minSelection={2}
-            />
+            <Card className="p-6 bg-black/40 border-zinc-800">
+              <div className="space-y-4">
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-yellow-500" />
+                  Round 1: Fast LLM Models
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Select at least 2 models for direct consensus
+                </p>
+                <ModelSelector
+                  models={modelConfigs}
+                  onChange={handleModelConfigChange}
+                />
+                {selectedLLMs.length < 2 && (
+                  <p className="text-xs text-amber-400">
+                    Select at least 2 models for better consensus results
+                  </p>
+                )}
+              </div>
+            </Card>
           ) : (
             <AgentSelector
               selectedAgents={selectedAgents}
@@ -394,27 +934,6 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
             </div>
           )}
 
-          <div className="flex justify-center">
-            <Button
-              onClick={() => startDebate()}
-              disabled={isLoading || 
-                (round1Mode === 'llm' ? selectedLLMs.length < 2 : selectedAgents.length < DEBATE_CONFIG.minAgents)}
-              size="lg"
-              className="min-w-[200px]"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Starting Debate...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-5 w-5" />
-                  Start Debate
-                </>
-              )}
-            </Button>
-          </div>
         </TabsContent>
 
         <TabsContent value="debate" className="space-y-6">
@@ -455,17 +974,127 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           )}
 
           {isLoading ? (
-            <Card className="p-12">
-              <div className="flex flex-col items-center justify-center space-y-4">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-lg font-medium">
-                  {round1Mode === 'llm' ? 'Models are responding...' : 'Agents are debating...'}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {round1Mode === 'llm' 
-                    ? 'Fast LLM mode - Getting quick consensus'
-                    : 'Agent personas active - Conducting debate'}
-                </p>
+            <Card className="p-8">
+              <div className="space-y-6">
+                {/* Show generated prompt for follow-ups */}
+                {generatedPrompt && (
+                  <div className="mb-6 p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                    <h4 className="text-sm font-semibold mb-2 text-blue-400">📝 Enhanced Follow-Up Prompt:</h4>
+                    <div className="text-xs text-foreground/80 whitespace-pre-wrap font-mono max-h-64 overflow-y-auto bg-black/30 p-3 rounded">
+                      {generatedPrompt}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="text-center space-y-2">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                  <p className="text-lg font-medium">
+                    {isSynthesizing
+                      ? 'Creating synthesis...'
+                      : round1Mode === 'llm' 
+                        ? 'Models are responding...' 
+                        : 'Agents are debating...'}  
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {isSynthesizing
+                      ? 'Analyzing all responses and creating consensus'
+                      : round1Mode === 'llm' 
+                        ? 'Fast LLM mode - Getting quick consensus'
+                        : 'Agent personas active - Conducting debate'}
+                  </p>
+                  {debateStartTime && (
+                    <div className="text-xs text-muted-foreground space-y-1 mt-2">
+                      {!isSynthesizing && (
+                        <p className="text-green-400">● Phase 1: Collecting model responses...</p>
+                      )}
+                      {isSynthesizing && ((Date.now() - debateStartTime) / 1000) <= 20 && (
+                        <p className="text-blue-400">● Phase 2: Synthesizing consensus...</p>
+                      )}
+                      {isSynthesizing && ((Date.now() - debateStartTime) / 1000) > 20 && (
+                        <p className="text-yellow-400">● Phase 3: Finalizing consensus...</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Show real-time model status */}
+                <div className="space-y-3">
+                  <div className="text-center mb-4">
+                    <p className="text-sm font-medium text-muted-foreground">{currentPhase}</p>
+                  </div>
+                  
+                  {Object.entries(modelStatuses).map(([modelId, status]) => (
+                    <div key={modelId} className="p-3 bg-muted/30 rounded-lg space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            {status.status === 'thinking' && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                            )}
+                            {status.status === 'completed' && (
+                              <div className="w-2 h-2 bg-green-500 rounded-full" />
+                            )}
+                            {status.status === 'error' && (
+                              <div className="w-2 h-2 bg-red-500 rounded-full" />
+                            )}
+                            {status.status === 'waiting' && (
+                              <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{status.model || modelId}</p>
+                            <p className="text-xs text-muted-foreground">{status.provider}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">{status.message}</p>
+                          {status.duration && (
+                            <p className="text-xs text-green-400 font-mono">
+                              {(status.duration / 1000).toFixed(1)}s
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Show response preview when available */}
+                      {status.responsePreview && (
+                        <div className="mt-2 p-2 bg-black/20 rounded text-xs text-muted-foreground">
+                          <p className="font-mono line-clamp-3">{status.responsePreview}</p>
+                        </div>
+                      )}
+                      
+                      {/* Show key points if available */}
+                      {status.keyPoints && (
+                        <div className="mt-2 text-xs text-blue-400">
+                          <pre className="whitespace-pre-wrap">{status.keyPoints}</pre>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Show streaming updates log */}
+                {streamingUpdates.length > 0 && (
+                  <div className="mt-4 p-2 bg-black/30 rounded-lg max-h-32 overflow-y-auto">
+                    <p className="text-xs font-semibold mb-1 text-muted-foreground">Activity Log:</p>
+                    {streamingUpdates.slice(-5).map((update, idx) => (
+                      <p key={idx} className="text-xs text-muted-foreground font-mono">
+                        [{new Date(update.timestamp).toLocaleTimeString()}] {update.type}: {update.modelName || update.message || ''}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Total elapsed time */}
+                {debateStartTime && (
+                  <div className="text-center pt-4 border-t">
+                    <p className="text-xs text-muted-foreground">
+                      Total time elapsed: <span className="font-mono">
+                        {((Date.now() - debateStartTime) / 1000).toFixed(1)}s
+                      </span>
+                    </p>
+                  </div>
+                )}
               </div>
             </Card>
           ) : debateSession ? (
@@ -474,7 +1103,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 session={debateSession} 
                 onFollowUpRound={(answers) => {
                   // Continue the same session with follow-up round
-                  startDebate(false, answers)
+                  startDebateWithStreaming(false, answers)
                 }}
                 onRefinedQuery={(refinedQuery) => {
                   // Start new debate with refined query

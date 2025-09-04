@@ -52,6 +52,14 @@ export interface DebateSession {
   disagreementScore?: number  // New: Measure of disagreement (0-1)
   round1Mode?: 'llm' | 'agents'  // New: Track which mode was used
   waitingForRound2Decision?: boolean  // New: Paused for user decision
+  comparisonResponse?: {  // Single model comparison data
+    model: string
+    response: string
+    tokensUsed: number
+    responseTime: number
+    cost: number
+    confidence: number
+  }
   informationRequest?: {  // New: Track missing information
     detected: boolean
     missingInfo: string[]
@@ -84,6 +92,8 @@ export interface DebateRequest {
   round1Mode?: 'llm' | 'agents'  // New: Choose initial mode
   autoRound2?: boolean  // New: Auto-trigger round 2 on disagreement
   disagreementThreshold?: number  // New: Threshold for disagreement (0-1)
+  includeComparison?: boolean  // Compare with single model
+  comparisonModel?: { provider: string; model: string }  // Model to compare against
 }
 
 export interface DebateResponse {

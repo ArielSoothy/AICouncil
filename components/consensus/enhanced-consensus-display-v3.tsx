@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { EnhancedConsensusResponse } from '@/types/consensus'
 import { JudgeAnalysisDisplay } from './judge-analysis-display'
 import { FeedbackForm } from './feedback-form'
+import { ComparisonDisplay } from './comparison-display'
 import { hasInternetAccess } from '@/lib/user-tiers'
 import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp, Globe } from 'lucide-react'
 import { useEffect } from 'react'
@@ -416,6 +417,22 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
 
   return (
     <div className="space-y-6">
+      {/* Comparison Display - Show if comparison data exists */}
+      {result.comparisonResponse && (
+        <ComparisonDisplay
+          singleModel={result.comparisonResponse}
+          consensus={{
+            unifiedAnswer: result.consensus.unifiedAnswer,
+            confidence: result.consensus.confidence,
+            agreements: result.consensus.agreements,
+            disagreements: result.consensus.disagreements,
+            responseTime: result.responses.reduce((sum, r) => sum + r.responseTime, 0) / result.responses.length,
+            cost: result.estimatedCost,
+            modelCount: result.responses.length
+          }}
+        />
+      )}
+      
       {/* Enhanced Judge Analysis */}
       <JudgeAnalysisDisplay 
         analysis={result.consensus.judgeAnalysis} 

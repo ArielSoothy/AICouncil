@@ -519,7 +519,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: QueryRequest = await request.json()
-    const { prompt, models, responseMode = 'concise', usePremiumQuery = false, isGuestMode = false } = body
+    const { prompt, models, responseMode = 'concise', usePremiumQuery = false, isGuestMode = false, comparisonModel, includeComparison } = body
     
     // Override tier if in guest mode
     if (isGuestMode) {
@@ -566,6 +566,40 @@ export async function POST(request: NextRequest) {
 
     // Generate structured prompt using the new system
     const structuredPrompt = generateModelPrompt(prompt, responseMode as ResponseLength)
+    
+    // Query comparison model first if requested
+    let comparisonResult = null
+    if (includeComparison && comparisonModel && comparisonModel.enabled) {
+      try {
+        const compProvider = providerRegistry.getProvider(comparisonModel.provider)
+        if (compProvider && compProvider.isConfigured()) {
+          const compConfig = {
+            ...comparisonModel,
+            maxTokens: responseMode === 'concise' ? 100 : responseMode === 'normal' ? 400 : 800
+          }
+          const compStartTime = Date.now()
+          const compResponse = await compProvider.query(structuredPrompt, compConfig)
+          const compResponseTime = Date.now() - compStartTime
+          
+          // Calculate cost for comparison model
+          const modelKey = `${comparisonModel.provider}/${comparisonModel.model}`
+          const costPerK = MODEL_COSTS_PER_1K[modelKey] || { input: 0, output: 0 }
+          const compCost = ((compResponse.tokens.total * (costPerK.input + costPerK.output) / 2) / 1000)
+          
+          comparisonResult = {
+            model: `${comparisonModel.provider}/${comparisonModel.model}`,
+            response: compResponse.response,
+            tokensUsed: compResponse.tokens.total,
+            responseTime: compResponseTime,
+            cost: compCost,
+            confidence: compResponse.confidence || 0.7
+          }
+        }
+      } catch (error) {
+        console.error('Comparison model query failed:', error)
+        // Continue without comparison if it fails
+      }
+    }
 
     // Query all models in parallel with structured prompts
     const startTime = Date.now()
@@ -671,7 +705,8 @@ export async function POST(request: NextRequest) {
         judgeAnalysis: judgeAnalysis.judgeAnalysis
       },
       totalTokensUsed,
-      estimatedCost: Math.round(estimatedCost * 100000) / 100000 // Round to 5 decimal places
+      estimatedCost: Math.round(estimatedCost * 100000) / 100000, // Round to 5 decimal places
+      ...(comparisonResult && { comparisonResponse: comparisonResult }) // Add comparison if available
     }
 
     return NextResponse.json(enhancedResponse, {

@@ -58,6 +58,8 @@ export interface QueryRequest {
   responseMode?: 'concise' | 'normal' | 'detailed'; // New smart minimization
   usePremiumQuery?: boolean; // Use premium credit for all models access
   isGuestMode?: boolean; // Guest mode flag
+  comparisonModel?: ModelConfig; // Optional single model to compare against
+  includeComparison?: boolean; // Enable comparison mode
 }
 
 // New enhanced response structure
@@ -84,6 +86,14 @@ export interface EnhancedConsensusResponse {
   };
   totalTokensUsed: number;
   estimatedCost: number;
+  comparisonResponse?: {  // Optional single model comparison
+    model: string;
+    response: string;
+    tokensUsed: number;
+    responseTime: number;
+    cost: number;
+    confidence: number;
+  };
 }
 
 // Structured response data extracted from model outputs

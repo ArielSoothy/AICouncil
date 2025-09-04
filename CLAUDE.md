@@ -2,9 +2,94 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Status (August 31, 2025)
+## CRITICAL RULES - NEVER VIOLATE THESE
 
-### ✨ Latest Features - Agent Debate System
+### Never Use Simulated/Fake Data in UI
+- **NEVER show fake progress bars, timers, or completion states that don't reflect actual system status**
+- **NEVER simulate API response times or model completion times**
+- **ALWAYS show real, actual data from the backend**
+- **If you can't get real-time updates, show a generic loader - don't fake individual progress**
+- Misleading UI creates distrust and confusion
+- Users need accurate information to understand system performance
+
+### Always Implement Fallback Strategies for APIs
+- **ALWAYS have fallback providers when primary APIs fail**
+- **Google → Groq fallback**: When Google AI is overloaded (503), automatically use Groq Llama
+- **Groq → Google fallback**: When Groq fails, try Google Gemini
+- **Show which provider was used**: Transparency with "(via groq)" or "(via google)"
+- **Graceful degradation**: If all providers fail, use first response or show clear error
+- **Parse flexibly**: Handle different response formats from different providers
+
+### Real-Time Streaming with SSE
+- **Use Server-Sent Events (SSE)** for real-time updates, not fake timers
+- **Stream individual model completions** as they happen
+- **Show actual processing phases**: "Collecting responses" → "Creating synthesis"
+- **Display response previews** as soon as models complete
+- **Track actual durations**: Show real completion times for each model
+
+## 🎯 Project Vision: $100M+ AI Decision Verification Platform
+
+### Mission
+Transform AI Council from a multi-model consensus tool into the world's premier AI decision verification platform through memory-enhanced multi-agent debate systems.
+
+### Target Market
+- **Primary**: B2B Enterprise (Legal, Healthcare, Finance)
+- **Secondary**: Professional Services, Research Organizations
+- **Tertiary**: Advanced Individual Users
+
+### Unique Value Proposition
+- **Memory-Enhanced Consensus**: First platform combining episodic, semantic, and procedural memory in AI debates
+- **40% Accuracy Improvement**: Over stateless systems through memory integration
+- **Value-Based Pricing**: Charge 1-5% of error prevention value ($25K-$100K per prevented error)
+- **Heterogeneous Model Debates**: 25-40% better performance mixing different AI families
+
+## 📊 Product Architecture
+
+### Two-Axis Model
+
+#### Complexity Levels (User Experience)
+1. **Simple Mode** (Accessible to Everyone)
+   - One-click consensus with pre-selected optimal models
+   - Natural language results only
+   - Zero configuration required
+   - Perfect for quick decisions
+
+2. **Pro Mode** (Power Users & Enterprises)
+   - Full model selection and customization
+   - Custom agent personas and debate rules
+   - Memory system configuration
+   - API access and white-label options
+
+#### Premium Tiers (Value-Based)
+1. **Free** ($0/month)
+   - 3 free models, 50 queries/day
+   - Basic consensus analysis
+   
+2. **Plus** ($19/month)
+   - All models, 500 queries/day
+   - Memory system access
+   - Export capabilities
+
+3. **Pro** ($99/month)
+   - Everything in Plus
+   - API access (1000 calls/day)
+   - Custom personas
+   - Priority processing
+
+4. **Enterprise** ($999+/month)
+   - White-label option
+   - Unlimited API
+   - SLA guarantees
+   - Compliance features
+
+5. **Ultra Premium** (Custom)
+   - On-premise deployment
+   - Custom model integration
+   - Professional services
+
+## Project Status (September 2025)
+
+### ✨ Current Features - Agent Debate System
 - **Smart Hybrid Mode**: Choose between Fast LLM mode or Deep Agent Personas
 - **Disagreement Detection**: Automatic scoring with user-controlled Round 2 triggers
 - **Cost Transparency**: Real-time tracking, pre-execution estimates ($0.001-$0.01/query)
@@ -13,6 +98,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Enhanced Synthesis**: Always provides actionable answers even with incomplete information
 - **Follow-up Questions**: Interactive UI for refining queries with additional context
 - **Auto Re-query**: Seamlessly starts new debate with refined query including user-provided context
+- **Real-Time Model Tracking**: SSE streaming shows actual model completions as they happen
+- **Intelligent Fallbacks**: Automatic provider switching when APIs are overloaded (Google ↔ Groq)
+- **Context-Aware Follow-ups**: Includes previous conclusions in follow-up debates to avoid regression
 
 ### 🎯 Key Innovations
 - **Adaptive Intelligence**: Simple queries get fast consensus, complex ones trigger debates
@@ -26,6 +114,77 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `llama-3.1-8b-instant` (Groq - Ultra fast)
   - `llama-3.3-70b-versatile` (Groq - Powerful)  
   - `gemini-2.5-flash` (Google - Free & capable)
+
+## 🚀 Technical Roadmap
+
+### Phase 1: Memory Systems (Weeks 1-3) [IN FUTURE]
+**Advanced Memory Integration**
+- **LangGraph + LangMem**: Full memory-aware agent orchestration
+- **MongoDB Vector Store**: Semantic search for similar past debates
+- **Three Memory Types**:
+  - **Episodic**: Store past debates with rich metadata
+  - **Semantic**: User preferences and domain knowledge
+  - **Procedural**: Debate rules and resolution patterns
+- **Expected Impact**: 40% accuracy improvement, 35% better consistency
+
+### Phase 2: Enhanced Debate Engine (Weeks 4-5) [IN FUTURE]
+**Next-Generation Debate Mechanisms**
+- **Heterogeneous Model Mixing**: 25-40% performance boost
+- **Adaptive Rounds**: 1-2 for simple, 3-5 for complex queries
+- **Chain-of-Debate**: Document WHY models disagree, not just THAT
+- **Group Debate**: Split models into groups, 60% token reduction
+- **Reflexion Pattern**: Self-reflection on debate outcomes
+
+### Phase 3: Value-Based Pricing (Weeks 6-7) [IN FUTURE]
+**Enterprise Monetization**
+- **Error Cost Calculator**: Domain-specific error prevention values
+- **Dynamic Pricing**: Based on query value and complexity
+- **Usage Metering**: Precise tracking with Stripe integration
+- **Industry Presets**:
+  - Legal: $50K+ error prevention
+  - Healthcare: $100K+ error prevention
+  - Finance: $25-250K error prevention
+
+### Phase 4: Enterprise Features (Weeks 8-10) [IN FUTURE]
+**B2B Capabilities**
+- **REST API v1**: Full programmatic access with rate limiting
+- **OAuth2 + SSO**: Enterprise authentication
+- **Audit Logging**: Complete decision trail for compliance
+- **White-Label**: Custom branding for partners
+- **SLA Guarantees**: 99.9% uptime commitment
+- **On-Premise**: Self-hosted option for security-conscious enterprises
+
+### Phase 5: Advanced AI Features (Ongoing) [IN FUTURE]
+**Cutting-Edge Capabilities**
+- **Self-Improving System**: Learn from every debate
+- **Persona Evolution**: Adapt agent personalities based on performance
+- **Multi-Step Planning**: Break complex queries into verifiable sub-questions
+- **Environmental Awareness**: Adapt strategy based on available resources
+- **Web Search Integration**: Real-time information for current events
+
+## 🏗️ Implementation Status
+
+### ✅ Completed
+- Multi-model consensus engine (10+ providers, 30+ models)
+- Agent debate system with 3 specialized personas
+- Real-time SSE streaming
+- Provider fallbacks (Google ↔ Groq)
+- Basic tier system (guest/free/pro/enterprise)
+- Interactive follow-up questions
+- Response mode control (concise/normal/detailed)
+
+### 🚧 In Progress
+- Memory system architecture design
+- Enhanced debate mechanisms research
+- Value-based pricing calculator
+
+### 📋 Planned
+- LangGraph/LangMem integration
+- MongoDB vector store setup
+- REST API v1
+- Enterprise authentication
+- White-label capabilities
+- Audit logging system
 
 ## Essential Commands
 

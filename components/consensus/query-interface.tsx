@@ -9,7 +9,16 @@ import { ResponseModesSelector } from './response-modes-selector'
 import { ConsensusResult, ModelConfig, EnhancedConsensusResponse } from '@/types/consensus'
 import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
-import { Send, Loader2 } from 'lucide-react'
+import { Send, Loader2, GitCompare } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 function QueryInterfaceContent() {
   const { userTier } = useAuth()
@@ -24,6 +33,8 @@ function QueryInterfaceContent() {
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
   const [usePremiumQuery, setUsePremiumQuery] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
+  const [includeComparison, setIncludeComparison] = useState(false)
+  const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>(null)
   
   // Default models based on user tier
   const getDefaultModels = (): ModelConfig[] => {
@@ -74,6 +85,8 @@ function QueryInterfaceContent() {
           responseMode,
           usePremiumQuery,
           isGuestMode,
+          includeComparison,
+          comparisonModel: includeComparison ? comparisonModel : undefined
         }),
       })
 
@@ -129,6 +142,70 @@ function QueryInterfaceContent() {
             mode={responseMode}
             onChange={setResponseMode}
           />
+        </div>
+
+        {/* Comparison Mode Toggle */}
+        <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <GitCompare className="w-5 h-5 text-primary" />
+              <Label htmlFor="comparison-mode" className="font-medium">
+                Compare with Single Model
+              </Label>
+            </div>
+            <Switch
+              id="comparison-mode"
+              checked={includeComparison}
+              onCheckedChange={(checked) => {
+                setIncludeComparison(checked)
+                // Set default comparison model when enabled
+                if (checked && !comparisonModel) {
+                  const firstEnabled = selectedModels.find(m => m.enabled)
+                  if (firstEnabled) {
+                    setComparisonModel(firstEnabled)
+                  }
+                }
+              }}
+            />
+          </div>
+          
+          {includeComparison && (
+            <div className="pl-7">
+              <Label htmlFor="comparison-model" className="text-sm text-muted-foreground mb-2 block">
+                Select model for comparison:
+              </Label>
+              <Select
+                value={comparisonModel ? `${comparisonModel.provider}/${comparisonModel.model}` : ''}
+                onValueChange={(value) => {
+                  const [provider, ...modelParts] = value.split('/')
+                  const model = modelParts.join('/')
+                  const found = selectedModels.find(m => 
+                    m.provider === provider && m.model === model && m.enabled
+                  )
+                  if (found) {
+                    setComparisonModel(found)
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choose a model..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedModels.filter(m => m.enabled).map((model) => (
+                    <SelectItem 
+                      key={`${model.provider}/${model.model}`}
+                      value={`${model.provider}/${model.model}`}
+                    >
+                      {model.provider}/{model.model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-2">
+                See how a single model response compares to the consensus of all {selectedModels.filter(m => m.enabled).length} models
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Premium Query is disabled for free/guest tiers */}
