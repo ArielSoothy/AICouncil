@@ -25,6 +25,7 @@ import {
   GitCompare
 } from 'lucide-react'
 import { ComparisonDisplay } from '@/components/consensus/comparison-display'
+import { ThreeWayComparison } from '@/components/consensus/three-way-comparison'
 
 interface DebateDisplayProps {
   session: DebateSession
@@ -261,21 +262,38 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
         </TabsContent>
 
         <TabsContent value="synthesis" className="space-y-4">
-          {/* Show comparison if available */}
-          {session.comparisonResponse && session.finalSynthesis && (
-            <ComparisonDisplay 
+          {/* Show three-way comparison if all data available */}
+          {session.comparisonResponse && session.consensusComparison && session.finalSynthesis ? (
+            <ThreeWayComparison
               singleModel={session.comparisonResponse}
-              consensus={{
+              consensus={session.consensusComparison}
+              agentDebate={{
                 response: session.finalSynthesis.conclusion || session.finalSynthesis.content,
-                models: session.agents.map(a => `${a.name} (${a.role})`),
+                agents: session.agents.map(a => `${a.name} (${a.role})`),
                 confidence: session.finalSynthesis.confidence,
                 tokensUsed: session.totalTokensUsed,
                 responseTime: session.endTime ? 
                   (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / 1000 : 0,
-                cost: session.estimatedCost
+                cost: session.estimatedCost,
+                rounds: session.rounds.length
               }}
             />
-          )}
+          ) : session.comparisonResponse && session.finalSynthesis ? (
+            /* Show two-way comparison if only single model comparison available */
+            <ComparisonDisplay 
+              singleModel={session.comparisonResponse}
+              consensus={{
+                unifiedAnswer: session.finalSynthesis.conclusion || session.finalSynthesis.content,
+                confidence: session.finalSynthesis.confidence,
+                agreements: session.finalSynthesis.agreements || [],
+                disagreements: session.finalSynthesis.disagreements || [],
+                responseTime: session.endTime ? 
+                  (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / 1000 : 0,
+                cost: session.estimatedCost,
+                modelCount: session.agents.length
+              }}
+            />
+          ) : null}
           
           {session.finalSynthesis ? (
             <Card className="p-6 space-y-4">

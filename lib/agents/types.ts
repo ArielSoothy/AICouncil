@@ -60,6 +60,14 @@ export interface DebateSession {
     cost: number
     confidence: number
   }
+  consensusComparison?: {  // Normal consensus comparison data
+    response: string
+    models: string[]
+    tokensUsed: number
+    responseTime: number
+    cost: number
+    confidence: number
+  }
   informationRequest?: {  // New: Track missing information
     detected: boolean
     missingInfo: string[]
@@ -94,6 +102,8 @@ export interface DebateRequest {
   disagreementThreshold?: number  // New: Threshold for disagreement (0-1)
   includeComparison?: boolean  // Compare with single model
   comparisonModel?: { provider: string; model: string }  // Model to compare against
+  includeConsensusComparison?: boolean  // Also compare with normal consensus
+  consensusModels?: { provider: string; model: string }[]  // Models for consensus comparison
 }
 
 export interface DebateResponse {

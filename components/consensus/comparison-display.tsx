@@ -41,7 +41,7 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
   const timeIncrease = ((consensus.responseTime - singleModel.responseTime) / singleModel.responseTime * 100).toFixed(0)
   
   // Determine if consensus added value
-  const hasAdditionalInsights = consensus.agreements.length > 0 || consensus.disagreements.length > 0
+  const hasAdditionalInsights = (consensus.agreements?.length || 0) > 0 || (consensus.disagreements?.length || 0) > 0
   const hasHigherConfidence = consensus.confidence > singleModel.confidence
   
   return (

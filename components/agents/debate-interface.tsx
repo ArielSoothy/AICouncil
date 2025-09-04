@@ -61,6 +61,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [availableModels, setAvailableModels] = useState<{ provider: string; models: string[] }[]>([])
   const [includeComparison, setIncludeComparison] = useState(false)
   const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>(null)
+  const [includeConsensusComparison, setIncludeConsensusComparison] = useState(false)
   const [activeTab, setActiveTab] = useState('setup')
   
   // New state for enhanced options
@@ -290,7 +291,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           isGuestMode: userTier === 'guest',
           includeComparison: includeComparison && !continueRound2,
           comparisonModel: includeComparison && !continueRound2 && comparisonModel ? 
-            { provider: comparisonModel.provider, model: comparisonModel.model } : undefined
+            { provider: comparisonModel.provider, model: comparisonModel.model } : undefined,
+          includeConsensusComparison: includeComparison && includeConsensusComparison && !continueRound2,
+          consensusModels: includeComparison && includeConsensusComparison && !continueRound2 ? 
+            modelConfigs.filter(m => m.enabled).map(m => ({ provider: m.provider, model: m.model })) : undefined
         }),
       })
       
@@ -392,6 +396,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     id: crypto.randomUUID(),
                     query: fullQuery,
                     agents: apiAgents,
+                    comparisonResponse: data.comparisonResponse || null,
+                    consensusComparison: data.consensusComparison || null,
                     rounds: [{
                       roundNumber: 1,
                       startTime: new Date(debateStartTime || Date.now()),
@@ -570,7 +576,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           isFollowUp: !!followUpAnswers,
           includeComparison: includeComparison && !continueRound2,
           comparisonModel: includeComparison && !continueRound2 && comparisonModel ? 
-            { provider: comparisonModel.provider, model: comparisonModel.model } : undefined
+            { provider: comparisonModel.provider, model: comparisonModel.model } : undefined,
+          includeConsensusComparison: includeComparison && includeConsensusComparison && !continueRound2,
+          consensusModels: includeComparison && includeConsensusComparison && !continueRound2 ? 
+            modelConfigs.filter(m => m.enabled).map(m => ({ provider: m.provider, model: m.model })) : undefined
         }),
       })
 
@@ -757,11 +766,12 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 </div>
                 
                 {includeComparison && (
-                  <div className="pl-7">
-                    <Label htmlFor="comparison-model-debate" className="text-sm text-muted-foreground mb-2 block">
-                      Select model for comparison:
-                    </Label>
-                    <Select
+                  <div className="pl-7 space-y-4">
+                    <div>
+                      <Label htmlFor="comparison-model-debate" className="text-sm text-muted-foreground mb-2 block">
+                        Select model for comparison:
+                      </Label>
+                      <Select
                       value={comparisonModel ? `${comparisonModel.provider}/${comparisonModel.model}` : ''}
                       onValueChange={(value) => {
                         const [provider, ...modelParts] = value.split('/')
@@ -788,8 +798,23 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      See how a single model response compares to the agent debate consensus
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="consensus-comparison" className="text-sm font-medium">
+                        Also compare with normal consensus (3-way comparison)
+                      </Label>
+                      <Switch
+                        id="consensus-comparison"
+                        checked={includeConsensusComparison}
+                        onCheckedChange={setIncludeConsensusComparison}
+                      />
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground">
+                      {includeConsensusComparison 
+                        ? "Compare single model vs normal consensus vs agent debate"
+                        : "See how a single model response compares to the agent debate consensus"}
                     </p>
                   </div>
                 )}

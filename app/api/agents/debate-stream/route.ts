@@ -15,7 +15,11 @@ export async function POST(request: NextRequest) {
     agents = [], 
     responseMode = 'normal', 
     round1Mode = 'llm',
-    rounds = 1
+    rounds = 1,
+    includeComparison = false,
+    comparisonModel = null,
+    includeConsensusComparison = false,
+    consensusModels = []
   } = body
   
   // Set token limits based on response mode
@@ -210,6 +214,99 @@ export async function POST(request: NextRequest) {
           })}\n\n`))
         }
         
+        // Handle comparison if requested
+        let comparisonData = null
+        let consensusData = null
+        
+        if (includeComparison && comparisonModel) {
+          try {
+            // Send comparison started event
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              type: 'comparison_started',
+              model: comparisonModel.model,
+              timestamp: Date.now()
+            })}\n\n`))
+            
+            const provider = providerRegistry.getProvider(comparisonModel.provider)
+            if (provider) {
+              const result = await provider.query(query, {
+                ...comparisonModel,
+                enabled: true,
+                maxTokens: tokenLimit
+              })
+              
+              comparisonData = {
+                model: comparisonModel.model,
+                response: result.response,
+                tokensUsed: result.tokensUsed || 100,
+                responseTime: 1, // Default response time
+                cost: 0.0001, // Default cost
+                confidence: 70 // Base confidence for single model
+              }
+              
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                type: 'comparison_completed',
+                comparison: comparisonData,
+                timestamp: Date.now()
+              })}\n\n`))
+            }
+          } catch (error: any) {
+            console.error('Comparison model failed:', error)
+          }
+        }
+        
+        // Handle consensus comparison if requested - use the existing consensus API
+        if (includeComparison && includeConsensusComparison && consensusModels.length > 0) {
+          try {
+            // Send consensus comparison started event
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              type: 'consensus_comparison_started',
+              models: consensusModels.map((m: any) => m.model),
+              timestamp: Date.now()
+            })}\n\n`))
+            
+            // Call the existing consensus API endpoint
+            const consensusResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/consensus`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                query,
+                models: consensusModels.map((m: any) => ({
+                  ...m,
+                  enabled: true
+                })),
+                responseMode,
+                skipJudge: false // We want the judge analysis for confidence
+              }),
+            })
+            
+            if (consensusResponse.ok) {
+              const consensusResult = await consensusResponse.json()
+              
+              if (consensusResult.consensus) {
+                consensusData = {
+                  response: consensusResult.consensus.unifiedAnswer,
+                  models: consensusModels.map((m: any) => `${m.provider}/${m.model}`),
+                  tokensUsed: consensusResult.responses?.reduce((sum: number, r: any) => sum + (r.tokensUsed || 0), 0) || 500,
+                  responseTime: consensusResult.consensus.responseTime || 2.5,
+                  cost: consensusResult.consensus.cost || 0.001,
+                  confidence: consensusResult.consensus.confidence || 80
+                }
+                
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                  type: 'consensus_comparison_completed',
+                  consensus: consensusData,
+                  timestamp: Date.now()
+                })}\n\n`))
+              }
+            }
+          } catch (error: any) {
+            console.error('Consensus comparison failed:', error)
+          }
+        }
+        
         // Start synthesis phase
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
           type: 'synthesis_started',
@@ -389,6 +486,8 @@ Format your response with clear sections using markdown headers (###).`
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
               type: 'synthesis_completed',
               synthesis,
+              comparisonResponse: comparisonData,
+              consensusComparison: consensusData,
               timestamp: Date.now()
             })}\n\n`))
             
@@ -461,6 +560,8 @@ Format your response with clear sections using markdown headers (###).`
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
               type: 'synthesis_completed',
               synthesis,
+              comparisonResponse: comparisonData,
+              consensusComparison: consensusData,
               timestamp: Date.now()
             })}\n\n`))
           }
