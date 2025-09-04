@@ -59,15 +59,20 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [debateSession, setDebateSession] = useState<DebateSession | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [availableModels, setAvailableModels] = useState<{ provider: string; models: string[] }[]>([])
-  const [includeComparison, setIncludeComparison] = useState(false)
-  const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>(null)
-  const [includeConsensusComparison, setIncludeConsensusComparison] = useState(false)
+  const [includeComparison, setIncludeComparison] = useState(true)
+  const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>({
+    provider: 'google',
+    model: 'gemini-2.5-flash',
+    enabled: true
+  })
+  const [includeConsensusComparison, setIncludeConsensusComparison] = useState(true)
+  const [comparisonSelectorKey, setComparisonSelectorKey] = useState(0)
   const [activeTab, setActiveTab] = useState('setup')
   
   // New state for enhanced options
   const [round1Mode, setRound1Mode] = useState<'llm' | 'agents'>('llm')
-  const [autoRound2, setAutoRound2] = useState(false)
-  const [disagreementThreshold, setDisagreementThreshold] = useState(0.6)
+  const [autoRound2, setAutoRound2] = useState(true)
+  const [disagreementThreshold, setDisagreementThreshold] = useState(0.3)
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
   const [costEstimate, setCostEstimate] = useState<any>(null)
   const [showRound2Prompt, setShowRound2Prompt] = useState(false)
@@ -756,10 +761,15 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       setIncludeComparison(checked)
                       // Set default comparison model when enabled
                       if (checked && !comparisonModel) {
-                        const firstEnabled = modelConfigs.find(m => m.enabled)
-                        if (firstEnabled) {
-                          setComparisonModel(firstEnabled)
-                        }
+                        // Set Google Gemini 2.5 Flash as default
+                        setComparisonModel({
+                          provider: 'google',
+                          model: 'gemini-2.5-flash',
+                          enabled: true
+                        })
+                      } else if (!checked) {
+                        // Clear comparison model when disabled
+                        setComparisonModel(null)
                       }
                     }}
                   />
@@ -768,36 +778,32 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 {includeComparison && (
                   <div className="pl-7 space-y-4">
                     <div>
-                      <Label htmlFor="comparison-model-debate" className="text-sm text-muted-foreground mb-2 block">
+                      <Label className="text-sm text-muted-foreground mb-2 block">
                         Select model for comparison:
                       </Label>
-                      <Select
-                      value={comparisonModel ? `${comparisonModel.provider}/${comparisonModel.model}` : ''}
-                      onValueChange={(value) => {
-                        const [provider, ...modelParts] = value.split('/')
-                        const model = modelParts.join('/')
-                        const found = modelConfigs.find(m => 
-                          m.provider === provider && m.model === model && m.enabled
-                        )
-                        if (found) {
-                          setComparisonModel(found)
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Choose a model..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {modelConfigs.filter(m => m.enabled).map((model) => (
-                          <SelectItem 
-                            key={`${model.provider}/${model.model}`}
-                            value={`${model.provider}/${model.model}`}
-                          >
-                            {model.provider}/{model.model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <ModelSelector
+                        models={comparisonModel ? [comparisonModel] : [{
+                          provider: 'google',
+                          model: 'gemini-2.5-flash',
+                          enabled: false
+                        }]}
+                        onChange={(models) => {
+                          // ModelSelector returns an array, we just need the first one
+                          if (models.length > 0) {
+                            const newModel = models[0]
+                            setComparisonModel({
+                              provider: newModel.provider,
+                              model: newModel.model,
+                              enabled: true
+                            })
+                          } else {
+                            // If no models selected, but keep the default available
+                            setComparisonModel(null)
+                          }
+                        }}
+                        maxModels={1}
+                        userTier={userTier}
+                      />
                     </div>
                     
                     <div className="flex items-center justify-between">

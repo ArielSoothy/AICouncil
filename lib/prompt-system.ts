@@ -2,7 +2,7 @@ export type ResponseLength = 'concise' | 'normal' | 'detailed';
 
 export const generateModelPrompt = (userQuery: string, responseLength: ResponseLength = 'normal') => {
   const lengthInstructions = {
-    concise: 'Answer with a ranked numbered list of SINGLE-WORD or MINIMAL-TOKEN items (e.g., "MBA, MSc, BSc"). No sentences.',
+    concise: 'Start with Top 3 recommendations as a numbered list, then add ONE brief summary sentence.',
     normal: 'Answer in 3-5 sentences with key reasoning and context.',
     detailed: 'Provide comprehensive answer with examples, nuances, and full explanation (6+ sentences).'
   };
@@ -10,16 +10,19 @@ export const generateModelPrompt = (userQuery: string, responseLength: ResponseL
   // For concise mode, we want extremely brief, list-style responses
   const outputFormat = responseLength === 'concise' ? `
  [MAIN ANSWER]
- ${lengthInstructions[responseLength]}
- Examples:
- - best degree for founders? => "1. MBA 2. MSc 3. BSc"
- - top 3 coding tools => "1. Copilot 2. Cursor 3. Replit"
- - yes/no => "Yes" or "No"
+ Provide answer in this EXACT format:
+ 
+ Top 3 Recommendations:
+ 1. [First option with brief descriptor]
+ 2. [Second option with brief descriptor]
+ 3. [Third option with brief descriptor]
+ 
+ [One sentence summary of the top choice and why].
 
  [CONFIDENCE: XX%]
  Rate your confidence 0-100%
 
- CRITICAL: OUTPUT ONLY THE NUMBERED LIST WITH SINGLE-WORD/MINIMAL-TOKEN ITEMS AND THE CONFIDENCE. NO sentences, NO explanations, NO meta-commentary.
+ CRITICAL: Start with the numbered list FIRST, then add ONE summary sentence. Keep each recommendation to 5-8 words max.
  ` : `
 [MAIN ANSWER]
 Provide your clearest answer here. Write as if explaining to an intelligent person who isn't a specialist.

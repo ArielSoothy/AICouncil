@@ -11,6 +11,8 @@ interface ModelSelectorProps {
   models: ModelConfig[]
   onChange: (models: ModelConfig[]) => void
   usePremiumQuery?: boolean
+  maxModels?: number
+  userTier?: string
 }
 
 const availableModels = {
@@ -118,7 +120,7 @@ const getEfficiencyBadge = (model: string): string => {
   return '🏆' // Flagship
 }
 
-export function ModelSelector({ models, onChange, usePremiumQuery = false }: ModelSelectorProps) {
+export function ModelSelector({ models, onChange, usePremiumQuery = false, maxModels, userTier: propUserTier }: ModelSelectorProps) {
   const { userTier, loading } = useAuth()
   
   // Show ALL models with tier info, using effective tier for premium queries
@@ -328,12 +330,14 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false }: Mod
         ))}
       </div>
 
-      <div className="text-xs text-muted-foreground space-y-1">
-        <div>💡 Tip: Add multiple models from the same provider to compare their responses directly!</div>
-        <div>💰 Cost shown per 1K tokens (input/output). Flagship models offer best performance but cost more.</div>
-        <div>🌐 Models with globe icon have internet access for real-time information.</div>
-        <div>🏷️ Efficiency badges: 🆓 Free • 💰 Great Value • ⚖️ Balanced • 💎 Premium • 🏆 Flagship</div>
-      </div>
+      {(!maxModels || maxModels > 1) && (
+        <div className="text-xs text-muted-foreground space-y-1">
+          <div>💡 Tip: Add multiple models from the same provider to compare their responses directly!</div>
+          <div>💰 Cost shown per 1K tokens (input/output). Flagship models offer best performance but cost more.</div>
+          <div>🌐 Models with globe icon have internet access for real-time information.</div>
+          <div>🏷️ Efficiency badges: 🆓 Free • 💰 Great Value • ⚖️ Balanced • 💎 Premium • 🏆 Flagship</div>
+        </div>
+      )}
     </div>
   )
 }

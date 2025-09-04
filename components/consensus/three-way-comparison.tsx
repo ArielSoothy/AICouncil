@@ -57,10 +57,14 @@ export function ThreeWayComparison({
   consensus, 
   agentDebate 
 }: ThreeWayComparisonProps) {
-  // Calculate improvements
-  const consensusImprovement = consensus.confidence - singleModel.confidence
-  const debateImprovement = agentDebate.confidence - singleModel.confidence
-  const debateVsConsensus = agentDebate.confidence - consensus.confidence
+  // Calculate improvements - normalize confidence values to 0-100 range if needed
+  const singleConfidence = singleModel.confidence > 1 ? singleModel.confidence : singleModel.confidence * 100
+  const consensusConfidence = consensus.confidence > 1 ? consensus.confidence : consensus.confidence * 100
+  const debateConfidence = agentDebate.confidence > 1 ? agentDebate.confidence : agentDebate.confidence * 100
+  
+  const consensusImprovement = consensusConfidence - singleConfidence
+  const debateImprovement = debateConfidence - singleConfidence
+  const debateVsConsensus = debateConfidence - consensusConfidence
   
   const consensusCostIncrease = ((consensus.cost - singleModel.cost) / singleModel.cost) * 100
   const debateCostIncrease = ((agentDebate.cost - singleModel.cost) / singleModel.cost) * 100
@@ -164,14 +168,14 @@ export function ThreeWayComparison({
               
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Response Preview</p>
-                <div className="text-sm max-h-[100px] overflow-y-auto pr-1">{singleModel.response}</div>
+                <div className="text-sm max-h-[100px] overflow-y-auto pr-1 whitespace-pre-wrap">{singleModel.response}</div>
               </div>
               
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <p className="text-xs text-muted-foreground">Confidence</p>
-                  <p className={`text-lg font-bold ${getConfidenceColor(singleModel.confidence)}`}>
-                    {singleModel.confidence}%
+                  <p className={`text-lg font-bold ${getConfidenceColor(singleConfidence)}`}>
+                    {singleConfidence.toFixed(0)}%
                   </p>
                 </div>
                 <div>
@@ -184,7 +188,7 @@ export function ThreeWayComparison({
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {singleModel.responseTime.toFixed(1)}s
+                    {(singleModel.responseTime / 1000).toFixed(1)}s
                   </span>
                   <span>{singleModel.tokensUsed} tokens</span>
                 </div>
@@ -214,15 +218,15 @@ export function ThreeWayComparison({
               
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Response Preview</p>
-                <div className="text-sm max-h-[100px] overflow-y-auto pr-1">{consensus.response}</div>
+                <div className="text-sm max-h-[100px] overflow-y-auto pr-1 whitespace-pre-wrap">{consensus.response}</div>
               </div>
               
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <p className="text-xs text-muted-foreground">Confidence</p>
                   <div className="flex items-center gap-1">
-                    <p className={`text-lg font-bold ${getConfidenceColor(consensus.confidence)}`}>
-                      {consensus.confidence}%
+                    <p className={`text-lg font-bold ${getConfidenceColor(consensusConfidence)}`}>
+                      {consensusConfidence.toFixed(0)}%
                     </p>
                     {getImprovementIcon(consensusImprovement)}
                   </div>
@@ -243,9 +247,9 @@ export function ThreeWayComparison({
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {consensus.responseTime.toFixed(1)}s
+                    {(consensus.responseTime / 1000).toFixed(1)}s
                     <span className="text-muted-foreground">
-                      (+{consensusTimeIncrease.toFixed(1)}s)
+                      (+{(consensusTimeIncrease / 1000).toFixed(1)}s)
                     </span>
                   </span>
                   <span>{consensus.tokensUsed} tokens</span>
@@ -276,15 +280,15 @@ export function ThreeWayComparison({
               
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Response Preview</p>
-                <div className="text-sm max-h-[100px] overflow-y-auto pr-1">{agentDebate.response}</div>
+                <div className="text-sm max-h-[100px] overflow-y-auto pr-1 whitespace-pre-wrap">{agentDebate.response}</div>
               </div>
               
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <p className="text-xs text-muted-foreground">Confidence</p>
                   <div className="flex items-center gap-1">
-                    <p className={`text-lg font-bold ${getConfidenceColor(agentDebate.confidence)}`}>
-                      {agentDebate.confidence}%
+                    <p className={`text-lg font-bold ${getConfidenceColor(debateConfidence)}`}>
+                      {debateConfidence.toFixed(0)}%
                     </p>
                     {getImprovementIcon(debateImprovement)}
                   </div>
@@ -312,9 +316,9 @@ export function ThreeWayComparison({
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {agentDebate.responseTime.toFixed(1)}s
+                    {(agentDebate.responseTime / 1000).toFixed(1)}s
                     <span className="text-muted-foreground">
-                      (+{debateTimeIncrease.toFixed(1)}s)
+                      (+{(debateTimeIncrease / 1000).toFixed(1)}s)
                     </span>
                   </span>
                   <span>{agentDebate.tokensUsed} tokens</span>
@@ -341,17 +345,17 @@ export function ThreeWayComparison({
             <tbody>
               <tr className="border-b">
                 <td className="py-2">Confidence</td>
-                <td className={`text-center py-2 ${getConfidenceColor(singleModel.confidence)}`}>
-                  {singleModel.confidence}%
+                <td className={`text-center py-2 ${getConfidenceColor(singleConfidence)}`}>
+                  {singleConfidence.toFixed(0)}%
                 </td>
-                <td className={`text-center py-2 ${getConfidenceColor(consensus.confidence)}`}>
-                  {consensus.confidence}% 
+                <td className={`text-center py-2 ${getConfidenceColor(consensusConfidence)}`}>
+                  {consensusConfidence.toFixed(0)}% 
                   <span className="text-xs text-muted-foreground ml-1">
                     ({formatConfidenceChange(consensusImprovement)})
                   </span>
                 </td>
-                <td className={`text-center py-2 ${getConfidenceColor(agentDebate.confidence)}`}>
-                  {agentDebate.confidence}%
+                <td className={`text-center py-2 ${getConfidenceColor(debateConfidence)}`}>
+                  {debateConfidence.toFixed(0)}%
                   <span className="text-xs text-muted-foreground ml-1">
                     ({formatConfidenceChange(debateImprovement)})
                   </span>
@@ -375,17 +379,17 @@ export function ThreeWayComparison({
               </tr>
               <tr className="border-b">
                 <td className="py-2">Response Time</td>
-                <td className="text-center py-2">{singleModel.responseTime.toFixed(1)}s</td>
+                <td className="text-center py-2">{(singleModel.responseTime / 1000).toFixed(1)}s</td>
                 <td className="text-center py-2">
-                  {consensus.responseTime.toFixed(1)}s
+                  {(consensus.responseTime / 1000).toFixed(1)}s
                   <span className="text-xs text-muted-foreground ml-1">
-                    (+{consensusTimeIncrease.toFixed(1)}s)
+                    (+{(consensusTimeIncrease / 1000).toFixed(1)}s)
                   </span>
                 </td>
                 <td className="text-center py-2">
-                  {agentDebate.responseTime.toFixed(1)}s
+                  {(agentDebate.responseTime / 1000).toFixed(1)}s
                   <span className="text-xs text-muted-foreground ml-1">
-                    (+{debateTimeIncrease.toFixed(1)}s)
+                    (+{(debateTimeIncrease / 1000).toFixed(1)}s)
                   </span>
                 </td>
               </tr>

@@ -270,7 +270,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
               agentDebate={{
                 response: session.finalSynthesis.conclusion || session.finalSynthesis.content,
                 agents: session.agents.map(a => `${a.name} (${a.role})`),
-                confidence: session.finalSynthesis.confidence,
+                confidence: session.finalSynthesis.confidence || 80,
                 tokensUsed: session.totalTokensUsed,
                 responseTime: session.endTime ? 
                   (new Date(session.endTime).getTime() - new Date(session.startTime).getTime()) / 1000 : 0,
@@ -284,7 +284,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
               singleModel={session.comparisonResponse}
               consensus={{
                 unifiedAnswer: session.finalSynthesis.conclusion || session.finalSynthesis.content,
-                confidence: session.finalSynthesis.confidence,
+                confidence: session.finalSynthesis.confidence || 80,
                 agreements: session.finalSynthesis.agreements || [],
                 disagreements: session.finalSynthesis.disagreements || [],
                 responseTime: session.endTime ? 
@@ -299,9 +299,11 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
             <Card className="p-6 space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Final Synthesis</h3>
-                <Badge variant="default" className="text-sm">
-                  {session.finalSynthesis.confidence}% Confidence
-                </Badge>
+                {session.finalSynthesis.confidence && (
+                  <Badge variant="default" className="text-sm">
+                    {session.finalSynthesis.confidence}% Confidence
+                  </Badge>
+                )}
               </div>
 
               <div className="space-y-4">

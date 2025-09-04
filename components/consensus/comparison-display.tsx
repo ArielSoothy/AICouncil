@@ -36,9 +36,13 @@ interface ComparisonDisplayProps {
 
 export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayProps) {
   // Calculate improvements (handle edge cases and extreme values)
-  const confidenceImprovement = singleModel.confidence > 0 
-    ? Math.min(((consensus.confidence - singleModel.confidence) / singleModel.confidence * 100), 999).toFixed(0)
-    : consensus.confidence.toFixed(0)
+  // Normalize confidence to 0-100 range if needed
+  const singleConfidence = singleModel.confidence > 1 ? singleModel.confidence : singleModel.confidence * 100
+  const consensusConfidence = consensus.confidence > 1 ? consensus.confidence : consensus.confidence * 100
+  
+  const confidenceImprovement = singleConfidence > 0 
+    ? Math.min(((consensusConfidence - singleConfidence) / singleConfidence * 100), 999).toFixed(0)
+    : consensusConfidence.toFixed(0)
   
   const costIncrease = singleModel.cost > 0.0001
     ? Math.min(((consensus.cost - singleModel.cost) / singleModel.cost * 100), 999).toFixed(0)
@@ -50,7 +54,7 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
   
   // Determine if consensus added value
   const hasAdditionalInsights = (consensus.agreements?.length || 0) > 0 || (consensus.disagreements?.length || 0) > 0
-  const hasHigherConfidence = consensus.confidence > singleModel.confidence
+  const hasHigherConfidence = consensusConfidence > singleConfidence
   
   return (
     <div className="w-full space-y-4">
@@ -79,7 +83,7 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
             {/* Response */}
             <div>
               <p className="text-sm text-muted-foreground mb-1">Response:</p>
-              <div className="text-sm max-h-[150px] overflow-y-auto pr-2">{singleModel.response}</div>
+              <div className="text-sm max-h-[150px] overflow-y-auto pr-2 whitespace-pre-wrap">{singleModel.response}</div>
             </div>
             
             {/* Metrics */}
@@ -87,7 +91,7 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1">
                   <Brain className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-sm font-medium">{(singleModel.confidence * 100).toFixed(0)}%</span>
+                  <span className="text-sm font-medium">{(singleModel.confidence < 1 ? singleModel.confidence * 100 : singleModel.confidence).toFixed(0)}%</span>
                 </div>
                 <p className="text-xs text-muted-foreground">Confidence</p>
               </div>
@@ -126,7 +130,7 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
             {/* Response */}
             <div>
               <p className="text-sm text-muted-foreground mb-1">Unified Answer:</p>
-              <div className="text-sm max-h-[150px] overflow-y-auto pr-2">{consensus.unifiedAnswer}</div>
+              <div className="text-sm max-h-[150px] overflow-y-auto pr-2 whitespace-pre-wrap">{consensus.unifiedAnswer}</div>
             </div>
             
             {/* Metrics with improvements */}
@@ -134,7 +138,7 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1">
                   <Brain className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-sm font-medium">{(consensus.confidence * 100).toFixed(0)}%</span>
+                  <span className="text-sm font-medium">{(consensus.confidence < 1 ? consensus.confidence * 100 : consensus.confidence).toFixed(0)}%</span>
                 </div>
                 <p className="text-xs text-muted-foreground">Confidence</p>
                 {hasHigherConfidence && (

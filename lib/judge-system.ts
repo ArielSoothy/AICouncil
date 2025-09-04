@@ -140,7 +140,7 @@ WEIGHTING RULES:
 Provide ONLY a JSON response with this structure:
 {
   "consensusScore": [0-100 number based on actual semantic agreement],
-  "bestAnswer": "Your synthesized response in 1-2 sentences",
+  "bestAnswer": "Top 3 Recommendations:\\n1. [First option]\\n2. [Second option]\\n3. [Third option]\\n\\n[State top choice in one sentence]. [Brief context if needed].",
   "confidence": [0-100 number based on response quality and agreement],
   "actionable": "Yes|Caution|No",
   "riskLevel": "None|Low|Medium|High|Critical",
@@ -148,7 +148,7 @@ Provide ONLY a JSON response with this structure:
   "redFlags": ["Flag 1 if any"]
 }
 
-CRITICAL: Output ONLY valid JSON. No explanations or formatting.` : `
+CRITICAL: Output ONLY valid JSON. Format bestAnswer exactly as shown with numbered list.` : `
 Provide your analysis in this EXACT format:
 
 ## 🎯 CONSENSUS SCORE

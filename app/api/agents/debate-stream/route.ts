@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { AgentConfig, DEBATE_CONFIG } from '@/lib/agents/types'
 import { providerRegistry } from '@/lib/ai-providers'
 import { generateRoundPrompt } from '@/lib/agents/debate-prompts'
+import { MODEL_COSTS_PER_1K } from '@/lib/model-metadata'
 
 export const dynamic = 'force-dynamic'
 
@@ -217,6 +218,7 @@ export async function POST(request: NextRequest) {
         // Handle comparison if requested
         let comparisonData = null
         let consensusData = null
+        let comparisonStartTime = Date.now()
         
         if (includeComparison && comparisonModel) {
           try {
@@ -229,19 +231,37 @@ export async function POST(request: NextRequest) {
             
             const provider = providerRegistry.getProvider(comparisonModel.provider)
             if (provider) {
-              const result = await provider.query(query, {
+              // Add conciseness instruction for single model comparison
+              const comparisonQuery = responseMode === 'concise' 
+                ? `${query}\n\nProvide a VERY CONCISE answer in this exact format:
+Top 3 Recommendations:
+1. [First option]
+2. [Second option]  
+3. [Third option]
+
+[State the top choice in one sentence]. [Add one brief context sentence if needed].
+
+Use line breaks exactly as shown above.`
+                : query
+                
+              const result = await provider.query(comparisonQuery, {
                 ...comparisonModel,
                 enabled: true,
                 maxTokens: tokenLimit
               })
               
+              // Calculate actual cost based on model metadata
+              const modelKey = comparisonModel.model as keyof typeof MODEL_COSTS_PER_1K
+              const modelCost = MODEL_COSTS_PER_1K[modelKey] || { input: 0.001, output: 0.001 }
+              const actualCost = ((result.tokensUsed || 100) / 1000) * ((modelCost.input + modelCost.output) / 2)
+              
               comparisonData = {
                 model: comparisonModel.model,
                 response: result.response,
                 tokensUsed: result.tokensUsed || 100,
-                responseTime: 1, // Default response time
-                cost: 0.0001, // Default cost
-                confidence: 70 // Base confidence for single model
+                responseTime: Date.now() - comparisonStartTime, // Actual response time in ms
+                cost: actualCost,
+                confidence: 0.7 // Base confidence for single model (70% as decimal)
               }
               
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
@@ -290,9 +310,9 @@ export async function POST(request: NextRequest) {
                   response: consensusResult.consensus.unifiedAnswer,
                   models: consensusModels.map((m: any) => `${m.provider}/${m.model}`),
                   tokensUsed: consensusResult.responses?.reduce((sum: number, r: any) => sum + (r.tokensUsed || 0), 0) || 500,
-                  responseTime: consensusResult.consensus.responseTime || 2.5,
+                  responseTime: (consensusResult.consensus.responseTime || 2.5) * 1000, // Convert to ms
                   cost: consensusResult.consensus.cost || 0.001,
-                  confidence: consensusResult.consensus.confidence || 80
+                  confidence: (consensusResult.consensus.confidence || 80) / 100 // Convert to 0-1 range
                 }
                 
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
@@ -316,7 +336,7 @@ export async function POST(request: NextRequest) {
         // Create synthesis using Gemini
         try {
           const concisenessInstruction = responseMode === 'concise' 
-            ? '\n\nIMPORTANT: Be VERY CONCISE. CONCLUSION should be 2-3 sentences maximum. Just list the top recommendations directly without explanation.'
+            ? '\n\nIMPORTANT: Be VERY CONCISE. CONCLUSION should follow this exact format:\nTop 3 Recommendations:\n1. [First option]\n2. [Second option]\n3. [Third option]\n\n[State the top choice in one sentence]. [Brief context if needed].'
             : responseMode === 'detailed'
             ? '\n\nProvide detailed analysis with thorough explanations.'
             : ''
@@ -444,9 +464,9 @@ Format your response with clear sections using markdown headers (###).`
                 .slice(0, 5) // Limit to 5 key points
             }
             
-            // Extract confidence
+            // Extract confidence (only if explicitly provided, otherwise null)
             const confidenceMatch = content.match(/CONFIDENCE:\s*(\d+)/i)
-            const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) / 100 : 0.75
+            const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : null
             
             // Extract follow-up questions if present
             let followUpQuestions: string[] = []
