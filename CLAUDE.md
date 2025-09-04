@@ -192,10 +192,17 @@ Transform AI Council from a multi-model consensus tool into the world's premier 
 - White-label capabilities
 - Audit logging system
 
-## 🔍 Comparison Feature
+## 🔍 Comparison Features
 
-### Overview
+### Two-Way Comparison
 The comparison feature allows users to see side-by-side comparisons between single model responses and multi-model consensus/debate results. This provides transparency into the value proposition of using multiple AI models.
+
+### Three-Way Comparison (NEW!)
+Enhanced comparison showing single model vs normal consensus vs agent debate all at once:
+- **`/components/consensus/three-way-comparison.tsx`**: Comprehensive 3-way comparison
+- **Intelligent Recommendations**: Automatically suggests best approach based on metrics
+- **Side-by-side Display**: All three approaches visible simultaneously
+- **Value Analysis**: Shows when each approach is most cost-effective
 
 ### Key Components
 - **`/components/consensus/comparison-display.tsx`**: Main comparison UI component

@@ -315,6 +315,12 @@ export async function POST(request: NextRequest) {
         
         // Create synthesis using Gemini
         try {
+          const concisenessInstruction = responseMode === 'concise' 
+            ? '\n\nIMPORTANT: Be VERY CONCISE. CONCLUSION should be 2-3 sentences maximum. Just list the top recommendations directly without explanation.'
+            : responseMode === 'detailed'
+            ? '\n\nProvide detailed analysis with thorough explanations.'
+            : ''
+            
           const synthesisPrompt = `You are the Chief Judge synthesizing a multi-agent debate.
 
 Query: ${query}
@@ -326,9 +332,9 @@ ${r.response.substring(0, 500)}...
 `).join('\n')}
 
 Please provide:
-1. AGREEMENTS: Key points where models agree
-2. DISAGREEMENTS: Points of contention
-3. CONCLUSION: Your synthesized answer based on the consensus
+1. AGREEMENTS: Key points where models agree (bullet points)
+2. DISAGREEMENTS: Points of contention (bullet points)
+3. CONCLUSION: Your synthesized answer based on the consensus${concisenessInstruction}
 4. FOLLOW-UP QUESTIONS (optional): If more information would help provide a better answer, list specific questions the user could answer
 
 Format your response with clear sections using markdown headers (###).`

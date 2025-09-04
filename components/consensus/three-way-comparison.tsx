@@ -164,7 +164,7 @@ export function ThreeWayComparison({
               
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Response Preview</p>
-                <p className="text-sm line-clamp-3">{singleModel.response}</p>
+                <div className="text-sm max-h-[100px] overflow-y-auto pr-1">{singleModel.response}</div>
               </div>
               
               <div className="grid grid-cols-2 gap-2">
@@ -214,7 +214,7 @@ export function ThreeWayComparison({
               
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Response Preview</p>
-                <p className="text-sm line-clamp-3">{consensus.response}</p>
+                <div className="text-sm max-h-[100px] overflow-y-auto pr-1">{consensus.response}</div>
               </div>
               
               <div className="grid grid-cols-2 gap-2">
@@ -276,7 +276,7 @@ export function ThreeWayComparison({
               
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Response Preview</p>
-                <p className="text-sm line-clamp-3">{agentDebate.response}</p>
+                <div className="text-sm max-h-[100px] overflow-y-auto pr-1">{agentDebate.response}</div>
               </div>
               
               <div className="grid grid-cols-2 gap-2">

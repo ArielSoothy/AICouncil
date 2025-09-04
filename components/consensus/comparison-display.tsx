@@ -35,10 +35,18 @@ interface ComparisonDisplayProps {
 }
 
 export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayProps) {
-  // Calculate improvements
-  const confidenceImprovement = ((consensus.confidence - singleModel.confidence) / singleModel.confidence * 100).toFixed(0)
-  const costIncrease = ((consensus.cost - singleModel.cost) / singleModel.cost * 100).toFixed(0)
-  const timeIncrease = ((consensus.responseTime - singleModel.responseTime) / singleModel.responseTime * 100).toFixed(0)
+  // Calculate improvements (handle edge cases and extreme values)
+  const confidenceImprovement = singleModel.confidence > 0 
+    ? Math.min(((consensus.confidence - singleModel.confidence) / singleModel.confidence * 100), 999).toFixed(0)
+    : consensus.confidence.toFixed(0)
+  
+  const costIncrease = singleModel.cost > 0.0001
+    ? Math.min(((consensus.cost - singleModel.cost) / singleModel.cost * 100), 999).toFixed(0)
+    : '0'
+    
+  const timeIncrease = singleModel.responseTime > 0.01
+    ? Math.min(((consensus.responseTime - singleModel.responseTime) / singleModel.responseTime * 100), 999).toFixed(0)
+    : '0'
   
   // Determine if consensus added value
   const hasAdditionalInsights = (consensus.agreements?.length || 0) > 0 || (consensus.disagreements?.length || 0) > 0
@@ -71,7 +79,7 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
             {/* Response */}
             <div>
               <p className="text-sm text-muted-foreground mb-1">Response:</p>
-              <p className="text-sm line-clamp-4">{singleModel.response}</p>
+              <div className="text-sm max-h-[150px] overflow-y-auto pr-2">{singleModel.response}</div>
             </div>
             
             {/* Metrics */}
@@ -118,7 +126,7 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
             {/* Response */}
             <div>
               <p className="text-sm text-muted-foreground mb-1">Unified Answer:</p>
-              <p className="text-sm line-clamp-4">{consensus.unifiedAnswer}</p>
+              <div className="text-sm max-h-[150px] overflow-y-auto pr-2">{consensus.unifiedAnswer}</div>
             </div>
             
             {/* Metrics with improvements */}
