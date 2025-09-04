@@ -37,7 +37,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [modelConfigs, setModelConfigs] = useState<ModelConfig[]>([
     { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
     { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
-    { provider: 'google', model: 'gemini-2.5-flash', enabled: true }
+    { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true }
   ])
   
   // Derive selectedLLMs from modelConfigs for the debate API
@@ -61,8 +61,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [availableModels, setAvailableModels] = useState<{ provider: string; models: string[] }[]>([])
   const [includeComparison, setIncludeComparison] = useState(true)
   const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>({
-    provider: 'google',
-    model: 'gemini-2.5-flash',
+    provider: 'groq',
+    model: 'llama-3.3-70b-versatile',
     enabled: true
   })
   const [includeConsensusComparison, setIncludeConsensusComparison] = useState(true)

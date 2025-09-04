@@ -77,7 +77,7 @@ export const TIER_CONFIGS: Record<UserTier, TierConfig> = {
 // Guest tier model whitelist (same as free tier for impressive demo)
 export const GUEST_TIER_MODELS = {
   google: [
-    'gemini-2.5-flash', 
+    'llama-3.3-70b-versatile', 
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
     'gemini-1.5-flash', 
@@ -93,7 +93,7 @@ export const GUEST_TIER_MODELS = {
 // Free tier model whitelist
 export const FREE_TIER_MODELS = {
   google: [
-    'gemini-2.5-flash', 
+    'llama-3.3-70b-versatile', 
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
     'gemini-1.5-flash', 
@@ -214,7 +214,7 @@ export const MODELS_WITH_INTERNET = [
   'gpt-4-turbo-preview',
   'claude-3-5-sonnet-20241022',
   'gemini-2.5-pro',
-  'gemini-2.5-flash'
+  'llama-3.3-70b-versatile'
 ]
 
 export function hasInternetAccess(model: string): boolean {

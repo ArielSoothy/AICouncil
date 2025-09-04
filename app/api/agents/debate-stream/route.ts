@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
               // Generate appropriate prompt
               const isLLMMode = round1Mode === 'llm' && roundNum === 1
               const formatInstruction = responseMode === 'concise' 
-                ? '\n\nProvide your answer in this format:\nTop 3 Recommendations:\n1. [First option]\n2. [Second option]\n3. [Third option]\n\n[State the top choice in one sentence].'
+                ? '\n\nProvide your answer in EXACTLY this format with line breaks:\n\nTop 3 Recommendations:\n1. [Product Name] (year/details)\n2. [Product Name] (year/details)\n3. [Product Name] (year/details)\n\n[One paragraph explaining why #1 is the top choice, mentioning #2 and #3 briefly for context].'
                 : ''
               const fullPrompt = isLLMMode 
                 ? `Please answer this query concisely and directly:\n\n${query}${formatInstruction}`
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
                       actualProvider = 'google'
                       result = await googleProvider.query(fullPrompt, {
                         provider: 'google',
-                        model: 'gemini-2.5-flash',
+                        model: 'llama-3.3-70b-versatile',
                         enabled: true,
                         maxTokens: tokenLimit
                       })
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
             if (provider) {
               const startTime = Date.now()
               const comparisonQuery = responseMode === 'concise' 
-                ? `${query}\n\nProvide your answer in this format:\nTop 3 Recommendations:\n1. [First option]\n2. [Second option]\n3. [Third option]\n\n[State the top choice in one sentence].`
+                ? `${query}\n\nProvide your answer in EXACTLY this format with line breaks:\n\nTop 3 Recommendations:\n1. [Product Name] (year/details)\n2. [Product Name] (year/details)\n3. [Product Name] (year/details)\n\n[One paragraph explaining why #1 is the top choice, mentioning #2 and #3 briefly for context].`
                 : query
               const result = await provider.query(comparisonQuery, {
                 ...comparisonModel,
@@ -342,7 +342,7 @@ export async function POST(request: NextRequest) {
             // Simple consensus - just query all models and average
             const consensusStartTime = Date.now()
             const consensusQuery = responseMode === 'concise' 
-              ? `${query}\n\nProvide your answer in this format:\nTop 3 Recommendations:\n1. [First option]\n2. [Second option]\n3. [Third option]\n\n[State the top choice in one sentence].`
+              ? `${query}\n\nProvide your answer in EXACTLY this format with line breaks:\n\nTop 3 Recommendations:\n1. [Product Name] (year/details)\n2. [Product Name] (year/details)\n3. [Product Name] (year/details)\n\n[One paragraph explaining why #1 is the top choice, mentioning #2 and #3 briefly for context].`
               : query
             const consensusResponses = await Promise.all(
               consensusModels.map(async (model: any) => {
@@ -413,7 +413,7 @@ export async function POST(request: NextRequest) {
         // Create synthesis using Gemini
         try {
           const concisenessInstruction = responseMode === 'concise' 
-            ? '\n\nIMPORTANT: Be VERY CONCISE. CONCLUSION should follow this exact format:\nTop 3 Recommendations:\n1. [First option]\n2. [Second option]\n3. [Third option]\n\n[State the top choice in one sentence]. [Brief context if needed].'
+            ? '\n\nIMPORTANT: Be VERY CONCISE. CONCLUSION should follow EXACTLY this format with line breaks:\n\nTop 3 Recommendations:\n1. [Product Name] (year/details)\n2. [Product Name] (year/details)\n3. [Product Name] (year/details)\n\n[One paragraph explaining why #1 is the top choice, mentioning #2 and #3 briefly for context].'
             : responseMode === 'detailed'
             ? '\n\nProvide detailed analysis with thorough explanations.'
             : ''
