@@ -128,8 +128,11 @@ export async function POST(request: NextRequest) {
               
               // Generate appropriate prompt
               const isLLMMode = round1Mode === 'llm' && roundNum === 1
+              const formatInstruction = responseMode === 'concise' 
+                ? '\n\nProvide your answer in this format:\nTop 3 Recommendations:\n1. [First option]\n2. [Second option]\n3. [Third option]\n\n[State the top choice in one sentence].'
+                : ''
               const fullPrompt = isLLMMode 
-                ? `Please answer this query concisely and directly:\n\n${query}`
+                ? `Please answer this query concisely and directly:\n\n${query}${formatInstruction}`
                 : `${agentConfig.persona?.systemPrompt || ''}\n\n${generateRoundPrompt(
                     query,
                     agentConfig.persona || {
@@ -294,7 +297,10 @@ export async function POST(request: NextRequest) {
             const provider = providerRegistry.getProvider(comparisonModel.provider)
             if (provider) {
               const startTime = Date.now()
-              const result = await provider.query(query, {
+              const comparisonQuery = responseMode === 'concise' 
+                ? `${query}\n\nProvide your answer in this format:\nTop 3 Recommendations:\n1. [First option]\n2. [Second option]\n3. [Third option]\n\n[State the top choice in one sentence].`
+                : query
+              const result = await provider.query(comparisonQuery, {
                 ...comparisonModel,
                 enabled: true,
                 maxTokens: tokenLimit
@@ -335,12 +341,15 @@ export async function POST(request: NextRequest) {
             
             // Simple consensus - just query all models and average
             const consensusStartTime = Date.now()
+            const consensusQuery = responseMode === 'concise' 
+              ? `${query}\n\nProvide your answer in this format:\nTop 3 Recommendations:\n1. [First option]\n2. [Second option]\n3. [Third option]\n\n[State the top choice in one sentence].`
+              : query
             const consensusResponses = await Promise.all(
               consensusModels.map(async (model: any) => {
                 const provider = providerRegistry.getProvider(model.provider)
                 if (provider) {
                   try {
-                    return await provider.query(query, {
+                    return await provider.query(consensusQuery, {
                       ...model,
                       enabled: true,
                       maxTokens: tokenLimit
