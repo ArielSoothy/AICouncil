@@ -101,6 +101,9 @@ Transform AI Council from a multi-model consensus tool into the world's premier 
 - **Real-Time Model Tracking**: SSE streaming shows actual model completions as they happen
 - **Intelligent Fallbacks**: Automatic provider switching when APIs are overloaded (Google ↔ Groq)
 - **Context-Aware Follow-ups**: Includes previous conclusions in follow-up debates to avoid regression
+- **Single Model Comparison**: Side-by-side comparison showing single model vs multi-model consensus/debate results
+- **Value Metrics Display**: Shows confidence improvement, cost analysis, and response time differences
+- **Intelligent Recommendations**: Provides actionable insights on when to use single vs multi-model approaches
 
 ### 🎯 Key Innovations
 - **Adaptive Intelligence**: Simple queries get fast consensus, complex ones trigger debates
@@ -172,6 +175,9 @@ Transform AI Council from a multi-model consensus tool into the world's premier 
 - Basic tier system (guest/free/pro/enterprise)
 - Interactive follow-up questions
 - Response mode control (concise/normal/detailed)
+- Single model vs multi-model comparison feature
+- Real-time confidence and cost analysis
+- Value-based recommendations for model selection
 
 ### 🚧 In Progress
 - Memory system architecture design
@@ -185,6 +191,49 @@ Transform AI Council from a multi-model consensus tool into the world's premier 
 - Enterprise authentication
 - White-label capabilities
 - Audit logging system
+
+## 🔍 Comparison Feature
+
+### Overview
+The comparison feature allows users to see side-by-side comparisons between single model responses and multi-model consensus/debate results. This provides transparency into the value proposition of using multiple AI models.
+
+### Key Components
+- **`/components/consensus/comparison-display.tsx`**: Main comparison UI component
+- **Toggle Control**: Available in both normal consensus and agent debate interfaces
+- **Metrics Displayed**:
+  - Confidence improvement (percentage increase)
+  - Cost analysis (additional cost for multi-model)
+  - Response time difference
+  - Value assessment and recommendations
+
+### How It Works
+1. User enables comparison toggle before submitting query
+2. System queries selected single model separately
+3. Multi-model consensus/debate runs in parallel
+4. Results displayed side-by-side with metrics
+5. Intelligent recommendations provided based on:
+   - Query complexity
+   - Confidence improvement
+   - Cost-benefit analysis
+
+### Usage Patterns
+```typescript
+// Enable comparison in consensus mode
+const [includeComparison, setIncludeComparison] = useState(false)
+const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>(null)
+
+// API request includes comparison parameters
+{
+  includeComparison: true,
+  comparisonModel: { provider: 'groq', model: 'llama-3.3-70b-versatile' }
+}
+```
+
+### Value Propositions Shown
+- **High Confidence Gain (>30%)**: Worth the extra cost for critical decisions
+- **Moderate Gain (10-30%)**: Good for important queries
+- **Low Gain (<10%)**: Single model may be sufficient
+- **Cost Analysis**: Shows exact cost increase for transparency
 
 ## Essential Commands
 
