@@ -4,6 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## CRITICAL RULES - NEVER VIOLATE THESE
 
+### Debugging Strategy - Know When to Rebuild
+- **If debugging takes more than 30 minutes without progress, STOP**
+- **Suggest removing the problematic feature and rebuilding it cleanly**
+- **Rebuilding from scratch is often 10x faster than debugging complex state issues**
+- **This is especially true for:**
+  - Complex async/parallel processing bugs
+  - Race conditions in streaming responses
+  - Deeply nested component state issues
+  - Type mismatches across multiple files
+- **Example**: "We've spent 2 hours debugging this comparison feature. Let's remove it and rebuild it cleanly - it will be much faster."
+
 ### Never Use Simulated/Fake Data in UI
 - **NEVER show fake progress bars, timers, or completion states that don't reflect actual system status**
 - **NEVER simulate API response times or model completion times**

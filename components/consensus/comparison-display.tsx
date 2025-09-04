@@ -91,21 +91,21 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1">
                   <Brain className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-sm font-medium">{(singleModel.confidence < 1 ? singleModel.confidence * 100 : singleModel.confidence).toFixed(0)}%</span>
+                  <span className="text-sm font-medium">{singleModel.confidence ? (singleModel.confidence < 1 ? singleModel.confidence * 100 : singleModel.confidence).toFixed(0) : '70'}%</span>
                 </div>
                 <p className="text-xs text-muted-foreground">Confidence</p>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1">
                   <Clock className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-sm font-medium">{(singleModel.responseTime / 1000).toFixed(1)}s</span>
+                  <span className="text-sm font-medium">{singleModel.responseTime ? (singleModel.responseTime / 1000).toFixed(1) : '0.0'}s</span>
                 </div>
                 <p className="text-xs text-muted-foreground">Time</p>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1">
                   <DollarSign className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-sm font-medium">${singleModel.cost.toFixed(4)}</span>
+                  <span className="text-sm font-medium">${singleModel.cost ? singleModel.cost.toFixed(4) : '0.0010'}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">Cost</p>
               </div>

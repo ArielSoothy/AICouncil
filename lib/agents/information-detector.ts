@@ -6,7 +6,9 @@ export interface InformationRequest {
   detected: boolean
   missingInfo: string[]
   suggestedQuestions: string[]
-  confidence: number
+  followUpQuestions?: string[]
+  followUpPrompt?: string
+  confidence?: number
 }
 
 export function detectInformationRequests(messages: any[]): InformationRequest {

@@ -82,7 +82,13 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     status: 'waiting' | 'thinking' | 'completed' | 'error',
     startTime?: number,
     endTime?: number,
-    message?: string
+    message?: string,
+    duration?: number,
+    responsePreview?: string,
+    keyPoints?: string,
+    tokensUsed?: number,
+    model?: string,
+    provider?: string
   }>>({})
   const [debateStartTime, setDebateStartTime] = useState<number | null>(null)
   
@@ -207,7 +213,17 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       setActiveTab('debate')
       
       // Initialize model statuses
-      const statuses: Record<string, any> = {}
+      const statuses: Record<string, {
+        status: 'waiting' | 'thinking' | 'completed' | 'error',
+        message?: string,
+        model?: string,
+        provider?: string,
+        responsePreview?: string,
+        keyPoints?: string,
+        duration?: number,
+        startTime?: number,
+        endTime?: number
+      }> = {}
       if (round1Mode === 'llm') {
         selectedLLMs.forEach((llm, idx) => {
           const modelId = `${llm.provider}-${llm.model}-${idx}`
@@ -230,6 +246,24 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       }
       setModelStatuses(statuses)
       setDebateStartTime(Date.now())
+      
+      // Set a timeout to check if models actually start
+      setTimeout(() => {
+        setModelStatuses(prev => {
+          const updated = { ...prev }
+          Object.keys(updated).forEach(key => {
+            // If still waiting after 10 seconds, mark as error
+            if (updated[key].status === 'waiting') {
+              updated[key] = {
+                ...updated[key],
+                status: 'error',
+                message: 'Failed to start - check API connection'
+              }
+            }
+          })
+          return updated
+        })
+      }, 10000) // 10 second timeout
       setIsSynthesizing(false)
     }
     setShowRound2Prompt(false)
@@ -296,10 +330,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           isGuestMode: userTier === 'guest',
           includeComparison: includeComparison && !continueRound2,
           comparisonModel: includeComparison && !continueRound2 && comparisonModel ? 
-            { provider: comparisonModel.provider, model: comparisonModel.model } : undefined,
+            { provider: comparisonModel.provider, model: comparisonModel.model } : null,
           includeConsensusComparison: includeComparison && includeConsensusComparison && !continueRound2,
           consensusModels: includeComparison && includeConsensusComparison && !continueRound2 ? 
-            modelConfigs.filter(m => m.enabled).map(m => ({ provider: m.provider, model: m.model })) : undefined
+            modelConfigs.filter(m => m.enabled).map(m => ({ provider: m.provider, model: m.model })) : []
         }),
       })
       
@@ -447,6 +481,26 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   isLoadingRef.current = false
                   setGeneratedPrompt(null)
                   break
+                  
+                case 'error':
+                  setError(data.message || 'An error occurred')
+                  setIsLoading(false)
+                  isLoadingRef.current = false
+                  // Mark all waiting models as error
+                  setModelStatuses(prev => {
+                    const updated = { ...prev }
+                    Object.keys(updated).forEach(key => {
+                      if (updated[key].status === 'waiting' || updated[key].status === 'thinking') {
+                        updated[key] = {
+                          ...updated[key],
+                          status: 'error',
+                          message: data.message || 'Failed to process'
+                        }
+                      }
+                    })
+                    return updated
+                  })
+                  break
               }
             } catch (e) {
               console.error('Failed to parse SSE data:', e)
@@ -514,6 +568,24 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       }
       setModelStatuses(statuses)
       setDebateStartTime(Date.now())
+      
+      // Set a timeout to check if models actually start
+      setTimeout(() => {
+        setModelStatuses(prev => {
+          const updated = { ...prev }
+          Object.keys(updated).forEach(key => {
+            // If still waiting after 10 seconds, mark as error
+            if (updated[key].status === 'waiting') {
+              updated[key] = {
+                ...updated[key],
+                status: 'error',
+                message: 'Failed to start - check API connection'
+              }
+            }
+          })
+          return updated
+        })
+      }, 10000) // 10 second timeout
     }
     setShowRound2Prompt(false)
 

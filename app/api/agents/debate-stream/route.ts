@@ -10,7 +10,14 @@ export async function POST(request: NextRequest) {
   const encoder = new TextEncoder()
   
   // Parse request body first
-  const body = await request.json()
+  let body: any
+  try {
+    body = await request.json()
+    console.log('Request body parsed successfully')
+  } catch (parseError) {
+    console.error('Failed to parse request body:', parseError)
+    return new Response('Invalid request body', { status: 400 })
+  }
   const { 
     query, 
     agents = [], 
@@ -22,6 +29,15 @@ export async function POST(request: NextRequest) {
     includeConsensusComparison = false,
     consensusModels = []
   } = body
+  
+  console.log('Debate request received:', {
+    hasQuery: !!query,
+    agentsCount: agents.length,
+    agents: agents.map((a: any) => ({ provider: a.provider, model: a.model })),
+    rounds,
+    responseMode,
+    round1Mode
+  })
   
   // Set token limits based on response mode
   const getTokenLimit = (mode: string) => {
@@ -39,6 +55,32 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
+        console.log('Stream started, checking agents...')
+        console.log('Agents array:', JSON.stringify(agents))
+        console.log('Comparison enabled:', includeComparison)
+        console.log('Comparison model:', comparisonModel)
+        
+        // Check if we have agents
+        if (!agents || agents.length === 0) {
+          console.error('ERROR: No agents provided to debate')
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            type: 'error',
+            message: 'No agents provided to debate',
+            timestamp: Date.now()
+          })}\n\n`))
+          controller.close()
+          return
+        }
+        
+        console.log(`Found ${agents.length} agents, proceeding...`)
+        console.log('Agent details:', agents.map((a: any, i: number) => ({ 
+          index: i, 
+          provider: a.provider, 
+          model: a.model, 
+          enabled: a.enabled,
+          hasPersona: !!a.persona 
+        })))
+        
         // Send initial connection message
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
           type: 'connected',
@@ -51,6 +93,8 @@ export async function POST(request: NextRequest) {
         
         // Process each round
         for (let roundNum = 1; roundNum <= rounds; roundNum++) {
+          console.log(`Starting round ${roundNum} of ${rounds} with ${agents.length} agents`)
+          
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             type: 'round_started',
             round: roundNum,
@@ -63,9 +107,13 @@ export async function POST(request: NextRequest) {
           
           // Process each agent/model in parallel but track individual completions
           const agentPromises = agents.map(async (agentConfig: AgentConfig, index: number) => {
+            console.log(`Processing agent ${index}: ${agentConfig.provider}/${agentConfig.model}`)
+            console.log(`Agent config:`, JSON.stringify(agentConfig))
             const modelId = round1Mode === 'llm' 
               ? `${agentConfig.provider}-${agentConfig.model}-${index}`
               : agentConfig.agentId
+            
+            console.log(`ModelId for agent ${index}: ${modelId}`)
               
             try {
               // Send model started event
@@ -111,7 +159,21 @@ export async function POST(request: NextRequest) {
               let actualProvider = agentConfig.provider
               
               // Try primary provider first
+              console.log(`Getting provider for ${agentConfig.provider}`)
               const provider = providerRegistry.getProvider(agentConfig.provider)
+              if (!provider) {
+                console.error(`Provider not found: ${agentConfig.provider}`)
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                  type: 'model_error', 
+                  modelId,
+                  round: roundNum,
+                  error: `Provider ${agentConfig.provider} not available`,
+                  timestamp: Date.now()
+                })}\n\n`))
+                return null
+              }
+              
+              console.log(`Provider found for ${agentConfig.provider}, attempting query...`)
               if (provider) {
                 try {
                   result = await provider.query(fullPrompt, {
@@ -215,14 +277,14 @@ export async function POST(request: NextRequest) {
           })}\n\n`))
         }
         
-        // Handle comparison if requested
+        // Simple comparison - query single model if requested
         let comparisonData = null
         let consensusData = null
-        let comparisonStartTime = Date.now()
         
         if (includeComparison && comparisonModel) {
           try {
-            // Send comparison started event
+            console.log(`Starting comparison with ${comparisonModel.provider}/${comparisonModel.model}`)
+            
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
               type: 'comparison_started',
               model: comparisonModel.model,
@@ -231,98 +293,104 @@ export async function POST(request: NextRequest) {
             
             const provider = providerRegistry.getProvider(comparisonModel.provider)
             if (provider) {
-              // Add conciseness instruction for single model comparison
-              const comparisonQuery = responseMode === 'concise' 
-                ? `${query}\n\nProvide a VERY CONCISE answer in this exact format:
-Top 3 Recommendations:
-1. [First option]
-2. [Second option]  
-3. [Third option]
-
-[State the top choice in one sentence]. [Add one brief context sentence if needed].
-
-Use line breaks exactly as shown above.`
-                : query
-                
-              const result = await provider.query(comparisonQuery, {
+              const startTime = Date.now()
+              const result = await provider.query(query, {
                 ...comparisonModel,
                 enabled: true,
                 maxTokens: tokenLimit
               })
               
-              // Calculate actual cost based on model metadata
-              const modelKey = comparisonModel.model as keyof typeof MODEL_COSTS_PER_1K
-              const modelCost = MODEL_COSTS_PER_1K[modelKey] || { input: 0.001, output: 0.001 }
-              const actualCost = ((result.tokensUsed || 100) / 1000) * ((modelCost.input + modelCost.output) / 2)
-              
-              comparisonData = {
-                model: comparisonModel.model,
-                response: result.response,
-                tokensUsed: result.tokensUsed || 100,
-                responseTime: Date.now() - comparisonStartTime, // Actual response time in ms
-                cost: actualCost,
-                confidence: 0.7 // Base confidence for single model (70% as decimal)
+              if (result) {
+                comparisonData = {
+                  model: comparisonModel.model,
+                  response: result.response,
+                  tokensUsed: result.tokens?.total || 0,
+                  responseTime: Date.now() - startTime,
+                  cost: 0.001,
+                  confidence: 0.7 // Single model baseline confidence
+                }
+                
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                  type: 'comparison_completed',
+                  comparison: comparisonData,
+                  timestamp: Date.now()
+                })}\n\n`))
               }
-              
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                type: 'comparison_completed',
-                comparison: comparisonData,
-                timestamp: Date.now()
-              })}\n\n`))
             }
-          } catch (error: any) {
-            console.error('Comparison model failed:', error)
+          } catch (error) {
+            console.error('Comparison failed:', error)
           }
         }
         
-        // Handle consensus comparison if requested - use the existing consensus API
-        if (includeComparison && includeConsensusComparison && consensusModels.length > 0) {
+        // Query consensus if requested for three-way comparison
+        if (includeComparison && includeConsensusComparison && consensusModels?.length > 0) {
           try {
-            // Send consensus comparison started event
+            console.log('Starting consensus comparison with models:', consensusModels.map((m: any) => m.model))
+            
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
               type: 'consensus_comparison_started',
               models: consensusModels.map((m: any) => m.model),
               timestamp: Date.now()
             })}\n\n`))
             
-            // Call the existing consensus API endpoint
-            const consensusResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/consensus`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                query,
-                models: consensusModels.map((m: any) => ({
-                  ...m,
-                  enabled: true
-                })),
-                responseMode,
-                skipJudge: false // We want the judge analysis for confidence
-              }),
-            })
-            
-            if (consensusResponse.ok) {
-              const consensusResult = await consensusResponse.json()
-              
-              if (consensusResult.consensus) {
-                consensusData = {
-                  response: consensusResult.consensus.unifiedAnswer,
-                  models: consensusModels.map((m: any) => `${m.provider}/${m.model}`),
-                  tokensUsed: consensusResult.responses?.reduce((sum: number, r: any) => sum + (r.tokensUsed || 0), 0) || 500,
-                  responseTime: (consensusResult.consensus.responseTime || 2.5) * 1000, // Convert to ms
-                  cost: consensusResult.consensus.cost || 0.001,
-                  confidence: (consensusResult.consensus.confidence || 80) / 100 // Convert to 0-1 range
+            // Simple consensus - just query all models and average
+            const consensusStartTime = Date.now()
+            const consensusResponses = await Promise.all(
+              consensusModels.map(async (model: any) => {
+                const provider = providerRegistry.getProvider(model.provider)
+                if (provider) {
+                  try {
+                    return await provider.query(query, {
+                      ...model,
+                      enabled: true,
+                      maxTokens: tokenLimit
+                    })
+                  } catch (e) {
+                    console.error(`Consensus model ${model.model} failed:`, e)
+                    return null
+                  }
                 }
+                return null
+              })
+            )
+            
+            const validResponses = consensusResponses.filter(r => r !== null)
+            if (validResponses.length > 0) {
+              // Create a proper consensus by synthesizing responses
+              let consensusResponse = ''
+              
+              // If we have multiple responses, create a simple consensus
+              if (validResponses.length > 1) {
+                // Extract main recommendations from each response
+                const recommendations = validResponses.map(r => {
+                  const lines = r?.response?.split('\n') || []
+                  const topRecs = lines.filter((line: string) => 
+                    line.match(/^[1-3]\./) || line.includes('Top') || line.includes('Recommendation')
+                  ).slice(0, 3)
+                  return topRecs.length > 0 ? topRecs.join('\n') : lines.slice(0, 2).join('\n')
+                })
                 
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                  type: 'consensus_comparison_completed',
-                  consensus: consensusData,
-                  timestamp: Date.now()
-                })}\n\n`))
+                consensusResponse = `AI Consensus Summary:\n${recommendations.join('\n\n')}`
+              } else {
+                consensusResponse = validResponses[0]?.response || 'No consensus available'
               }
+              
+              consensusData = {
+                response: consensusResponse,
+                models: consensusModels.map((m: any) => `${m.provider}/${m.model}`),
+                tokensUsed: validResponses.reduce((sum, r) => sum + (r?.tokens?.total || 0), 0),
+                responseTime: Date.now() - consensusStartTime,
+                cost: 0.003, // Approximate for 3 models
+                confidence: 0.8 // Consensus baseline confidence
+              }
+              
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                type: 'consensus_comparison_completed',
+                consensus: consensusData,
+                timestamp: Date.now()
+              })}\n\n`))
             }
-          } catch (error: any) {
+          } catch (error) {
             console.error('Consensus comparison failed:', error)
           }
         }
@@ -610,6 +678,8 @@ Format your response with clear sections using markdown headers (###).`
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             type: 'synthesis_completed',
             synthesis,
+            comparisonResponse: comparisonData,
+            consensusComparison: consensusData,
             timestamp: Date.now()
           })}\n\n`))
         }

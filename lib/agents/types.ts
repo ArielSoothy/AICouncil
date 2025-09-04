@@ -72,6 +72,7 @@ export interface DebateSession {
     detected: boolean
     missingInfo: string[]
     suggestedQuestions: string[]
+    followUpQuestions?: string[]
     followUpPrompt?: string
   }
   totalTokensUsed: number
