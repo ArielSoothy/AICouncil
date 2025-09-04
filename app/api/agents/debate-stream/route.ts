@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
               // Generate appropriate prompt
               const isLLMMode = round1Mode === 'llm' && roundNum === 1
               const formatInstruction = responseMode === 'concise' 
-                ? '\n\nProvide your answer in EXACTLY this format with line breaks:\n\nTop 3 Recommendations:\n1. [Product Name] (year/details)\n2. [Product Name] (year/details)\n3. [Product Name] (year/details)\n\n[One paragraph explaining why #1 is the top choice, mentioning #2 and #3 briefly for context].'
+                ? '\n\nProvide ONLY a simple numbered list. NO headers, NO explanations, NO details, NO years:\n\n1. [Name only]\n2. [Name only]\n3. [Name only]\n\n[One short sentence about #1].'
                 : ''
               const fullPrompt = isLLMMode 
                 ? `Please answer this query concisely and directly:\n\n${query}${formatInstruction}`
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
             if (provider) {
               const startTime = Date.now()
               const comparisonQuery = responseMode === 'concise' 
-                ? `${query}\n\nProvide your answer in EXACTLY this format with line breaks:\n\nTop 3 Recommendations:\n1. [Product Name] (year/details)\n2. [Product Name] (year/details)\n3. [Product Name] (year/details)\n\n[One paragraph explaining why #1 is the top choice, mentioning #2 and #3 briefly for context].`
+                ? `${query}\n\nProvide ONLY a simple numbered list. NO headers, NO explanations, NO details, NO years:\n\n1. [Name only]\n2. [Name only]\n3. [Name only]\n\n[One short sentence about #1].`
                 : query
               const result = await provider.query(comparisonQuery, {
                 ...comparisonModel,
@@ -307,12 +307,17 @@ export async function POST(request: NextRequest) {
               })
               
               if (result) {
+                // Calculate actual cost based on model
+                const modelKey = `${comparisonModel.provider}/${comparisonModel.model}` as keyof typeof MODEL_COSTS_PER_1K
+                const modelCost = MODEL_COSTS_PER_1K[modelKey] || MODEL_COSTS_PER_1K[comparisonModel.model as keyof typeof MODEL_COSTS_PER_1K] || { input: 0, output: 0 }
+                const actualCost = ((result.tokens?.prompt || 0) * modelCost.input + (result.tokens?.completion || 0) * modelCost.output) / 1000
+                
                 comparisonData = {
                   model: comparisonModel.model,
                   response: result.response,
                   tokensUsed: result.tokens?.total || 0,
                   responseTime: Date.now() - startTime,
-                  cost: 0.001,
+                  cost: actualCost,
                   confidence: 0.7 // Single model baseline confidence
                 }
                 
@@ -342,7 +347,7 @@ export async function POST(request: NextRequest) {
             // Simple consensus - just query all models and average
             const consensusStartTime = Date.now()
             const consensusQuery = responseMode === 'concise' 
-              ? `${query}\n\nProvide your answer in EXACTLY this format with line breaks:\n\nTop 3 Recommendations:\n1. [Product Name] (year/details)\n2. [Product Name] (year/details)\n3. [Product Name] (year/details)\n\n[One paragraph explaining why #1 is the top choice, mentioning #2 and #3 briefly for context].`
+              ? `${query}\n\nProvide ONLY a simple numbered list. NO headers, NO explanations, NO details, NO years:\n\n1. [Name only]\n2. [Name only]\n3. [Name only]\n\n[One short sentence about #1].`
               : query
             const consensusResponses = await Promise.all(
               consensusModels.map(async (model: any) => {
@@ -379,17 +384,29 @@ export async function POST(request: NextRequest) {
                   return topRecs.length > 0 ? topRecs.join('\n') : lines.slice(0, 2).join('\n')
                 })
                 
-                consensusResponse = `AI Consensus Summary:\n${recommendations.join('\n\n')}`
+                consensusResponse = recommendations.join('\n\n')
               } else {
                 consensusResponse = validResponses[0]?.response || 'No consensus available'
               }
+              
+              // Calculate actual consensus cost
+              let totalCost = 0
+              consensusModels.forEach((model: any, index: number) => {
+                if (validResponses[index]) {
+                  const modelKey = `${model.provider}/${model.model}` as keyof typeof MODEL_COSTS_PER_1K
+                  const modelCost = MODEL_COSTS_PER_1K[modelKey] || MODEL_COSTS_PER_1K[model.model as keyof typeof MODEL_COSTS_PER_1K] || { input: 0, output: 0 }
+                  const cost = ((validResponses[index]?.tokens?.prompt || 0) * modelCost.input + 
+                               (validResponses[index]?.tokens?.completion || 0) * modelCost.output) / 1000
+                  totalCost += cost
+                }
+              })
               
               consensusData = {
                 response: consensusResponse,
                 models: consensusModels.map((m: any) => `${m.provider}/${m.model}`),
                 tokensUsed: validResponses.reduce((sum, r) => sum + (r?.tokens?.total || 0), 0),
                 responseTime: Date.now() - consensusStartTime,
-                cost: 0.003, // Approximate for 3 models
+                cost: totalCost,
                 confidence: 0.8 // Consensus baseline confidence
               }
               
@@ -413,7 +430,7 @@ export async function POST(request: NextRequest) {
         // Create synthesis using Gemini
         try {
           const concisenessInstruction = responseMode === 'concise' 
-            ? '\n\nIMPORTANT: Be VERY CONCISE. CONCLUSION should follow EXACTLY this format with line breaks:\n\nTop 3 Recommendations:\n1. [Product Name] (year/details)\n2. [Product Name] (year/details)\n3. [Product Name] (year/details)\n\n[One paragraph explaining why #1 is the top choice, mentioning #2 and #3 briefly for context].'
+            ? '\n\nIMPORTANT: Be ULTRA CONCISE. CONCLUSION must be ONLY:\n\n1. [Name only]\n2. [Name only]\n3. [Name only]\n\n[One short sentence about #1].'
             : responseMode === 'detailed'
             ? '\n\nProvide detailed analysis with thorough explanations.'
             : ''
