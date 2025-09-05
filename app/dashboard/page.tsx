@@ -232,7 +232,7 @@ function DashboardContent() {
                       <div className="text-xs uppercase text-gray-500 mb-1">Model Responses</div>
                       <div className="space-y-3">
                         {viewData.responses.map((r, i) => (
-                          <div key={i} className="p-3 rounded border border-gray-200 dark:border-gray-700">
+                          <div key={`${r.model}-${i}`} className="p-3 rounded border border-gray-200 dark:border-gray-700">
                             <div className="text-xs text-gray-500 mb-1">{r.model}</div>
                             <div className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap line-clamp-4">{r.response}</div>
                           </div>

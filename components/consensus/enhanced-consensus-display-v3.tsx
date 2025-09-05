@@ -495,7 +495,7 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
               const mk = (r.model.split('/')?.pop() || r.model)
               const w = MODEL_POWER[mk as keyof typeof MODEL_POWER] || 0.7
               return (
-                <div key={i} className="flex items-center justify-between px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded">
+                <div key={`${r.model}-${i}`} className="flex items-center justify-between px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded">
                   <span className="truncate text-gray-700 dark:text-gray-300">{mk}</span>
                   <span className="font-mono">{w.toFixed(2)}</span>
                 </div>
@@ -770,7 +770,7 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
         <h2 className="text-lg font-semibold mb-4">Individual Model Responses</h2>
         <div className={`grid gap-4 ${result.mode === 'concise' ? 'md:grid-cols-1 lg:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
           {result.responses.map((response, index) => {
-            return <ModelResponseCard key={index} response={response} mode={result.mode} query={result.query} whyMap={whyMap} />
+            return <ModelResponseCard key={`${response.model}-${index}`} response={response} mode={result.mode} query={result.query} whyMap={whyMap} />
           })}
         </div>
       </div>

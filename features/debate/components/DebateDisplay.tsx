@@ -81,7 +81,7 @@ export function DebateDisplay({ session, streamEvents, isLoading = false }: Deba
           
           <div className="space-y-4">
             {round.responses.map((response, respIdx) => (
-              <div key={respIdx} className="border-l-2 border-primary/20 pl-4">
+              <div key={`${response.agentName}-${response.role}-${respIdx}`} className="border-l-2 border-primary/20 pl-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{response.role}</Badge>
