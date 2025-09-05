@@ -224,7 +224,7 @@ export function ThreeWayComparison({
               </div>
               
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Judge's Consensus Answer</p>
+                <p className="text-xs text-muted-foreground mb-1">Judge&apos;s Consensus Answer</p>
                 <div className="text-sm max-h-[100px] overflow-y-auto pr-1 whitespace-pre-wrap">
                   {consensus.judgeAnswer || consensus.response}
                 </div>
