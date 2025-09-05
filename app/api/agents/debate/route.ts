@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     let userTier: 'guest' | 'free' | 'pro' | 'enterprise' = 'free'
     
     try {
-      const supabase = createClient()
+      const supabase = await createClient()
       // Check if Supabase is properly configured
       if (supabase && typeof supabase.auth !== 'undefined') {
         const { data: { user } } = await supabase.auth.getUser()
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     // Save to database if authenticated
     if (userTier !== 'guest') {
       try {
-        const supabase = createClient()
+        const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
         
         if (user) {
