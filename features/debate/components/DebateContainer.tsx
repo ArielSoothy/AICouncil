@@ -3,7 +3,7 @@
 // Main container that orchestrates the debate feature
 // Uses error boundaries and proper separation of concerns
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'

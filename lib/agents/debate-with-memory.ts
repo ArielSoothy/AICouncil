@@ -113,7 +113,8 @@ export class DebateWithMemory {
           category: 'learned_fact',
           source: `Debate consensus on: ${session.query}`,
           confidence: session.finalSynthesis.confidence,
-          contexts: [session.query]
+          contexts: [session.query],
+          validations: 0
         })
       }
 
@@ -231,7 +232,7 @@ export class DebateWithMemory {
       usage_count: 1,
       query_patterns: queryPatterns,
       agent_configuration: {
-        preferred_models: session.agents.map(a => a.model),
+        preferred_models: session.agents.map(a => (a as any).model || a.name),
         debate_rounds: session.rounds.length,
         response_mode: session.round1Mode === 'llm' ? 'concise' : 'normal'
       }

@@ -484,7 +484,7 @@ export async function POST(request: NextRequest) {
     let userTier: 'guest' | 'free' | 'pro' | 'enterprise' = 'free'
     
     try {
-      const supabase = createClient()
+      const supabase = await createClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (user) {

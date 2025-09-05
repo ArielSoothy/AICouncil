@@ -275,7 +275,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
             <ThreeWayComparison
               singleModel={session.comparisonResponse}
               consensus={{
-                response: session.consensusComparison.response || session.consensusComparison.unifiedAnswer || '',
+                response: session.consensusComparison.response || (session.consensusComparison as any).unifiedAnswer || '',
                 models: session.consensusComparison.models || [],
                 confidence: session.consensusComparison.confidence || 0.75,
                 tokensUsed: session.consensusComparison.tokensUsed || 0,
@@ -286,8 +286,8 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
                 response: session.finalSynthesis.conclusion || session.finalSynthesis.content,
                 agents: session.agents.map(a => {
                   // Handle both persona agents and simple model agents
-                  const name = a.name || a.persona?.name || a.model || 'Unknown'
-                  const role = a.role || a.persona?.role || ''
+                  const name = a.name || (a as any).persona?.name || (a as any).model || 'Unknown'
+                  const role = a.role || (a as any).persona?.role || ''
                   return role ? `${name} (${role})` : name
                 }),
                 confidence: session.finalSynthesis.confidence || 80,

@@ -57,7 +57,17 @@ export function DebateSetup({ onSubmit, isLoading = false, userTier = 'free' }: 
         agentId: `llm-${idx}`,
         provider: m.provider,
         model: m.model,
-        enabled: true
+        enabled: true,
+        persona: {
+          id: `llm-${idx}`,
+          name: `Model ${idx + 1}`,
+          role: 'analyst' as const,
+          description: 'Direct model response without persona',
+          traits: [],
+          focusAreas: [],
+          systemPrompt: '',
+          color: '#666666'
+        }
       }))
 
     if (agents.length < 2) return

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     console.log('Auth Test API - Request cookies:', request.cookies.getAll())
     console.log('Auth Test API - Request headers auth:', request.headers.get('authorization'))
     
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()

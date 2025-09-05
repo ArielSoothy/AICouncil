@@ -25,10 +25,10 @@ export interface DebateConfig {
 
 export interface AgentConfig {
   agentId: string
-  provider: string
+  provider: '' | 'openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'perplexity' | 'mistral' | 'cohere'
   model: string
   enabled: boolean
-  persona?: AgentPersona
+  persona: AgentPersona
 }
 
 export interface AgentPersona {
@@ -43,7 +43,7 @@ export interface AgentPersona {
 }
 
 export interface ModelConfig {
-  provider: string
+  provider: '' | 'openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'perplexity' | 'mistral' | 'cohere'
   model: string
   enabled: boolean
 }
