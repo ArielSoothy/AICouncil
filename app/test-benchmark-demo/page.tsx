@@ -398,10 +398,10 @@ export default function BenchmarkDemoPage() {
           </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground space-y-1">
-              <p>• Google Research (2023): "Improving Factuality through Multiagent Debate" - 17.7% improvement</p>
-              <p>• Microsoft Research (2024): "Chain-of-Debate" - 31% hallucination reduction</p>
-              <p>• MIT (2024): "Heterogeneous Agent Discussion" - 25% improvement with mixed models</p>
-              <p>• Stanford (2024): "Self-Reflection in Multi-Agent Systems" - 40% fewer confident errors</p>
+              <p>• Google Research (2023): &quot;Improving Factuality through Multiagent Debate&quot; - 17.7% improvement</p>
+              <p>• Microsoft Research (2024): &quot;Chain-of-Debate&quot; - 31% hallucination reduction</p>
+              <p>• MIT (2024): &quot;Heterogeneous Agent Discussion&quot; - 25% improvement with mixed models</p>
+              <p>• Stanford (2024): &quot;Self-Reflection in Multi-Agent Systems&quot; - 40% fewer confident errors</p>
             </div>
           </CardContent>
         </Card>
