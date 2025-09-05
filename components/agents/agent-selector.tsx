@@ -78,8 +78,9 @@ export function AgentSelector({
         }
       }
       
+      // Enable all three agents by default
       initialStates[persona.id] = {
-        enabled: persona.role === 'analyst' || persona.role === 'critic' || persona.role === 'synthesizer',
+        enabled: true, // Always enable all agents by default for proper debate
         model: defaultModel,
         provider: defaultProvider
       }

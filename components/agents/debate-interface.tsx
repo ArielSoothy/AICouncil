@@ -382,7 +382,9 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       ...prev[data.modelId],
                       status: 'thinking',
                       startTime: data.timestamp,
-                      message: 'Analyzing query...'
+                      message: 'Analyzing query...',
+                      agentName: data.agentName,
+                      agentRole: data.agentRole
                     }
                   }))
                   break
@@ -412,7 +414,12 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       message: `Completed in ${(data.duration / 1000).toFixed(1)}s`
                     }
                   }))
-                  allResponses.push(data)
+                  // Include agent information in the response
+                  allResponses.push({
+                    ...data,
+                    agentName: data.agentName,
+                    agentRole: data.agentRole
+                  })
                   break
                   
                 case 'model_error':
@@ -454,25 +461,32 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   const session = {
                     id: crypto.randomUUID(),
                     query: fullQuery,
-                    agents: apiAgents,
+                    agents: apiAgents.map(a => a.persona),
                     comparisonResponse: data.comparisonResponse || null,
                     consensusComparison: consensusComparisonData,
                     rounds: [{
                       roundNumber: 1,
                       startTime: new Date(debateStartTime || Date.now()),
                       endTime: new Date(),
-                      messages: allResponses.map(r => ({
-                        agentId: r.modelId,
-                        role: 'analyst',
-                        round: r.round || 1,
-                        content: r.fullResponse || r.responsePreview || '',
-                        timestamp: new Date(r.timestamp),
-                        tokensUsed: r.tokensUsed,
-                        model: r.modelName,
-                        keyPoints: [],
-                        evidence: [],
-                        challenges: []
-                      }))
+                      messages: allResponses.map(r => {
+                        // Use agent information from the response or find from apiAgents
+                        const agent = apiAgents.find(a => a.agentId === r.modelId)
+                        const role = r.agentRole || agent?.persona?.role || 'analyst'
+                        
+                        return {
+                          agentId: r.modelId,
+                          role: role,
+                          agentName: r.agentName || agent?.persona?.name,
+                          round: r.round || 1,
+                          content: r.fullResponse || r.responsePreview || '',
+                          timestamp: new Date(r.timestamp),
+                          tokensUsed: r.tokensUsed,
+                          model: r.modelName,
+                          keyPoints: [],
+                          evidence: [],
+                          challenges: []
+                        }
+                      })
                     }],
                     finalSynthesis: {
                       content: data.synthesis?.content || data.synthesis?.conclusion || 'Synthesis completed',

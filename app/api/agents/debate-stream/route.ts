@@ -122,6 +122,8 @@ export async function POST(request: NextRequest) {
                 modelId,
                 modelName: agentConfig.model,
                 provider: agentConfig.provider,
+                agentName: agentConfig.persona?.name || agentConfig.model,
+                agentRole: agentConfig.persona?.role || 'analyst',
                 round: roundNum,
                 timestamp: Date.now()
               })}\n\n`))
@@ -234,6 +236,8 @@ export async function POST(request: NextRequest) {
                 modelId,
                 modelName: actualProvider !== agentConfig.provider ? `${agentConfig.model} (via ${actualProvider})` : agentConfig.model,
                 provider: actualProvider,
+                agentName: agentConfig.persona?.name || agentConfig.model,
+                agentRole: agentConfig.persona?.role || 'analyst',
                 round: roundNum,
                 responsePreview: result.response.substring(0, 300) + '...',
                 keyPoints,
