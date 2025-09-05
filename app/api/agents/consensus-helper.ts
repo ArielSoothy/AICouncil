@@ -31,9 +31,10 @@ export async function callConsensusAPI(
     }
 
     console.log('Consensus API request:', {
-      prompt: query.substring(0, 50) + '...',
+      prompt: query ? query.substring(0, 50) + '...' : 'NO PROMPT',
       models: validModels,
-      responseMode
+      responseMode,
+      payloadSize: JSON.stringify(payload).length
     })
 
     const response = await fetch(`${baseUrl}/api/consensus`, {

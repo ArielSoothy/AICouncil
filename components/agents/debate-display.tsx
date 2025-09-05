@@ -284,7 +284,12 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
               }}
               agentDebate={{
                 response: session.finalSynthesis.conclusion || session.finalSynthesis.content,
-                agents: session.agents.map(a => `${a.name} (${a.role})`),
+                agents: session.agents.map(a => {
+                  // Handle both persona agents and simple model agents
+                  const name = a.name || a.persona?.name || a.model || 'Unknown'
+                  const role = a.role || a.persona?.role || ''
+                  return role ? `${name} (${role})` : name
+                }),
                 confidence: session.finalSynthesis.confidence || 80,
                 tokensUsed: session.totalTokensUsed,
                 responseTime: session.endTime ? 

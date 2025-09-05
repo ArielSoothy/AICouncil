@@ -579,8 +579,8 @@ Format your response with clear sections using markdown headers (###).`
                   query,
                   agents: agents.map((a, i) => ({
                     id: `agent-${i}`,
-                    name: a.persona.name,
-                    role: a.persona.role
+                    name: a.persona?.name || a.model || `Model ${i+1}`,
+                    role: a.persona?.role || 'analyst'
                   })),
                   rounds: [{
                     roundNumber: rounds,
