@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Type mismatches across multiple files
 - **Example**: "We've spent 2 hours debugging this comparison feature. Let's remove it and rebuild it cleanly - it will be much faster."
 
-### Three-Way Comparison Debugging Lessons (September 2025)
+### Three-Way Comparison Debugging Lessons (December 2025)
 - **Data Flow Tracking**: When features don't display, trace data flow from backend to frontend systematically
 - **Console Logging**: Add comprehensive logging at each step - backend API response, SSE events, state updates
 - **API Field Names**: Check exact field names expected by APIs (e.g., 'prompt' vs 'query')
@@ -28,6 +28,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Include both 'response' and 'unifiedAnswer' fields for compatibility
 - **Variable Scope Issues**: When referencing variables across different function scopes (e.g., judgeModel), ensure variables are redefined or accessible in the correct scope
 - **API Testing**: Create simple test scripts to verify API endpoints work independently before debugging complex UI flows
+
+### Agent Debate System Fixes (December 2025)
+- **Agent Selection**: All three agents (Analyst, Critic, Synthesizer) must be enabled by default in agent-selector.tsx
+- **Persona Display**: Agent personas must be passed through SSE events from backend to frontend
+  - Add agentName and agentRole to model_started and model_completed events
+  - Store proper persona objects in session.agents array
+  - Use agent.persona.name for display, not just role
+- **Mode Defaults**: System MUST default to 'agents' mode, not 'llm' mode for proper debate mechanics
+- **Session Structure**: When creating debate session, use `apiAgents.map(a => a.persona)` for agents array
+
+### Vercel Build Error Fixes
+- **ESLint Unescaped Entities**: Replace all quotes and apostrophes with HTML entities:
+  - Quotes: Use `&quot;` instead of `"`
+  - Apostrophes: Use `&apos;` instead of `'`
+  - Check ALL files including test pages (test-benchmark-demo, test-memory, test-real-accuracy)
+- **Supabase Async Issues**: 
+  - Server version of createClient() is async - must use `await createClient()`
+  - Client version is synchronous - no await needed
+  - Always check if Supabase is configured before using auth methods
+- **TypeScript Strict Mode**: Vercel builds with strict TypeScript checking - fix all type errors locally first
 
 ### Never Use Simulated/Fake Data in UI
 - **NEVER show fake progress bars, timers, or completion states that don't reflect actual system status**
