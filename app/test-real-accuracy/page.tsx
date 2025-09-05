@@ -16,11 +16,11 @@ import {
 const TEST_QUESTIONS = [
   {
     id: 1,
-    query: "A B2B SaaS startup has $2M ARR, 50K users, 8 engineers. They're considering microservices vs monolith. Which architecture should they choose and why? Answer: Microservices or Monolith with one-sentence reasoning.",
+    query: "A B2B SaaS startup has $2M ARR, 50K users, 8 engineers. They&apos;re considering microservices vs monolith. Which architecture should they choose and why? Answer: Microservices or Monolith with one-sentence reasoning.",
     correctAnswer: "Monolith",
     acceptableAnswers: ["monolith", "not microservices", "single application", "modular monolith"],
     wrongAnswers: ["microservices", "distributed", "separate services"],
-    source: "Martin Fowler's MonolithFirst: Teams <20 should avoid microservices overhead",
+    source: "Martin Fowler&apos;s MonolithFirst: Teams <20 should avoid microservices overhead",
     legalReference: "https://martinfowler.com/bliki/MonolithFirst.html",
     type: "architecture",
     impact: "$500K+ wasted engineering time"
@@ -532,7 +532,7 @@ export default function RealAccuracyTest() {
               <p className="font-medium">Verifiable Test Questions with Sources</p>
               <p className="text-muted-foreground">
                 All 7 questions have verified correct answers backed by official sources:
-                GDPR articles, ASC 606, HIPAA regulations, Martin Fowler's writings, and factual data.
+                GDPR articles, ASC 606, HIPAA regulations, Martin Fowler&apos;s writings, and factual data.
               </p>
               <p className="text-muted-foreground">
                 Using FREE models (Gemini Flash + Groq), you can test up to all 7 questions.

@@ -296,7 +296,7 @@ export default function TestMemoryPage() {
             <Card>
               <CardContent className="text-center py-8">
                 <p className="text-muted-foreground">
-                  No tests run yet. Click "Run All Tests" to start.
+                  No tests run yet. Click &quot;Run All Tests&quot; to start.
                 </p>
               </CardContent>
             </Card>
