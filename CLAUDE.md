@@ -1119,6 +1119,64 @@ LIMIT 10;
 
 This Supabase setup provides a complete backend solution with authentication, secure data storage, and user management for AI applications.
 
+## 🤖 AI Assistant Context - Project-Specific Knowledge
+
+### Project Understanding
+This is **AI Council**, a multi-model AI consensus platform that has evolved from a simple consensus tool to a sophisticated debate system. When working on this project:
+
+1. **Default Behavior**: The system MUST default to 'agents' mode for debates, not 'llm' mode
+2. **Model Selection**: Synthesizer should use llama-3.3-70b-versatile by default
+3. **Cost Awareness**: Always display costs transparently ($0.001-$0.01 per query typical)
+4. **Real Data Only**: Never simulate progress bars or fake timers - use actual SSE streams
+
+### Current Project State (January 2025)
+- **Core Features**: ✅ Multi-model consensus, ✅ Agent debates, ✅ Comparison modes, ✅ Follow-ups
+- **Recent Work**: Fixed agent mode defaults, ESLint issues, Supabase async handling
+- **Active Development**: Memory systems planning, benchmark framework improvements
+- **Known TODOs**: See PROJECT_OVERVIEW.md for specific TODO items in code
+
+### Key Files for Reference
+- **PROJECT_OVERVIEW.md**: Comprehensive feature documentation and roadmap
+- **lib/agents/agent-system.ts**: Core debate orchestration logic
+- **lib/model-metadata.ts**: Model rankings, costs, and benchmarks
+- **features/debate/**: New modular debate implementation
+- **app/test-*/**: Various test pages for different features
+
+### Common Tasks & Patterns
+
+#### Adding a New Model
+1. Add to provider file in `/lib/ai-providers/`
+2. Add costs to `MODEL_COSTS_PER_1K` in `model-metadata.ts`
+3. Add benchmarks to `MODEL_BENCHMARKS` for automatic ranking
+4. No manual weights - system derives from benchmarks
+
+#### Debugging Debates
+1. Check agent mode is 'agents' not 'llm' in DebateSetup
+2. Verify SSE events include agentName and agentRole
+3. Ensure synthesis uses correct model (llama-3.3-70b)
+4. Check console for DEBUG logs in agent-system.ts
+
+#### API Testing
+```bash
+./demo.sh              # Basic consensus
+./demo-enhanced.sh     # With judge analysis
+npm run dev           # Start dev server
+npm run type-check    # Validate TypeScript
+```
+
+### Critical Patterns to Maintain
+- **Never fake UI states** - always show real backend data
+- **Fallback gracefully** - Google ↔ Groq provider switching
+- **Cost transparency** - show exact costs before and after
+- **Type safety** - strict TypeScript, no any types
+- **User control** - manual triggers for expensive operations
+
+### Project Philosophy
+- **Accuracy over speed**: Better to be correct than fast
+- **Transparency over magic**: Show how decisions are made
+- **User empowerment**: Give control over cost/quality tradeoffs
+- **Real value**: Focus on measurable improvements over single models
+
 ## Styling & Design System
 
 This project uses a modern, professional design system inspired by OpenAI's interface with full dark/light mode support and comprehensive UI components.
