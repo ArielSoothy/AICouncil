@@ -672,14 +672,10 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    // Add judge cost based on which judge was used
+    // Add judge cost based on which judge was actually used (not just available)
     if (judgeAnalysis.judgeTokensUsed > 0) {
-      // Try Claude Opus 4 first, fallback to GPT-4o, then heuristic (no cost)
-      if (process.env.ANTHROPIC_API_KEY) {
-        estimatedCost += calculateCost('claude-opus-4-20250514', 0, judgeAnalysis.judgeTokensUsed)
-      } else if (process.env.OPENAI_API_KEY) {
-        estimatedCost += calculateCost('gpt-4o', 0, judgeAnalysis.judgeTokensUsed)
-      }
+      // Use the actual judge model that was selected based on user tier
+      estimatedCost += calculateCost(judgeModel, 0, judgeAnalysis.judgeTokensUsed)
     }
 
     // Create enhanced response structure
