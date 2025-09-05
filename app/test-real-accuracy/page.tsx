@@ -27,7 +27,7 @@ const TEST_QUESTIONS = [
   },
   {
     id: 2,
-    query: "Company discovered a breach affecting 450 EU customers' names and emails on Friday 5pm. When must they notify authorities under GDPR? Answer with specific deadline.",
+    query: "Company discovered a breach affecting 450 EU customers&apos; names and emails on Friday 5pm. When must they notify authorities under GDPR? Answer with specific deadline.",
     correctAnswer: "Monday 5pm",
     acceptableAnswers: ["72 hours", "monday", "within 72 hours", "3 days"],
     wrongAnswers: ["immediately", "24 hours", "one week", "30 days"],
