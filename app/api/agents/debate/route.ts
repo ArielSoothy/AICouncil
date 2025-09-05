@@ -29,16 +29,19 @@ export async function POST(request: NextRequest) {
     
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('subscription_tier')
-          .eq('id', user.id)
-          .single()
+      // Check if Supabase is properly configured
+      if (supabase && typeof supabase.auth !== 'undefined') {
+        const { data: { user } } = await supabase.auth.getUser()
         
-        userTier = profile?.subscription_tier || 'free'
+        if (user) {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('subscription_tier')
+            .eq('id', user.id)
+            .single()
+          
+          userTier = profile?.subscription_tier || 'free'
+        }
       }
     } catch (authError) {
       console.log('Auth check failed, using free tier:', authError)
