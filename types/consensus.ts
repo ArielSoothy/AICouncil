@@ -60,6 +60,7 @@ export interface QueryRequest {
   isGuestMode?: boolean; // Guest mode flag
   comparisonModel?: ModelConfig; // Optional single model to compare against
   includeComparison?: boolean; // Enable comparison mode
+  enableWebSearch?: boolean; // Enable web search enrichment
 }
 
 // New enhanced response structure
@@ -71,6 +72,7 @@ export interface EnhancedConsensusResponse {
     response: string;
     tokensUsed: number;
     responseTime: number;
+    usedWebSearch?: boolean;
   }[];
   consensus: {
     unifiedAnswer: string;
@@ -93,6 +95,10 @@ export interface EnhancedConsensusResponse {
     responseTime: number;
     cost: number;
     confidence: number;
+  };
+  webSearch?: { // Optional web search results
+    context: string;
+    sources: string[];
   };
 }
 

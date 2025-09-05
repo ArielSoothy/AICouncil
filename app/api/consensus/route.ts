@@ -12,6 +12,7 @@ import { google } from '@ai-sdk/google'
 import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
 import { MODEL_COSTS_PER_1K, MODEL_POWER } from '@/lib/model-metadata'
+import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
@@ -519,7 +520,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: QueryRequest = await request.json()
-    const { prompt, models, responseMode = 'concise', usePremiumQuery = false, isGuestMode = false, comparisonModel, includeComparison } = body
+    const { prompt, models, responseMode = 'concise', usePremiumQuery = false, isGuestMode = false, comparisonModel, includeComparison, enableWebSearch = false } = body
     
     // Override tier if in guest mode
     if (isGuestMode) {
@@ -564,8 +565,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Enrich query with web search if enabled
+    let enrichedQuery = prompt
+    let webSearchContext: string | undefined
+    let webSearchSources: string[] | undefined
+    
+    if (enableWebSearch) {
+      try {
+        const searchResult = await enrichQueryWithWebSearch(prompt, {
+          enabled: true,
+          provider: 'duckduckgo',
+          maxResults: 5,
+          cache: true,
+          includeInPrompt: true
+        })
+        enrichedQuery = searchResult.query
+        webSearchContext = searchResult.searchContext
+        webSearchSources = searchResult.sources
+      } catch (searchError) {
+        console.error('Web search failed:', searchError)
+        // Continue without web search if it fails
+      }
+    }
+
     // Generate structured prompt using the new system
-    const structuredPrompt = generateModelPrompt(prompt, responseMode as ResponseLength)
+    const structuredPrompt = generateModelPrompt(enrichedQuery, responseMode as ResponseLength)
     
     // Query comparison model first if requested
     let comparisonResult = null
@@ -687,7 +711,8 @@ export async function POST(request: NextRequest) {
         model: `${r.provider}/${r.model}`,
         response: r.response,
         tokensUsed: r.tokensUsed || r.tokens.total,
-        responseTime: r.responseTime
+        responseTime: r.responseTime,
+        usedWebSearch: enableWebSearch && !!webSearchContext // Show if this model got web search context
       })),
       consensus: {
         unifiedAnswer: judgeAnalysis.unifiedAnswer,
@@ -703,7 +728,13 @@ export async function POST(request: NextRequest) {
       },
       totalTokensUsed,
       estimatedCost: Math.round(estimatedCost * 100000) / 100000, // Round to 5 decimal places
-      ...(comparisonResult && { comparisonResponse: comparisonResult }) // Add comparison if available
+      ...(comparisonResult && { comparisonResponse: comparisonResult }), // Add comparison if available
+      ...(webSearchContext && { 
+        webSearch: {
+          context: webSearchContext,
+          sources: webSearchSources || []
+        }
+      }) // Add web search results if available
     }
 
     return NextResponse.json(enhancedResponse, {

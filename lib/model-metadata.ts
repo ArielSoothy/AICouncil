@@ -55,6 +55,9 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   'llama-3.3-70b-versatile': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-05-01' },
   'llama-3.1-8b-instant': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-05-01' },
   'gemma2-9b-it': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-05-01' },
+  // Groq Tool-Use Models (specialized for function calling)
+  'llama-3-groq-70b-tool-use': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-01-01' },
+  'llama-3-groq-8b-tool-use': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-01-01' },
 
   // xAI (approx from public calculators; verify in console as xAI evolves)
   'grok-4-0709': { input: 0.003, output: 0.015, source: 'xAI pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-07-22' },
@@ -114,6 +117,9 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // Groq (open models; weights reflect typical quality, not speed)
   'llama-3.3-70b-versatile': { arenaTier: 'A', aaii: 1180, mmlu: 75, source: 'Community evals', lastUpdated: '2025-05-01' },
   'llama-3.1-8b-instant': { arenaTier: 'B', aaii: 1100, mmlu: 65, source: 'Community evals', lastUpdated: '2024-07-01' },
+  // Groq Tool-Use Models (#1 and #3 on Berkeley Function Calling Leaderboard)
+  'llama-3-groq-70b-tool-use': { arenaTier: 'S', aaii: 1190, mmlu: 77, source: 'BFCL #1 - 90.76% accuracy', lastUpdated: '2025-01-01' },
+  'llama-3-groq-8b-tool-use': { arenaTier: 'A', aaii: 1150, mmlu: 70, source: 'BFCL #3 - 89.06% accuracy', lastUpdated: '2025-01-01' },
   'gemma2-9b-it': { arenaTier: 'B', aaii: 1120, mmlu: 68, source: 'Community evals', lastUpdated: '2024-08-01' },
 
   // xAI

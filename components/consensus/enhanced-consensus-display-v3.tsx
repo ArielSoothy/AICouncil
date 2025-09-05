@@ -6,7 +6,7 @@ import { JudgeAnalysisDisplay } from './judge-analysis-display'
 import { FeedbackForm } from './feedback-form'
 import { ComparisonDisplay } from './comparison-display'
 import { hasInternetAccess } from '@/lib/user-tiers'
-import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp, Globe } from 'lucide-react'
+import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp, Globe, ExternalLink } from 'lucide-react'
 import { useEffect } from 'react'
 import { MODEL_POWER } from '@/lib/model-metadata'
 
@@ -73,7 +73,7 @@ const estimateModelCost = (model: string, tokensUsed: number): number => {
 
 // Model Response Card Component with expand/collapse functionality
 interface ModelResponseCardProps {
-  response: { model: string; response: string; tokensUsed: number; responseTime: number }
+  response: { model: string; response: string; tokensUsed: number; responseTime: number; usedWebSearch?: boolean }
   mode: string
   query: string
   whyMap: Record<string, string>
@@ -110,8 +110,11 @@ function ModelResponseCard({ response, mode, query, whyMap }: ModelResponseCardP
               {(() => { const mk = (response.model.split('/')?.pop() || response.model); const w = MODEL_POWER[mk as keyof typeof MODEL_POWER] || 0.7; return `W:${w.toFixed(2)}` })()}
             </span>
           </h3>
-          {hasInternetAccess(response.model) && (
-            <Globe className="h-3 w-3 text-blue-400" />
+          {response.usedWebSearch && (
+            <div className="flex items-center gap-1">
+              <Globe className="h-3 w-3 text-green-400" />
+              <span className="text-[9px] text-green-400 font-medium">WEB</span>
+            </div>
           )}
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -448,6 +451,35 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
           handleElaborate
         }}
       />
+
+      {/* Web Search Sources */}
+      {result.webSearch && result.webSearch.sources.length > 0 && (
+        <div className="model-card">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Web Search Sources
+          </h2>
+          <div className="space-y-2">
+            {result.webSearch.sources.map((source, index) => (
+              <a
+                key={index}
+                href={source}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <ExternalLink className="h-4 w-4 text-primary flex-shrink-0" />
+                <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                  {source}
+                </span>
+              </a>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            These sources were used to enrich the AI responses with current information.
+          </p>
+        </div>
+      )}
 
       {/* Options Ranking Table - Extracted from Unified Answer */}
       <div className="model-card">

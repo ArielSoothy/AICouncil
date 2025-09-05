@@ -8,7 +8,9 @@ export class GroqProvider implements AIProvider {
   models = [
     'llama-3.3-70b-versatile',
     'llama-3.1-8b-instant',
-    'gemma2-9b-it'
+    'gemma2-9b-it',
+    'llama-3-groq-70b-tool-use',  // #1 on Berkeley Function Calling Leaderboard
+    'llama-3-groq-8b-tool-use'    // #3 on Berkeley Function Calling Leaderboard
   ];
 
   isConfigured(): boolean {

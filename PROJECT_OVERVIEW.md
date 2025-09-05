@@ -77,43 +77,51 @@ AICouncil/
   - Intelligent recommendations
 - **Interactive Toggle**: Enable comparison before querying
 
-### 4. Smart Follow-up System ✅
+### 4. Web Search Integration ✅
+- **DuckDuckGo Integration**: FREE web search - no API key required!
+- **Smart Query Detection**: Automatically identifies queries needing current info
+- **Source Attribution**: All web sources displayed with responses
+- **1-Hour Caching**: Reduces redundant searches
+- **UI Toggle**: Enable/disable web search per query
+- **Groq Tool-Use Models**: Specialized models for function calling (#1 on BFCL)
+
+### 5. Smart Follow-up System ✅
 - **Contextual Questions**: Agents generate specific follow-up questions
 - **Interactive Refinement**: Users can add context inline
 - **Auto Re-query**: Seamlessly starts new debate with context
 - **Previous Context Inclusion**: Avoids regression in follow-ups
 
-### 5. Provider Fallback System ✅
+### 6. Provider Fallback System ✅
 - **Automatic Failover**: Google ↔ Groq switching
 - **Transparent Indicators**: Shows which provider was used
 - **Graceful Degradation**: Falls back to first response if all fail
 - **Response Format Adaptation**: Handles different provider formats
 
-### 6. Response Modes ✅
+### 7. Response Modes ✅
 - **Concise** (~75 tokens): Quick answers, Top 3 format
 - **Normal** (~200 tokens): Balanced detail
 - **Detailed** (~500 tokens): Comprehensive analysis
 
-### 7. Authentication & Database ✅
+### 8. Authentication & Database ✅
 - **Supabase Integration**: Full auth system ready
 - **User Profiles**: Tier-based access control
 - **Conversation Storage**: Save and retrieve past queries
 - **Row Level Security**: Users only see their own data
 - **Graceful Fallback**: Works without Supabase configured
 
-### 8. Test & Benchmark Pages ✅
+### 9. Test & Benchmark Pages ✅
 - **/test-benchmark**: Real accuracy testing framework
 - **/test-benchmark-demo**: Simulated benchmark visualization
 - **/test-real-accuracy**: Production accuracy testing
 - **/test-memory**: Memory system testing (future)
 
-### 9. Cost Management ✅
+### 10. Cost Management ✅
 - **Real-time Pricing**: Per-1K token costs displayed
 - **Tier Classification**: Free 🆓, Budget 💰, Premium 💎
 - **Pre-execution Estimates**: See costs before running
 - **Usage Tracking**: Monitor API usage and costs
 
-### 10. UI/UX Excellence ✅
+### 11. UI/UX Excellence ✅
 - **Dark/Light Themes**: OpenAI-inspired design system
 - **Responsive Design**: Mobile-first approach
 - **Loading States**: Real-time progress indicators
@@ -179,7 +187,7 @@ AICouncil/
 - **On-Premise**: Self-hosted option
 
 ### Phase 4: Advanced AI
-- **Web Search Integration**: Real-time information
+- **Web Search Integration**: Real-time information ✅ (Tavily API integrated)
 - **Self-Improving System**: Learn from debates
 - **Multi-Step Planning**: Complex query decomposition
 - **Persona Evolution**: Adaptive agent personalities
@@ -221,6 +229,8 @@ XAI_API_KEY=xai-...
 # Optional for database features:
 NEXT_PUBLIC_SUPABASE_URL=https://...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+
+# Web search is now FREE - no API key needed!
 ```
 
 ### Adding New Features

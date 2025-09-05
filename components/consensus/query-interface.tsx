@@ -9,7 +9,7 @@ import { ResponseModesSelector } from './response-modes-selector'
 import { ConsensusResult, ModelConfig, EnhancedConsensusResponse } from '@/types/consensus'
 import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
-import { Send, Loader2, GitCompare } from 'lucide-react'
+import { Send, Loader2, GitCompare, Search } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import {
@@ -35,6 +35,7 @@ function QueryInterfaceContent() {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [includeComparison, setIncludeComparison] = useState(false)
   const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>(null)
+  const [enableWebSearch, setEnableWebSearch] = useState(false)
   
   // Default models based on user tier
   const getDefaultModels = (): ModelConfig[] => {
@@ -86,7 +87,8 @@ function QueryInterfaceContent() {
           usePremiumQuery,
           isGuestMode,
           includeComparison,
-          comparisonModel: includeComparison ? comparisonModel : undefined
+          comparisonModel: includeComparison ? comparisonModel : undefined,
+          enableWebSearch
         }),
       })
 
@@ -203,6 +205,32 @@ function QueryInterfaceContent() {
               </Select>
               <p className="text-xs text-muted-foreground mt-2">
                 See how a single model response compares to the consensus of all {selectedModels.filter(m => m.enabled).length} models
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Web Search Toggle */}
+        <div className="space-y-3 pt-3 border-t">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Search className="w-5 h-5 text-primary" />
+              <Label htmlFor="web-search" className="font-medium">
+                Enable Web Search
+              </Label>
+            </div>
+            <Switch
+              id="web-search"
+              checked={enableWebSearch}
+              onCheckedChange={setEnableWebSearch}
+            />
+          </div>
+          
+          {enableWebSearch && (
+            <div className="pl-7">
+              <p className="text-xs text-muted-foreground">
+                🆓 FREE web search using DuckDuckGo! Enriches responses with real-time web information. 
+                Perfect for current events, prices, and recent developments. No API key required!
               </p>
             </div>
           )}
