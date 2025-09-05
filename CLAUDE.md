@@ -26,6 +26,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Must pass 'prompt' field, not 'query'
   - Response time should be in seconds for UI consistency
   - Include both 'response' and 'unifiedAnswer' fields for compatibility
+- **Variable Scope Issues**: When referencing variables across different function scopes (e.g., judgeModel), ensure variables are redefined or accessible in the correct scope
+- **API Testing**: Create simple test scripts to verify API endpoints work independently before debugging complex UI flows
 
 ### Never Use Simulated/Fake Data in UI
 - **NEVER show fake progress bars, timers, or completion states that don't reflect actual system status**

@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     query, 
     agents = [], 
     responseMode = 'normal', 
-    round1Mode = 'llm',
+    round1Mode = 'agents',
     rounds = 1,
     includeComparison = false,
     comparisonModel = null,
@@ -333,37 +333,62 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        // Query consensus if requested for three-way comparison
-        if (includeComparison && includeConsensusComparison && consensusModels?.length > 0) {
+        // Query consensus if requested - SIMPLIFIED: just use the same models from the debate
+        if (includeComparison && includeConsensusComparison) {
           try {
-            // Import helper function
-            const { callConsensusAPI } = await import('../consensus-helper')
+            console.log('Starting consensus comparison for three-way display')
             
-            console.log('Starting consensus comparison with models:', consensusModels.map((m: any) => m.model))
+            // Use the SAME models that just debated
+            const consensusModelsToUse = agents.map(agent => ({
+              provider: agent.provider,
+              model: agent.model,
+              enabled: true
+            }))
+            
+            console.log('Using these models for consensus:', consensusModelsToUse)
             
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
               type: 'consensus_comparison_started',
-              models: consensusModels.map((m: any) => m.model),
+              models: consensusModelsToUse.map(m => `${m.provider}/${m.model}`),
               timestamp: Date.now()
             })}\n\n`))
             
             const consensusStartTime = Date.now()
             
-            // Use the helper function for clean API call
-            const consensusResult = await callConsensusAPI(
-              request.nextUrl.origin,
-              query,
-              consensusModels,
-              responseMode
-            )
+            // Call consensus API directly with proper format
+            const consensusPayload = {
+              prompt: query, // consensus API expects 'prompt' not 'query'
+              models: consensusModelsToUse,
+              responseMode,
+              isGuestMode: true
+            }
             
-            if (consensusResult) {
+            console.log('Calling consensus API with payload:', JSON.stringify(consensusPayload, null, 2))
+            
+            const consensusResponse = await fetch(`${request.nextUrl.origin}/api/consensus`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(consensusPayload)
+            })
+            
+            if (consensusResponse.ok) {
+              const result = await consensusResponse.json()
+              console.log('Consensus API success! Judge analysis:', result.consensus?.judgeAnalysis)
+              
+              // Extract the consensus data with judge answer
               consensusData = {
-                ...consensusResult,
-                responseTime: (Date.now() - consensusStartTime) / 1000 // Convert to seconds
+                response: result.consensus?.unifiedAnswer || 'No consensus generated',
+                unifiedAnswer: result.consensus?.unifiedAnswer || 'No consensus generated',
+                judgeAnswer: result.consensus?.judgeAnalysis?.bestAnswer || result.consensus?.unifiedAnswer,
+                confidence: result.consensus?.confidence || result.consensus?.judgeAnalysis?.confidence || 0,
+                models: consensusModelsToUse.map(m => `${m.provider}/${m.model}`),
+                tokensUsed: result.totalTokensUsed || 0,
+                cost: result.estimatedCost || 0,
+                responseTime: (Date.now() - consensusStartTime) / 1000,
+                judgeAnalysis: result.consensus?.judgeAnalysis
               }
               
-              console.log('Consensus comparison completed')
+              console.log('Consensus data prepared:', consensusData)
               
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                 type: 'consensus_comparison_completed',
@@ -371,10 +396,11 @@ export async function POST(request: NextRequest) {
                 timestamp: Date.now()
               })}\n\n`))
             } else {
-              console.log('Consensus API returned no data')
+              const errorText = await consensusResponse.text()
+              console.error('Consensus API failed:', consensusResponse.status, errorText)
             }
           } catch (error) {
-            console.error('Consensus comparison failed:', error)
+            console.error('Consensus comparison error:', error)
           }
         }
         

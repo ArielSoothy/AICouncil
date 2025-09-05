@@ -70,7 +70,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [activeTab, setActiveTab] = useState('setup')
   
   // New state for enhanced options
-  const [round1Mode, setRound1Mode] = useState<'llm' | 'agents'>('llm')
+  const [round1Mode, setRound1Mode] = useState<'llm' | 'agents'>('agents')
   const [autoRound2, setAutoRound2] = useState(true)
   const [disagreementThreshold, setDisagreementThreshold] = useState(0.3)
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
@@ -333,7 +333,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
             { provider: comparisonModel.provider, model: comparisonModel.model } : null,
           includeConsensusComparison: includeComparison && includeConsensusComparison && !continueRound2,
           consensusModels: includeComparison && includeConsensusComparison && !continueRound2 ? 
-            modelConfigs.filter(m => m.enabled).map(m => ({ provider: m.provider, model: m.model })) : []
+            (round1Mode === 'agents' 
+              ? selectedAgents.map(a => ({ provider: a.provider, model: a.model }))
+              : modelConfigs.filter(m => m.enabled).map(m => ({ provider: m.provider, model: m.model }))
+            ) : []
         }),
       })
       

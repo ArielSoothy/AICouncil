@@ -43,7 +43,7 @@ export function AgentSelector({
     const agentDefaults: Record<string, { model: string; provider: string }> = {
       'analyst-001': { model: 'llama-3.1-8b-instant', provider: 'groq' },
       'critic-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' },
-      'synthesizer-001': { model: 'gemini-2.5-flash', provider: 'google' }
+      'synthesizer-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' }
     }
     
     Object.values(AGENT_PERSONAS).forEach(persona => {

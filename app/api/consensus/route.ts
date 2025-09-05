@@ -675,7 +675,8 @@ export async function POST(request: NextRequest) {
     // Add judge cost based on which judge was actually used (not just available)
     if (judgeAnalysis.judgeTokensUsed > 0) {
       // Use the actual judge model that was selected based on user tier
-      estimatedCost += calculateCost(judgeModel, 0, judgeAnalysis.judgeTokensUsed)
+      const judgeModelUsed = getJudgeModel(userTier)
+      estimatedCost += calculateCost(judgeModelUsed, 0, judgeAnalysis.judgeTokensUsed)
     }
 
     // Create enhanced response structure

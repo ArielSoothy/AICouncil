@@ -34,6 +34,13 @@ interface ConsensusResponse {
   tokensUsed: number
   responseTime: number
   cost: number
+  judgeAnswer?: string
+  judgeAnalysis?: {
+    confidence?: number
+    consensusScore?: number
+    bestAnswer?: string
+    [key: string]: any
+  }
 }
 
 interface AgentDebateResponse {
@@ -217,9 +224,23 @@ export function ThreeWayComparison({
               </div>
               
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Response Preview</p>
-                <div className="text-sm max-h-[100px] overflow-y-auto pr-1 whitespace-pre-wrap">{consensus.response}</div>
+                <p className="text-xs text-muted-foreground mb-1">Judge's Consensus Answer</p>
+                <div className="text-sm max-h-[100px] overflow-y-auto pr-1 whitespace-pre-wrap">
+                  {consensus.judgeAnswer || consensus.response}
+                </div>
               </div>
+              
+              {consensus.judgeAnalysis && (
+                <div className="p-2 bg-muted/50 rounded text-xs">
+                  <p className="font-medium mb-1">Judge Analysis:</p>
+                  {consensus.judgeAnalysis.confidence && (
+                    <p>Confidence: {Math.round(consensus.judgeAnalysis.confidence)}%</p>
+                  )}
+                  {consensus.judgeAnalysis.consensusScore && (
+                    <p>Consensus Score: {consensus.judgeAnalysis.consensusScore}%</p>
+                  )}
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-2">
                 <div>

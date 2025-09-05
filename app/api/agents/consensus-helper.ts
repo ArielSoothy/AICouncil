@@ -6,6 +6,17 @@ export async function callConsensusAPI(
   responseMode: string = 'concise'
 ) {
   try {
+    // Early return if no models or query
+    if (!models || models.length === 0) {
+      console.log('No models provided for consensus API')
+      return null
+    }
+    
+    if (!query || query.trim().length === 0) {
+      console.error('No query provided for consensus API')
+      return null
+    }
+
     // Ensure models have the exact structure the consensus API expects
     const formattedModels = models.map(m => ({
       provider: m.provider || '',
@@ -33,8 +44,10 @@ export async function callConsensusAPI(
     console.log('Consensus API request:', {
       prompt: query ? query.substring(0, 50) + '...' : 'NO PROMPT',
       models: validModels,
+      modelCount: validModels.length,
       responseMode,
-      payloadSize: JSON.stringify(payload).length
+      payloadSize: JSON.stringify(payload).length,
+      fullPayload: payload
     })
 
     const response = await fetch(`${baseUrl}/api/consensus`, {
