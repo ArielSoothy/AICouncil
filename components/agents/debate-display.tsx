@@ -49,6 +49,14 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
   const [followUpAnswers, setFollowUpAnswers] = useState<Record<string | number, string>>({})
   const [showFollowUpInput, setShowFollowUpInput] = useState(false)
   
+  // Debug logging
+  console.log('DebateDisplay received session:', {
+    hasComparison: !!session.comparisonResponse,
+    hasConsensus: !!session.consensusComparison,
+    hasSynthesis: !!session.finalSynthesis,
+    consensusData: session.consensusComparison
+  })
+  
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString('en-US', {
       hour: '2-digit',
@@ -266,7 +274,14 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
           {session.comparisonResponse && session.consensusComparison && session.finalSynthesis ? (
             <ThreeWayComparison
               singleModel={session.comparisonResponse}
-              consensus={session.consensusComparison}
+              consensus={{
+                response: session.consensusComparison.response || session.consensusComparison.unifiedAnswer || '',
+                models: session.consensusComparison.models || [],
+                confidence: session.consensusComparison.confidence || 0.75,
+                tokensUsed: session.consensusComparison.tokensUsed || 0,
+                responseTime: session.consensusComparison.responseTime || 0,
+                cost: session.consensusComparison.cost || 0
+              }}
               agentDebate={{
                 response: session.finalSynthesis.conclusion || session.finalSynthesis.content,
                 agents: session.agents.map(a => `${a.name} (${a.role})`),
@@ -292,6 +307,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
                 cost: session.estimatedCost,
                 modelCount: session.agents.length
               }}
+              showAsAgentDebate={true}  // Add flag to show this is Agent Debate, not consensus
             />
           ) : null}
           

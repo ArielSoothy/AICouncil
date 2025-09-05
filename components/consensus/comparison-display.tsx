@@ -32,9 +32,10 @@ interface ComparisonDisplayProps {
     cost: number
     modelCount: number
   }
+  showAsAgentDebate?: boolean
 }
 
-export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayProps) {
+export function ComparisonDisplay({ singleModel, consensus, showAsAgentDebate = false }: ComparisonDisplayProps) {
   // Calculate improvements (handle edge cases and extreme values)
   // Normalize confidence to 0-100 range if needed
   const singleConfidence = singleModel.confidence > 1 ? singleModel.confidence : singleModel.confidence * 100
@@ -61,7 +62,7 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <GitCompare className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-semibold">Single Model vs Consensus Comparison</h3>
+        <h3 className="text-lg font-semibold">Single Model vs {showAsAgentDebate ? 'Agent Debate' : 'Consensus'} Comparison</h3>
       </div>
 
       {/* Comparison Cards */}
@@ -119,10 +120,10 @@ export function ComparisonDisplay({ singleModel, consensus }: ComparisonDisplayP
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                AI Consensus
+                {showAsAgentDebate ? 'Agent Debate' : 'AI Consensus'}
               </CardTitle>
               <Badge variant="default" className="text-xs">
-                {consensus.modelCount} Models
+                {consensus.modelCount} {showAsAgentDebate ? 'Agents' : 'Models'}
               </Badge>
             </div>
           </CardHeader>

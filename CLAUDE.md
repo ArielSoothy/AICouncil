@@ -15,6 +15,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Type mismatches across multiple files
 - **Example**: "We've spent 2 hours debugging this comparison feature. Let's remove it and rebuild it cleanly - it will be much faster."
 
+### Three-Way Comparison Debugging Lessons (September 2025)
+- **Data Flow Tracking**: When features don't display, trace data flow from backend to frontend systematically
+- **Console Logging**: Add comprehensive logging at each step - backend API response, SSE events, state updates
+- **API Field Names**: Check exact field names expected by APIs (e.g., 'prompt' vs 'query')
+- **Type Safety**: Ensure TypeScript interfaces match actual data structures being passed
+- **SSE Event Handling**: Store intermediate data in window object when async operations might lose context
+- **Consensus API Integration**: When calling consensus API from debate stream:
+  - Auth errors are normal if Supabase not configured - API continues with 'free' tier
+  - Must pass 'prompt' field, not 'query'
+  - Response time should be in seconds for UI consistency
+  - Include both 'response' and 'unifiedAnswer' fields for compatibility
+
 ### Never Use Simulated/Fake Data in UI
 - **NEVER show fake progress bars, timers, or completion states that don't reflect actual system status**
 - **NEVER simulate API response times or model completion times**

@@ -336,6 +336,9 @@ export async function POST(request: NextRequest) {
         // Query consensus if requested for three-way comparison
         if (includeComparison && includeConsensusComparison && consensusModels?.length > 0) {
           try {
+            // Import helper function
+            const { callConsensusAPI } = await import('../consensus-helper')
+            
             console.log('Starting consensus comparison with models:', consensusModels.map((m: any) => m.model))
             
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
@@ -344,82 +347,38 @@ export async function POST(request: NextRequest) {
               timestamp: Date.now()
             })}\n\n`))
             
-            // Simple consensus - just query all models and average
             const consensusStartTime = Date.now()
-            const consensusQuery = responseMode === 'concise' 
-              ? `${query}\n\nProvide ONLY a simple numbered list. NO headers, NO explanations, NO details, NO years:\n\n1. [Name only]\n2. [Name only]\n3. [Name only]\n\n[One short sentence about #1].`
-              : query
-            const consensusResponses = await Promise.all(
-              consensusModels.map(async (model: any) => {
-                const provider = providerRegistry.getProvider(model.provider)
-                if (provider) {
-                  try {
-                    return await provider.query(consensusQuery, {
-                      ...model,
-                      enabled: true,
-                      maxTokens: tokenLimit
-                    })
-                  } catch (e) {
-                    console.error(`Consensus model ${model.model} failed:`, e)
-                    return null
-                  }
-                }
-                return null
-              })
+            
+            // Use the helper function for clean API call
+            const consensusResult = await callConsensusAPI(
+              request.nextUrl.origin,
+              query,
+              consensusModels,
+              responseMode
             )
             
-            const validResponses = consensusResponses.filter(r => r !== null)
-            if (validResponses.length > 0) {
-              // Create a proper consensus by synthesizing responses
-              let consensusResponse = ''
-              
-              // If we have multiple responses, create a simple consensus
-              if (validResponses.length > 1) {
-                // Extract main recommendations from each response
-                const recommendations = validResponses.map(r => {
-                  const lines = r?.response?.split('\n') || []
-                  const topRecs = lines.filter((line: string) => 
-                    line.match(/^[1-3]\./) || line.includes('Top') || line.includes('Recommendation')
-                  ).slice(0, 3)
-                  return topRecs.length > 0 ? topRecs.join('\n') : lines.slice(0, 2).join('\n')
-                })
-                
-                consensusResponse = recommendations.join('\n\n')
-              } else {
-                consensusResponse = validResponses[0]?.response || 'No consensus available'
-              }
-              
-              // Calculate actual consensus cost
-              let totalCost = 0
-              consensusModels.forEach((model: any, index: number) => {
-                if (validResponses[index]) {
-                  const modelKey = `${model.provider}/${model.model}` as keyof typeof MODEL_COSTS_PER_1K
-                  const modelCost = MODEL_COSTS_PER_1K[modelKey] || MODEL_COSTS_PER_1K[model.model as keyof typeof MODEL_COSTS_PER_1K] || { input: 0, output: 0 }
-                  const cost = ((validResponses[index]?.tokens?.prompt || 0) * modelCost.input + 
-                               (validResponses[index]?.tokens?.completion || 0) * modelCost.output) / 1000
-                  totalCost += cost
-                }
-              })
-              
+            if (consensusResult) {
               consensusData = {
-                response: consensusResponse,
-                models: consensusModels.map((m: any) => `${m.provider}/${m.model}`),
-                tokensUsed: validResponses.reduce((sum, r) => sum + (r?.tokens?.total || 0), 0),
-                responseTime: Date.now() - consensusStartTime,
-                cost: totalCost,
-                confidence: 0.8 // Consensus baseline confidence
+                ...consensusResult,
+                responseTime: (Date.now() - consensusStartTime) / 1000 // Convert to seconds
               }
+              
+              console.log('Consensus comparison completed')
               
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                 type: 'consensus_comparison_completed',
                 consensus: consensusData,
                 timestamp: Date.now()
               })}\n\n`))
+            } else {
+              console.log('Consensus API returned no data')
             }
           } catch (error) {
             console.error('Consensus comparison failed:', error)
           }
         }
+        
+        console.log('Starting synthesis with consensusData:', !!consensusData)
         
         // Start synthesis phase
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 

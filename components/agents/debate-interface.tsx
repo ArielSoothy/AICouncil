@@ -423,6 +423,14 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   }))
                   break
                   
+                case 'consensus_comparison_completed':
+                  console.log('Consensus comparison completed:', JSON.stringify(data.consensus, null, 2))
+                  // Store consensus comparison data temporarily
+                  if (data.consensus) {
+                    (window as any).tempConsensusData = data.consensus
+                  }
+                  break
+                  
                 case 'synthesis_started':
                   setIsSynthesizing(true)
                   setCurrentPhase('Creating synthesis...')
@@ -430,13 +438,22 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   
                 case 'synthesis_completed':
                   setCurrentPhase('Debate completed')
+                  // Use stored consensus data if not in synthesis event
+                  const consensusComparisonData = data.consensusComparison || (window as any).tempConsensusData || null
+                  
+                  console.log('Synthesis completed data:', {
+                    hasComparison: !!data.comparisonResponse,
+                    hasConsensus: !!consensusComparisonData,
+                    consensusData: JSON.stringify(consensusComparisonData, null, 2),
+                    tempConsensusData: JSON.stringify((window as any).tempConsensusData, null, 2)
+                  })
                   // Create debate session from collected data
                   const session = {
                     id: crypto.randomUUID(),
                     query: fullQuery,
                     agents: apiAgents,
                     comparisonResponse: data.comparisonResponse || null,
-                    consensusComparison: data.consensusComparison || null,
+                    consensusComparison: consensusComparisonData,
                     rounds: [{
                       roundNumber: 1,
                       startTime: new Date(debateStartTime || Date.now()),
@@ -473,6 +490,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       followUpQuestions: []
                     }
                   }
+                  console.log('Setting debate session with consensusComparison:', {
+                    hasConsensus: !!session.consensusComparison,
+                    consensusData: session.consensusComparison
+                  })
                   setDebateSession(session as any)
                   break
                   
