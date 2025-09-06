@@ -263,7 +263,7 @@ export class RoleBasedSearchService {
     
     messages.forEach(msg => {
       // Extract capitalized terms that might be product names or solutions
-      const capitalizedTerms = msg.content.match(/\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\b/g) || [];
+      const capitalizedTerms: string[] = msg.content.match(/\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\b/g) || [];
       capitalizedTerms.forEach(term => {
         if (term.length > 3 && term.length < 30 && !['However', 'Therefore', 'Additionally'].includes(term)) {
           items.add(term);
