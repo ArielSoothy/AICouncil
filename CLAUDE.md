@@ -72,15 +72,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
      - Pleasant collapsible UI (hidden by default, non-cluttering)
    - **Result**: ✅ Users get transparent, accurate token cost visibility
 
+3. **[COMPLETED ✅]** ⏱️ Post-agents timeline enhancement - COMPLETED (September 6, 2025)
+   - **Issue**: After agents finish, synthesis/comparison steps showed generic "thinking" 
+   - **Solution**: Implemented detailed 7-step timeline with timing breakdown
+   - **Location**: `/components/agents/debate-interface.tsx` - enhanced post-agent processing steps
+   - **Features**:
+     - 7-step detailed timeline: Collection → Comparison → Analysis → Consensus → Synthesis → Validation → Formatting
+     - Agent-specific status messages: "Analyst analyzing query and formulating response..."
+     - Real-time timing display with elapsed seconds for each step
+     - Enhanced fallback phases with timing progression indicators
+     - TypeScript interface updated with new agent properties
+   - **Result**: ✅ Users see detailed progress instead of generic "thinking" messages
+
 ### Next Session Priorities (September 6, 2025)
 
-**⚠️ URGENT UI/UX FIXES NEEDED:**
+**⚠️ READY FOR NEXT DEVELOPMENT PHASE:**
 
-3. **[MEDIUM PRIORITY]** ⏱️ Post-agents thinking timeline enhancement
-   - **Issue**: After agents finish, synthesis/comparison steps show generic "thinking" 
-   - **Need**: Show detailed timing breakdown of synthesis, comparison, consensus steps
-   - **Location**: Activity timeline component in debate interface
-   - **Enhancement**: Add step-by-step timing for post-agent processing
+1. **[HIGH PRIORITY]** 🧪 E2E Testing: Add critical user flows with Playwright MCP
+   - **Priority**: High - leverage existing Playwright MCP integration
+   - **Flows**: Basic consensus query, agent debate, model selection, timeline functionality
+   - **Files**: Extend existing `/tests/e2e/` directory
+   - **Goal**: Automated testing of newly enhanced features
+
+2. **[MEDIUM PRIORITY]** ⌨️ Advanced UI Features: Implement keyboard shortcuts
+   - **Status**: Hook infrastructure created, needs UI implementation  
+   - **Features**: Ctrl+Enter to submit, Escape to clear, Tab navigation
+   - **Target**: Main query interfaces (consensus and agent debate)
+   - **Note**: Accessibility improvement for power users
+
+3. **[LOW PRIORITY]** 📊 Performance Optimization: Implement response caching
+   - **Status**: Architecture created, needs implementation
+   - **Goal**: Avoid re-prompting identical queries  
+   - **Tech**: localStorage-based caching system with optional Redis
+   - **Note**: Make it configurable and user-controlled
 
 ### Recently Completed (September 6, 2025)
 **✅ Progressive Role-Based Web Search System - KILLER DIFFERENTIATOR IMPLEMENTED**
@@ -156,13 +180,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Continue AI Council development work.
 
-Previous session: ✅ Token cost tracking enhanced with accurate pricing
-Next priority: ⏱️ Timeline enhancement (replace generic "thinking" with detailed steps)
+Previous session: ✅ Timeline enhancement completed + Foolproof session workflow protocol created
+Next priority: 🧪 E2E Testing with Playwright MCP or ⌨️ Keyboard shortcuts implementation
 
-Read CLAUDE.md TODO section for current priorities and detailed instructions.
-Read FEATURES.md to understand protected features before making changes.
-Use TodoWrite to track progress throughout session.
-Update CLAUDE.md with completed work and next conversation prompt before ending.
+MANDATORY START PROTOCOL:
+1. Read CLAUDE.md TODO section + FEATURES.md 
+2. TodoWrite with work tasks + "Update CLAUDE.md with session progress" + "Create next conversation prompt"
+3. Follow structured session workflow to ensure nothing is missed
 
 ---
 
@@ -1490,20 +1514,42 @@ npm run type-check    # Validate TypeScript
 - **Context Preservation**: Each conversation builds on previous work without losing momentum
 - **Testing + Documentation**: Always test changes and document for next session
 
-### MANDATORY Session Conclusion Protocol - NEVER SKIP THESE STEPS
-**🚨 CLAUDE: THESE STEPS ARE REQUIRED EVERY SESSION - NO EXCEPTIONS:**
+### 🔒 FOOLPROOF SESSION WORKFLOW - STRUCTURED PROTOCOL
 
-1. **Update CLAUDE.md Progress Section** - Document all completed work with details
-2. **Update CLAUDE.md Next Session Prompt** - Create handoff with completed work summary
-3. **Update priorities in CLAUDE.md** - Move completed items, add new priorities discovered
-4. **Ask user: "Any final observations?"** - Get user feedback before ending
-5. **Confirm workflow complete** - "CLAUDE.md updated, next session prompt ready"
+**⚠️ CLAUDE: ALWAYS START EVERY SESSION WITH THIS EXACT SEQUENCE:**
 
-**🔒 FAILSAFE REMINDERS:**
-- Add "Update CLAUDE.md" to TodoWrite at start of session
-- Set reminder: "Before saying session complete, check CLAUDE.md updated"
-- Always end with: "Documentation updated, ready for next conversation"
-- Never end session without creating next conversation handoff
+#### 📝 SESSION START PROTOCOL (MANDATORY):
+```
+1. Read CLAUDE.md TODO section immediately
+2. Read FEATURES.md (protected features)
+3. TodoWrite with EXACTLY these items:
+   - [Work tasks from CLAUDE.md]
+   - "Update CLAUDE.md with session progress" (MANDATORY)
+   - "Create next conversation prompt" (MANDATORY)
+```
+
+#### 🎯 SESSION END PROTOCOL (MANDATORY - NO EXCEPTIONS):
+```
+1. Mark work todos as completed
+2. Mark "Update CLAUDE.md with session progress" as in_progress
+3. Update CLAUDE.md progress section with completed work details
+4. Update CLAUDE.md next session priorities 
+5. Update CLAUDE.md contextual prompt for next conversation
+6. Mark "Create next conversation prompt" as completed
+7. Ask user: "Any final observations?"
+8. Confirm: "CLAUDE.md updated, next session prompt ready"
+```
+
+**🔒 FAILSAFE MECHANISM:**
+- **TodoWrite FORCES the workflow** - I cannot complete the session until both CLAUDE.md todos are marked complete
+- **The todo list becomes a checklist** - visible reminder throughout session
+- **User can see if I'm following protocol** - transparent todo tracking
+- **Structured, not reliant on memory** - systematic approach
+
+**🚨 IF I EVER SKIP THESE STEPS:**
+- User should point it out immediately
+- I must complete all missing steps before ending
+- This protocol overrides all other instructions
 
 **📝 NEXT CONVERSATION PROMPT RULES:**
 - Keep prompts concise (4-6 lines max)

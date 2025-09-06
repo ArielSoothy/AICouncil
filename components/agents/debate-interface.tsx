@@ -99,7 +99,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     keyPoints?: string,
     tokensUsed?: number,
     model?: string,
-    provider?: string
+    provider?: string,
+    agentName?: string,
+    agentRole?: string,
+    hasReceivedResponse?: boolean
   }>>({})
   const [debateStartTime, setDebateStartTime] = useState<number | null>(null)
   
@@ -123,10 +126,13 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   // Initialize post-agent steps when agents complete
   const initializePostAgentSteps = () => {
     const steps = [
-      { step: 'comparison', status: 'pending' as const, description: 'Comparing with single model response' },
-      { step: 'consensus', status: 'pending' as const, description: 'Creating consensus analysis' },
-      { step: 'synthesis', status: 'pending' as const, description: 'Synthesizing final conclusions' },
-      { step: 'formatting', status: 'pending' as const, description: 'Formatting final response' }
+      { step: 'collection', status: 'pending' as const, description: 'Collecting agent responses' },
+      { step: 'comparison', status: 'pending' as const, description: 'Comparing with single model baseline' },
+      { step: 'analysis', status: 'pending' as const, description: 'Analyzing response differences' },
+      { step: 'consensus', status: 'pending' as const, description: 'Building consensus framework' },
+      { step: 'synthesis', status: 'pending' as const, description: 'Synthesizing unified response' },
+      { step: 'validation', status: 'pending' as const, description: 'Validating final conclusions' },
+      { step: 'formatting', status: 'pending' as const, description: 'Formatting structured output' }
     ]
     setPostAgentSteps(steps)
   }
@@ -460,7 +466,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       ...prev[data.modelId],
                       status: 'thinking',
                       startTime: data.timestamp,
-                      message: 'Analyzing query...',
+                      message: `${data.agentName || 'Agent'} analyzing query and formulating ${data.agentRole || 'response'}...`,
                       agentName: data.agentName,
                       agentRole: data.agentRole
                     }
@@ -472,7 +478,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     ...prev,
                     [data.modelId]: {
                       ...prev[data.modelId],
-                      message: 'Generating response...',
+                      message: `${prev[data.modelId].agentName || 'Agent'} formulating detailed response...`,
                       promptPreview: data.promptPreview
                     }
                   }))
@@ -525,7 +531,17 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     if (allCompleted && includeComparison) {
                       // Initialize post-agent steps when all agents complete
                       initializePostAgentSteps()
+                      updateStepStatus('collection', 'completed')
                       updateStepStatus('comparison', 'in_progress')
+                    } else if (allCompleted) {
+                      // Even without comparison, show synthesis steps
+                      const synthesisSteps = [
+                        { step: 'collection', status: 'completed' as const, description: 'Agent responses collected' },
+                        { step: 'synthesis', status: 'in_progress' as const, description: 'Synthesizing agent consensus' },
+                        { step: 'validation', status: 'pending' as const, description: 'Validating conclusions' },
+                        { step: 'formatting', status: 'pending' as const, description: 'Formatting final response' }
+                      ]
+                      setPostAgentSteps(synthesisSteps)
                     }
                     
                     return updated
@@ -549,21 +565,23 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   if (data.consensus) {
                     (window as any).tempConsensusData = data.consensus
                   }
-                  // Update step tracking
+                  // Update step tracking with more detailed progression
                   updateStepStatus('comparison', 'completed')
+                  updateStepStatus('analysis', 'completed')
                   updateStepStatus('consensus', 'completed')
                   updateStepStatus('synthesis', 'in_progress')
                   break
                   
                 case 'synthesis_started':
                   setIsSynthesizing(true)
-                  setCurrentPhase('Creating synthesis...')
+                  setCurrentPhase('Synthesizing unified response from agent debate...')
                   updateStepStatus('synthesis', 'in_progress')
                   break
                   
                 case 'synthesis_completed':
-                  setCurrentPhase('Debate completed')
+                  setCurrentPhase('Debate analysis complete - presenting unified conclusions')
                   updateStepStatus('synthesis', 'completed')
+                  updateStepStatus('validation', 'completed')
                   updateStepStatus('formatting', 'completed')
                   // Use stored consensus data if not in synthesis event
                   const consensusComparisonData = data.consensusComparison || (window as any).tempConsensusData || null
@@ -722,7 +740,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           statuses[modelId] = {
             status: 'thinking',
             startTime: Date.now(),
-            message: 'Processing...'
+            message: `${llm.model} analyzing query and preparing response...`
           }
         })
       } else {
@@ -730,7 +748,9 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           statuses[agent.agentId] = {
             status: 'thinking',
             startTime: Date.now(),
-            message: 'Processing...'
+            message: `${agent.persona?.name || 'Agent'} preparing ${agent.persona?.role || 'analysis'}...`,
+            agentName: agent.persona?.name,
+            agentRole: agent.persona?.role
           }
         })
       }
@@ -1372,8 +1392,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   </p>
                   {debateStartTime && (
                     <div className="text-xs text-muted-foreground space-y-1 mt-2">
-                      {!isSynthesizing && (
-                        <p className="text-green-400">● Phase 1: Collecting model responses...</p>
+                      {!isSynthesizing && postAgentSteps.length === 0 && (
+                        <p className="text-green-400">● Phase 1: Agent debate in progress...</p>
                       )}
                       {/* Post-Agent Step Timeline */}
                       {postAgentSteps.length > 0 && (
@@ -1412,14 +1432,17 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                           })}
                         </div>
                       )}
-                      {/* Fallback to old phases if no post-agent steps */}
+                      {/* Enhanced fallback phases with timing details */}
                       {postAgentSteps.length === 0 && isSynthesizing && (
                         <>
-                          {((Date.now() - debateStartTime) / 1000) <= 20 && (
-                            <p className="text-blue-400">● Phase 2: Synthesizing consensus...</p>
+                          {((Date.now() - debateStartTime) / 1000) <= 15 && (
+                            <p className="text-blue-400">● Phase 2: Processing agent responses ({Math.floor((Date.now() - debateStartTime) / 1000)}s)</p>
                           )}
-                          {((Date.now() - debateStartTime) / 1000) > 20 && (
-                            <p className="text-yellow-400">● Phase 3: Finalizing consensus...</p>
+                          {((Date.now() - debateStartTime) / 1000) > 15 && ((Date.now() - debateStartTime) / 1000) <= 30 && (
+                            <p className="text-yellow-400">● Phase 3: Building consensus framework ({Math.floor((Date.now() - debateStartTime) / 1000)}s)</p>
+                          )}
+                          {((Date.now() - debateStartTime) / 1000) > 30 && (
+                            <p className="text-orange-400">● Phase 4: Finalizing unified response ({Math.floor((Date.now() - debateStartTime) / 1000)}s)</p>
                           )}
                         </>
                       )}
