@@ -63,12 +63,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - **Files**: Extend existing `/tests/e2e/` directory
 
 ### Workflow for Next Claude Session:
-1. **User says "read claude md"** 
+1. **User says "read claude md"** OR **uses the ready-to-use prompt below**
 2. **Claude reads this TODO section immediately**
 3. **Claude uses TodoWrite to track progress**  
 4. **Claude completes 1-3 items per session**
 5. **Claude updates this section with [COMPLETED] and new TODOs**
-6. **Claude commits changes for next session**
+6. **Claude creates/updates the ready-to-use prompt for the NEXT session**
+7. **Claude commits changes for next session**
+
+### 🤖 Ready-to-Use Prompt for Next Conversation
+
+**Copy-paste this exact prompt to start the next session:**
+
+```
+Hi! This is a continuation of our AI Council development work. 
+
+Please read the CLAUDE.md file to understand the current project state and your immediate TODO list. The technical debt cleanup from the previous session has been completed, and there are 5 new priority tasks ready for implementation.
+
+Focus on the "Next Session Priorities" section at the top of CLAUDE.md - it contains everything you need to know about what to work on next, including specific file locations and implementation details.
+
+Start by using TodoWrite to track your progress, then begin with the highest priority items.
+
+Ready when you are!
+```
+
+This prompt ensures you'll:
+- ✅ Read CLAUDE.md immediately 
+- ✅ Find the TODO list without confusion
+- ✅ Use TodoWrite for progress tracking
+- ✅ Start with the right priority items
+- ✅ Have full context about previous session completion
 
 ### Context Files to Reference:
 - **FEATURES.md**: Protected features, known issues
