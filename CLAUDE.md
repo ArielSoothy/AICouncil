@@ -2,6 +2,81 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🎯 IMMEDIATE TODO LIST - START HERE FIRST
+
+**⚠️ CLAUDE: READ THIS SECTION FIRST - THESE ARE YOUR CURRENT TASKS**
+
+### Current Session Priority (January 6, 2025)
+**✅ ALL TECHNICAL DEBT COMPLETED (January 6, 2025)**
+
+1. **[COMPLETED]** ✅ Fix round selection slider visual separation from auto-trigger controls (FEATURES.md:61)
+   - **Status**: Already implemented with `border-t border-muted` separator
+   - **Location**: `/components/agents/debate-interface.tsx` lines 1047-1048
+   - **Verification**: UI has clear visual separation between manual/auto controls
+
+2. **[COMPLETED]** ✅ Remove debug console.log statements from debate-prompts.ts
+   - **Status**: Successfully removed 4 `[DEBUG PROMPT]` console.log statements
+   - **Location**: `/lib/agents/debate-prompts.ts` lines 26, 32, 36, 41
+   - **Result**: Production code cleaned, debug logs eliminated
+
+3. **[COMPLETED]** ✅ Error handling and toast notifications in query-interface.tsx
+   - **Status**: Already fully implemented with comprehensive error handling
+   - **Features**: Success toasts, error toasts, save failure warnings
+   - **Location**: `/components/consensus/query-interface.tsx` lines 105-109, 128-134, 136-139
+
+4. **[COMPLETED]** ✅ Debate testing in benchmark-framework.ts
+   - **Status**: Already fully implemented with `testDebateConsensus` method
+   - **Location**: `/lib/testing/benchmark-framework.ts` lines 353-443
+   - **Features**: Complete API integration, error handling, result parsing
+
+5. **[COMPLETED]** ✅ Answer stability metric in benchmark-framework.ts
+   - **Status**: Already fully implemented as part of benchmark framework
+   - **Location**: Same file, integrated with testing methods
+   - **Verification**: TypeScript compilation passes, no TODO comments found
+
+### Next Session Priorities (January 6, 2025)
+**New HIGH PRIORITY tasks for next conversation:**
+
+1. **[PENDING]** 🚀 Test that debug logs are actually removed from production
+   - **Action**: Start a fresh dev server and run agent debate to verify no `[DEBUG PROMPT]` logs
+   - **Verification**: Check console output during agent debate execution
+   - **File**: Server logs should be clean
+
+2. **[PENDING]** 🔧 Fix ESLint warnings in enhanced-consensus-display-v3.tsx  
+   - **Lines**: 315:6 and 344:6 - missing useEffect dependencies  
+   - **Issue**: `result.responses` missing from dependency arrays
+   - **Action**: Add proper dependencies or justify exclusion
+
+3. **[PENDING]** 📊 Performance Optimization: Implement response caching
+   - **Priority**: High - from long-term roadmap, now ready to implement
+   - **Goal**: Avoid re-prompting identical queries  
+   - **Tech**: Redis or localStorage-based caching system
+
+4. **[PENDING]** ⌨️ Advanced UI Features: Add keyboard shortcuts
+   - **Priority**: High - accessibility improvements
+   - **Features**: Ctrl+Enter to submit, Escape to clear, Tab navigation
+   - **Target**: Main query interfaces
+
+5. **[PENDING]** 🧪 E2E Testing: Add critical user flows with Playwright MCP
+   - **Priority**: Medium - use existing Playwright MCP integration
+   - **Flows**: Basic consensus query, agent debate, model selection
+   - **Files**: Extend existing `/tests/e2e/` directory
+
+### Workflow for Next Claude Session:
+1. **User says "read claude md"** 
+2. **Claude reads this TODO section immediately**
+3. **Claude uses TodoWrite to track progress**  
+4. **Claude completes 1-3 items per session**
+5. **Claude updates this section with [COMPLETED] and new TODOs**
+6. **Claude commits changes for next session**
+
+### Context Files to Reference:
+- **FEATURES.md**: Protected features, known issues
+- **PROJECT_OVERVIEW.md**: Technical debt list (lines 140-147)
+- **Current codebase state**: Production-ready MVP with agent debate system
+
+---
+
 ## CRITICAL RULES - NEVER VIOLATE THESE
 
 ### Debugging Strategy - Know When to Rebuild
@@ -1228,18 +1303,20 @@ This is **AI Council**, a multi-model AI consensus platform that has evolved fro
 4. **Benchmark Framework**: Completed debate testing and answer stability metrics
 5. **Code Quality**: Fixed all TypeScript compilation errors, passed ESLint checks
 
-### 🎯 Next TODO List for Upcoming Conversation
-**Priority: High**
+### 🎯 Long-Term Roadmap (After Current Technical Debt)
+**These are FUTURE goals - Complete the immediate TODO list at the top of this file first!**
+
+**Priority: High (Future)**
 1. **Performance Optimization**: Implement response caching and request deduplication
 2. **Memory Integration**: Begin Phase 1 memory systems integration (LangGraph + LangMem)
 3. **Advanced UI Features**: Add keyboard shortcuts and accessibility improvements
 
-**Priority: Medium**  
+**Priority: Medium (Future)**  
 4. **Enhanced Metrics**: Add response quality scoring and user satisfaction tracking
 5. **Provider Reliability**: Implement advanced fallback chains and health monitoring
 6. **Testing Expansion**: Add E2E tests for critical user flows using Playwright MCP
 
-**Priority: Low**
+**Priority: Low (Future)**
 7. **Documentation**: Update API documentation and add inline code examples
 8. **Monitoring**: Add performance analytics and error tracking dashboard
 

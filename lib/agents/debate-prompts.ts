@@ -23,22 +23,17 @@ export function generateRoundPrompt(
   previousMessages: AgentMessage[],
   responseMode: string = 'normal'
 ): string {
-  console.log(`[DEBUG PROMPT] ${agent.name} Round ${round}: ${previousMessages.length} previous messages`)
-  
   // ENGAGING DEBATE APPROACH: Real debate from the start
   if (round === 1) {
     if (previousMessages.length === 0) {
       // First agent: Strong opening statement that invites debate
-      console.log(`[DEBUG PROMPT] Using DEBATE OPENING prompt for ${agent.name}`)
       return generateDebateOpeningPrompt(query, agent, responseMode)
     } else {
       // Other agents in Round 1: Respond to and challenge previous agents
-      console.log(`[DEBUG PROMPT] Using DEBATE RESPONSE prompt for ${agent.name}`)
       return generateDebateResponsePrompt(query, agent, previousMessages, responseMode)
     }
   } else {
     // Round 2+: Continue the debate with deeper analysis
-    console.log(`[DEBUG PROMPT] Using CONTINUED DEBATE prompt for ${agent.name} with ${previousMessages.length} previous messages`)
     return generateContinuedDebatePrompt(query, agent, previousMessages)
   }
 }

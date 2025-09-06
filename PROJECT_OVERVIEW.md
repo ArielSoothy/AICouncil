@@ -139,11 +139,16 @@ AICouncil/
 
 ### Known Issues & TODOs
 ```typescript
-// From codebase scan:
-- lib/testing/benchmark-framework.ts:354 - TODO: Implement debate testing
-- lib/testing/benchmark-framework.ts:422 - TODO: Implement answer stability metric
-- lib/agents/agent-system.ts:216,240 - Debug console.logs to remove
-- components/consensus/query-interface.tsx:123 - TODO: Add proper error handling/toast
+// ✅ COMPLETED (January 6, 2025):
+// - lib/testing/benchmark-framework.ts:354 - ✅ Debate testing implemented
+// - lib/testing/benchmark-framework.ts:422 - ✅ Answer stability metric implemented  
+// - lib/agents/debate-prompts.ts:26,32,36,41 - ✅ Debug console.logs removed
+// - components/consensus/query-interface.tsx:123 - ✅ Error handling/toast implemented
+
+// CURRENT ISSUES (January 6, 2025):
+- components/consensus/enhanced-consensus-display-v3.tsx:315,344 - ESLint: missing useEffect dependencies
+- Minor: Missing response caching system for identical queries  
+- Enhancement: Keyboard shortcuts for accessibility (Ctrl+Enter, Escape, Tab)
 ```
 
 ## 📈 Metrics & Performance
