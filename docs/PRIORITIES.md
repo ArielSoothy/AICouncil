@@ -1,9 +1,9 @@
 # 🎯 CURRENT PRIORITIES & SESSION PROGRESS
 
 ## 📝 CURRENT SESSION CONTEXT:
-**Previous Session:** ✅ Complete documentation consolidation + FEATURES.md moved to project completed  
+**Previous Session:** ✅ Documentation organization + All markdown files moved to docs/ directory completed  
 **Current Priority:** 🧪 E2E Testing with Playwright MCP or 🏗️ Architecture validation  
-**System Status:** Production-ready MVP with enhanced agent debate + progressive web search + clean documentation structure
+**System Status:** Production-ready MVP with enhanced agent debate + progressive web search + organized docs/ structure
 
 ## ✅ RECENTLY COMPLETED (September 6, 2025):
 
@@ -33,8 +33,9 @@
 - Strategic Plan consolidated → Technical TODOs moved to PRIORITIES.md, vision merged into PROJECT_OVERVIEW.md, file deleted
 - All markdown files consolidated → IMPLEMENTATION_SUMMARY.md + llm-mode-improvements.md merged into PROJECT_OVERVIEW.md, test examples added to BEST_PRACTICES.md
 - FEATURES.md moved into project directory (no longer external)
+- All documentation organized into docs/ directory → Clean project root, structured documentation  
 - Added conversation prompt template → Reusable template in CLAUDE.md for consistent session transitions
-- Enhanced workflow → CRITICAL: Update FEATURES.md when new features added (protect from deletion)
+- Enhanced workflow → CRITICAL: Update docs/FEATURES.md when new features added (protect from deletion)
 - Removed redundancy, clear file responsibilities, proper organization
 - Proper workflow: Work → Test → Document → Ask approval → Push → New prompt
 
@@ -98,10 +99,10 @@
 ```
 Continue AI Council development work.
 
-Previous session: ✅ Complete documentation consolidation + Clean structure achieved  
+Previous session: ✅ Documentation organization + All markdown files moved to docs/ directory completed  
 Next priority: 🧪 E2E Testing with Playwright MCP or 🏗️ Architecture validation (high priority tasks)
 
-MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
-TodoWrite: Next task from PRIORITIES.md + "Update PRIORITIES.md" + "Create next prompt"
+MANDATORY START: Read docs/CLAUDE.md → docs/WORKFLOW.md → docs/PRIORITIES.md → docs/FEATURES.md
+TodoWrite: Next task from docs/PRIORITIES.md + "Update docs/PRIORITIES.md" + "Create next prompt"
 Follow structured workflow: Work → Test → Document → Ask approval → Push → New prompt
 ```
