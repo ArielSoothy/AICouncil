@@ -1182,6 +1182,29 @@ LIMIT 10;
 
 This Supabase setup provides a complete backend solution with authentication, secure data storage, and user management for AI applications.
 
+## 🧪 Testing Capabilities
+
+### Playwright MCP Integration
+**Available for browser testing and UI verification:**
+- **Browser Control**: Navigate, click, type, hover, drag, and interact with page elements
+- **Page Analysis**: Take screenshots, capture accessibility snapshots, evaluate JavaScript
+- **Form Testing**: Fill forms, select options, upload files, test interactions
+- **Network Monitoring**: Track requests, responses, console messages
+- **Multi-tab Support**: Create, switch between, and manage browser tabs
+
+### Round Selection Testing Results (September 2025)
+**Successfully tested round selection functionality:**
+- **Location**: `/agents` page in Agent Debate interface 
+- **Control Type**: Radix UI slider with `role="slider"`
+- **Range**: 1-3 rounds (min=1, max=3)
+- **Interaction**: Keyboard navigation (ArrowLeft/ArrowRight) 
+- **UI Feedback**: Real-time display updates ("Number of Rounds: X")
+- **Functionality**: ✅ Confirmed working correctly - both directions tested
+- **UI Position**: Below "Auto-trigger Round 2 on Disagreement" toggle
+- **Label**: Shows "Manual control - exactly this many rounds will run"
+- **Notes**: Slider is for manual round control, separate from auto-trigger disagreement feature
+- **UI Improvement Needed**: Better visual separation and prominence (currently mixed with auto-trigger controls)
+
 ## 🤖 AI Assistant Context - Project-Specific Knowledge
 
 ### Project Understanding

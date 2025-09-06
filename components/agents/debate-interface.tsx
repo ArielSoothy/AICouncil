@@ -1028,22 +1028,25 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   />
                 </div>
                 
-                {!autoRound2 && (
-                  <div>
-                    <Label className="text-base font-semibold mb-2">
-                      Manual Rounds: {rounds}
-                    </Label>
-                    <Slider
-                      value={[rounds]}
-                      onValueChange={(value) => setRounds(value[0])}
-                      min={1}
-                      max={DEBATE_CONFIG.maxRounds}
-                      step={1}
-                      className="mt-2"
-                      disabled={isLoading || autoRound2}
-                    />
-                  </div>
-                )}
+                <div>
+                  <Label className="text-base font-semibold mb-2">
+                    Number of Rounds: {rounds}
+                  </Label>
+                  <Slider
+                    value={[rounds]}
+                    onValueChange={(value) => setRounds(value[0])}
+                    min={1}
+                    max={DEBATE_CONFIG.maxRounds}
+                    step={1}
+                    className="mt-2"
+                    disabled={isLoading}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {autoRound2 
+                      ? "Auto-trigger may add additional rounds based on disagreement"
+                      : "Manual control - exactly this many rounds will run"}
+                  </p>
+                </div>
                 
                 {autoRound2 && (
                   <div>

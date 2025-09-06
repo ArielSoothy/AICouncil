@@ -108,7 +108,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
         </div>
 
         <div className="prose prose-sm dark:prose-invert max-w-none">
-          <div className="max-h-[400px] overflow-y-auto whitespace-pre-wrap break-words border border-border/30 rounded p-3 bg-card/50">
+          <div className="whitespace-pre-wrap break-words border border-border/30 rounded p-3 bg-card/50">
             {message.content}
           </div>
         </div>
