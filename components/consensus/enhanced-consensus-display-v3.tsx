@@ -312,7 +312,7 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
       }
     }
     run()
-  }, [result.query, result.responses.length])
+  }, [result.query, result.responses])
 
   // Fetch one-line why per model (cheap LLM or heuristic)
   useEffect(() => {
@@ -341,7 +341,7 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
       }
     }
     run()
-  }, [result.query, result.responses.length])
+  }, [result.query, result.responses])
 
   const getCurrentAnswer = () => {
     switch (currentLevel) {

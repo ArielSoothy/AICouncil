@@ -23,10 +23,43 @@ import {
   HelpCircle,
   ArrowRight,
   GitCompare,
-  Globe
+  Globe,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { ComparisonDisplay } from '@/components/consensus/comparison-display'
 import { ThreeWayComparison } from '@/components/consensus/three-way-comparison'
+
+// Model cost calculation helper
+const calculateMessageCost = (message: AgentMessage): number => {
+  const MODEL_COSTS: Record<string, { input: number, output: number }> = {
+    'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
+    'gpt-4': { input: 0.03, output: 0.06 },
+    'gpt-4o': { input: 0.01, output: 0.03 },
+    'claude-opus-4-20250514': { input: 0.015, output: 0.075 },
+    'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },
+    'gemini-2.5-flash': { input: 0, output: 0 }, // Free
+    'gemini-2.0-flash-exp': { input: 0, output: 0 }, // Free
+    'llama-3.3-70b-versatile': { input: 0, output: 0 }, // Free
+    'llama-3.1-8b-instant': { input: 0, output: 0 }, // Free
+  }
+  
+  const costs = MODEL_COSTS[message.model] || { input: 0.001, output: 0.003 }
+  // Rough estimate: 70% input, 30% output of total tokens
+  const inputTokens = message.tokensUsed * 0.7
+  const outputTokens = message.tokensUsed * 0.3
+  return (inputTokens / 1000 * costs.input) + (outputTokens / 1000 * costs.output)
+}
+
+// Synthesis cost calculation (typically uses llama-3.3-70b-versatile which is free)
+const calculateSynthesisCost = (tokens: number): number => {
+  // Most synthesis uses free models like llama-3.3-70b-versatile or gemini
+  // But fallback might use paid models
+  const costs = { input: 0.001, output: 0.003 } // Conservative fallback estimate
+  const inputTokens = tokens * 0.7
+  const outputTokens = tokens * 0.3
+  return (inputTokens / 1000 * costs.input) + (outputTokens / 1000 * costs.output)
+}
 
 interface DebateDisplayProps {
   session: DebateSession
@@ -51,6 +84,8 @@ const agentColors = {
 export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddRound, webSearchUsed = false }: DebateDisplayProps) {
   const [followUpAnswers, setFollowUpAnswers] = useState<Record<string | number, string>>({})
   const [showFollowUpInput, setShowFollowUpInput] = useState(false)
+  const [showCostBreakdown, setShowCostBreakdown] = useState(false)
+  const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
   
   // Debug logging
   console.log('DebateDisplay received session:', {
@@ -83,12 +118,36 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
     return `${minutes}m ${remainingSeconds}s`
   }
 
+  const getMessageId = (message: AgentMessage) => `${message.agentId}-${message.round}-${message.timestamp}`
+  
+  const isLongMessage = (content: string) => content.length > 500 || content.split('\n').length > 8
+  
+  const toggleMessageExpansion = (messageId: string) => {
+    setExpandedMessages(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId)
+      } else {
+        newSet.add(messageId)
+      }
+      return newSet
+    })
+  }
+
   const renderMessage = (message: AgentMessage) => {
     const Icon = agentIcons[message.role]
     const agent = session.agents.find(a => a.id === message.agentId)
+    const messageId = getMessageId(message)
+    const isLong = isLongMessage(message.content)
+    const isExpanded = expandedMessages.has(messageId)
+    
+    // For long messages, show truncated version when collapsed
+    const displayContent = isLong && !isExpanded 
+      ? message.content.substring(0, 400) + '...' 
+      : message.content
     
     return (
-      <Card key={`${message.agentId}-${message.round}-${message.timestamp}`} className="p-4 space-y-3">
+      <Card key={messageId} className="p-4 space-y-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <Icon className="w-5 h-5" style={{ color: agentColors[message.role] }} />
@@ -107,10 +166,31 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
           </span>
         </div>
 
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <div className="whitespace-pre-wrap break-words border border-border/30 rounded p-3 bg-card/50">
-            {message.content}
+        <div className="w-full">
+          <div className="whitespace-pre-wrap break-words border border-border/30 rounded p-3 bg-card/50 text-sm leading-relaxed">
+            {displayContent}
           </div>
+          
+          {isLong && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleMessageExpansion(messageId)}
+              className="mt-2 h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="w-3 h-3 mr-1" />
+                  Show less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3 h-3 mr-1" />
+                  Show more
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         {message.keyPoints && message.keyPoints.length > 0 && (
@@ -121,6 +201,26 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
                 <li key={idx} className="text-sm flex items-start gap-1">
                   <CheckCircle2 className="w-3 h-3 mt-0.5 text-green-500 flex-shrink-0" />
                   <span>{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {message.searchQueries && message.searchQueries.length > 0 && (
+          <div className="pt-2 border-t">
+            <div className="flex items-center gap-1 mb-1">
+              <Globe className="w-3 h-3 text-blue-500" />
+              <p className="text-xs font-semibold text-muted-foreground">Web Search Used:</p>
+            </div>
+            {message.searchRationale && (
+              <p className="text-xs text-muted-foreground italic mb-2">{message.searchRationale}</p>
+            )}
+            <ul className="space-y-1">
+              {message.searchQueries.map((query, idx) => (
+                <li key={idx} className="text-xs flex items-start gap-1">
+                  <span className="text-blue-400 font-mono">•</span>
+                  <span className="text-muted-foreground">&quot;{query}&quot;</span>
                 </li>
               ))}
             </ul>
@@ -215,6 +315,83 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
                 ${session.estimatedCost.toFixed(4)}
               </p>
             </div>
+          </div>
+          
+          {/* Cost Breakdown Toggle */}
+          <div className="mt-4 pt-4 border-t">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCostBreakdown(!showCostBreakdown)}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              <DollarSign className="w-3 h-3 mr-1" />
+              {showCostBreakdown ? 'Hide' : 'Show'} Cost Breakdown
+              <ArrowRight className={`w-3 h-3 ml-1 transition-transform ${showCostBreakdown ? 'rotate-90' : ''}`} />
+            </Button>
+            
+            {showCostBreakdown && (
+              <div className="mt-3 space-y-2">
+                <div className="text-xs font-semibold text-muted-foreground mb-2">Per-Agent Costs:</div>
+                {session.rounds.map((round) =>
+                  round.messages.map((message) => {
+                    const agent = session.agents.find(a => a.id === message.agentId)
+                    const agentIcon = agentIcons[message.role]
+                    const AgentIcon = agentIcon || MessageSquare
+                    
+                    // Calculate actual cost based on model pricing
+                    const estimatedCost = calculateMessageCost(message)
+                    
+                    return (
+                      <div key={`${message.agentId}-${message.round}-cost`} className="flex items-center justify-between py-1 px-2 bg-muted/30 rounded text-xs">
+                        <div className="flex items-center gap-2">
+                          <AgentIcon className="w-3 h-3" style={{ color: agentColors[message.role] }} />
+                          <span className="font-medium">{agent?.name || message.role}</span>
+                          <Badge variant="outline" className="text-xs px-1 py-0">
+                            Round {message.round}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Hash className="w-3 h-3" />
+                            {message.tokensUsed.toLocaleString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <DollarSign className="w-3 h-3" />
+                            ${estimatedCost.toFixed(6)}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+                
+                {/* Synthesis cost if available */}
+                {session.finalSynthesis?.tokensUsed && (
+                  <div className="flex items-center justify-between py-1 px-2 bg-green-500/10 rounded text-xs border border-green-500/20">
+                    <div className="flex items-center gap-2">
+                      <GitCompare className="w-3 h-3 text-green-600" />
+                      <span className="font-medium">Final Synthesis</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Hash className="w-3 h-3" />
+                        {session.finalSynthesis.tokensUsed.toLocaleString()}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <DollarSign className="w-3 h-3" />
+                        ${calculateSynthesisCost(session.finalSynthesis.tokensUsed).toFixed(4)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mt-2 pt-2 border-t border-muted flex justify-between text-xs font-semibold">
+                  <span>Total</span>
+                  <span>${session.estimatedCost.toFixed(4)}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </Card>

@@ -34,46 +34,152 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - **Location**: Same file, integrated with testing methods
    - **Verification**: TypeScript compilation passes, no TODO comments found
 
-### Next Session Priorities (January 6, 2025)
-**New HIGH PRIORITY tasks for next conversation:**
+### Current Session Progress (January 6, 2025)
+**✅ COMPLETED TODAY:**
 
-1. **[PENDING]** 🚀 Test that debug logs are actually removed from production
-   - **Action**: Start a fresh dev server and run agent debate to verify no `[DEBUG PROMPT]` logs
-   - **Verification**: Check console output during agent debate execution
-   - **File**: Server logs should be clean
+1. **[COMPLETED]** ✅ Test debug log removal from production
+   - **Status**: Verified debug logs were already removed from codebase
+   - **Result**: No `[DEBUG PROMPT]` logs found in current code
+   - **Verification**: Console output confirmed clean
 
-2. **[PENDING]** 🔧 Fix ESLint warnings in enhanced-consensus-display-v3.tsx  
-   - **Lines**: 315:6 and 344:6 - missing useEffect dependencies  
-   - **Issue**: `result.responses` missing from dependency arrays
-   - **Action**: Add proper dependencies or justify exclusion
+2. **[COMPLETED]** ✅ Fix ESLint warnings in enhanced-consensus-display-v3.tsx  
+   - **Lines Fixed**: 315:6 and 344:6 - added missing useEffect dependencies  
+   - **Change**: Updated `[result.query, result.responses.length]` → `[result.query, result.responses]`
+   - **Result**: ✅ No ESLint warnings or errors
 
-3. **[PENDING]** 📊 Performance Optimization: Implement response caching
-   - **Priority**: High - from long-term roadmap, now ready to implement
-   - **Goal**: Avoid re-prompting identical queries  
-   - **Tech**: Redis or localStorage-based caching system
+### Current Session Progress (September 6, 2025)
+**✅ COMPLETED TODAY:**
 
-4. **[PENDING]** ⌨️ Advanced UI Features: Add keyboard shortcuts
-   - **Priority**: High - accessibility improvements
-   - **Features**: Ctrl+Enter to submit, Escape to clear, Tab navigation
-   - **Target**: Main query interfaces
+1. **[COMPLETED]** ✅ Agent response expand/collapse functionality
+   - **Issue**: Agent responses getting cut off in round tabs, can't see complete answers
+   - **Solution**: Implemented smart expand/collapse with 400-character truncation
+   - **Location**: `/components/agents/debate-display.tsx` - added expand/collapse state and UI
+   - **Features**: 
+     - Messages >500 chars or >8 lines show "Show more" button
+     - Seamless toggle between collapsed/expanded states
+     - Maintains formatting and all existing functionality
+   - **Result**: ✅ Users can now view full agent responses without UI clutter
 
-5. **[PENDING]** 🧪 E2E Testing: Add critical user flows with Playwright MCP
+2. **[COMPLETED]** ✅ Token cost tracking and display - COMPLETED
+   - **Issue**: No visibility into token usage and costs, rough cost estimates
+   - **Solution**: Enhanced existing collapsible cost breakdown with accurate pricing
+   - **Location**: `/components/agents/debate-display.tsx` - enhanced cost calculation functions
+   - **Features**:
+     - Accurate cost calculation for 9 major models with real pricing
+     - Free models (Gemini, Llama) show $0.00 correctly
+     - Per-agent costs with icons, round badges, tokens, and costs
+     - Enhanced synthesis cost display with dedicated calculation
+     - Pleasant collapsible UI (hidden by default, non-cluttering)
+   - **Result**: ✅ Users get transparent, accurate token cost visibility
+
+### Next Session Priorities (September 6, 2025)
+
+**⚠️ URGENT UI/UX FIXES NEEDED:**
+
+3. **[MEDIUM PRIORITY]** ⏱️ Post-agents thinking timeline enhancement
+   - **Issue**: After agents finish, synthesis/comparison steps show generic "thinking" 
+   - **Need**: Show detailed timing breakdown of synthesis, comparison, consensus steps
+   - **Location**: Activity timeline component in debate interface
+   - **Enhancement**: Add step-by-step timing for post-agent processing
+
+### Recently Completed (September 6, 2025)
+**✅ Progressive Role-Based Web Search System - KILLER DIFFERENTIATOR IMPLEMENTED**
+- **Status**: Architecture complete, tested successfully
+- **Achievement**: Each agent now performs targeted web searches based on role and debate context
+- **Files Created**: `/lib/web-search/role-based-search.ts`, `/lib/web-search/context-extractor.ts` 
+- **Integration**: Fully integrated into `/app/api/agents/debate-stream/route.ts`
+- **Next**: May need debugging to ensure role-based searches trigger vs basic fallback
+**REMAINING HIGH PRIORITY TASKS:**
+
+1. **[COMPLETED ✅]** 🌐 Progressive Role-Based Web Search - KILLER DIFFERENTIATOR  
+   - **Status**: ✅ COMPLETED - Architecture implemented and tested
+   - **Achievement**: Role-based search system fully integrated
+   - **Current**: Single web search at start, basic DuckDuckGo integration with placeholder parsing
+   - **VISION**: Each agent gets targeted web search based on their role + previous debate context
+   
+   **🎯 NEW SYSTEM DESIGN:**
+   
+   **Round 1 Progressive Search:**
+   - **Analyst** (first): Gets initial web search for facts/data/evidence
+   - **Critic** (second): Reads Analyst → searches for "problems with [Analyst's recommendations]", "issues with [specific products]", "complaints about [suggestions]"
+   - **Synthesizer** (third): Reads both → searches for "alternatives to [debated options]", "middle ground solutions", "balanced reviews"
+   
+   **Round 2 Progressive Search:**
+   - **Analyst**: Reads previous debate → searches for "updated data on [contested points]", "recent reviews of [criticized items]"
+   - **Critic**: Reads new evidence → searches for "rebuttals to [Analyst's new data]", "why [solution] might not work"
+   - **Synthesizer**: Reads all → searches for "consensus opinions on [debated items]", "expert recommendations"
+   
+   **🚀 IMPLEMENTATION PLAN:**
+   1. Create role-specific search query generators for each agent persona
+   2. Extract key topics/products from previous debate messages
+   3. Generate contextual search queries based on agent role + debate context
+   4. Integrate progressive search into existing debate-stream API
+   5. Add UI indicators showing each agent's search activity
+   
+   **📁 FILES TO MODIFY:**
+   - `/lib/web-search/role-based-search.ts` (NEW - role-specific search strategies)
+   - `/lib/web-search/context-extractor.ts` (NEW - extract searchable topics from debate)
+   - `/app/api/agents/debate-stream/route.ts` (integrate progressive search)
+   - `/lib/agents/debate-prompts.ts` (include search results in prompts)
+   - UI components to show search progress per agent
+   
+   **🎯 GOAL**: Transform from "model aggregator" to "most accurate AI system" with each agent bringing fresh, relevant web data to support their position
+
+2. **[MEDIUM]** 🧪 E2E Testing: Add critical user flows with Playwright MCP
    - **Priority**: Medium - use existing Playwright MCP integration
    - **Flows**: Basic consensus query, agent debate, model selection
    - **Files**: Extend existing `/tests/e2e/` directory
 
+3. **[LOW]** ⌨️ Advanced UI Features: Add keyboard shortcuts
+   - **Status**: Hook created, needs implementation  
+   - **Features**: Ctrl+Enter to submit, Escape to clear, Tab navigation
+   - **Target**: Main query interfaces
+   - **Note**: Optional accessibility improvement
+
+4. **[OPTIONAL]** 📊 Response caching system (for later)
+   - **Status**: User confirmed this can wait
+   - **Goal**: Avoid re-prompting identical queries  
+   - **Tech**: Redis or localStorage-based caching system
+   - **Note**: Make it optional when implemented
+
+### Strategic Direction from STRATEGIC_PLAN.md:
+**Phase 1 Focus: Web Search Integration (1 week)**
+- This is our killer differentiator vs GPT-5/Claude direct usage
+- Multi-Model Consensus + Real-Time Web Search = Unmatched Accuracy
+- Disagreement Detection shows when models disagree (critical for decisions)
+
+### 📝 CONTEXTUAL PROMPT FOR NEXT CONVERSATION:
+
+**Copy and paste this to start the next session:**
+
+---
+
+Continue AI Council development work.
+
+Previous session: ✅ Token cost tracking enhanced with accurate pricing
+Next priority: ⏱️ Timeline enhancement (replace generic "thinking" with detailed steps)
+
+Read CLAUDE.md TODO section for current priorities and detailed instructions.
+Read FEATURES.md to understand protected features before making changes.
+Use TodoWrite to track progress throughout session.
+Update CLAUDE.md with completed work and next conversation prompt before ending.
+
+---
+
 ### Workflow for Next Claude Session:
-1. **User says "read claude md"** OR **uses contextual prompt created at end of session**
-2. **Claude reads this TODO section immediately**
-3. **Claude uses TodoWrite to track progress**  
-4. **Claude completes 1-3 items per session**
-5. **Claude updates this section with [COMPLETED] and new TODOs**
-6. **Claude commits changes for next session**
-7. **📝 Claude creates contextual prompt for user to start NEXT conversation**
+1. **User uses contextual prompt above** 
+2. **Claude reads CLAUDE.md TODO section immediately**
+3. **Claude reads FEATURES.md** → Understands protected features and constraints
+4. **Claude reads PROJECT_OVERVIEW.md** → Gets full project context and status
+5. **Claude uses TodoWrite to track progress**  
+6. **Claude implements current priority tasks** → Following protection guidelines
+7. **Claude updates this section with [COMPLETED] and new TODOs**
+8. **Claude commits changes for next session**
 
 ### Context Files to Reference:
-- **FEATURES.md**: Protected features, known issues
-- **PROJECT_OVERVIEW.md**: Technical debt list (lines 140-147)
+- **CLAUDE.md**: TODO list, priorities, best practices, and workflow patterns
+- **FEATURES.md**: Protected features, constraints, and "NEVER DELETE" guidelines
+- **PROJECT_OVERVIEW.md**: Complete project status, implemented features, technical debt, and architecture
 - **Current codebase state**: Production-ready MVP with agent debate system
 
 ---
@@ -1367,18 +1473,44 @@ npm run type-check    # Validate TypeScript
 **Established effective cross-conversation workflow:**
 
 #### Session Workflow
-1. **New conversation starts** → User says "read claude.md"
-2. **Claude reads CLAUDE.md** → Gets context, project state, TODO list, best practices
-3. **Claude works on next TODO items** → Following priorities and best practices
-4. **Claude updates CLAUDE.md** → New TODO list and completed work for next conversation
-5. **Commit and push changes** → Ready for next development cycle
+1. **New conversation starts** → User says "Continue AI Council development work"
+2. **Claude reads CLAUDE.md** → Gets TODO list, current priorities, and best practices
+3. **Claude reads FEATURES.md** → Understands protected features and constraints  
+4. **Claude reads PROJECT_OVERVIEW.md** → Gets full project context and current status
+5. **Claude works on next TODO items** → Following priorities and protection guidelines
+6. **Claude updates CLAUDE.md** → New TODO list and completed work for next conversation
+7. **Commit and push changes** → Ready for next development cycle
 
 #### Best Practices for Cross-Conversation Continuity
 - **CLAUDE.md as Single Source of Truth**: Contains project context, current state, and next steps
+- **FEATURES.md for Protection**: CRITICAL - Read before making changes to prevent breaking protected features
+- **PROJECT_OVERVIEW.md for Context**: Complete project status, architecture, and implementation state
 - **TODO Prioritization**: High/Medium/Low priority system with specific actionable items
 - **Completion Tracking**: Mark completed items with ✅ and date for historical tracking
 - **Context Preservation**: Each conversation builds on previous work without losing momentum
 - **Testing + Documentation**: Always test changes and document for next session
+
+### MANDATORY Session Conclusion Protocol - NEVER SKIP THESE STEPS
+**🚨 CLAUDE: THESE STEPS ARE REQUIRED EVERY SESSION - NO EXCEPTIONS:**
+
+1. **Update CLAUDE.md Progress Section** - Document all completed work with details
+2. **Update CLAUDE.md Next Session Prompt** - Create handoff with completed work summary
+3. **Update priorities in CLAUDE.md** - Move completed items, add new priorities discovered
+4. **Ask user: "Any final observations?"** - Get user feedback before ending
+5. **Confirm workflow complete** - "CLAUDE.md updated, next session prompt ready"
+
+**🔒 FAILSAFE REMINDERS:**
+- Add "Update CLAUDE.md" to TodoWrite at start of session
+- Set reminder: "Before saying session complete, check CLAUDE.md updated"
+- Always end with: "Documentation updated, ready for next conversation"
+- Never end session without creating next conversation handoff
+
+**📝 NEXT CONVERSATION PROMPT RULES:**
+- Keep prompts concise (4-6 lines max)
+- Point to CLAUDE.md for detailed instructions, not include them in prompt
+- Include: what was completed, what's next, where to find details
+- Template: "Previous session: ✅ [brief summary] / Next priority: [brief next task] / Read CLAUDE.md TODO section for details"
+- Always include: Read CLAUDE.md, Read FEATURES.md, Use TodoWrite, Update CLAUDE.md at end
 
 #### Benefits of This Approach
 - ✅ **No context loss** between conversations

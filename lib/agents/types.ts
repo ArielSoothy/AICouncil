@@ -26,6 +26,8 @@ export interface AgentMessage {
   keyPoints?: string[]
   evidence?: string[]
   challenges?: string[]
+  searchQueries?: string[]  // Web search queries used by this agent
+  searchRationale?: string  // Explanation of why search was performed
 }
 
 export interface DebateRound {

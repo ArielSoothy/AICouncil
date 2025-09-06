@@ -4,6 +4,8 @@ import { providerRegistry } from '@/lib/ai-providers'
 import { generateRoundPrompt } from '@/lib/agents/debate-prompts'
 import { MODEL_COSTS_PER_1K } from '@/lib/model-metadata'
 import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
+import { getRoleBasedSearchService, type AgentSearchContext, type RoleBasedSearchResult } from '@/lib/web-search/role-based-search'
+import { getContextExtractor, type DebateMessage } from '@/lib/web-search/context-extractor'
 
 export const dynamic = 'force-dynamic'
 
@@ -141,62 +143,143 @@ export async function POST(request: NextRequest) {
                 timestamp: Date.now()
               })}\n\n`))
               
-              // Enrich query with web search if enabled (only for first round)
+              // Progressive Role-Based Web Search
               let enhancedQuery = query
               let webSearchResults = null
-              if (enableWebSearch && roundNum === 1) {
+              let roleBasedSearchResult: RoleBasedSearchResult | null = null
+              
+              if (enableWebSearch) {
                 try {
-                  // Send web search started event
+                  // Send progressive web search started event
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                     type: 'web_search_started', 
                     query: query,
                     provider: 'duckduckgo',
+                    agent: agentConfig.persona?.name || agentConfig.model,
+                    role: agentConfig.persona?.role || 'analyst',
+                    round: roundNum,
+                    searchType: 'role-based-progressive',
                     timestamp: Date.now()
                   })}\n\n`))
                   
-                  const enriched = await enrichQueryWithWebSearch(query, {
-                    enabled: true,
-                    provider: 'duckduckgo',
-                    maxResults: 5,
-                    cache: true,
-                    includeInPrompt: true
-                  })
+                  // Prepare context for role-based search
+                  const previousDebateMessages: DebateMessage[] = [
+                    ...(roundNum > 1 ? allRoundResponses.filter(r => r.round === roundNum - 1) : []),
+                    ...roundResponses
+                  ].map(r => ({
+                    role: r.agentConfig?.persona?.role || r.role || 'analyst',
+                    content: r.content || r.response || '',
+                    agentName: r.agentConfig?.persona?.name || r.agentName,
+                    round: r.round || roundNum
+                  }));
                   
-                  if (enriched.searchContext) {
-                    enhancedQuery = query + enriched.searchContext
-                    webSearchResults = {
-                      query: enriched.query || query,
-                      sources: enriched.sources || [],
-                      resultsCount: enriched.sources?.length || 0
-                    }
+                  const searchContext: AgentSearchContext = {
+                    role: agentConfig.persona?.role || 'analyst',
+                    round: roundNum,
+                    previousMessages: previousDebateMessages.map(m => ({
+                      role: m.role,
+                      content: m.content,
+                      agentName: m.agentName
+                    })),
+                    originalQuery: query
+                  };
+                  
+                  // Perform role-based search
+                  const roleBasedSearchService = getRoleBasedSearchService();
+                  roleBasedSearchResult = await roleBasedSearchService.performRoleBasedSearch(searchContext);
+                  
+                  if (roleBasedSearchResult && roleBasedSearchResult.results.length > 0) {
+                    // Format search results for prompt inclusion
+                    const searchContext = roleBasedSearchService.formatSearchResultsForPrompt(roleBasedSearchResult);
+                    enhancedQuery = query + searchContext;
                     
-                    // Send web search completed event
+                    // Prepare results for UI display
+                    const allSources: string[] = [];
+                    let totalResults = 0;
+                    
+                    roleBasedSearchResult.results.forEach(result => {
+                      if (result.results) {
+                        totalResults += result.results.length;
+                        allSources.push(...result.results.map(r => r.url));
+                      }
+                    });
+                    
+                    webSearchResults = {
+                      query: query,
+                      sources: allSources,
+                      resultsCount: totalResults,
+                      searchQueries: roleBasedSearchResult.queries,
+                      searchRationale: roleBasedSearchResult.searchRationale
+                    };
+                    
+                    // Send progressive web search completed event
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                       type: 'web_search_completed', 
                       query: query,
                       provider: 'duckduckgo',
-                      resultsCount: webSearchResults.resultsCount,
-                      sources: webSearchResults.sources?.slice(0, 3) || [], // Only show first 3 sources
+                      agent: agentConfig.persona?.name || agentConfig.model,
+                      role: agentConfig.persona?.role || 'analyst',
+                      round: roundNum,
+                      searchType: 'role-based-progressive',
+                      searchQueries: roleBasedSearchResult.queries,
+                      searchRationale: roleBasedSearchResult.searchRationale,
+                      resultsCount: totalResults,
+                      sources: allSources.slice(0, 5), // Show first 5 sources in UI
                       timestamp: Date.now()
                     })}\n\n`))
                   } else {
-                    // Send web search failed event
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                      type: 'web_search_failed', 
-                      query: query,
+                    // Fallback to basic search if role-based search fails
+                    console.log('Role-based search failed, falling back to basic search');
+                    const enriched = await enrichQueryWithWebSearch(query, {
+                      enabled: true,
                       provider: 'duckduckgo',
-                      reason: 'No results found',
-                      timestamp: Date.now()
-                    })}\n\n`))
+                      maxResults: 5,
+                      cache: true,
+                      includeInPrompt: true
+                    });
+                    
+                    if (enriched.searchContext) {
+                      enhancedQuery = query + enriched.searchContext;
+                      webSearchResults = {
+                        query: enriched.query || query,
+                        sources: enriched.sources || [],
+                        resultsCount: enriched.sources?.length || 0
+                      };
+                      
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                        type: 'web_search_completed', 
+                        query: query,
+                        provider: 'duckduckgo',
+                        resultsCount: webSearchResults.resultsCount,
+                        sources: webSearchResults.sources?.slice(0, 3) || [],
+                        timestamp: Date.now()
+                      })}\n\n`))
+                    } else {
+                      // Send web search failed event
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                        type: 'web_search_failed', 
+                        query: query,
+                        provider: 'duckduckgo',
+                        agent: agentConfig.persona?.name || agentConfig.model,
+                        role: agentConfig.persona?.role || 'analyst',
+                        round: roundNum,
+                        reason: 'No results found',
+                        timestamp: Date.now()
+                      })}\n\n`))
+                    }
                   }
                 } catch (searchError) {
-                  console.warn('Web search failed for agent debate streaming:', searchError)
+                  console.warn('Progressive web search failed for agent debate streaming:', searchError)
                   
                   // Send web search failed event
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                     type: 'web_search_failed', 
                     query: query,
                     provider: 'duckduckgo',
+                    agent: agentConfig.persona?.name || agentConfig.model,
+                    role: agentConfig.persona?.role || 'analyst',
+                    round: roundNum,
+                    searchType: 'role-based-progressive',
                     reason: searchError instanceof Error ? searchError.message : 'Unknown error',
                     timestamp: Date.now()
                   })}\n\n`))
@@ -324,7 +407,7 @@ export async function POST(request: NextRequest) {
               // Use consistent preview format - just first 150 chars like other systems
               const standardizedPreview = result.response.substring(0, 150) + (result.response.length > 150 ? '...' : '');
               
-              // Send model completed event with standardized preview
+              // Send model completed event with standardized preview and search info
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                 type: 'model_completed', 
                 modelId,
@@ -338,22 +421,29 @@ export async function POST(request: NextRequest) {
                 fullResponse: result.response,
                 tokensUsed: result.tokens.total,
                 duration: endTime - startTime,
-                timestamp: endTime
+                timestamp: endTime,
+                searchQueries: roleBasedSearchResult?.queries || [],
+                searchRationale: roleBasedSearchResult?.searchRationale || null
               })}\n\n`))
               
               // Create proper AgentMessage structure for context passing
               const agentMessage = {
                 agentId: agentConfig.agentId || modelId,
+                agentConfig: agentConfig, // Include full agent config for search context
                 role: agentConfig.persona?.role || 'analyst',
                 round: roundNum,
                 content: result.response,
+                response: result.response, // Also include as 'response' for compatibility
                 timestamp: new Date(endTime).toISOString(),
                 tokensUsed: result.tokens.total,
                 model: `${agentConfig.provider}/${agentConfig.model}`,
                 confidence: 0.85,
                 keyPoints: [],
                 evidence: [],
-                challenges: []
+                challenges: [],
+                searchQueries: roleBasedSearchResult?.queries || [],
+                searchRationale: roleBasedSearchResult?.searchRationale || null,
+                webSearchResults: roleBasedSearchResult // Include search results for context
               }
               
               // Add to round responses for context passing to next agents
