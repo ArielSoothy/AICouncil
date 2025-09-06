@@ -9,6 +9,7 @@ import { ResponseModesSelector } from './response-modes-selector'
 import { ConsensusResult, ModelConfig, EnhancedConsensusResponse } from '@/types/consensus'
 import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
+import { useToast } from '@/hooks/use-toast'
 import { Send, Loader2, GitCompare, Search } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -24,6 +25,7 @@ function QueryInterfaceContent() {
   const { userTier } = useAuth()
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
+  const { toast } = useToast()
   
   // Override userTier for guest mode
   const effectiveUserTier = isGuestMode ? 'guest' : userTier
@@ -98,6 +100,13 @@ function QueryInterfaceContent() {
 
       const consensusResult = await response.json()
       setResult(consensusResult)
+      
+      // Show success notification
+      toast({
+        variant: "success",
+        title: "Query Successful",
+        description: `Generated consensus from ${consensusResult.models?.length || 'multiple'} models in ${(consensusResult.responseTime || 0).toFixed(1)}s`,
+      })
 
       // Save conversation to database if user is authenticated
       try {
@@ -118,11 +127,20 @@ function QueryInterfaceContent() {
         }
       } catch (saveError) {
         console.error('Failed to save conversation:', saveError)
-        // Don't block the user if saving fails
+        toast({
+          variant: "default",
+          title: "Save Warning",
+          description: "Failed to save conversation. Results will be shown but not stored.",
+        })
       }
     } catch (error) {
       console.error('Error:', error)
-      // TODO: Add proper error handling/toast
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
+      toast({
+        variant: "destructive",
+        title: "Query Failed",
+        description: errorMessage,
+      })
     } finally {
       setIsLoading(false)
     }

@@ -1016,11 +1016,45 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 )}
               </div>
 
-              <div className="space-y-3 pt-4 border-t">
+              {/* Round Selection Section - Prominent and Separated */}
+              <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-semibold text-primary">Debate Rounds Configuration</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-base font-semibold mb-3 block">
+                      Number of Rounds: {rounds}
+                    </Label>
+                    <Slider
+                      value={[rounds]}
+                      onValueChange={(value) => setRounds(value[0])}
+                      min={1}
+                      max={DEBATE_CONFIG.maxRounds}
+                      step={1}
+                      className="mt-2"
+                      disabled={isLoading}
+                    />
+                    <p className="text-sm text-muted-foreground mt-2 px-2 py-1 bg-muted/50 rounded">
+                      💡 Manual control - exactly this many rounds will run
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Auto-trigger Section - Separate and Less Prominent */}
+              <div className="space-y-4 pt-4 border-t border-muted">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="auto-round2" className="text-base font-semibold">
-                    Auto-trigger Round 2 on Disagreement
-                  </Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="auto-round2" className="text-base font-semibold">
+                      Auto-trigger Round 2 on Disagreement
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically adds rounds when agents strongly disagree
+                    </p>
+                  </div>
                   <Switch
                     id="auto-round2"
                     checked={autoRound2}
@@ -1028,42 +1062,24 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   />
                 </div>
                 
-                <div>
-                  <Label className="text-base font-semibold mb-2">
-                    Number of Rounds: {rounds}
-                  </Label>
-                  <Slider
-                    value={[rounds]}
-                    onValueChange={(value) => setRounds(value[0])}
-                    min={1}
-                    max={DEBATE_CONFIG.maxRounds}
-                    step={1}
-                    className="mt-2"
-                    disabled={isLoading}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {autoRound2 
-                      ? "Auto-trigger may add additional rounds based on disagreement"
-                      : "Manual control - exactly this many rounds will run"}
-                  </p>
-                </div>
-                
                 {autoRound2 && (
-                  <div>
-                    <Label className="text-base font-semibold mb-2">
-                      Disagreement Threshold: {Math.round(disagreementThreshold * 100)}%
-                    </Label>
-                    <Slider
-                      value={[disagreementThreshold]}
-                      onValueChange={(value) => setDisagreementThreshold(value[0])}
-                      min={0.3}
-                      max={0.9}
-                      step={0.1}
-                      className="mt-2"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Round 2 triggers when disagreement exceeds this threshold
-                    </p>
+                  <div className="pl-4 border-l-2 border-primary/30 space-y-3">
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">
+                        Disagreement Threshold: {Math.round(disagreementThreshold * 100)}%
+                      </Label>
+                      <Slider
+                        value={[disagreementThreshold]}
+                        onValueChange={(value) => setDisagreementThreshold(value[0])}
+                        min={0.3}
+                        max={0.9}
+                        step={0.1}
+                        className="mt-2"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Round 2 triggers when disagreement exceeds this threshold
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

@@ -17,7 +17,7 @@ export interface BenchmarkQuestion {
 
 export interface TestResult {
   question_id: string
-  method: 'single_model' | 'simple_average' | 'weighted_consensus' | 'debate_consensus'
+  method: 'single_model' | 'simple_average' | 'weighted_consensus' | 'debate_consensus' | 'agent_debate'
   model_used?: string  // For single model
   models_used?: string[]  // For multi-model
   
@@ -25,7 +25,7 @@ export interface TestResult {
   answer: string
   confidence: number
   response_time_ms: number
-  tokens_used: number
+  tokens_used?: number
   cost: number
   
   // Evaluation metrics
@@ -35,8 +35,10 @@ export interface TestResult {
   reasoning_score?: number  // 1-5 human or AI judge score
   
   // Metadata
-  timestamp: Date
-  test_run_id: string
+  timestamp?: Date
+  test_run_id?: string
+  error?: string
+  metadata?: any
 }
 
 export interface ComparisonMetrics {
@@ -349,9 +351,107 @@ export class BenchmarkRunner {
    * Test with full debate consensus
    */
   private async testDebateConsensus(question: BenchmarkQuestion): Promise<TestResult> {
-    // Use debate API
-    // This would call the debate-stream endpoint
-    return {} as TestResult  // TODO: Implement
+    const startTime = Date.now()
+    
+    try {
+      const response = await fetch('/api/agents/debate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: question.query,
+          agents: [
+            {
+              agentId: 'analyst-001',
+              provider: 'groq',
+              model: 'llama-3.3-70b-versatile',
+              enabled: true,
+              persona: {
+                id: 'analyst-001',
+                role: 'analyst',
+                name: 'The Analyst',
+                description: 'Data-driven and methodical',
+                traits: ['Systematic', 'Evidence-based'],
+                focusAreas: ['Data analysis', 'Factual accuracy'],
+                systemPrompt: 'You are a data-driven analyst focusing on facts and evidence.',
+                color: '#3B82F6'
+              }
+            },
+            {
+              agentId: 'critic-001',
+              provider: 'groq',
+              model: 'llama-3.1-8b-instant',
+              enabled: true,
+              persona: {
+                id: 'critic-001',
+                role: 'critic',
+                name: 'The Critic',
+                description: 'Skeptical and thorough',
+                traits: ['Skeptical', 'Thorough'],
+                focusAreas: ['Risk identification', 'Flaw detection'],
+                systemPrompt: 'You are a critical thinker who challenges assumptions.',
+                color: '#EF4444'
+              }
+            },
+            {
+              agentId: 'synthesizer-001',
+              provider: 'groq',
+              model: 'llama-3.1-8b-instant',
+              enabled: true,
+              persona: {
+                id: 'synthesizer-001',
+                role: 'synthesizer',
+                name: 'The Synthesizer',
+                description: 'Balanced and integrative',
+                traits: ['Balanced', 'Integrative'],
+                focusAreas: ['Consensus building', 'Integration'],
+                systemPrompt: 'You build consensus from diverse perspectives.',
+                color: '#10B981'
+              }
+            }
+          ],
+          rounds: 2,
+          responseMode: 'concise',
+          round1Mode: 'agents',
+          autoRound2: false,
+          disagreementThreshold: 0.3,
+          isGuestMode: true
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Debate API error: ${response.statusText}`)
+      }
+
+      const debateResult = await response.json()
+      const responseTime = Date.now() - startTime
+
+      return {
+        method: 'agent_debate',
+        question_id: question.id,
+        answer: debateResult.session?.finalSynthesis?.conclusion || 'No synthesis available',
+        confidence: debateResult.session?.finalSynthesis?.confidence || 0,
+        response_time_ms: responseTime,
+        cost: 0, // Cost would need to be calculated from token usage
+        metadata: {
+          rounds: debateResult.session?.rounds?.length || 0,
+          total_tokens: debateResult.session?.totalTokensUsed || 0,
+          disagreement_score: debateResult.session?.disagreementScore || 0,
+          agents_count: 3
+        }
+      }
+    } catch (error) {
+      console.error('Debate test failed:', error)
+      return {
+        method: 'agent_debate',
+        question_id: question.id,
+        answer: 'Error: Failed to complete debate',
+        confidence: 0,
+        response_time_ms: Date.now() - startTime,
+        cost: 0,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        metadata: { error: true }
+      }
+    }
   }
   
   /**
@@ -419,7 +519,7 @@ export class BenchmarkRunner {
         factual_accuracy: factualAccuracy,
         reasoning_coverage: reasoningCoverage,
         hallucination_rate: hallucinationRate,
-        answer_stability: 0, // TODO: Implement
+        answer_stability: this.calculateAnswerStability(methodResults),
         confidence_calibration: this.calculateCalibration(methodResults),
         avg_response_time: avgResponseTime,
         avg_cost: avgCost,
@@ -450,6 +550,60 @@ export class BenchmarkRunner {
     
     // Good calibration means higher confidence when correct
     return avgConfidenceWhenCorrect - avgConfidenceWhenWrong
+  }
+  
+  /**
+   * Calculate answer stability (consistency across similar questions/runs)
+   */
+  private calculateAnswerStability(results: TestResult[]): number {
+    if (results.length < 2) return 1.0
+    
+    // Group results by question
+    const byQuestion = new Map<string, TestResult[]>()
+    results.forEach(result => {
+      const questionGroup = byQuestion.get(result.question_id) || []
+      questionGroup.push(result)
+      byQuestion.set(result.question_id, questionGroup)
+    })
+    
+    let totalStability = 0
+    let questionCount = 0
+    
+    // Calculate stability for each question that has multiple runs
+    byQuestion.forEach((questionResults, question) => {
+      if (questionResults.length < 2) return
+      
+      questionCount++
+      
+      // Calculate similarity between all pairs of answers for this question
+      let similarities: number[] = []
+      
+      for (let i = 0; i < questionResults.length; i++) {
+        for (let j = i + 1; j < questionResults.length; j++) {
+          const answer1 = questionResults[i].answer.toLowerCase()
+          const answer2 = questionResults[j].answer.toLowerCase()
+          
+          // Simple word-based similarity
+          const words1 = new Set(answer1.split(/\s+/))
+          const words2 = new Set(answer2.split(/\s+/))
+          
+          const intersection = new Set([...words1].filter(x => words2.has(x)))
+          const union = new Set([...words1, ...words2])
+          
+          const similarity = union.size > 0 ? intersection.size / union.size : 0
+          similarities.push(similarity)
+        }
+      }
+      
+      // Average similarity for this question
+      const questionStability = similarities.length > 0 
+        ? similarities.reduce((sum, sim) => sum + sim, 0) / similarities.length 
+        : 0
+        
+      totalStability += questionStability
+    })
+    
+    return questionCount > 0 ? totalStability / questionCount : 0
   }
   
   /**

@@ -140,14 +140,7 @@ export class AgentDebateOrchestrator {
       const currentRoundMessages = messages.filter((m): m is AgentMessage => m !== null)
       const allPreviousMessages = [...previousRoundMessages, ...currentRoundMessages]
       
-      // Debug: Log what messages are being passed
-      console.log(`[DEBUG] Agent ${agentConfig.persona.name} (${i}/${orderedAgents.length}) in Round ${roundNumber}:`)
-      console.log(`  - Previous round messages: ${previousRoundMessages.length}`)
-      console.log(`  - Current round messages so far: ${currentRoundMessages.length}`)
-      console.log(`  - Total previous messages: ${allPreviousMessages.length}`)
-      if (allPreviousMessages.length > 0) {
-        console.log(`  - Previous message roles: ${allPreviousMessages.map(m => m.role).join(', ')}`)
-      }
+      // Process agent with previous context
       
       const prompt = generateRoundPrompt(
         this.session.query,
@@ -250,32 +243,17 @@ export class AgentDebateOrchestrator {
   
   private async synthesizeDebate(): Promise<void> {
     try {
-      console.log('=== STARTING SYNTHESIS ===')
-      
       // Collect all messages from all rounds
       const allMessages = this.session.rounds.flatMap(r => r.messages)
-      console.log('Total messages to synthesize:', allMessages.length)
       
       // Use the most capable available model for synthesis
       const synthesisModel = this.getBestAvailableModel()
       
-      console.log('=== SYNTHESIS MODEL DEBUG ===')
-      console.log('Selected synthesis model:', synthesisModel)
-      console.log('Available providers:', providerRegistry.getConfiguredProviders().map(p => ({
-        name: p.name,
-        configured: p.isConfigured(),
-        modelCount: p.models.length
-      })))
-      console.log('============================')
-      
       if (!synthesisModel) {
-        console.error('ERROR: No model available for synthesis!')
         throw new Error('No model available for synthesis')
       }
       
       const provider = providerRegistry.getProvider(synthesisModel.provider)
-      console.log('Provider retrieved:', provider?.name || 'NONE')
-      console.log('Provider configured:', provider?.isConfigured() || false)
       
       if (!provider) {
         throw new Error('Provider not available for synthesis')
@@ -283,29 +261,10 @@ export class AgentDebateOrchestrator {
       
       const synthesisPrompt = this.generateSynthesisPrompt(allMessages)
       
-      console.log('=== SYNTHESIS DEBUG ===')
-      console.log('Using model:', JSON.stringify(synthesisModel))
-      console.log('Provider name:', provider.name)
-      console.log('Prompt length:', synthesisPrompt.length)
-      console.log('First 500 chars of prompt:', synthesisPrompt.substring(0, 500))
-      
-      console.log('Calling provider.query with config:', {
-        ...synthesisModel,
-        maxTokens: 800
-      })
-      
       const result = await provider.query(synthesisPrompt, {
         ...synthesisModel,
         maxTokens: 800
       })
-      
-      console.log('Provider query returned:', !!result)
-      
-      console.log('Synthesis result:', result)
-      console.log('Response content:', result.response)
-      console.log('Response length:', result.response?.length || 0)
-      console.log('First 500 chars of response:', result.response ? result.response.substring(0, 500) : 'NO RESPONSE')
-      console.log('=======================')
       
       // Parse synthesis
       const synthesis = this.parseSynthesis(result.response || '')
@@ -322,9 +281,7 @@ export class AgentDebateOrchestrator {
       
       this.session.totalTokensUsed += result.tokens.total
     } catch (error) {
-      console.error('=== SYNTHESIS ERROR ===')
       console.error('Error during synthesis:', error)
-      console.error('=======================')
       
       // Provide a fallback synthesis
       this.session.finalSynthesis = {
@@ -399,10 +356,6 @@ CONFIDENCE: [0-100]`
     conclusion: string
     confidence: number
   } {
-    console.log('=== SYNTHESIS PARSING ===')
-    console.log('Full response:', response)
-    console.log('=========================')
-    
     const agreements: string[] = []
     const disagreements: string[] = []
     let conclusion = ''
@@ -426,12 +379,10 @@ CONFIDENCE: [0-100]`
     const conclusionMatch = response.match(/CONCLUSION:?\s*([\s\S]*?)(?=CONFIDENCE:|INFORMATION REQUEST:|$)/i)
     if (conclusionMatch && conclusionMatch[1].trim()) {
       conclusion = conclusionMatch[1].trim()
-      console.log('Found conclusion with CONCLUSION label')
     }
     
     // If no conclusion found with the label, try multiple patterns
     if (!conclusion) {
-      console.log('No CONCLUSION label found, trying alternative patterns...')
       
       // Pattern 1: Look for content after DISAGREEMENTS and before CONFIDENCE
       const afterDisagreementsMatch = response.match(/DISAGREEMENTS?:[\s\S]*?\n\n([\s\S]*?)(?=CONFIDENCE:|INFORMATION REQUEST:|$)/i)
@@ -440,7 +391,6 @@ CONFIDENCE: [0-100]`
         // Make sure it's not just bullet points
         if (potentialConclusion && !potentialConclusion.match(/^[-•]/)) {
           conclusion = potentialConclusion
-          console.log('Found conclusion after disagreements')
         }
       }
       
@@ -449,7 +399,6 @@ CONFIDENCE: [0-100]`
         const basedOnMatch = response.match(/Based on[^:]*?[:,]\s*([\s\S]*?)(?=\n\n|CONFIDENCE:|INFORMATION REQUEST:|$)/i)
         if (basedOnMatch) {
           conclusion = basedOnMatch[0].trim() // Include the "Based on" part
-          console.log('Found conclusion with "Based on" pattern')
         }
       }
       
@@ -458,7 +407,6 @@ CONFIDENCE: [0-100]`
         const numberedMatch = response.match(/(?:^|\n)((?:1\.\s*.+(?:\n(?:2|3|4|5)\.\s*.+)*))(?:\n|$)/m)
         if (numberedMatch) {
           conclusion = numberedMatch[1].trim()
-          console.log('Found conclusion with numbered list')
         }
       }
       
@@ -467,7 +415,6 @@ CONFIDENCE: [0-100]`
         const recommendationMatch = response.match(/(?:Recommendations?|Top \d+|Best options?):?\s*([\s\S]*?)(?=CONFIDENCE:|INFORMATION REQUEST:|$)/i)
         if (recommendationMatch && recommendationMatch[1].trim()) {
           conclusion = recommendationMatch[1].trim()
-          console.log('Found conclusion with Recommendations pattern')
         }
       }
       
@@ -502,14 +449,12 @@ CONFIDENCE: [0-100]`
         
         if (contentLines.length > 0) {
           conclusion = contentLines.join('\n').trim()
-          console.log('Found conclusion by extracting main content')
         }
       }
     }
     
     // Final fallback: Create a conclusion from the synthesis
     if (!conclusion || conclusion.length < 20) {
-      console.log('Using fallback conclusion generation')
       
       // Try to extract something meaningful from the whole response
       const cleanedResponse = response
@@ -558,14 +503,6 @@ CONFIDENCE: [0-100]`
     if (confidenceMatch) {
       confidence = Math.min(100, Math.max(0, parseInt(confidenceMatch[1])))
     }
-    
-    console.log('=== PARSED RESULTS ===')
-    console.log('Conclusion found:', conclusion ? `Yes (${conclusion.length} chars)` : 'No')
-    console.log('ACTUAL CONCLUSION:', conclusion ? conclusion.substring(0, 200) : 'NONE')
-    console.log('Agreements:', agreements.length)
-    console.log('Disagreements:', disagreements.length)
-    console.log('Confidence:', confidence)
-    console.log('=====================')
     
     return { agreements, disagreements, conclusion, confidence }
   }
@@ -644,7 +581,6 @@ CONFIDENCE: [0-100]`
     if (google) {
       // Try Gemini 2.0 Flash Experimental first (newest and best free model)
       if (google.models.includes('gemini-2.0-flash-exp')) {
-        console.log('Using Gemini 2.0 Flash for synthesis (FREE)')
         return {
           provider: 'google',
           model: 'gemini-2.0-flash-exp',
@@ -655,7 +591,6 @@ CONFIDENCE: [0-100]`
       }
       // Try Gemini 1.5 Pro
       if (google.models.includes('gemini-1.5-pro-latest')) {
-        console.log('Using Gemini 1.5 Pro for synthesis (FREE)')
         return {
           provider: 'google',
           model: 'gemini-1.5-pro-latest',
@@ -666,7 +601,6 @@ CONFIDENCE: [0-100]`
       }
       // Try Gemini 2.5 Flash
       if (google.models.includes('gemini-2.5-flash')) {
-        console.log('Using Gemini 2.5 Flash for synthesis (FREE)')
         return {
           provider: 'google',
           model: 'gemini-2.5-flash',
@@ -682,7 +616,6 @@ CONFIDENCE: [0-100]`
     if (groq) {
       // Try Llama 3.3 70B (best free Groq model)
       if (groq.models.includes('llama-3.3-70b-versatile')) {
-        console.log('Using Llama 3.3 70B for synthesis (FREE)')
         return {
           provider: 'groq',
           model: 'llama-3.3-70b-versatile',
@@ -694,7 +627,6 @@ CONFIDENCE: [0-100]`
       // Try any Llama model
       const llamaModel = groq.models.find(m => m.includes('llama'))
       if (llamaModel) {
-        console.log(`Using ${llamaModel} for synthesis (FREE)`)
         return {
           provider: 'groq',
           model: llamaModel,
