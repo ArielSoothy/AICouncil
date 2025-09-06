@@ -15,8 +15,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Type mismatches across multiple files
 - **Example**: "We've spent 2 hours debugging this comparison feature. Let's remove it and rebuild it cleanly - it will be much faster."
 
-### Three-Way Comparison Debugging Lessons (December 2025)
+### Three-Way Comparison Debugging Lessons (January 2025)
+- **Screenshot-Driven Debugging**: Most effective approach - user provides screenshot, search for exact CSS class, trace to component
+- **UI vs Backend Separation**: Fix UI formatting issues in components, not backend parsing - prevents breaking other features
 - **Data Flow Tracking**: When features don't display, trace data flow from backend to frontend systematically
+- **Precise Fix Location**: Agent Debate response preview inconsistency fixed in `/components/agents/debate-display.tsx:316-327`
+- **Response Preview Format Fix**: Extract numbered list + first sentence only, remove intro text for consistency
 - **Console Logging**: Add comprehensive logging at each step - backend API response, SSE events, state updates
 - **API Field Names**: Check exact field names expected by APIs (e.g., 'prompt' vs 'query')
 - **Type Safety**: Ensure TypeScript interfaces match actual data structures being passed
@@ -28,6 +32,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Include both 'response' and 'unifiedAnswer' fields for compatibility
 - **Variable Scope Issues**: When referencing variables across different function scopes (e.g., judgeModel), ensure variables are redefined or accessible in the correct scope
 - **API Testing**: Create simple test scripts to verify API endpoints work independently before debugging complex UI flows
+
+### Effective Debugging Communication Pattern (January 2025)
+- **User provides specific reproduction steps** instead of letting Claude guess
+- **Screenshots with exact CSS classes** are the fastest way to locate issues
+- **"Stop and focus only on X" guidance** prevents Claude from making unnecessary changes
+- **Component-level fixes** for UI issues, backend fixes for data issues
 
 ### Agent Debate System Fixes (December 2025)
 - **Agent Selection**: All three agents (Analyst, Critic, Synthesizer) must be enabled by default in agent-selector.tsx
@@ -48,6 +58,59 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Client version is synchronous - no await needed
   - Always check if Supabase is configured before using auth methods
 - **TypeScript Strict Mode**: Vercel builds with strict TypeScript checking - fix all type errors locally first
+
+## Modern AI Testing Methodology (2024-2025)
+
+### Research-Based Testing Strategy
+Based on latest practices from Anthropic, OpenAI, and GitHub:
+
+#### The Testing Paradox Solution
+**Problem**: "How do we test the test?" - Traditional unit tests don't work well for AI systems
+**Solution**: Focus on **Observable Behaviors** not implementation details
+
+#### Core Testing Principles
+1. **Behavioral Testing Over Implementation Testing**
+   - Test what users actually see and experience
+   - Don't test internal prompts or algorithms
+   - Validate output format, performance, and reliability
+
+2. **Multi-Agent Cross-Validation** 
+   - Use different models to verify consistency
+   - Compare outputs across providers for the same input
+   - Detect when one model is behaving differently
+
+3. **Output-Based Validation**
+   - Define expected behavior patterns (natural text vs numbered lists)
+   - Use regex patterns to validate format consistency
+   - Test performance metrics (response time, token usage)
+
+4. **Snapshot Testing for AI Systems**
+   - Capture known-good outputs as baselines
+   - Detect when behavior changes significantly
+   - Focus on format consistency, not exact content matching
+
+#### Testing Structure
+```
+tests/
+  behavioral/           # Observable behavior tests
+    *.behavioral.test.js
+  performance/          # Speed and reliability tests
+    *.performance.test.js
+  cross-validation/     # Multi-model consistency tests
+    *.validation.test.js
+```
+
+#### Key Testing Patterns
+- **Format Validation**: Test response structure, not exact content
+- **Performance Testing**: Ensure responses within acceptable time limits  
+- **Error Handling**: Test fallbacks and graceful degradation
+- **Edge Cases**: Test with unusual inputs and error conditions
+
+#### Why This Approach Works
+- **Faster Development**: No need to mock complex AI interactions
+- **More Reliable**: Tests actual user experience, not internal mechanics
+- **Self-Validating**: Cross-validation provides built-in verification
+- **Maintainable**: Tests don't break when implementation changes
 
 ### Never Use Simulated/Fake Data in UI
 - **NEVER show fake progress bars, timers, or completion states that don't reflect actual system status**

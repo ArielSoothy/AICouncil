@@ -506,41 +506,30 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     agents: apiAgents.map(a => a.persona),
                     comparisonResponse: data.comparisonResponse || null,
                     consensusComparison: consensusComparisonData,
-                    rounds: (() => {
-                      // Group responses by round number to create proper round objects
-                      const roundGroups: { [key: number]: any[] } = {}
-                      allResponses.forEach(r => {
-                        const roundNum = r.round || 1
-                        if (!roundGroups[roundNum]) roundGroups[roundNum] = []
-                        roundGroups[roundNum].push(r)
+                    rounds: [{
+                      roundNumber: 1,
+                      startTime: new Date(debateStartTime || Date.now()),
+                      endTime: new Date(),
+                      messages: allResponses.map(r => {
+                        // Use agent information from the response or find from apiAgents
+                        const agent = apiAgents.find(a => a.agentId === r.modelId)
+                        const role = r.agentRole || agent?.persona?.role || 'analyst'
+                        
+                        return {
+                          agentId: r.modelId,
+                          role: role,
+                          agentName: r.agentName || agent?.persona?.name,
+                          round: r.round || 1,
+                          content: r.fullResponse || r.responsePreview || '',
+                          timestamp: new Date(r.timestamp),
+                          tokensUsed: r.tokensUsed,
+                          model: r.modelName,
+                          keyPoints: [],
+                          evidence: [],
+                          challenges: []
+                        }
                       })
-                      
-                      // Create round objects for each round that has messages
-                      return Object.keys(roundGroups).map(roundNum => ({
-                        roundNumber: parseInt(roundNum),
-                        startTime: new Date(debateStartTime || Date.now()),
-                        endTime: new Date(),
-                        messages: roundGroups[parseInt(roundNum)].map(r => {
-                          // Use agent information from the response or find from apiAgents
-                          const agent = apiAgents.find(a => a.agentId === r.modelId)
-                          const role = r.agentRole || agent?.persona?.role || 'analyst'
-                          
-                          return {
-                            agentId: r.modelId,
-                            role: role,
-                            agentName: r.agentName || agent?.persona?.name,
-                            round: parseInt(roundNum),
-                            content: r.fullResponse || r.responsePreview || '',
-                            timestamp: new Date(r.timestamp),
-                            tokensUsed: r.tokensUsed,
-                            model: r.modelName,
-                            keyPoints: [],
-                            evidence: [],
-                            challenges: []
-                          }
-                        })
-                      })).sort((a, b) => a.roundNumber - b.roundNumber)
-                    })(),
+                    }],
                     finalSynthesis: {
                       content: data.synthesis?.content || data.synthesis?.conclusion || 'Synthesis completed',
                       tokensUsed: data.synthesis?.tokensUsed || 0,

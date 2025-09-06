@@ -3,6 +3,7 @@ import { AgentConfig, DEBATE_CONFIG } from '@/lib/agents/types'
 import { providerRegistry } from '@/lib/ai-providers'
 import { generateRoundPrompt } from '@/lib/agents/debate-prompts'
 import { MODEL_COSTS_PER_1K } from '@/lib/model-metadata'
+import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
     responseMode = 'normal', 
     round1Mode = 'agents',
     rounds = 1,
+    enableWebSearch = false,
     includeComparison = false,
     comparisonModel = null,
     includeConsensusComparison = false,
@@ -39,13 +41,13 @@ export async function POST(request: NextRequest) {
     round1Mode
   })
   
-  // Set token limits based on response mode
+  // Set token limits based on response mode - INCREASED for engaging debates
   const getTokenLimit = (mode: string) => {
     switch(mode) {
-      case 'concise': return 150  // ~50 words
-      case 'normal': return 450   // ~150 words
-      case 'detailed': return 900  // ~300 words
-      default: return 450
+      case 'concise': return 300  // ~100 words (increased from 150)
+      case 'normal': return 900   // ~300 words (increased from 450) 
+      case 'detailed': return 1500 // ~500 words (increased from 900)
+      default: return 900
     }
   }
   
@@ -105,8 +107,19 @@ export async function POST(request: NextRequest) {
           // Track model responses for this round
           const roundResponses: any[] = []
           
-          // Process each agent/model in parallel but track individual completions
-          const agentPromises = agents.map(async (agentConfig: AgentConfig, index: number) => {
+          // Process each agent/model sequentially so they can debate with each other
+          // Order agents for proper debate flow: Analyst → Critic → Synthesizer
+          const orderedAgents = [...agents].sort((a, b) => {
+            const order = ['analyst', 'critic', 'synthesizer']
+            const aIndex = order.indexOf(a.persona?.role || 'analyst')
+            const bIndex = order.indexOf(b.persona?.role || 'analyst')
+            return aIndex - bIndex
+          })
+          
+          // Run agents sequentially, not in parallel
+          for (let i = 0; i < orderedAgents.length; i++) {
+            const agentConfig = orderedAgents[i]
+            const index = agents.indexOf(agentConfig) // Get original index for consistency
             console.log(`Processing agent ${index}: ${agentConfig.provider}/${agentConfig.model}`)
             console.log(`Agent config:`, JSON.stringify(agentConfig))
             const modelId = round1Mode === 'llm' 
@@ -128,15 +141,78 @@ export async function POST(request: NextRequest) {
                 timestamp: Date.now()
               })}\n\n`))
               
+              // Enrich query with web search if enabled (only for first round)
+              let enhancedQuery = query
+              let webSearchResults = null
+              if (enableWebSearch && roundNum === 1) {
+                try {
+                  // Send web search started event
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'web_search_started', 
+                    query: query,
+                    provider: 'duckduckgo',
+                    timestamp: Date.now()
+                  })}\n\n`))
+                  
+                  const enriched = await enrichQueryWithWebSearch(query, {
+                    enabled: true,
+                    provider: 'duckduckgo',
+                    maxResults: 5,
+                    cache: true,
+                    includeInPrompt: true
+                  })
+                  
+                  if (enriched.searchContext) {
+                    enhancedQuery = query + enriched.searchContext
+                    webSearchResults = {
+                      query: enriched.query || query,
+                      sources: enriched.sources || [],
+                      resultsCount: enriched.sources?.length || 0
+                    }
+                    
+                    // Send web search completed event
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                      type: 'web_search_completed', 
+                      query: query,
+                      provider: 'duckduckgo',
+                      resultsCount: webSearchResults.resultsCount,
+                      sources: webSearchResults.sources?.slice(0, 3) || [], // Only show first 3 sources
+                      timestamp: Date.now()
+                    })}\n\n`))
+                  } else {
+                    // Send web search failed event
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                      type: 'web_search_failed', 
+                      query: query,
+                      provider: 'duckduckgo',
+                      reason: 'No results found',
+                      timestamp: Date.now()
+                    })}\n\n`))
+                  }
+                } catch (searchError) {
+                  console.warn('Web search failed for agent debate streaming:', searchError)
+                  
+                  // Send web search failed event
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'web_search_failed', 
+                    query: query,
+                    provider: 'duckduckgo',
+                    reason: searchError instanceof Error ? searchError.message : 'Unknown error',
+                    timestamp: Date.now()
+                  })}\n\n`))
+                }
+              }
+              
               // Generate appropriate prompt
               const isLLMMode = round1Mode === 'llm' && roundNum === 1
-              const formatInstruction = responseMode === 'concise' 
-                ? '\n\nProvide ONLY a simple numbered list. NO headers, NO explanations, NO details, NO years:\n\n1. [Name only]\n2. [Name only]\n3. [Name only]\n\n[One short sentence about #1].'
+              // Only apply format instruction to LLM mode, not agent debate mode
+              const formatInstruction = (responseMode === 'concise' && isLLMMode) 
+                ? '\n\nFOR FINAL ANSWER: End with a clear conclusion in this format:\n\n1. [Specific recommendation]\n2. [Specific recommendation]\n3. [Specific recommendation]\n\n[One sentence explaining why #1 is best].\n\nBut FIRST provide your debate analysis and reasoning (aim for 80-100 words of debate content, then the numbered conclusion).'
                 : ''
-              const fullPrompt = isLLMMode 
-                ? `Please answer this query concisely and directly:\n\n${query}${formatInstruction}`
+              let fullPrompt = isLLMMode 
+                ? `Please answer this query concisely and directly:\n\n${enhancedQuery}${formatInstruction}`
                 : `${agentConfig.persona?.systemPrompt || ''}\n\n${generateRoundPrompt(
-                    query,
+                    enhancedQuery,
                     agentConfig.persona || {
                       id: modelId,
                       role: 'analyst',
@@ -148,8 +224,30 @@ export async function POST(request: NextRequest) {
                       color: '#3B82F6'
                     },
                     roundNum,
-                    roundResponses // Pass previous responses for context
+                    [...(roundNum > 1 ? allRoundResponses.filter(r => r.round === roundNum - 1) : []), ...roundResponses] // Pass previous round + current round messages for context
                   )}`
+              
+              // Pass responseMode to debate prompts
+              if (fullPrompt.includes('generateRoundPrompt')) {
+                // Update the generateRoundPrompt call to pass responseMode
+                const enhancedPrompt = generateRoundPrompt(
+                  enhancedQuery,
+                  agentConfig.persona || {
+                    id: modelId,
+                    role: 'analyst',
+                    name: agentConfig.model,
+                    description: 'Direct response',
+                    traits: [],
+                    focusAreas: [],
+                    systemPrompt: '',
+                    color: '#3B82F6'
+                  },
+                  roundNum,
+                  [...(roundNum > 1 ? allRoundResponses.filter(r => r.round === roundNum - 1) : []), ...roundResponses],
+                  responseMode // Pass the response mode
+                );
+                fullPrompt = `${agentConfig.persona?.systemPrompt || ''}\n\n${enhancedPrompt}`;
+              }
               
               // Send thinking status with preview of prompt
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
@@ -223,14 +321,10 @@ export async function POST(request: NextRequest) {
               
               const endTime = Date.now()
               
-              // Extract key points from response for preview
-              const keyPoints = result.response
-                .split('\n')
-                .filter((line: string) => line.trim().startsWith('-') || line.trim().startsWith('•'))
-                .slice(0, 3)
-                .join('\n')
+              // Use consistent preview format - just first 150 chars like other systems
+              const standardizedPreview = result.response.substring(0, 150) + (result.response.length > 150 ? '...' : '');
               
-              // Send model completed event with preview
+              // Send model completed event with standardized preview
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                 type: 'model_completed', 
                 modelId,
@@ -239,23 +333,31 @@ export async function POST(request: NextRequest) {
                 agentName: agentConfig.persona?.name || agentConfig.model,
                 agentRole: agentConfig.persona?.role || 'analyst',
                 round: roundNum,
-                responsePreview: result.response.substring(0, 300) + '...',
-                keyPoints,
+                responsePreview: standardizedPreview,
+                keyPoints: [],
                 fullResponse: result.response,
                 tokensUsed: result.tokens.total,
                 duration: endTime - startTime,
                 timestamp: endTime
               })}\n\n`))
               
-              roundResponses.push({
-                modelId,
-                agentConfig,
-                response: result.response,
+              // Create proper AgentMessage structure for context passing
+              const agentMessage = {
+                agentId: agentConfig.agentId || modelId,
+                role: agentConfig.persona?.role || 'analyst',
+                round: roundNum,
+                content: result.response,
+                timestamp: new Date(endTime).toISOString(),
                 tokensUsed: result.tokens.total,
-                duration: endTime - startTime
-              })
+                model: `${agentConfig.provider}/${agentConfig.model}`,
+                confidence: 0.85,
+                keyPoints: [],
+                evidence: [],
+                challenges: []
+              }
               
-              return result
+              // Add to round responses for context passing to next agents
+              roundResponses.push(agentMessage)
             } catch (error) {
               // Send model error event
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
@@ -265,12 +367,8 @@ export async function POST(request: NextRequest) {
                 error: error instanceof Error ? error.message : 'Unknown error',
                 timestamp: Date.now()
               })}\n\n`))
-              return null
             }
-          })
-          
-          // Wait for all models in this round to complete
-          await Promise.allSettled(agentPromises)
+          } // End of sequential agent processing loop
           
           // Add this round's responses to the total
           allRoundResponses.push(...roundResponses)
@@ -419,26 +517,32 @@ export async function POST(request: NextRequest) {
         // Create synthesis using Gemini
         try {
           const concisenessInstruction = responseMode === 'concise' 
-            ? '\n\nIMPORTANT: Be ULTRA CONCISE. CONCLUSION must be ONLY:\n\n1. [Name only]\n2. [Name only]\n3. [Name only]\n\n[One short sentence about #1].'
+            ? '\n\nIMPORTANT: For CONCLUSION, provide EXACTLY this format (extract 3 specific recommendations from the debate):\n\n1. [Specific product/option name only]\n2. [Specific product/option name only]\n3. [Specific product/option name only]\n\n[One short sentence about why #1 is recommended].\n\nIf fewer than 3 options were discussed, intelligently suggest additional relevant options based on the debate context.'
             : responseMode === 'detailed'
-            ? '\n\nProvide detailed analysis with thorough explanations.'
-            : ''
+            ? '\n\nProvide comprehensive analysis with detailed explanations and thorough reasoning.'
+            : '\n\nProvide balanced analysis incorporating the full debate discussion.'
             
-          const synthesisPrompt = `You are the Chief Judge synthesizing a multi-agent debate.
+          const synthesisPrompt = `You are the Chief Judge synthesizing an expert multi-agent debate. These agents engaged in substantive discussion with longer, more detailed arguments.
 
 Query: ${query}
 
-Debate Summary:
+FULL DEBATE TRANSCRIPT:
 ${allRoundResponses.map((r, i) => `
-Model ${i + 1} (${r.agentConfig.model}):
-${r.response.substring(0, 500)}...
+===== AGENT ${i + 1}: ${r.agentConfig?.persona?.name || r.agentConfig?.model || 'Unknown'} =====
+Role: ${r.agentConfig?.persona?.role || r.role || 'Unknown'}
+Round: ${r.round || 1}
+
+${r.content || r.response || 'No content'}
 `).join('\n')}
 
-Please provide:
-1. AGREEMENTS: Key points where models agree (bullet points)
-2. DISAGREEMENTS: Points of contention (bullet points)
-3. CONCLUSION: Your synthesized answer based on the consensus${concisenessInstruction}
-4. FOLLOW-UP QUESTIONS (optional): If more information would help provide a better answer, list specific questions the user could answer
+As Chief Judge, synthesize this rich debate into a comprehensive analysis:
+
+1. AGREEMENTS: What key points did multiple agents converge on? (bullet points)
+2. DISAGREEMENTS: Where did agents clash and why? What were the core tensions? (bullet points) 
+3. CONCLUSION: Your expert synthesis drawing from the best arguments across all agents${concisenessInstruction}
+4. FOLLOW-UP QUESTIONS (optional): If more context would strengthen the recommendation, what specific questions should the user answer?
+
+The agents provided substantial analysis - your synthesis should reflect that depth and nuance.
 
 Format your response with clear sections using markdown headers (###).`
 
@@ -615,9 +719,9 @@ Format your response with clear sections using markdown headers (###).`
                   rounds: [{
                     roundNumber: rounds,
                     messages: allRoundResponses.map(r => ({
-                      agent: r.agentName || 'unknown',
-                      message: r.response,
-                      model: r.modelUsed || r.model,
+                      agent: r.agentConfig?.persona?.name || r.agentName || 'unknown',
+                      message: r.content || r.response,
+                      model: r.agentConfig ? `${r.agentConfig.provider}/${r.agentConfig.model}` : r.model,
                       tokens: r.tokensUsed
                     })),
                     startTime: new Date()
@@ -653,8 +757,8 @@ Format your response with clear sections using markdown headers (###).`
             // Fallback if no Google provider or if overloaded
             // Create a simple consensus from the responses
             const synthesis = {
-              content: `Based on the ${allRoundResponses.length} model responses, here's a summary:\n\n${allRoundResponses.map((r, i) => `Model ${i+1}: ${r.response.substring(0, 200)}...`).join('\n\n')}`,
-              conclusion: allRoundResponses[0]?.response || 'Unable to generate synthesis',
+              content: `Based on the ${allRoundResponses.length} model responses, here's a summary:\n\n${allRoundResponses.map((r, i) => `Model ${i+1}: ${(r.content || r.response || 'No content').substring(0, 200)}...`).join('\n\n')}`,
+              conclusion: allRoundResponses[0]?.content || allRoundResponses[0]?.response || 'Unable to generate synthesis',
               agreements: [],
               disagreements: [],
               confidence: 0.5,

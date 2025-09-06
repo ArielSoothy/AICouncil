@@ -14,7 +14,7 @@ import { Slider } from '@/components/ui/slider'
 import { AgentSelector } from '@/components/agents/agent-selector'
 import { ModelSelector } from '@/components/consensus/model-selector'
 import { DebateConfig, DebateMode, ResponseMode, AgentConfig, ModelConfig } from '../types'
-import { Brain, Zap, Send } from 'lucide-react'
+import { Brain, Zap, Send, Globe } from 'lucide-react'
 
 interface DebateSetupProps {
   onSubmit: (config: DebateConfig) => void
@@ -27,8 +27,8 @@ export function DebateSetup({ onSubmit, isLoading = false, userTier = 'free' }: 
   const [query, setQuery] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
   const [mode, setMode] = useState<DebateMode>('agents')
   const [responseMode, setResponseMode] = useState<ResponseMode>('concise')
-  const [rounds, setRounds] = useState(1)
-  const [autoRound2, setAutoRound2] = useState(true)
+  const [rounds, setRounds] = useState(2)
+  const [autoRound2, setAutoRound2] = useState(false)
   const [disagreementThreshold, setDisagreementThreshold] = useState(0.3)
   const [selectedAgents, setSelectedAgents] = useState<AgentConfig[]>([])
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>([
@@ -47,6 +47,9 @@ export function DebateSetup({ onSubmit, isLoading = false, userTier = 'free' }: 
   
   // Consensus settings
   const [consensusEnabled, setConsensusEnabled] = useState(false)
+  
+  // Web search settings
+  const [enableWebSearch, setEnableWebSearch] = useState(false)
 
   const handleSubmit = () => {
     // Validate before submitting
@@ -76,10 +79,11 @@ export function DebateSetup({ onSubmit, isLoading = false, userTier = 'free' }: 
       query,
       mode,
       responseMode,
-      rounds: autoRound2 ? 1 : rounds,
+      rounds,
       autoRound2,
       disagreementThreshold,
       agents,
+      enableWebSearch,
       comparison: comparisonEnabled ? {
         enabled: true,
         model: comparisonModel
@@ -178,19 +182,20 @@ export function DebateSetup({ onSubmit, isLoading = false, userTier = 'free' }: 
               </div>
             )}
 
-            {!autoRound2 && (
-              <div>
-                <Label>Manual Rounds: {rounds}</Label>
-                <Slider
-                  value={[rounds]}
-                  onValueChange={(v) => setRounds(v[0])}
-                  min={1}
-                  max={5}
-                  step={1}
-                  className="mt-2"
-                />
-              </div>
-            )}
+            <div>
+              <Label>Number of Rounds: {rounds}</Label>
+              <Slider
+                value={[rounds]}
+                onValueChange={(v) => setRounds(v[0])}
+                min={1}
+                max={3}
+                step={1}
+                className="mt-2"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                More rounds = deeper debate, but higher cost
+              </p>
+            </div>
           </div>
         </div>
       </Card>
@@ -232,6 +237,26 @@ export function DebateSetup({ onSubmit, isLoading = false, userTier = 'free' }: 
             onCheckedChange={setConsensusEnabled}
           />
         </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            <Label htmlFor="websearch">Web Search</Label>
+          </div>
+          <Switch
+            id="websearch"
+            checked={enableWebSearch}
+            onCheckedChange={setEnableWebSearch}
+          />
+        </div>
+        {enableWebSearch && (
+          <div className="pl-6">
+            <p className="text-xs text-muted-foreground">
+              🆓 FREE web search using DuckDuckGo! Enriches agent responses with real-time web information. 
+              Perfect for current events, prices, and recent developments. No API key required!
+            </p>
+          </div>
+        )}
       </Card>
 
       {/* Submit Button */}

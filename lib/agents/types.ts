@@ -47,6 +47,7 @@ export interface DebateSession {
     agreements: string[]
     disagreements: string[]
     conclusion: string
+    rawResponse: string
     tokensUsed: number
   }
   disagreementScore?: number  // New: Measure of disagreement (0-1)
@@ -101,6 +102,7 @@ export interface DebateRequest {
   round1Mode?: 'llm' | 'agents'  // New: Choose initial mode
   autoRound2?: boolean  // New: Auto-trigger round 2 on disagreement
   disagreementThreshold?: number  // New: Threshold for disagreement (0-1)
+  enableWebSearch?: boolean  // New: Enable web search for agents
   includeComparison?: boolean  // Compare with single model
   comparisonModel?: { provider: string; model: string }  // Model to compare against
   includeConsensusComparison?: boolean  // Also compare with normal consensus

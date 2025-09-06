@@ -13,6 +13,7 @@ export interface DebateConfig {
   autoRound2: boolean
   disagreementThreshold: number
   agents: AgentConfig[]
+  enableWebSearch?: boolean
   comparison?: {
     enabled: boolean
     model?: ModelConfig

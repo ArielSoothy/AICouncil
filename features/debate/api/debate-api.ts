@@ -25,6 +25,7 @@ export class DebateAPI {
           round1Mode: config.mode,
           autoRound2: config.autoRound2,
           disagreementThreshold: config.disagreementThreshold,
+          enableWebSearch: config.enableWebSearch,
           includeComparison: config.comparison?.enabled,
           comparisonModel: config.comparison?.model,
           includeConsensusComparison: config.consensus?.enabled,

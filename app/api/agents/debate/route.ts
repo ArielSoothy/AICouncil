@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
       agents = [], 
       rounds = DEBATE_CONFIG.defaultRounds,
       responseMode = 'normal',
-      isGuestMode = false 
+      isGuestMode = false,
+      enableWebSearch = false
     } = body
     
     // Override tier if guest mode
@@ -132,7 +133,8 @@ export async function POST(request: NextRequest) {
       agents: agentConfigs,
       rounds,
       responseMode,
-      userTier
+      userTier,
+      enableWebSearch
     }
     
     // Initialize and run debate

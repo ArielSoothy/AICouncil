@@ -10,6 +10,7 @@ import { providerRegistry } from '@/lib/ai-providers'
 import { generateDebatePrompt, generateRoundPrompt } from './debate-prompts'
 import { calculateDisagreementScore } from './cost-calculator'
 import { detectInformationRequests } from './information-detector'
+import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
 import { v4 as uuidv4 } from 'uuid'
 
 export class AgentDebateOrchestrator {
@@ -119,22 +120,46 @@ export class AgentDebateOrchestrator {
     }
     
     // Get previous round messages for context
-    const previousMessages = roundNumber > 1 ? 
+    const previousRoundMessages = roundNumber > 1 ? 
       this.session.rounds[roundNumber - 2]?.messages || [] : []
     
-    // Each agent responds in parallel
-    const agentPromises = this.request.agents.map(async (agentConfig) => {
+    // Order agents for proper debate flow: Analyst → Critic → Synthesizer
+    const orderedAgents = [...this.request.agents].sort((a, b) => {
+      const order = ['analyst', 'critic', 'synthesizer']
+      const aIndex = order.indexOf(a.persona.role)
+      const bIndex = order.indexOf(b.persona.role)
+      return aIndex - bIndex
+    })
+    
+    // Each agent responds sequentially, seeing previous agents' responses
+    const messages: (AgentMessage | null)[] = []
+    for (let i = 0; i < orderedAgents.length; i++) {
+      const agentConfig = orderedAgents[i]
+      
+      // Combine previous round messages with current round messages from agents who already responded
+      const currentRoundMessages = messages.filter((m): m is AgentMessage => m !== null)
+      const allPreviousMessages = [...previousRoundMessages, ...currentRoundMessages]
+      
+      // Debug: Log what messages are being passed
+      console.log(`[DEBUG] Agent ${agentConfig.persona.name} (${i}/${orderedAgents.length}) in Round ${roundNumber}:`)
+      console.log(`  - Previous round messages: ${previousRoundMessages.length}`)
+      console.log(`  - Current round messages so far: ${currentRoundMessages.length}`)
+      console.log(`  - Total previous messages: ${allPreviousMessages.length}`)
+      if (allPreviousMessages.length > 0) {
+        console.log(`  - Previous message roles: ${allPreviousMessages.map(m => m.role).join(', ')}`)
+      }
+      
       const prompt = generateRoundPrompt(
         this.session.query,
         agentConfig.persona,
         roundNumber,
-        previousMessages
+        allPreviousMessages
       )
       
-      return this.queryAgent(agentConfig, prompt, roundNumber)
-    })
+      const message = await this.queryAgent(agentConfig, prompt, roundNumber)
+      messages.push(message)
+    }
     
-    const messages = await Promise.all(agentPromises)
     round.messages = messages.filter((m): m is AgentMessage => m !== null)
     round.endTime = new Date()
     
@@ -168,10 +193,31 @@ export class AgentDebateOrchestrator {
       // Use LLM mode for round 1 if specified
       const isLLMMode = round === 1 && this.request.round1Mode === 'llm'
       
+      // Enrich query with web search if enabled (only for first round to avoid redundant searches)
+      let enhancedPrompt = prompt
+      if (this.request.enableWebSearch && round === 1) {
+        try {
+          const enriched = await enrichQueryWithWebSearch(this.session.query, {
+            enabled: true,
+            provider: 'duckduckgo',
+            maxResults: 5,
+            cache: true,
+            includeInPrompt: true
+          })
+          
+          if (enriched.searchContext) {
+            enhancedPrompt = prompt + enriched.searchContext
+          }
+        } catch (searchError) {
+          console.warn('Web search failed for agent debate:', searchError)
+          // Continue without web search if it fails
+        }
+      }
+      
       // Adjust prompt based on mode
       const fullPrompt = isLLMMode 
         ? `Please answer this query concisely and directly:\n\n${this.session.query}`
-        : `${config.persona.systemPrompt}\n\n${prompt}`
+        : `${config.persona.systemPrompt}\n\n${enhancedPrompt}`
       
       const result = await provider.query(fullPrompt, {
         ...config,
@@ -270,6 +316,7 @@ export class AgentDebateOrchestrator {
         agreements: synthesis.agreements,
         disagreements: synthesis.disagreements,
         conclusion: synthesis.conclusion,
+        rawResponse: result.response || '', // Store the full raw response for consistency
         tokensUsed: result.tokens.total
       }
       
@@ -286,6 +333,7 @@ export class AgentDebateOrchestrator {
         agreements: [],
         disagreements: [],
         conclusion: 'Unable to generate synthesis due to an error. Please review the individual agent responses above.',
+        rawResponse: 'Unable to generate synthesis due to an error. Please review the individual agent responses above.',
         tokensUsed: 0
       }
     }

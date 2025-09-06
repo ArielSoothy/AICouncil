@@ -22,7 +22,8 @@ import {
   Hash,
   HelpCircle,
   ArrowRight,
-  GitCompare
+  GitCompare,
+  Globe
 } from 'lucide-react'
 import { ComparisonDisplay } from '@/components/consensus/comparison-display'
 import { ThreeWayComparison } from '@/components/consensus/three-way-comparison'
@@ -31,6 +32,8 @@ interface DebateDisplayProps {
   session: DebateSession
   onRefinedQuery?: (query: string) => void
   onFollowUpRound?: (answers: Record<string | number, string>) => void
+  onAddRound?: () => void
+  webSearchUsed?: boolean
 }
 
 const agentIcons = {
@@ -45,7 +48,7 @@ const agentColors = {
   synthesizer: '#10B981'
 }
 
-export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: DebateDisplayProps) {
+export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddRound, webSearchUsed = false }: DebateDisplayProps) {
   const [followUpAnswers, setFollowUpAnswers] = useState<Record<string | number, string>>({})
   const [showFollowUpInput, setShowFollowUpInput] = useState(false)
   
@@ -54,7 +57,13 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
     hasComparison: !!session.comparisonResponse,
     hasConsensus: !!session.consensusComparison,
     hasSynthesis: !!session.finalSynthesis,
-    consensusData: session.consensusComparison
+    consensusData: session.consensusComparison,
+    roundsCount: session.rounds.length,
+    rounds: session.rounds.map(r => ({
+      roundNumber: r.roundNumber,
+      messagesCount: r.messages.length,
+      messageRounds: r.messages.map(m => m.round)
+    }))
   })
   
   const formatTime = (date: Date) => {
@@ -99,7 +108,9 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
         </div>
 
         <div className="prose prose-sm dark:prose-invert max-w-none">
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          <div className="max-h-[400px] overflow-y-auto whitespace-pre-wrap break-words border border-border/30 rounded p-3 bg-card/50">
+            {message.content}
+          </div>
         </div>
 
         {message.keyPoints && message.keyPoints.length > 0 && (
@@ -154,10 +165,26 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
       <Card className="p-6">
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold mb-2">Debate Query</h3>
+            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+              Debate Query
+              {webSearchUsed && (
+                <Badge variant="outline" className="ml-2 text-xs">
+                  <Globe className="w-3 h-3 mr-1" />
+                  Web Search
+                </Badge>
+              )}
+            </h3>
             <div className="text-muted-foreground text-sm max-h-32 overflow-y-auto whitespace-pre-wrap break-words">
               {session.query}
             </div>
+            {webSearchUsed && (
+              <div className="mt-2 p-2 bg-green-500/10 rounded-lg border border-green-500/30">
+                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                  <Globe className="w-3 h-3" />
+                  Enhanced with real-time web search results from DuckDuckGo
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -193,7 +220,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
       </Card>
 
       {/* Debate Content */}
-      <Tabs defaultValue="synthesis" className="space-y-4">
+      <Tabs defaultValue={session.rounds.length > 0 ? `round-${session.rounds[0].roundNumber}` : "synthesis"} className="space-y-4">
         <TabsList className="w-full flex flex-wrap gap-1">
           {session.rounds.map((round, idx) => (
             <TabsTrigger 
@@ -239,9 +266,12 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
               </div>
             </Card>
             
-            <ScrollArea className="h-[500px] pr-4">
+            <ScrollArea className="h-[800px] pr-4">
               <div className="space-y-4">
-                {round.messages.map(message => renderMessage(message))}
+                {/* Filter messages to ensure only this round's messages are shown */}
+                {round.messages
+                  .filter(message => message.round === round.roundNumber)
+                  .map(message => renderMessage(message))}
               </div>
             </ScrollArea>
           </TabsContent>
@@ -283,7 +313,18 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
                 cost: session.consensusComparison.cost || 0
               }}
               agentDebate={{
-                response: session.finalSynthesis.conclusion || session.finalSynthesis.content,
+                response: (() => {
+                  const conclusion = session.finalSynthesis.conclusion || session.finalSynthesis.content || '';
+                  // Extract just the numbered list + first sentence for preview consistency
+                  const numberedListMatch = conclusion.match(/((?:\d+\.\s+[^\n]+(?:\n|$))+)/);
+                  if (numberedListMatch) {
+                    const numberedList = numberedListMatch[1].trim();
+                    const afterList = conclusion.substring(conclusion.indexOf(numberedList) + numberedList.length).trim();
+                    const firstSentence = afterList.match(/^[^.!?]*[.!?]/)?.[0]?.trim() || '';
+                    return numberedList + (firstSentence ? '\n\n' + firstSentence : '');
+                  }
+                  return conclusion;
+                })(),
                 agents: session.agents.map(a => {
                   // Handle both persona agents and simple model agents
                   const name = a.name || (a as any).persona?.name || (a as any).model || 'Unknown'
@@ -570,6 +611,27 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound }: Deba
           )}
         </div>
       </Card>
+
+      {/* Add Round Button */}
+      {session.status === 'completed' && session.rounds.length < 3 && onAddRound && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-semibold">Continue Debate</h4>
+              <p className="text-sm text-muted-foreground">
+                Add another round to deepen the discussion
+              </p>
+            </div>
+            <Button 
+              onClick={onAddRound}
+              className="flex items-center gap-2"
+            >
+              <ArrowRight className="w-4 h-4" />
+              Add Round {session.rounds.length + 1}
+            </Button>
+          </div>
+        </Card>
+      )}
     </div>
   )
 }
