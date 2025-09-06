@@ -35,7 +35,7 @@
 - FEATURES.md moved into project directory (no longer external)
 - All documentation organized into docs/ directory → Clean project root, structured documentation  
 - Added conversation prompt template → Reusable template in CLAUDE.md for consistent session transitions
-- Enhanced workflow → CRITICAL: Update docs/FEATURES.md when new features added (protect from deletion)
+- Enhanced workflow → CRITICAL: Update FEATURES.md when new features added (protect from deletion)
 - Removed redundancy, clear file responsibilities, proper organization
 - Proper workflow: Work → Test → Document → Ask approval → Push → New prompt
 
@@ -61,6 +61,13 @@
 
 ### 🟡 MEDIUM PRIORITY - NEXT PHASE:
 
+**[MEDIUM]** 🔬 Research-Based Enhancement Implementation
+- **Phase 1**: Heterogeneous model mixing (optimal combinations by question type)
+- **Phase 2**: Chain-of-debate tracking (track WHY models disagree)
+- **Phase 3**: Adaptive rounds (complexity-based round determination)
+- **Phase 4**: Smart synthesis strategies (confidence + accuracy weighting)
+- **Phase 5**: Benchmark suite + statistical validation
+
 **[MEDIUM]** ⚨️ Performance Optimization
 - Measure actual token usage per query type
 - Calculate real costs for each mode
@@ -76,6 +83,7 @@
 - Random single vs consensus for same query
 - Track which users prefer what approach
 - Value visualization UI improvements
+- Implement research-based metrics: factual accuracy, reasoning accuracy, hallucination rate
 
 ### 🟢 LOW PRIORITY - FUTURE:
 
@@ -102,7 +110,7 @@ Continue AI Council development work.
 Previous session: ✅ Documentation organization + All markdown files moved to docs/ directory completed  
 Next priority: 🧪 E2E Testing with Playwright MCP or 🏗️ Architecture validation (high priority tasks)
 
-MANDATORY START: Read docs/CLAUDE.md → docs/WORKFLOW.md → docs/PRIORITIES.md → docs/FEATURES.md
-TodoWrite: Next task from docs/PRIORITIES.md + "Update docs/PRIORITIES.md" + "Create next prompt"
+MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
+TodoWrite: Next task from PRIORITIES.md + "Update PRIORITIES.md" + "Create next prompt"
 Follow structured workflow: Work → Test → Document → Ask approval → Push → New prompt
 ```

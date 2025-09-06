@@ -4,12 +4,12 @@
 - **Agent Debate System MUST default to 'agents' mode**, not 'llm' mode
 - **Never fake UI progress** - always show real backend data
 - **Always test changes**: `npm run type-check` + `npm run lint`
-- **Read docs/FEATURES.md before changes** - avoid breaking protected features
+- **Read FEATURES.md before changes** - avoid breaking protected features
 
 ## 🛡️ FEATURE PROTECTION WORKFLOW:
 
 ### BEFORE Making Changes:
-1. **Check docs/FEATURES.md first** - Ensure feature isn't protected
+1. **Check FEATURES.md first** - Ensure feature isn't protected
 2. **Understand the purpose** - Read why the feature exists
 3. **Check dependencies** - Understand what might break
 4. **Get explicit approval** - If user hasn't requested the change
