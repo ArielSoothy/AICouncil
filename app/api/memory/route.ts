@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { MemoryService } from '@/lib/memory/memory-service'
+import { SimpleMemoryService } from '@/lib/memory/simple-memory-service'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
-    const memoryService = new MemoryService(user?.id)
+    const memoryService = new SimpleMemoryService(user?.id)
     
     // Get query parameters
     const searchParams = request.nextUrl.searchParams
@@ -36,10 +36,10 @@ export async function GET(request: NextRequest) {
           }, { status: 400 })
         }
         
-        const memories = await memoryService.retrieveRelevantMemories(query, {
-          limit: parseInt(searchParams.get('limit') || '5'),
-          threshold: parseFloat(searchParams.get('threshold') || '0.6')
-        })
+        const memories = await memoryService.searchEpisodicMemories(
+          query, 
+          parseInt(searchParams.get('limit') || '5')
+        )
         
         return NextResponse.json({ 
           success: true, 
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
-    const memoryService = new MemoryService(user?.id)
+    const memoryService = new SimpleMemoryService(user?.id)
     const body = await request.json()
     
     switch (body.type) {
