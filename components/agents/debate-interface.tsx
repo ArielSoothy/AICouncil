@@ -648,7 +648,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     endTime: new Date(),
                     totalTokensUsed: allResponses.reduce((sum, r) => sum + r.tokensUsed, 0) + (data.synthesis?.tokensUsed || 0),
                     estimatedCost: 0,
-                    disagreementScore: data.synthesis?.disagreementScore || 0,
+                    disagreementScore: data.synthesis?.disagreementScore || data.disagreementScore || 0,
+                    disagreementAnalysis: data.disagreementAnalysis || null,
                     status: 'completed' as const,
                     informationRequest: data.synthesis?.informationRequest || {
                       detected: false,
@@ -657,7 +658,9 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   }
                   console.log('Setting debate session with consensusComparison:', {
                     hasConsensus: !!session.consensusComparison,
-                    consensusData: session.consensusComparison
+                    consensusData: session.consensusComparison,
+                    hasDisagreementAnalysis: !!session.disagreementAnalysis,
+                    disagreementAnalysis: session.disagreementAnalysis
                   })
                   setDebateSession(session as any)
                   break

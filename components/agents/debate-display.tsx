@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { ComparisonDisplay } from '@/components/consensus/comparison-display'
 import { ThreeWayComparison } from '@/components/consensus/three-way-comparison'
+import { DisagreementInsights } from './disagreement-insights-simple'
 
 // Model cost calculation helper
 const calculateMessageCost = (message: AgentMessage): number => {
@@ -120,7 +121,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
 
   const getMessageId = (message: AgentMessage) => `${message.agentId}-${message.round}-${message.timestamp}`
   
-  const isLongMessage = (content: string) => content.length > 500 || content.split('\n').length > 8
+  const isLongMessage = (content: string) => content.length > 800 || content.split('\n').length > 12
   
   const toggleMessageExpansion = (messageId: string) => {
     setExpandedMessages(prev => {
@@ -141,9 +142,36 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
     const isLong = isLongMessage(message.content)
     const isExpanded = expandedMessages.has(messageId)
     
-    // For long messages, show truncated version when collapsed
+    // For long messages, show more content before truncating
+    // Find a good break point to avoid cutting words/sentences
+    const truncateAtSentence = (text: string, maxLength: number): string => {
+      if (text.length <= maxLength) return text
+      
+      // Try to find sentence end within reasonable distance
+      const truncated = text.substring(0, maxLength)
+      const lastSentenceEnd = Math.max(
+        truncated.lastIndexOf('. '),
+        truncated.lastIndexOf('! '),  
+        truncated.lastIndexOf('? ')
+      )
+      
+      // If we find a sentence end within 100 chars of target, use it
+      if (lastSentenceEnd > maxLength - 100) {
+        return text.substring(0, lastSentenceEnd + 1) // Clean sentence ending, no ellipsis needed
+      }
+      
+      // Otherwise find last complete word and add ellipsis
+      const lastSpace = truncated.lastIndexOf(' ')
+      if (lastSpace > maxLength - 50) {
+        return text.substring(0, lastSpace) + '...'
+      }
+      
+      // Fallback to character limit with ellipsis
+      return truncated + '...'
+    }
+    
     const displayContent = isLong && !isExpanded 
-      ? message.content.substring(0, 400) + '...' 
+      ? truncateAtSentence(message.content, 600)
       : message.content
     
     return (
@@ -172,24 +200,26 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
           </div>
           
           {isLong && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => toggleMessageExpansion(messageId)}
-              className="mt-2 h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-            >
-              {isExpanded ? (
-                <>
-                  <ChevronUp className="w-3 h-3 mr-1" />
-                  Show less
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="w-3 h-3 mr-1" />
-                  Show more
-                </>
-              )}
-            </Button>
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toggleMessageExpansion(messageId)}
+                className="h-8 px-3 text-xs font-medium border-dashed hover:border-solid transition-colors bg-background/80 hover:bg-background"
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp className="w-4 h-4 mr-1" />
+                    Show less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4 mr-1" />
+                    Show more ({Math.ceil((message.content.length - 600) / 100)} more lines)
+                  </>
+                )}
+              </Button>
+            </div>
           )}
         </div>
 
@@ -412,6 +442,9 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
             </TabsTrigger>
           ))}
           <TabsTrigger value="timeline" className="ml-auto">Timeline</TabsTrigger>
+          {session.disagreementAnalysis && (
+            <TabsTrigger value="insights">Insights</TabsTrigger>
+          )}
           <TabsTrigger value="synthesis">Synthesis</TabsTrigger>
         </TabsList>
 
@@ -475,6 +508,16 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
             </div>
           </ScrollArea>
         </TabsContent>
+
+        {/* Insights Tab */}
+        {session.disagreementAnalysis && (
+          <TabsContent value="insights" className="space-y-4">
+            <DisagreementInsights 
+              analysis={session.disagreementAnalysis}
+              className="w-full"
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="synthesis" className="space-y-4">
           {/* Show three-way comparison if all data available */}

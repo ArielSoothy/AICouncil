@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server'
-import { AgentConfig, DEBATE_CONFIG } from '@/lib/agents/types'
+import { AgentConfig, DEBATE_CONFIG, AgentMessage } from '@/lib/agents/types'
 import { providerRegistry } from '@/lib/ai-providers'
 import { generateRoundPrompt } from '@/lib/agents/debate-prompts'
 import { MODEL_COSTS_PER_1K } from '@/lib/model-metadata'
 import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
 import { getRoleBasedSearchService, type AgentSearchContext, type RoleBasedSearchResult } from '@/lib/web-search/role-based-search'
 import { getContextExtractor, type DebateMessage } from '@/lib/web-search/context-extractor'
+import { DisagreementAnalyzer } from '@/lib/agents/disagreement-analyzer'
 
 export const dynamic = 'force-dynamic'
 
@@ -404,8 +405,11 @@ export async function POST(request: NextRequest) {
               
               const endTime = Date.now()
               
+              // Debug the result structure
+              console.log(`[DEBUG] Agent ${modelId} FULL result object:`, JSON.stringify(result, null, 2))
+              
               // Use consistent preview format - just first 150 chars like other systems
-              const standardizedPreview = result.response.substring(0, 150) + (result.response.length > 150 ? '...' : '');
+              const standardizedPreview = result.response?.substring(0, 150) + (result.response?.length > 150 ? '...' : '') || 'No response';
               
               // Send model completed event with standardized preview and search info
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
@@ -594,6 +598,40 @@ export async function POST(request: NextRequest) {
           } catch (error) {
             console.error('Consensus comparison error:', error)
           }
+        }
+        
+        // Phase 2: Chain-of-debate tracking - Generate disagreement analysis
+        console.log('[DEBUG] DEBATE-STREAM: Starting disagreement analysis')
+        let disagreementAnalysis = null
+        let disagreementScore = 0
+        
+        // Convert all responses to AgentMessage format for analysis
+        const agentMessages: AgentMessage[] = allRoundResponses.map((response, index) => ({
+          agentId: response.agentConfig?.persona?.id || `agent-${index}`,
+          role: (response.agentConfig?.persona?.role as any) || 'analyst',
+          round: response.round || 1,
+          content: response.content || response.response || '',
+          timestamp: new Date(),
+          tokensUsed: response.tokensUsed || 0,
+          model: response.agentConfig?.model || 'unknown'
+        }))
+        
+        if (agentMessages.length > 0) {
+          try {
+            console.log('[DEBUG] DEBATE-STREAM: Running disagreement analysis with', agentMessages.length, 'messages')
+            disagreementAnalysis = DisagreementAnalyzer.analyzeDisagreements(agentMessages)
+            disagreementScore = disagreementAnalysis.score
+            console.log('[DEBUG] DEBATE-STREAM: Disagreement analysis completed:', {
+              score: disagreementScore,
+              reasons: disagreementAnalysis.reasons.length,
+              patterns: disagreementAnalysis.patterns.length,
+              chainLength: disagreementAnalysis.chainOfDisagreement.length
+            })
+          } catch (error) {
+            console.error('[DEBUG] DEBATE-STREAM: Error in disagreement analysis:', error)
+          }
+        } else {
+          console.log('[DEBUG] DEBATE-STREAM: No messages for disagreement analysis')
         }
         
         console.log('Starting synthesis with consensusData:', !!consensusData)
@@ -791,6 +829,8 @@ Format your response with clear sections using markdown headers (###).`
               synthesis,
               comparisonResponse: comparisonData,
               consensusComparison: consensusData,
+              disagreementAnalysis,
+              disagreementScore,
               timestamp: Date.now()
             })}\n\n`))
             
@@ -865,6 +905,8 @@ Format your response with clear sections using markdown headers (###).`
               synthesis,
               comparisonResponse: comparisonData,
               consensusComparison: consensusData,
+              disagreementAnalysis,
+              disagreementScore,
               timestamp: Date.now()
             })}\n\n`))
           }
@@ -889,6 +931,8 @@ Format your response with clear sections using markdown headers (###).`
             synthesis,
             comparisonResponse: comparisonData,
             consensusComparison: consensusData,
+            disagreementAnalysis,
+            disagreementScore,
             timestamp: Date.now()
           })}\n\n`))
         }

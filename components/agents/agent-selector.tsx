@@ -40,10 +40,11 @@ export function AgentSelector({
     const initialStates: Record<string, any> = {}
     
     // Assign different default models to each agent for diversity
+    // TEMPORARY FIX: Using llama-3.1-8b-instant for all due to llama-3.3-70b-versatile rate limits
     const agentDefaults: Record<string, { model: string; provider: string }> = {
       'analyst-001': { model: 'llama-3.1-8b-instant', provider: 'groq' },
-      'critic-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' },
-      'synthesizer-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' }
+      'critic-001': { model: 'llama-3.1-8b-instant', provider: 'groq' },
+      'synthesizer-001': { model: 'llama-3.1-8b-instant', provider: 'groq' }
     }
     
     Object.values(AGENT_PERSONAS).forEach(persona => {

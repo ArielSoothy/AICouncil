@@ -46,6 +46,15 @@ export class GroqProvider implements AIProvider {
       const responseTime = Date.now() - startTime;
 
       console.log('Groq: Success! Response length:', result.text?.length || 0)
+      if (!result.text || result.text.trim() === '') {
+        console.error('CRITICAL: Groq result.text is empty/undefined!', {
+          hasText: !!result.text,
+          textType: typeof result.text,
+          textValue: result.text,
+          resultKeys: Object.keys(result),
+          fullResult: JSON.stringify(result, null, 2)
+        });
+      }
 
       // Check for empty response
       if (!result.text || result.text.trim().length === 0) {

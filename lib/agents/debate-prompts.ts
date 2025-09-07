@@ -39,7 +39,7 @@ export function generateRoundPrompt(
 }
 
 function generateDebateOpeningPrompt(query: string, agent: AgentPersona, responseMode: string = 'normal'): string {
-  const basePrompt = `🎭 MULTI-AGENT DEBATE - OPENING STATEMENT
+  const basePrompt = `🎭 MULTI-AGENT DEBATE - OPENING STATEMENT (ROUND 1)
 
 Query: ${query}
 
@@ -51,22 +51,34 @@ ${agent.focusAreas.map(area => `• ${area}`).join('\n')}
 Key agent traits to embody:
 ${agent.traits.slice(0, 4).map(trait => `• ${trait}`).join('\n')}
 
-🔥 DEBATE GUIDELINES:
+🔥 ROUND 1 OBJECTIVES - EVIDENCE-BASED POSITION:
 1. **Take a STRONG position** - Be confident in your expertise, don't hedge unnecessarily
-2. **Present 3-4 key arguments** with detailed reasoning and evidence
-3. **Anticipate counterarguments** - acknowledge what others might challenge
-4. **Be specific and actionable** - if recommending options, name specific examples
-5. **Invite challenge** - make claims that other agents can meaningfully debate
-6. **Show your work** - explain your reasoning process clearly
+2. **CITE SPECIFIC EVIDENCE** - Each claim must be supported with:
+   - Data points, studies, or statistics when available
+   - Real-world examples or case studies
+   - Expert opinions or established principles
+   - Clear sources (even if approximate: "According to industry studies..." "Recent research shows...")
+3. **Present 3-4 key arguments** with detailed reasoning and evidence
+4. **Be specific and actionable** - if recommending options, name specific examples with evidence
+5. **FORCE DISAGREEMENT** - Make at least 2 claims that could reasonably be challenged:
+   - Bold predictions or assessments
+   - Strong preferences between alternatives
+   - Definitive statements about cause-and-effect
+6. **Show your work** - explain your reasoning process clearly with evidence trail
 
-Remember: This is a DEBATE, not a report. Other expert agents will challenge your position. Present arguments that are both strong enough to defend and interesting enough to debate.
+🎯 EVIDENCE REQUIREMENTS:
+- Every major claim needs backing evidence
+- Use phrases like: "Based on...", "Research indicates...", "Data shows...", "Industry analysis reveals..."
+- If you don't have exact data, use reasonable estimates: "Approximately...", "Studies suggest...", "Evidence indicates..."
+
+Remember: This is Round 1 of a STRUCTURED DEBATE. Other expert agents will challenge your position with counter-evidence in Round 2. Present arguments that are both evidence-based and controversial enough to debate.
 
 ${responseMode === 'concise' 
-    ? 'Be direct and impactful - aim for 100-150 words but pack them with strong arguments that demand response.'
-    : 'Be thorough and engaging - aim for 300-400 words to give other agents substantial material to work with.'
+    ? 'Be direct and impactful - aim for 100-150 words but pack them with strong, evidence-backed arguments that demand challenge.'
+    : 'Be thorough and engaging - aim for 300-400 words with solid evidence for each major point to give other agents substantial material to counter.'
   }
 
-🎯 Your opening statement should make other agents think "I need to respond to that!"
+🎯 Your opening statement should make other agents think "I have evidence that contradicts this!"
 
 Begin your response now:`
 
@@ -120,14 +132,14 @@ function generateDebateResponsePrompt(
     ? 'Be direct and punchy. Make your key points clearly and challenge efficiently.'
     : 'This is a REAL debate - don\'t just politely add your perspective. Challenge assumptions, point out flaws, defend positions, and make compelling counter-arguments.'
   
-  return `🔥 DEBATE RESPONSE - CHALLENGE AND COUNTER
+  return `🔥 ROUND 1 RESPONSE - EVIDENCE-BASED COUNTER-CHALLENGE
 
 Original Query: ${query}
 
 Previous Arguments to Address:
 ${previousPositions}
 
-As ${agent.name}, it's time to enter this debate! Your role is to thoughtfully challenge, build upon, or redirect the discussion based on your expertise.
+As ${agent.name}, it's time to enter this debate! Your role is to challenge previous positions with superior evidence and reasoning.
 
 Your expertise areas:
 ${agent.focusAreas.map(area => `• ${area}`).join('\n')}
@@ -135,19 +147,37 @@ ${agent.focusAreas.map(area => `• ${area}`).join('\n')}
 Your key traits to embody:
 ${agent.traits.slice(0, 4).map(trait => `• ${trait}`).join('\n')}
 
-🎯 DEBATE RESPONSE FRAMEWORK:
-1. **Address specific claims** - Quote or reference what previous agents said
-2. **Challenge with evidence** - Where do you disagree and why?
-3. **Build on good points** - What do they get right that you can expand on?
-4. **Present your alternative** - What's YOUR take on the solution/answer?
-5. **Raise new considerations** - What did they miss from your expertise area?
-6. **Make it personal** - Use "I disagree with [Agent] because..." or "While [Agent] makes a good point about X, they overlook Y..."
+🎯 ROUND 1 RESPONSE OBJECTIVES - COUNTER-EVIDENCE:
+1. **CHALLENGE WITH SUPERIOR EVIDENCE** - For each major disagreement, provide:
+   - Counter-data or contradictory studies
+   - Alternative examples or case studies  
+   - Different expert opinions or analysis
+   - Evidence gaps in their arguments
+2. **Address specific claims** - Quote or reference what previous agents said, then counter with evidence
+3. **FORCE DEEPER DISAGREEMENT** - Don't just add perspective, actively challenge:
+   - "The Analyst claims X, but evidence shows Y..."
+   - "This contradicts recent research that demonstrates..."
+   - "Industry data reveals the opposite pattern..."
+4. **Present your evidence-backed alternative** - What's YOUR take with supporting data?
+5. **Expose evidence gaps** - Point out unsupported claims: "No evidence was provided for..."
+6. **Make it confrontational** - Use strong disagreement language:
+   - "I strongly disagree with [Agent] because the evidence shows..."
+   - "While [Agent] claims X, data clearly demonstrates Y..."
+   - "This assessment ignores critical evidence..."
+
+🎯 EVIDENCE COMBAT REQUIREMENTS:
+- Counter every major claim with specific opposing evidence
+- Use phrases: "However, data shows...", "Contrary evidence indicates...", "Research contradicts this by..."
+- Call out unsupported claims: "This lacks evidence..." "No data supports..."
+- Present competing evidence: "Alternative studies show..." "Different analysis reveals..."
 
 ${debateStyle}
 
-Aim for ${wordTarget} to give substance to your position.
+Remember: This is ROUND 1 - establish MAXIMUM DISAGREEMENT with evidence. Round 2 will resolve conflicts. Your job now is to create productive tension through superior evidence.
 
-⚔️ Enter the debate now with conviction:`
+Aim for ${wordTarget} with focused counter-evidence.
+
+⚔️ Challenge their evidence now with superior data:`
 }
 
 // Helper function to extract key points for concise mode
@@ -180,31 +210,49 @@ function generateContinuedDebatePrompt(
     `Round ${m.round} - ${m.role.toUpperCase()}: ${m.content.substring(0, 180)}...`
   ).join('\n\n')
   
-  return `🔄 CONTINUED DEBATE - ROUND ${previousMessages[0]?.round + 1 || 2}
+  return `🔄 ROUND 2 - EVIDENCE SYNTHESIS & RESOLUTION
 
 Original Query: ${query}
 
 Debate History So Far:
 ${roundHistory}
 
-As ${agent.name}, the debate continues! You've heard from other agents and it's time to deepen the discussion, refine positions, or mount stronger counter-arguments.
+As ${agent.name}, Round 2 has different objectives! You've heard conflicting evidence from Round 1. Now it's time to RESOLVE disagreements through deeper analysis and evidence synthesis.
 
 Your expertise areas:
 ${agent.focusAreas.map(area => `• ${area}`).join('\n')}
 
-🧠 ADVANCED DEBATE TACTICS:
-1. **Synthesize and challenge** - What patterns do you see in others' arguments? What's missing?
-2. **Double down or pivot** - Strengthen your previous position OR acknowledge where you might adjust
-3. **Expose weak points** - Where are the logical gaps in opposing arguments?
-4. **Bring new evidence** - What additional insights can your expertise provide?
-5. **Force difficult decisions** - Push for specifics, trade-offs, or prioritization
-6. **Bridge or differentiate** - Find unexpected common ground OR sharpen disagreements
+🧠 ROUND 2 OBJECTIVES - RESOLUTION THROUGH EVIDENCE:
+1. **EVIDENCE SYNTHESIS** - Analyze conflicting evidence from Round 1:
+   - Which evidence is stronger and why?
+   - What are the quality/reliability differences?
+   - Where can opposing evidence coexist?
+   - What evidence gaps remain unresolved?
+2. **REFINED POSITION** - Based on all evidence presented:
+   - Acknowledge where opponents had valid points
+   - Strengthen your position with additional evidence
+   - Adjust your stance where evidence demands it
+   - Maintain disagreement only where evidence truly conflicts
+3. **RESOLVE OR MAINTAIN CONFLICTS** - For each major disagreement:
+   - Attempt resolution through better evidence analysis
+   - If resolution impossible, explain exactly why evidence conflicts
+   - Propose ways to resolve evidence gaps (testing, research needed)
+4. **PUSH TOWARD SYNTHESIS** - Help move toward practical conclusion:
+   - What specific actions does the evidence support?
+   - What are the evidence-based trade-offs?
+   - Where do we have sufficient vs insufficient evidence?
 
-This is round ${previousMessages[0]?.round + 1 || 2} - the stakes are higher. Don't repeat yourself; evolve the discussion. Show how this extended debate is leading to better insights.
+🎯 EVIDENCE RESOLUTION FRAMEWORK:
+- "Based on the evidence exchange, I now see..."
+- "While I initially argued X, the evidence for Y is compelling because..."
+- "The evidence clearly supports X over Y due to..."
+- "We lack sufficient evidence to resolve X, suggesting we need..."
 
-Aim for 200-300 words with more nuanced arguments.
+This is ROUND 2 - move from CONFLICT toward RESOLUTION. Show how the evidence exchange has refined your thinking and moved us closer to an optimal, evidence-based solution.
 
-🚀 Advance the debate with deeper analysis:`
+Aim for 250-350 words focused on evidence synthesis and practical resolution.
+
+🎯 Synthesize the evidence toward resolution:`
 }
 
 function generateAnalystPrompt(query: string, round: number, totalRounds: number): string {

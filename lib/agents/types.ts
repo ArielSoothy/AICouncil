@@ -1,4 +1,5 @@
 import { ModelConfig } from '@/types/consensus'
+import { DisagreementAnalysis } from './disagreement-analyzer'
 
 export type AgentRole = 'analyst' | 'critic' | 'synthesizer'
 
@@ -53,6 +54,7 @@ export interface DebateSession {
     tokensUsed: number
   }
   disagreementScore?: number  // New: Measure of disagreement (0-1)
+  disagreementAnalysis?: DisagreementAnalysis  // Enhanced disagreement analysis
   round1Mode?: 'llm' | 'agents'  // New: Track which mode was used
   waitingForRound2Decision?: boolean  // New: Paused for user decision
   comparisonResponse?: {  // Single model comparison data
