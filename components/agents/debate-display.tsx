@@ -605,7 +605,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
                                       <Badge variant="destructive" className="text-xs">{disagreement.type}</Badge>
                                     </div>
                                     <blockquote className="text-sm italic border-l-2 border-red-300 pl-3 text-muted-foreground">
-                                      "{disagreement.context}"
+                                      &ldquo;{disagreement.context}&rdquo;
                                     </blockquote>
                                     <p className="text-xs text-muted-foreground mt-2">
                                       Challenged: {disagreement.targetAgents.join(', ')}
@@ -633,7 +633,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
                                 <div className="flex items-start gap-3">
                                   <Icon className="w-5 h-5 mt-0.5" style={{ color: agentColors[rec.agent] }} />
                                   <div className="flex-1">
-                                    <div className="font-medium capitalize mb-2">{rec.agent}'s Approach:</div>
+                                    <div className="font-medium capitalize mb-2">{rec.agent}&apos;s Approach:</div>
                                     {rec.recommendations.map((recommendation, ridx) => (
                                       <div key={ridx} className="text-sm text-muted-foreground mb-1">
                                         • {recommendation}
@@ -659,7 +659,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
                     <div className="border-t pt-4 text-xs text-muted-foreground">
                       <p className="flex items-center gap-1">
                         <GitCompare className="w-3 h-3" />
-                        Based on "Chain-of-Debate" research (Microsoft, 2024) - tracking WHY models disagree
+                        Based on &ldquo;Chain-of-Debate&rdquo; research (Microsoft, 2024) - tracking WHY models disagree
                       </p>
                     </div>
                   </div>

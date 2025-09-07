@@ -5,7 +5,14 @@
 **Current Priority:** 🏗️ Architecture validation or 🔬 Research-Based Enhancement Implementation (high priority tasks)  
 **System Status:** Production-ready MVP with validated E2E functionality + successful Vercel deployment + enhanced agent debate system
 
-## ✅ RECENTLY COMPLETED (September 6, 2025):
+## ✅ RECENTLY COMPLETED (September 7, 2025):
+
+**Text Truncation System Fix - COMPLETED** 
+- Fixed mid-sentence text cutting in Round tabs and Insights tab
+- Implemented sentence-boundary aware truncation (400→600 chars for rounds, 300→400 for insights)
+- Added proper "Show more" button functionality with accurate line counts
+- Regex-based sentence detection with word-boundary fallback for edge cases
+- All agent responses now display complete sentences with clear "..." indicators
 
 **Timeline Enhancement System - COMPLETED**
 - 7-step post-agent processing timeline (Collection → Comparison → Analysis → Consensus → Synthesis → Validation → Formatting)  

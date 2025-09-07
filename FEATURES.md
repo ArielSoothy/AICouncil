@@ -73,19 +73,37 @@
 - **Last Modified**: January 2025 (Initial implementation)
 - **DO NOT**: Remove dynamic round addition capability
 
-### 6. Full Response Display with Scrolling
+### 6. Smart Text Truncation System
+- **Status**: ✅ ACTIVE & USER-REQUESTED & CRITICAL
+- **Location**: `AICouncil/components/agents/debate-display.tsx`
+- **Purpose**: Display agent responses with intelligent truncation that respects sentence boundaries
+- **Key Features**:
+  - Sentence-boundary aware truncation (600 chars for round tabs, 400 chars for insights)
+  - Regex-based sentence detection: `split(/(?<=[.!?])\s+/)`
+  - Word-boundary fallback for very long sentences
+  - "Show more" buttons with accurate line counts
+  - Never cuts text mid-sentence, always ends with complete sentences + "..."
+- **Core Logic**: 
+  - `getDisplayContent()` function in debate-display.tsx:147-175
+  - `isLongMessage()` threshold detection (800 chars or 12+ lines)
+  - Expandable message state management
+- **Dependencies**: React state (expandedMessages), lucide-react icons
+- **Last Modified**: September 2025 (Fixed mid-sentence cutting issue)
+- **DO NOT**: Reduce character limits below current levels, remove sentence detection, or allow mid-sentence cuts
+
+### 7. Full Response Display with Scrolling
 - **Status**: ✅ ACTIVE & USER-REQUESTED
 - **Location**: `AICouncil/components/agents/debate-display.tsx`
-- **Purpose**: Show complete agent responses without truncation
+- **Purpose**: Show complete agent responses with scrolling for long content
 - **Key Features**:
   - ScrollArea with 700px height for round content
-  - Full message content display
+  - Full message content display when expanded
   - Individual message cards with proper spacing
 - **Dependencies**: shadcn/ui ScrollArea
 - **Last Modified**: January 2025 (Increased height)
-- **DO NOT**: Truncate responses or remove scrolling
+- **DO NOT**: Remove scrolling capability or reduce container heights
 
-### 7. Heterogeneous Model Mixing System
+### 8. Heterogeneous Model Mixing System
 - **Status**: ✅ ACTIVE & RESEARCH-BASED & CRITICAL
 - **Location**: `lib/heterogeneous-mixing/` + `/api/agents/debate-heterogeneous`
 - **Purpose**: Research-validated optimal model selection for enhanced AI debate accuracy
