@@ -97,10 +97,21 @@ export async function POST(request: NextRequest) {
         })
         
       case 'debate':
-        // Store complete debate session as memories
-        const { DebateWithMemory } = await import('@/lib/agents/debate-with-memory')
-        const debateMemory = new DebateWithMemory(user?.id)
-        await debateMemory.storeDebateAsMemory(body.session)
+        // Store debate session as episodic memory (simplified)
+        if (body.session?.finalSynthesis) {
+          await memoryService.storeEpisodicMemory({
+            query: body.session.query,
+            agents_used: body.session.agents?.map((a: any) => a.name) || [],
+            consensus_reached: body.session.finalSynthesis.conclusion,
+            confidence_score: body.session.finalSynthesis.confidence,
+            disagreement_points: body.session.finalSynthesis.disagreements || [],
+            total_tokens_used: body.session.totalTokensUsed || 0,
+            estimated_cost: body.session.estimatedCost || 0,
+            response_time_ms: body.session.endTime 
+              ? new Date(body.session.endTime).getTime() - new Date(body.session.startTime).getTime()
+              : 0
+          })
+        }
         
         return NextResponse.json({ 
           success: true,
@@ -122,15 +133,16 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Enhanced debate endpoint with memory
+// Search for relevant memories (simplified)
 export async function PUT(request: NextRequest) {
   try {
     // Get user from session
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
+    const memoryService = new SimpleMemoryService(user?.id)
     const body = await request.json()
-    const { query, agents } = body
+    const { query } = body
     
     if (!query) {
       return NextResponse.json({ 
@@ -139,35 +151,17 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 })
     }
     
-    // Enhance query with memory
-    const { DebateWithMemory } = await import('@/lib/agents/debate-with-memory')
-    const debateMemory = new DebateWithMemory(user?.id)
-    
-    const enhanced = await debateMemory.enhanceQueryWithMemory(query, agents || [])
-    
-    // Calculate memory impact
-    const memoryImpact = debateMemory.calculateMemoryImpact(
-      enhanced.relevantMemories,
-      {
-        id: 'temp',
-        query,
-        agents: agents || [],
-        rounds: [],
-        totalTokensUsed: 0,
-        estimatedCost: 0.01, // Baseline cost
-        startTime: new Date(),
-        status: 'initializing'
-      }
-    )
+    // Search for relevant memories
+    const relevantMemories = await memoryService.searchEpisodicMemories(query, 5)
     
     return NextResponse.json({ 
       success: true, 
-      enhanced,
-      memoryImpact,
-      memoriesFound: enhanced.relevantMemories.length
+      memories: relevantMemories,
+      memoriesFound: relevantMemories.length,
+      message: `Found ${relevantMemories.length} relevant memories`
     })
   } catch (error) {
-    console.error('Memory enhancement error:', error)
+    console.error('Memory search error:', error)
     return NextResponse.json({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Internal server error' 

@@ -11,6 +11,7 @@ import { providerRegistry } from '@/lib/ai-providers'
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { canUseModel } from '@/lib/user-tiers'
+import { SimpleMemoryService } from '@/lib/memory/simple-memory-service'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -127,6 +128,26 @@ export async function POST(request: NextRequest) {
       }
     })
     
+    // Initialize memory service for this user
+    const memoryService = new SimpleMemoryService(userTier !== 'guest' ? 'user-id' : null)
+    
+    // MEMORY INTEGRATION: Retrieve relevant past memories before debate
+    let relevantMemories: any[] = []
+    try {
+      relevantMemories = await memoryService.searchEpisodicMemories(query, 3)
+      console.log(`🧠 Found ${relevantMemories.length} relevant memories for query: "${query.substring(0, 50)}..."`)
+      
+      // Log memory insights for debugging
+      if (relevantMemories.length > 0) {
+        console.log('📚 Past experiences found:')
+        relevantMemories.forEach((memory, index) => {
+          console.log(`  ${index + 1}. "${memory.consensus_reached.substring(0, 100)}..." (confidence: ${memory.confidence_score})`)
+        })
+      }
+    } catch (memoryError) {
+      console.warn('Memory retrieval failed, continuing without memories:', memoryError)
+    }
+    
     // Create debate request
     const debateRequest: DebateRequest = {
       query,
@@ -134,7 +155,12 @@ export async function POST(request: NextRequest) {
       rounds,
       responseMode,
       userTier,
-      enableWebSearch
+      enableWebSearch,
+      // Add memory context to enhance debate quality
+      memoryContext: relevantMemories.length > 0 ? {
+        pastExperiences: relevantMemories,
+        hasRelevantHistory: true
+      } : undefined
     }
     
     // Initialize and run debate
@@ -154,6 +180,51 @@ export async function POST(request: NextRequest) {
     
     // Calculate cost
     session.estimatedCost = calculateDebateCost(session)
+    
+    // MEMORY INTEGRATION: Store episodic memory after successful debate
+    if (session.status === 'completed' && userTier !== 'guest') {
+      try {
+        console.log('💾 Storing episodic memory from completed debate...')
+        
+        // Extract key information from debate session
+        const episodicMemory = {
+          query: query,
+          agents_used: agentConfigs.map(agent => `${agent.provider}/${agent.model}`),
+          consensus_reached: session.synthesis?.response || 'No clear consensus reached',
+          confidence_score: session.synthesis?.confidence || 0.5,
+          disagreement_points: session.rounds?.map((round: any) => 
+            round.responses?.map((resp: any) => resp.disagreements || []).flat()
+          ).flat().filter(Boolean) || [],
+          resolution_method: 'agent_debate',
+          total_tokens_used: session.totalTokensUsed || 0,
+          estimated_cost: session.estimatedCost || 0,
+          response_time_ms: Date.now() - (session.startTime || Date.now()),
+          follow_up_questions: session.followUpQuestions || []
+        }
+        
+        const storedMemory = await memoryService.storeEpisodicMemory(episodicMemory)
+        console.log(`✅ Stored episodic memory: ${storedMemory?.id}`)
+        
+        // Also extract and store semantic knowledge if consensus was strong
+        if (session.synthesis?.confidence && session.synthesis.confidence > 0.7) {
+          const semanticMemory = {
+            fact: session.synthesis.response,
+            category: 'learned_fact' as const,
+            source: `AI Council debate with ${agentConfigs.length} agents`,
+            confidence: session.synthesis.confidence,
+            contexts: [query.split(' ').slice(0, 3).join(' ')], // First few words as context
+            last_used: new Date(),
+            validations: 1  // First validation from this debate
+          }
+          
+          const storedSemantic = await memoryService.storeSemanticMemory(semanticMemory)
+          console.log(`✅ Stored high-confidence semantic memory: ${storedSemantic?.id}`)
+        }
+        
+      } catch (memoryError) {
+        console.error('Failed to store memory, continuing anyway:', memoryError)
+      }
+    }
     
     // Save to database if authenticated
     if (userTier !== 'guest') {

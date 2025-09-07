@@ -111,6 +111,10 @@ export interface DebateRequest {
   comparisonModel?: { provider: string; model: string }  // Model to compare against
   includeConsensusComparison?: boolean  // Also compare with normal consensus
   consensusModels?: { provider: string; model: string }[]  // Models for consensus comparison
+  memoryContext?: {  // New: Memory system integration
+    pastExperiences: any[]
+    hasRelevantHistory: boolean
+  }
 }
 
 export interface DebateResponse {

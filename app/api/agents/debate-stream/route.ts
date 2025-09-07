@@ -7,6 +7,7 @@ import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
 import { getRoleBasedSearchService, type AgentSearchContext, type RoleBasedSearchResult } from '@/lib/web-search/role-based-search'
 import { getContextExtractor, type DebateMessage } from '@/lib/web-search/context-extractor'
 import { DisagreementAnalyzer } from '@/lib/agents/disagreement-analyzer'
+import { SimpleMemoryService } from '@/lib/memory/simple-memory-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,6 +93,48 @@ export async function POST(request: NextRequest) {
           totalModels: agents.length,
           timestamp: Date.now() 
         })}\n\n`))
+        
+        // MEMORY INTEGRATION: Initialize memory service and retrieve relevant memories
+        const memoryService = new SimpleMemoryService('guest-user')
+        let relevantMemories: any[] = []
+        
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            type: 'memory_search_started',
+            message: 'Searching for relevant past experiences...',
+            timestamp: Date.now()
+          })}\n\n`))
+          
+          relevantMemories = await memoryService.searchEpisodicMemories(query, 3)
+          console.log(`🧠 MEMORY RETRIEVAL: Found ${relevantMemories.length} relevant memories for query: "${query.substring(0, 50)}..."`)
+          
+          if (relevantMemories.length > 0) {
+            console.log('📚 MEMORY INSIGHTS: Past experiences found:')
+            relevantMemories.forEach((memory, index) => {
+              console.log(`  ${index + 1}. "${memory.consensus_reached.substring(0, 100)}..." (confidence: ${memory.confidence_score})`)
+            })
+            
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              type: 'memory_found',
+              count: relevantMemories.length,
+              message: `Found ${relevantMemories.length} relevant past experience${relevantMemories.length > 1 ? 's' : ''} to inform this debate`,
+              timestamp: Date.now()
+            })}\n\n`))
+          } else {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              type: 'memory_empty',
+              message: 'No past experiences found - this is a fresh discussion',
+              timestamp: Date.now()
+            })}\n\n`))
+          }
+        } catch (memoryError) {
+          console.warn('🧠 MEMORY RETRIEVAL ERROR:', memoryError)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            type: 'memory_error',
+            message: 'Memory search failed, continuing without past context',
+            timestamp: Date.now()
+          })}\n\n`))
+        }
         
         // Track all responses across rounds
         const allRoundResponses: any[] = []
@@ -938,6 +981,73 @@ Format your response with clear sections using markdown headers (###).`
         }
         
         // Training data will be collected via the synthesis data sent above
+        
+        // MEMORY INTEGRATION: Store this debate as episodic memory
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            type: 'memory_storage_started',
+            message: 'Storing debate experience in memory...',
+            timestamp: Date.now()
+          })}\n\n`))
+          
+          console.log('💾 MEMORY STORAGE: Storing episodic memory from completed debate...')
+          
+          // Extract synthesis data from the last successful synthesis
+          let finalSynthesis = null
+          for (let i = allRoundResponses.length - 1; i >= 0; i--) {
+            if (allRoundResponses[i]?.synthesis) {
+              finalSynthesis = allRoundResponses[i].synthesis
+              break
+            }
+          }
+          
+          const episodicMemory = {
+            query: query,
+            agents_used: agents.map((agent: any) => `${agent.provider}/${agent.model}`),
+            consensus_reached: finalSynthesis?.conclusion || 'No clear consensus reached',
+            confidence_score: finalSynthesis?.confidence || 0.5,
+            disagreement_points: finalSynthesis?.disagreements || [],
+            resolution_method: 'streaming_agent_debate',
+            total_tokens_used: allRoundResponses.reduce((sum, r) => sum + (r.tokensUsed || 0), 0),
+            estimated_cost: allRoundResponses.reduce((sum, r) => sum + (r.cost || 0), 0),
+            response_time_ms: Date.now() - Date.now(), // Would need startTime tracking
+            follow_up_questions: finalSynthesis?.informationRequest?.suggestedQuestions || []
+          }
+          
+          const storedMemory = await memoryService.storeEpisodicMemory(episodicMemory)
+          console.log(`✅ MEMORY STORAGE: Stored episodic memory: ${storedMemory?.id}`)
+          
+          // Also store semantic memory for high confidence results
+          if (finalSynthesis?.confidence && finalSynthesis.confidence > 0.7) {
+            const semanticMemory = {
+              fact: finalSynthesis.conclusion,
+              category: 'learned_fact' as const,
+              source: `AI Council streaming debate with ${agents.length} agents`,
+              confidence: finalSynthesis.confidence,
+              contexts: [query.split(' ').slice(0, 3).join(' ')],
+              last_used: new Date(),
+              validations: 1
+            }
+            
+            const storedSemantic = await memoryService.storeSemanticMemory(semanticMemory)
+            console.log(`✅ MEMORY STORAGE: Stored high-confidence semantic memory: ${storedSemantic?.id}`)
+          }
+          
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            type: 'memory_stored',
+            message: 'Experience saved to memory for future debates',
+            memoryId: storedMemory?.id,
+            timestamp: Date.now()
+          })}\n\n`))
+          
+        } catch (memoryError) {
+          console.error('💾 MEMORY STORAGE ERROR:', memoryError)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            type: 'memory_storage_error',
+            message: 'Failed to store experience, but debate completed successfully',
+            timestamp: Date.now()
+          })}\n\n`))
+        }
         
         // Send final completion event
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 

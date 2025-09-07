@@ -88,6 +88,15 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     error?: string;
   }>({ isSearching: false })
   
+  // Memory system tracking
+  const [memoryStatus, setMemoryStatus] = useState<{
+    isSearching: boolean;
+    foundCount?: number;
+    relevantMemories?: any[];
+    isStoring: boolean;
+    stored?: boolean;
+  }>({ isSearching: false, isStoring: false })
+  
   // Model status tracking
   const [modelStatuses, setModelStatuses] = useState<Record<string, {
     status: 'waiting' | 'thinking' | 'completed' | 'error',
@@ -259,6 +268,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     isLoadingRef.current = true
     setError(null)
     setStreamingUpdates([])
+    setMemoryStatus({ isSearching: false, isStoring: false })
     setCurrentPhase('Connecting...')
     
     if (!continueRound2) {
@@ -457,6 +467,50 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     error: data.reason
                   })
                   setCurrentPhase('Web search failed. Continuing with analysis...')
+                  break
+                  
+                case 'memory_search_started':
+                  setMemoryStatus(prev => ({
+                    ...prev,
+                    isSearching: true,
+                    stored: false
+                  }))
+                  setCurrentPhase('🧠 Searching for relevant past experiences...')
+                  break
+                  
+                case 'memory_found':
+                  setMemoryStatus(prev => ({
+                    ...prev,
+                    isSearching: false,
+                    foundCount: data.count,
+                    relevantMemories: data.memories
+                  }))
+                  setCurrentPhase(`🧠 Found ${data.count} relevant memories from past debates`)
+                  break
+                  
+                case 'memory_empty':
+                  setMemoryStatus(prev => ({
+                    ...prev,
+                    isSearching: false,
+                    foundCount: 0
+                  }))
+                  setCurrentPhase(`🧠 ${data.message || 'No past experiences found - this is a fresh discussion'}`)
+                  break
+                  
+                case 'memory_storage_started':
+                  setMemoryStatus(prev => ({
+                    ...prev,
+                    isStoring: true
+                  }))
+                  break
+                  
+                case 'memory_stored':
+                  setMemoryStatus(prev => ({
+                    ...prev,
+                    isStoring: false,
+                    stored: true
+                  }))
+                  setCurrentPhase(`💾 ${data.message || 'Experience saved to memory for future debates'}`)
                   break
                   
                 case 'model_started':
@@ -897,6 +951,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     setActiveTab('setup')
     setError(null)
     setWebSearchStatus({ isSearching: false })
+    setMemoryStatus({ isSearching: false, isStoring: false })
   }
 
   return (
@@ -1326,6 +1381,67 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   </div>
                 )}
                 
+                {/* Memory Status - Persistent Display */}
+                {(memoryStatus.isSearching || memoryStatus.foundCount !== undefined || memoryStatus.isStoring || memoryStatus.stored) && (
+                  <div className={`mb-4 p-4 rounded-lg border ${
+                    memoryStatus.isStoring || memoryStatus.isSearching ? 'bg-blue-500/10 border-blue-500/30' :
+                    memoryStatus.stored ? 'bg-green-500/10 border-green-500/30' :
+                    'bg-purple-500/10 border-purple-500/30'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <Brain className={`h-5 w-5 ${
+                        memoryStatus.isStoring || memoryStatus.isSearching ? 'text-blue-400 animate-pulse' :
+                        memoryStatus.stored ? 'text-green-400' :
+                        'text-purple-400'
+                      }`} />
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold mb-1">
+                          {memoryStatus.isSearching ? '🧠 Searching Memory...' :
+                           memoryStatus.isStoring ? '💾 Storing Experience...' :
+                           memoryStatus.stored ? '✅ Experience Saved' :
+                           memoryStatus.foundCount !== undefined ? `🧠 Memory Retrieved (${memoryStatus.foundCount})` :
+                           '🧠 Memory System Active'}
+                        </h4>
+                        
+                        {memoryStatus.isSearching && (
+                          <p className="text-xs text-blue-400">
+                            Looking for relevant past debates and experiences...
+                          </p>
+                        )}
+                        
+                        {memoryStatus.foundCount !== undefined && !memoryStatus.isSearching && (
+                          <div>
+                            <p className="text-xs text-purple-400 mb-1">
+                              Found {memoryStatus.foundCount} relevant memories from past debates
+                            </p>
+                            {memoryStatus.foundCount === 0 ? (
+                              <p className="text-xs text-muted-foreground">
+                                This is a fresh discussion - no past experiences found
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                Agents will use these experiences to provide better insights
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        
+                        {memoryStatus.isStoring && (
+                          <p className="text-xs text-blue-400">
+                            Saving this debate experience for future reference...
+                          </p>
+                        )}
+                        
+                        {memoryStatus.stored && (
+                          <p className="text-xs text-green-400">
+                            Debate experience saved - will help improve future discussions
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Web Search Status */}
                 {enableWebSearch && (webSearchStatus.isSearching || webSearchStatus.resultsCount !== undefined || webSearchStatus.error) && (
                   <div className={`mb-4 p-4 rounded-lg border ${
