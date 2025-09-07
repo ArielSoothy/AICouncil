@@ -94,17 +94,22 @@ export async function POST(request: NextRequest) {
           timestamp: Date.now() 
         })}\n\n`))
         
+        console.log('🔥 CHECKPOINT: About to start memory integration...')
+        
         // MEMORY INTEGRATION: Initialize memory service and retrieve relevant memories
+        console.log('🧠 MEMORY SYSTEM: Starting memory initialization...')
         const memoryService = new SimpleMemoryService('guest-user')
         let relevantMemories: any[] = []
         
         try {
+          console.log('🧠 MEMORY SYSTEM: Sending memory search started event...')
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             type: 'memory_search_started',
             message: 'Searching for relevant past experiences...',
             timestamp: Date.now()
           })}\n\n`))
           
+          console.log('🧠 MEMORY SYSTEM: Calling searchEpisodicMemories with query:', query.substring(0, 50) + '...')
           relevantMemories = await memoryService.searchEpisodicMemories(query, 3)
           console.log(`🧠 MEMORY RETRIEVAL: Found ${relevantMemories.length} relevant memories for query: "${query.substring(0, 50)}..."`)
           
@@ -121,6 +126,7 @@ export async function POST(request: NextRequest) {
               timestamp: Date.now()
             })}\n\n`))
           } else {
+            console.log('🧠 MEMORY SYSTEM: No relevant memories found')
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
               type: 'memory_empty',
               message: 'No past experiences found - this is a fresh discussion',
@@ -128,7 +134,8 @@ export async function POST(request: NextRequest) {
             })}\n\n`))
           }
         } catch (memoryError) {
-          console.warn('🧠 MEMORY RETRIEVAL ERROR:', memoryError)
+          console.error('❌ MEMORY RETRIEVAL ERROR:', memoryError)
+          console.error('❌ MEMORY ERROR DETAILS:', memoryError.message, memoryError.stack)
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             type: 'memory_error',
             message: 'Memory search failed, continuing without past context',
@@ -192,6 +199,25 @@ export async function POST(request: NextRequest) {
               let webSearchResults = null
               let roleBasedSearchResult: RoleBasedSearchResult | null = null
               
+              // MEMORY INTEGRATION: Enhance query with relevant memories
+              if (relevantMemories.length > 0) {
+                let memoryContext = '\n\n--- RELEVANT PAST EXPERIENCES ---\n'
+                relevantMemories.forEach((memory, index) => {
+                  memoryContext += `\nPast Experience ${index + 1}:\n`
+                  memoryContext += `Query: "${memory.query}"\n`
+                  memoryContext += `Consensus: "${memory.consensus_reached}"\n`
+                  memoryContext += `Confidence: ${(memory.confidence_score * 100).toFixed(0)}%\n`
+                  if (memory.disagreement_points?.length > 0) {
+                    memoryContext += `Previous disagreements: ${memory.disagreement_points.join(', ')}\n`
+                  }
+                })
+                memoryContext += '\n--- END PAST EXPERIENCES ---\n\n'
+                memoryContext += 'Please consider these past experiences when forming your response, but focus on the current query.\n'
+                
+                enhancedQuery = query + memoryContext
+                console.log(`🧠 MEMORY: Enhanced query with ${relevantMemories.length} past experiences`)
+              }
+              
               if (enableWebSearch) {
                 try {
                   // Send progressive web search started event
@@ -235,7 +261,7 @@ export async function POST(request: NextRequest) {
                   if (roleBasedSearchResult && roleBasedSearchResult.results.length > 0) {
                     // Format search results for prompt inclusion
                     const searchContext = roleBasedSearchService.formatSearchResultsForPrompt(roleBasedSearchResult);
-                    enhancedQuery = query + searchContext;
+                    enhancedQuery = enhancedQuery + searchContext;  // Preserve existing memory context
                     
                     // Prepare results for UI display
                     const allSources: string[] = [];
@@ -283,7 +309,7 @@ export async function POST(request: NextRequest) {
                     });
                     
                     if (enriched.searchContext) {
-                      enhancedQuery = query + enriched.searchContext;
+                      enhancedQuery = enhancedQuery + enriched.searchContext;  // Preserve existing memory context
                       webSearchResults = {
                         query: enriched.query || query,
                         sources: enriched.sources || [],
