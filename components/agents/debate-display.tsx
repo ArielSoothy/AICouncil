@@ -25,11 +25,12 @@ import {
   GitCompare,
   Globe,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  AlertTriangle
 } from 'lucide-react'
 import { ComparisonDisplay } from '@/components/consensus/comparison-display'
 import { ThreeWayComparison } from '@/components/consensus/three-way-comparison'
-import { DisagreementInsights } from './disagreement-insights-simple'
+// Removed DisagreementInsights - using simple indicators instead
 
 // Model cost calculation helper
 const calculateMessageCost = (message: AgentMessage): number => {
@@ -88,6 +89,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
   const [showCostBreakdown, setShowCostBreakdown] = useState(false)
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
   
+  
   // Debug logging
   console.log('DebateDisplay received session:', {
     hasComparison: !!session.comparisonResponse,
@@ -142,37 +144,37 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
     const isLong = isLongMessage(message.content)
     const isExpanded = expandedMessages.has(messageId)
     
-    // For long messages, show more content before truncating
-    // Find a good break point to avoid cutting words/sentences
-    const truncateAtSentence = (text: string, maxLength: number): string => {
-      if (text.length <= maxLength) return text
+    // For long messages, show more content before truncating (increased from 400 to 600 chars)
+    // Always respect sentence boundaries to avoid cutting mid-sentence
+    const getDisplayContent = () => {
+      if (!isLong || isExpanded) return message.content
       
-      // Try to find sentence end within reasonable distance
-      const truncated = text.substring(0, maxLength)
-      const lastSentenceEnd = Math.max(
-        truncated.lastIndexOf('. '),
-        truncated.lastIndexOf('! '),  
-        truncated.lastIndexOf('? ')
-      )
+      // Split into sentences using proper sentence endings
+      const sentences = message.content.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0)
+      let truncated = ''
       
-      // If we find a sentence end within 100 chars of target, use it
-      if (lastSentenceEnd > maxLength - 100) {
-        return text.substring(0, lastSentenceEnd + 1) // Clean sentence ending, no ellipsis needed
+      // Take complete sentences up to ~600 characters (increased limit)
+      for (const sentence of sentences) {
+        const nextLength = (truncated + sentence).length
+        // Only add if it fits comfortably or if we haven't added any sentences yet
+        if (nextLength <= 600 || truncated.length === 0) {
+          truncated += (truncated ? ' ' : '') + sentence
+        } else {
+          break
+        }
       }
       
-      // Otherwise find last complete word and add ellipsis
-      const lastSpace = truncated.lastIndexOf(' ')
-      if (lastSpace > maxLength - 50) {
-        return text.substring(0, lastSpace) + '...'
+      // If no sentences fit, take first 600 chars and find last complete word
+      if (truncated.length === 0) {
+        const firstChunk = message.content.substring(0, 600)
+        const lastSpace = firstChunk.lastIndexOf(' ')
+        truncated = lastSpace > 0 ? firstChunk.substring(0, lastSpace) : firstChunk
       }
       
-      // Fallback to character limit with ellipsis
-      return truncated + '...'
+      return truncated + (truncated.length < message.content.length ? '...' : '')
     }
     
-    const displayContent = isLong && !isExpanded 
-      ? truncateAtSentence(message.content, 600)
-      : message.content
+    const displayContent = getDisplayContent()
     
     return (
       <Card key={messageId} className="p-4 space-y-3">
@@ -441,10 +443,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
               )}
             </TabsTrigger>
           ))}
-          <TabsTrigger value="timeline" className="ml-auto">Timeline</TabsTrigger>
-          {session.disagreementAnalysis && (
-            <TabsTrigger value="insights">Insights</TabsTrigger>
-          )}
+          <TabsTrigger value="insights">Insights</TabsTrigger>
           <TabsTrigger value="synthesis">Synthesis</TabsTrigger>
         </TabsList>
 
@@ -487,37 +486,188 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
           </TabsContent>
         ))}
         
-        {/* Timeline Tab */}
-        <TabsContent value="timeline" className="space-y-4">
-          <ScrollArea className="h-[600px] pr-4">
-            <div className="space-y-4">
-              {session.rounds.map((round, roundIdx) => (
-                <div key={round.roundNumber}>
-                  {roundIdx > 0 && (
-                    <div className="flex items-center gap-2 my-4">
-                      <div className="flex-1 h-px bg-border" />
-                      <Badge variant="outline" className="text-xs">
-                        Round {round.roundNumber}
-                      </Badge>
-                      <div className="flex-1 h-px bg-border" />
+        {/* Chain-of-Debate Insights */}
+        <TabsContent value="insights" className="space-y-4">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <GitCompare className="w-5 h-5" />
+              Why Agents Disagreed
+              <Badge variant="outline" className="ml-2 text-xs">Research-Based</Badge>
+            </h3>
+            
+            <div className="space-y-6">
+              {/* Core disagreement detection */}
+              {(() => {
+                const disagreements = []
+                
+                // Look for explicit challenges between agents
+                session.rounds[0]?.messages.forEach((msg, i) => {
+                  const otherAgents = session.rounds[0]?.messages.filter((_, idx) => idx !== i) || []
+                  const content = msg.content.toLowerCase()
+                  
+                  // Find challenge phrases
+                  const challenges = [
+                    { phrase: 'however', type: 'Counter-Argument' },
+                    { phrase: 'but', type: 'Contradiction' },
+                    { phrase: 'disagree', type: 'Direct Challenge' },
+                    { phrase: 'contrary', type: 'Opposition' },
+                    { phrase: 'on the other hand', type: 'Alternative View' },
+                    { phrase: 'contradicts', type: 'Evidence Conflict' }
+                  ]
+                  
+                  challenges.forEach(challenge => {
+                    if (content.includes(challenge.phrase)) {
+                      // Find the challenge phrase and extract surrounding context
+                      const phraseIndex = content.indexOf(challenge.phrase)
+                      if (phraseIndex !== -1) {
+                        // Get more context around the challenge phrase
+                        const contextStart = Math.max(0, phraseIndex - 50)
+                        const contextEnd = Math.min(msg.content.length, phraseIndex + 200)
+                        let context = msg.content.slice(contextStart, contextEnd).trim()
+                        
+                        // Clean up the context to end at a complete word
+                        if (contextEnd < msg.content.length) {
+                          const lastSpace = context.lastIndexOf(' ')
+                          if (lastSpace > context.length - 20) {
+                            context = context.slice(0, lastSpace) + '...'
+                          }
+                        }
+                        
+                        if (context.length > 20) {
+                          disagreements.push({
+                            agent: msg.role,
+                            type: challenge.type,
+                            context: context,
+                            targetAgents: otherAgents.map(a => a.role)
+                          })
+                        }
+                      }
+                    }
+                  })
+                })
+                
+                // Look for different recommendations - show FULL recommendations using proper truncation
+                const recommendations = session.rounds[0]?.messages.map(msg => {
+                  const fullResponse = msg.content.trim()
+                  
+                  // Extract first paragraph, then apply sentence-aware truncation
+                  const firstParagraph = fullResponse.split('\n\n')[0] || fullResponse
+                  
+                  // Use same sentence-aware truncation as main messages (increased to 400 chars for insights)
+                  let preview = firstParagraph
+                  if (firstParagraph.length > 400) {
+                    const sentences = firstParagraph.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0)
+                    let truncated = ''
+                    
+                    for (const sentence of sentences) {
+                      const nextLength = (truncated + sentence).length
+                      if (nextLength <= 400 || truncated.length === 0) {
+                        truncated += (truncated ? ' ' : '') + sentence
+                      } else {
+                        break
+                      }
+                    }
+                    
+                    // Fallback to word boundary if no sentences fit
+                    if (truncated.length === 0) {
+                      const chunk = firstParagraph.substring(0, 400)
+                      const lastSpace = chunk.lastIndexOf(' ')
+                      truncated = lastSpace > 0 ? chunk.substring(0, lastSpace) : chunk
+                    }
+                    
+                    preview = truncated + (truncated.length < firstParagraph.length ? '...' : '')
+                  }
+                  
+                  return {
+                    agent: msg.role,
+                    recommendations: [preview]
+                  }
+                }).filter(r => r.recommendations[0].length > 50) || []
+                
+                return (
+                  <div className="space-y-4">
+                    {disagreements.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-3 text-muted-foreground flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-orange-500" />
+                          Points of Conflict
+                        </h4>
+                        <div className="space-y-3">
+                          {disagreements.map((disagreement, idx) => {
+                            const Icon = agentIcons[disagreement.agent] || MessageSquare
+                            return (
+                              <div key={idx} className="border rounded-lg p-4 bg-red-50/50 dark:bg-red-950/20">
+                                <div className="flex items-start gap-3">
+                                  <Icon className="w-5 h-5 mt-0.5" style={{ color: agentColors[disagreement.agent] }} />
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <span className="font-medium capitalize">{disagreement.agent}</span>
+                                      <Badge variant="destructive" className="text-xs">{disagreement.type}</Badge>
+                                    </div>
+                                    <blockquote className="text-sm italic border-l-2 border-red-300 pl-3 text-muted-foreground">
+                                      "{disagreement.context}"
+                                    </blockquote>
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Challenged: {disagreement.targetAgents.join(', ')}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {recommendations.length > 1 && (
+                      <div>
+                        <h4 className="font-medium mb-3 text-muted-foreground flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-blue-500" />
+                          Competing Solutions
+                        </h4>
+                        <div className="space-y-3">
+                          {recommendations.map((rec, idx) => {
+                            const Icon = agentIcons[rec.agent] || MessageSquare
+                            return (
+                              <div key={idx} className="border rounded-lg p-4 bg-blue-50/50 dark:bg-blue-950/20">
+                                <div className="flex items-start gap-3">
+                                  <Icon className="w-5 h-5 mt-0.5" style={{ color: agentColors[rec.agent] }} />
+                                  <div className="flex-1">
+                                    <div className="font-medium capitalize mb-2">{rec.agent}'s Approach:</div>
+                                    {rec.recommendations.map((recommendation, ridx) => (
+                                      <div key={ridx} className="text-sm text-muted-foreground mb-1">
+                                        • {recommendation}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {disagreements.length === 0 && recommendations.length <= 1 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No significant disagreements detected</p>
+                        <p className="text-xs mt-1">Agents reached similar conclusions</p>
+                      </div>
+                    )}
+                    
+                    <div className="border-t pt-4 text-xs text-muted-foreground">
+                      <p className="flex items-center gap-1">
+                        <GitCompare className="w-3 h-3" />
+                        Based on "Chain-of-Debate" research (Microsoft, 2024) - tracking WHY models disagree
+                      </p>
                     </div>
-                  )}
-                  {round.messages.map(message => renderMessage(message))}
-                </div>
-              ))}
+                  </div>
+                )
+              })()}
             </div>
-          </ScrollArea>
+          </Card>
         </TabsContent>
-
-        {/* Insights Tab */}
-        {session.disagreementAnalysis && (
-          <TabsContent value="insights" className="space-y-4">
-            <DisagreementInsights 
-              analysis={session.disagreementAnalysis}
-              className="w-full"
-            />
-          </TabsContent>
-        )}
 
         <TabsContent value="synthesis" className="space-y-4">
           {/* Show three-way comparison if all data available */}

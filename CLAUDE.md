@@ -58,6 +58,26 @@ Follow structured workflow: Work → Test → Document → Ask approval → Push
 - `[Brief summary of what was completed]` - 1-2 key achievements from the session
 - `[Next high priority task from PRIORITIES.md]` - Top item from PRIORITIES.md high priority section
 
+## 🌐 CRITICAL: Playwright Browser Management
+**ALWAYS FOLLOW PROPER BROWSER WORKFLOW TO AVOID "browser already in use" ERRORS:**
+- **NEVER** call `browser_navigate()` multiple times without closing
+- **ALWAYS** close browser before opening new sessions  
+- **ONE BROWSER AT A TIME** - no exceptions
+
+**Required Pattern:**
+```javascript
+1. mcp__playwright__browser_close()  // ALWAYS close first
+2. mcp__playwright__browser_navigate(url)  // Then navigate  
+3. [do testing]
+4. mcp__playwright__browser_close()  // Close when done
+```
+
+**Browser Error Fix:**
+If "browser already in use" error occurs:
+1. `mcp__playwright__browser_close()` (force close)
+2. Wait a moment  
+3. `mcp__playwright__browser_navigate()` (try again)
+
 ## 🎯 SESSION COMPLETION CHECKLIST:
 - [ ] Work tasks completed
 - [ ] PRIORITIES.md updated with progress  
