@@ -76,20 +76,21 @@ git reset --hard HEAD  # Nuclear option
 
 Continue AI Council development work.
 
-Previous session: ✅ System cleanup complete + Memory disabled + Agent diversity fixed + Research framework ready
-Next priority: 🔬 IMPLEMENT BENCHMARK TESTS - Prove 20-40% improvement claim
+Previous session: ✅ Complete system cleanup - Memory disabled, agent diversity fixed, research framework ready
+Next priority: 🔬 Implement research validation tests - PROVE multi-agent debate works (20-40% improvement)
 
 IMPORTANT: 
-- PRIMARY GOAL: Create test harness from debate_research.md methodology
-- System is CLEAN: Memory disabled, agents use different models, TypeScript compiles
-- Focus: DETERMINISM tests (same query 10x) + ACCURACY tests (known answers)
-- Success metric: Statistical proof that debate > single model
+- Agent diversity WORKING: Analyst (llama-3.1-8b), Critic (gemma2-9b), Synthesizer (llama-3.3-70b)
+- Memory system cleanly disabled (MEMORY_ENABLED = false flag)
+- Research framework complete in debate_research.md
+- Focus: Build test harness and run validation benchmarks
 
-Recent commits:
-- Disabled memory system cleanly (on backlog)
-- Fixed agent model diversity (Analyst/Critic/Synthesizer different)
-- Created research validation guide
-- Added defensive development patterns
+Next Steps:
+1. Create /test-research page with test harness
+2. Run determinism tests (10x same query)
+3. Run accuracy tests with known answers
+4. Calculate statistics and p-values
+5. Document results proving 20-40% improvement
 
 Protected features (DO NOT MODIFY):
 - Agent debate system (lib/agents/)
@@ -97,7 +98,7 @@ Protected features (DO NOT MODIFY):
 - Round tabs display (components/agents/debate-display.tsx)
 
 MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md → debate_research.md
-TodoWrite: Create test harness + Run determinism tests + Run accuracy tests + Calculate statistics
+TodoWrite: Create test harness + Run determinism tests + Run accuracy benchmarks + Calculate statistics
 Follow defensive development: Read → Grep → Edit (not Write) → Test → Commit
 
 ---
