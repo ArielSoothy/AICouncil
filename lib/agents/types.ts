@@ -264,9 +264,9 @@ export const DEBATE_CONFIG: AgentDebateConfig = {
   minAgents: 2,
   maxAgents: 5,
   tokenLimits: {
-    perResponse: 500,
-    perRound: 2000,
-    total: 6000
+    perResponse: 1500,  // Increased from 500 to prevent cutoff
+    perRound: 4500,     // Increased proportionally
+    total: 12000        // Increased proportionally
   },
   timeouts: {
     perAgent: 30000, // 30 seconds
