@@ -1382,7 +1382,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 )}
                 
                 {/* Memory Status - Persistent Display */}
-                {(memoryStatus.isSearching || memoryStatus.foundCount !== undefined || memoryStatus.isStoring || memoryStatus.stored) && (
+                {/* Memory UI disabled - on backlog */}
+                {false && (memoryStatus.isSearching || memoryStatus.foundCount !== undefined || memoryStatus.isStoring || memoryStatus.stored) && (
                   <div className={`mb-4 p-4 rounded-lg border ${
                     memoryStatus.isStoring || memoryStatus.isSearching ? 'bg-blue-500/10 border-blue-500/30' :
                     memoryStatus.stored ? 'bg-green-500/10 border-green-500/30' :

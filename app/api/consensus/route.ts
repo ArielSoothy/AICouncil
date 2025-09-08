@@ -13,7 +13,7 @@ import { generateText } from 'ai'
 import { createClient } from '@/lib/supabase/server'
 import { MODEL_COSTS_PER_1K, MODEL_POWER } from '@/lib/model-metadata'
 import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
-import { SimpleMemoryService } from '@/lib/memory/simple-memory-service'
+// import { SimpleMemoryService } from '@/lib/memory/simple-memory-service' // Disabled - memory on backlog
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
@@ -589,40 +589,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // MEMORY INTEGRATION: Retrieve relevant past experiences
+    // MEMORY INTEGRATION: DISABLED - On backlog, not current priority
     let memoryContext: string | undefined
     let foundMemoriesCount = 0
     
-    try {
-      const memoryService = new SimpleMemoryService(userTier !== 'guest' ? 'user-session' : null)
-      const relevantMemories = await memoryService.searchEpisodicMemories(prompt, 3)
-      
-      console.log(`🧠 Found ${relevantMemories.length} relevant memories for query: "${prompt.substring(0, 50)}..."`)
-      foundMemoriesCount = relevantMemories.length
-      
-      if (relevantMemories.length > 0) {
-        console.log('📚 Past experiences found:')
-        relevantMemories.forEach((memory, index) => {
-          console.log(`  ${index + 1}. "${memory.consensus_reached.substring(0, 100)}..." (confidence: ${memory.confidence_score})`)
-        })
-        
-        // Add memory context to the enriched query
-        let memorySection = '\n\n--- RELEVANT PAST EXPERIENCES ---\n'
-        relevantMemories.forEach((memory, index) => {
-          memorySection += `\nPast Experience ${index + 1}:\n`
-          memorySection += `Query: "${memory.query}"\n`
-          memorySection += `Consensus: "${memory.consensus_reached}"\n`
-          memorySection += `Confidence: ${(memory.confidence_score * 100).toFixed(0)}%\n`
-        })
-        
-        memoryContext = memorySection
-        enrichedQuery = enrichedQuery + memorySection
-      } else {
-        console.log('🧠 No relevant memories found - this is a fresh query')
-      }
-    } catch (memoryError) {
-      console.warn('Memory retrieval failed, continuing without memories:', memoryError)
-    }
+    // Memory retrieval disabled - focusing on research validation
+    // When re-enabled, will retrieve relevant past experiences from database
+    // See: docs/archived/MEMORY_IMPLEMENTATION_PLAN.md for implementation details
 
     // Generate structured prompt using the new system
     const structuredPrompt = generateModelPrompt(enrichedQuery, responseMode as ResponseLength)
@@ -773,47 +746,15 @@ export async function POST(request: NextRequest) {
       }) // Add web search results if available
     }
 
-    // MEMORY INTEGRATION: Store episodic memory after successful consensus
-    if (userTier !== 'guest' && judgeAnalysis.confidence > 0.6) {
-      try {
-        console.log('💾 Storing episodic memory from successful consensus...')
-        
-        const memoryService = new SimpleMemoryService('user-session')
-        const episodicMemory = {
-          query: prompt,
-          agents_used: modelResponses.map(r => `${r.provider}/${r.model}`),
-          consensus_reached: judgeAnalysis.unifiedAnswer || judgeAnalysis.conciseAnswer,
-          confidence_score: judgeAnalysis.confidence,
-          disagreement_points: judgeAnalysis.disagreements || [],
-          resolution_method: 'multi_model_consensus',
-          total_tokens_used: totalTokensUsed,
-          estimated_cost: estimatedCost,
-          response_time_ms: Date.now() - startTime,
-          follow_up_questions: []
-        }
-        
-        const storedMemory = await memoryService.storeEpisodicMemory(episodicMemory)
-        console.log(`✅ Stored episodic memory: ${storedMemory?.id}`)
-        
-        // Store high-confidence facts as semantic memory
-        if (judgeAnalysis.confidence > 0.8) {
-          const semanticMemory = {
-            fact: judgeAnalysis.unifiedAnswer || judgeAnalysis.conciseAnswer,
-            category: 'consensus_fact' as const,
-            source: `AI Consensus with ${modelResponses.length} models`,
-            confidence: judgeAnalysis.confidence,
-            contexts: [prompt.split(' ').slice(0, 3).join(' ')],
-            last_used: new Date(),
-            validations: 1
-          }
-          
-          const storedSemantic = await memoryService.storeSemanticMemory(semanticMemory)
-          console.log(`✅ Stored high-confidence semantic memory: ${storedSemantic?.id}`)
-        }
-        
-      } catch (memoryError) {
-        console.error('Failed to store memory, continuing anyway:', memoryError)
-      }
+    // MEMORY INTEGRATION: DISABLED - On backlog, not current priority
+    // Memory system foundation is complete but disabled to focus on research validation
+    // See: docs/archived/MEMORY_IMPLEMENTATION_PLAN.md for future implementation
+    const MEMORY_ENABLED = false; // Toggle when ready to re-enable
+    
+    if (MEMORY_ENABLED && userTier !== 'guest' && judgeAnalysis.confidence > 0.6) {
+      // Memory code commented out but preserved for future use
+      // Will store episodic and semantic memories when re-enabled
+      console.log('Memory system currently disabled - focusing on research validation')
     }
 
     return NextResponse.json(enhancedResponse, {

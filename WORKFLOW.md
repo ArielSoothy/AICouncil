@@ -1,5 +1,26 @@
 # 🔒 SESSION WORKFLOW - STRUCTURED METHOD
 
+## 🛡️ DEFENSIVE DEVELOPMENT RULES (PREVENT FEATURE BREAKAGE):
+
+### Critical: How to Prevent Breaking Existing Features
+1. **NEVER use `Write` on existing files** - Always use `Edit` for surgical changes
+2. **ALWAYS read entire file first** - Understand context before changing
+3. **Search for dependencies** - Use Grep to find where components are used
+4. **Make MINIMAL changes** - Smallest possible diff = lowest risk
+5. **Comment, don't delete** - If unsure, comment out instead of removing
+6. **Test incrementally** - Run type-check after EACH change
+7. **Git commit checkpoints** - Commit after each successful feature
+
+### The "Feature Protection Protocol":
+```bash
+Before ANY change:
+1. grep -r "ComponentName" .  # Find all usages
+2. npm run type-check          # Baseline check
+3. [Make surgical edit]
+4. npm run type-check          # Verify no breaks
+5. git add -A && git commit -m "checkpoint: [change]"
+```
+
 ## 📋 START PROTOCOL:
 1. **Read all relevant files**: CLAUDE.md → PRIORITIES.md → FEATURES.md → PROJECT_OVERVIEW.md
 2. **TodoWrite with:**

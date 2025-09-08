@@ -7,7 +7,7 @@ import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
 import { getRoleBasedSearchService, type AgentSearchContext, type RoleBasedSearchResult } from '@/lib/web-search/role-based-search'
 import { getContextExtractor, type DebateMessage } from '@/lib/web-search/context-extractor'
 import { DisagreementAnalyzer } from '@/lib/agents/disagreement-analyzer'
-import { SimpleMemoryService } from '@/lib/memory/simple-memory-service'
+// import { SimpleMemoryService } from '@/lib/memory/simple-memory-service' // Disabled - memory on backlog
 
 export const dynamic = 'force-dynamic'
 
@@ -94,53 +94,15 @@ export async function POST(request: NextRequest) {
           timestamp: Date.now() 
         })}\n\n`))
         
-        console.log('🔥 CHECKPOINT: About to start memory integration...')
-        
-        // MEMORY INTEGRATION: Initialize memory service and retrieve relevant memories
-        console.log('🧠 MEMORY SYSTEM: Starting memory initialization...')
-        const memoryService = new SimpleMemoryService('guest-user')
+        // MEMORY INTEGRATION: DISABLED - On backlog, focusing on research validation
+        // Memory system will retrieve past experiences when re-enabled
+        // See: docs/archived/MEMORY_IMPLEMENTATION_PLAN.md
+        const MEMORY_ENABLED = false;
         let relevantMemories: any[] = []
         
-        try {
-          console.log('🧠 MEMORY SYSTEM: Sending memory search started event...')
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-            type: 'memory_search_started',
-            message: 'Searching for relevant past experiences...',
-            timestamp: Date.now()
-          })}\n\n`))
-          
-          console.log('🧠 MEMORY SYSTEM: Calling searchEpisodicMemories with query:', query.substring(0, 50) + '...')
-          relevantMemories = await memoryService.searchEpisodicMemories(query, 3)
-          console.log(`🧠 MEMORY RETRIEVAL: Found ${relevantMemories.length} relevant memories for query: "${query.substring(0, 50)}..."`)
-          
-          if (relevantMemories.length > 0) {
-            console.log('📚 MEMORY INSIGHTS: Past experiences found:')
-            relevantMemories.forEach((memory, index) => {
-              console.log(`  ${index + 1}. "${memory.consensus_reached.substring(0, 100)}..." (confidence: ${memory.confidence_score})`)
-            })
-            
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-              type: 'memory_found',
-              count: relevantMemories.length,
-              message: `Found ${relevantMemories.length} relevant past experience${relevantMemories.length > 1 ? 's' : ''} to inform this debate`,
-              timestamp: Date.now()
-            })}\n\n`))
-          } else {
-            console.log('🧠 MEMORY SYSTEM: No relevant memories found')
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-              type: 'memory_empty',
-              message: 'No past experiences found - this is a fresh discussion',
-              timestamp: Date.now()
-            })}\n\n`))
-          }
-        } catch (memoryError) {
-          console.error('❌ MEMORY RETRIEVAL ERROR:', memoryError)
-          console.error('❌ MEMORY ERROR DETAILS:', memoryError.message, memoryError.stack)
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-            type: 'memory_error',
-            message: 'Memory search failed, continuing without past context',
-            timestamp: Date.now()
-          })}\n\n`))
+        if (MEMORY_ENABLED) {
+          // Memory retrieval code disabled but preserved
+          console.log('Memory system currently disabled - focusing on research validation')
         }
         
         // Track all responses across rounds
@@ -1008,7 +970,9 @@ Format your response with clear sections using markdown headers (###).`
         
         // Training data will be collected via the synthesis data sent above
         
-        // MEMORY INTEGRATION: Store this debate as episodic memory
+        // MEMORY INTEGRATION: DISABLED - Store this debate as episodic memory
+        // Memory storage disabled - focusing on research validation
+        if (false) { // Disabled memory storage
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             type: 'memory_storage_started',
@@ -1040,7 +1004,8 @@ Format your response with clear sections using markdown headers (###).`
             follow_up_questions: finalSynthesis?.informationRequest?.suggestedQuestions || []
           }
           
-          const storedMemory = await memoryService.storeEpisodicMemory(episodicMemory)
+          // const storedMemory = await memoryService.storeEpisodicMemory(episodicMemory)
+          const storedMemory = null // Memory disabled
           console.log(`✅ MEMORY STORAGE: Stored episodic memory: ${storedMemory?.id}`)
           
           // Also store semantic memory for high confidence results
@@ -1055,7 +1020,8 @@ Format your response with clear sections using markdown headers (###).`
               validations: 1
             }
             
-            const storedSemantic = await memoryService.storeSemanticMemory(semanticMemory)
+            // const storedSemantic = await memoryService.storeSemanticMemory(semanticMemory)
+            const storedSemantic = null // Memory disabled
             console.log(`✅ MEMORY STORAGE: Stored high-confidence semantic memory: ${storedSemantic?.id}`)
           }
           
@@ -1074,6 +1040,7 @@ Format your response with clear sections using markdown headers (###).`
             timestamp: Date.now()
           })}\n\n`))
         }
+        } // End of disabled memory storage block
         
         // Send final completion event
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 

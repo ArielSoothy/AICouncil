@@ -205,7 +205,18 @@ export function DebateSetup({ onSubmit, isLoading = false, userTier = 'free' }: 
         <AgentSelector
           selectedAgents={selectedAgents}
           onAgentsChange={setSelectedAgents}
-          availableModels={[]}  // This should come from a provider
+          availableModels={[
+            { 
+              provider: 'groq', 
+              models: [
+                'llama-3.3-70b-versatile',
+                'llama-3.1-8b-instant',
+                'gemma2-9b-it',
+                'llama-3-groq-70b-tool-use',
+                'llama-3-groq-8b-tool-use'
+              ]
+            }
+          ]}
           userTier={userTier}
         />
       ) : (

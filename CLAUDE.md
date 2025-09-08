@@ -2,6 +2,54 @@
 
 **AI Council Development - Structured Workflow System**
 
+## 🛡️ DEFENSIVE DEVELOPMENT - PREVENTING FEATURE BREAKAGE
+
+### The Core Problem:
+"Many times when we add a feature, another feature is broken and sometimes I can't see it until later"
+
+### The Solution - Modular Defense Strategy:
+
+#### 1. **File Operation Safety Rules**:
+```
+❌ NEVER: Use Write on existing files (replaces entire file)
+✅ ALWAYS: Use Edit for surgical changes
+✅ ALWAYS: Read entire file before editing
+✅ ALWAYS: Search for dependencies before changing
+```
+
+#### 2. **Pre-Change Checklist**:
+```bash
+# BEFORE changing any component:
+1. grep -r "ComponentName" . --include="*.tsx" --include="*.ts"
+2. npm run type-check  # Baseline
+3. Make ONE surgical edit
+4. npm run type-check  # Verify
+5. git commit -m "checkpoint: [change]"
+```
+
+#### 3. **Context Window Protection**:
+```
+Every new conversation MUST include:
+- git log --oneline -5  # Recent changes
+- List of protected features from FEATURES.md
+- Any current errors/warnings
+- Explicit "DO NOT MODIFY: [list]"
+```
+
+#### 4. **Feature Isolation Rules**:
+- One feature = One commit
+- One file change at a time when possible
+- Test after EACH change
+- Document in FEATURES.md IMMEDIATELY
+
+#### 5. **Rollback Strategy**:
+```bash
+# If ANYTHING breaks:
+git status  # Check what changed
+git diff    # Review changes
+git reset --hard HEAD  # Nuclear option
+```
+
 ## 🚀 MANDATORY SESSION START PROTOCOL:
 1. **Read this file** (current session context)
 2. **Read WORKFLOW.md** (step-by-step work method)  
@@ -28,14 +76,29 @@
 
 Continue AI Council development work.
 
-Previous session: ✅ Heterogeneous Model Mixing (Phase 1) COMPLETE + Research-based enhancement system implemented + Query analysis + Model selection + Test interface
-Next priority: 🧪 Test heterogeneous mixing system + 🔬 Phase 2: Chain-of-debate tracking (track WHY models disagree)
+Previous session: ✅ System cleanup complete + Memory disabled + Agent diversity fixed + Research framework ready
+Next priority: 🔬 IMPLEMENT BENCHMARK TESTS - Prove 20-40% improvement claim
 
-IMPORTANT: First verify implementation works - test /test-heterogeneous page and /api/agents/debate-heterogeneous endpoint, then push to remote
+IMPORTANT: 
+- PRIMARY GOAL: Create test harness from debate_research.md methodology
+- System is CLEAN: Memory disabled, agents use different models, TypeScript compiles
+- Focus: DETERMINISM tests (same query 10x) + ACCURACY tests (known answers)
+- Success metric: Statistical proof that debate > single model
 
-MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md  
-TodoWrite: Test heterogeneous mixing + Next task from PRIORITIES.md + "Update PRIORITIES.md" + "Push changes" + "Create next prompt"
-Follow structured workflow: Work → Test → Document → Commit → Push → New prompt
+Recent commits:
+- Disabled memory system cleanly (on backlog)
+- Fixed agent model diversity (Analyst/Critic/Synthesizer different)
+- Created research validation guide
+- Added defensive development patterns
+
+Protected features (DO NOT MODIFY):
+- Agent debate system (lib/agents/)
+- Heterogeneous agent models (components/agents/agent-selector.tsx)
+- Round tabs display (components/agents/debate-display.tsx)
+
+MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md → debate_research.md
+TodoWrite: Create test harness + Run determinism tests + Run accuracy tests + Calculate statistics
+Follow defensive development: Read → Grep → Edit (not Write) → Test → Commit
 
 ---
 
