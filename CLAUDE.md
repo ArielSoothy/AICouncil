@@ -76,29 +76,21 @@ git reset --hard HEAD  # Nuclear option
 
 Continue AI Council development work.
 
-Previous session: ✅ Complete system cleanup - Memory disabled, agent diversity fixed, research framework ready
-Next priority: 🔬 Implement research validation tests - PROVE multi-agent debate works (20-40% improvement)
+Previous session: ✅ Removed research validation testing plan, kept debate_research.md for reference
+Next priority: 🔬 Chain-of-debate tracking implementation (Phase 2 enhancements)
 
 IMPORTANT: 
 - Agent diversity WORKING: Analyst (llama-3.1-8b), Critic (gemma2-9b), Synthesizer (llama-3.3-70b)
 - Memory system cleanly disabled (MEMORY_ENABLED = false flag)
-- Research framework complete in debate_research.md
-- Focus: Build test harness and run validation benchmarks
-
-Next Steps:
-1. Create /test-research page with test harness
-2. Run determinism tests (10x same query)
-3. Run accuracy tests with known answers
-4. Calculate statistics and p-values
-5. Document results proving 20-40% improvement
+- Focus on improving existing features and user experience
 
 Protected features (DO NOT MODIFY):
 - Agent debate system (lib/agents/)
 - Heterogeneous agent models (components/agents/agent-selector.tsx)
 - Round tabs display (components/agents/debate-display.tsx)
 
-MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md → debate_research.md
-TodoWrite: Create test harness + Run determinism tests + Run accuracy benchmarks + Calculate statistics
+MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
+TodoWrite: Next task from PRIORITIES.md + Update documentation
 Follow defensive development: Read → Grep → Edit (not Write) → Test → Commit
 
 ---

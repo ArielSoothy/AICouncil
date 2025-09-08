@@ -35,8 +35,13 @@ Before ANY change:
 - **Mark todos completed** as you go
 
 ## 🧪 TESTING PHASE:
+- **NEVER ASSUME - ALWAYS TEST**: Every feature, every change, every time
 - **Test thoroughly**: `npm run type-check` + `npm run lint`
-- **Use MCP Playwright** for online/UI testing when applicable
+- **Use MCP Playwright** for comprehensive UI testing
+- **Test multiple times**: Run same test 2-3 times to confirm consistency
+- **Test all features**: Don't just test what you changed - test related features too
+- **Document what you tested**: Keep record of test results
+- **Fix and re-test**: If something breaks, fix it and test again until it works
 - **Ensure all tests pass** before proceeding
 
 ## 📝 DOCUMENTATION PHASE:

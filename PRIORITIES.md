@@ -1,9 +1,9 @@
 # 🎯 CURRENT PRIORITIES & SESSION PROGRESS
 
 ## 📝 CURRENT SESSION CONTEXT:
-**Previous Session:** ✅ Complete system cleanup - Memory disabled, agent diversity fixed, research framework created, defensive patterns added  
-**Current Priority:** 🔬 Implement research validation tests - PROVE multi-agent debate works (PRIMARY GOAL)
-**System Status:** Clean codebase, memory on backlog, heterogeneous agents verified working, ready for benchmark implementation
+**Previous Session:** ✅ Complete system cleanup - Memory disabled, agent diversity fixed, defensive patterns added  
+**Current Priority:** To be determined from remaining priorities
+**System Status:** Clean codebase, memory on backlog, heterogeneous agents verified working
 
 ## ✅ RECENTLY COMPLETED (January 8, 2025):
 
@@ -13,12 +13,11 @@
   - Analyst: llama-3.1-8b-instant (fast initial analysis)
   - Critic: gemma2-9b-it (different architecture for diversity)
   - Synthesizer: llama-3.3-70b-versatile (best model for synthesis)
-- ✅ Created comprehensive research validation framework (debate_research.md)
 - ✅ Added defensive development patterns to WORKFLOW.md and CLAUDE.md
 - ✅ Removed memory UI display from debate-interface.tsx
 - ✅ Fixed TypeScript errors (consensus_fact → learned_fact)
 - ✅ Archived memory docs to docs/archived/
-- ✅ Clear focus established: PROVE multi-agent debate works (20-40% improvement target)
+- ✅ Clear focus established on improving system functionality
 
 ## ✅ PREVIOUSLY COMPLETED (September 7, 2025):
 
@@ -63,24 +62,28 @@
 
 ## 🚀 NEXT SESSION PRIORITIES:
 
-### 🎯 PRIMARY GOAL - PROVE THE RESEARCH WORKS:
+### 🎯 PRIMARY FOCUS - Chain-of-Debate Enhancement:
 
-**[READY TO IMPLEMENT]** 🔬 Research Validation & Deterministic Results
-- **Goal**: Prove multi-agent debate produces consistent, superior results
-- **Target Metrics**:
-  - Accuracy improvement: ≥20% (statistical significance p < 0.05)
-  - Consistency improvement: ≥40% (variance reduction)
-  - Hallucination reduction: ≥25%
-- **Validation Method**: See `debate_research.md` for complete methodology
-- **Test Suite**: 200 queries across 5 categories (factual, mathematical, reasoning, creative, current)
-- **Next Steps**:
-  1. Implement test harness in `/test-research` page
-  2. Run determinism tests (10x same query)
-  3. Run accuracy tests with known answers
-  4. Calculate statistics and p-values
-  5. Document results in research report
-- **Success Criteria**: Demonstrable, reproducible improvement over single models
-- **Why This Matters**: This is the CORE VALUE PROPOSITION - everything else is secondary
+**Phase 1: Chain-of-Debate Display (CURRENT)**
+- Create disagreement visualization component
+- Add "Why They Disagree" section to debate display  
+- Show confidence levels for each position
+- Display disagreement patterns (binary opposition, evidence conflict, etc.)
+- Evolution timeline showing how positions changed across rounds
+
+**Phase 2: Enhanced Analysis**
+- Add query type auto-classification (factual, mathematical, reasoning, creative, current)
+- Implement hallucination detection flags
+- Track time to consensus metrics
+- Add cost-benefit indicator for debate vs single model
+- Evidence comparison table (side-by-side)
+
+**Phase 3: Advanced Features**
+- Self-critique loops (Constitutional AI pattern)
+- Tree of thoughts visualization
+- User preference tracking (RLHF)
+- A/B testing framework (single vs debate)
+- Task decomposition for complex queries
 
 ### 🔴 HIGH PRIORITY - IMMEDIATE:
 
@@ -177,15 +180,15 @@
 ```
 Continue AI Council development work.
 
-Previous session: ✅ Text truncation fix complete + Documentation updated + Vercel deployed
-Next priority: 🧠 Memory System Integration Phase 1 (HIGH PRIORITY - Foundation ready)
+Previous session: ✅ Removed research validation testing plan, kept debate_research.md for reference
+Next priority: 🔬 Chain-of-debate tracking implementation (Phase 2 enhancements)
 
-IMPORTANT: Memory system foundation is complete - ready for integration with debate system
-- All infrastructure built: types, service layer, API endpoints, test interface  
-- Expected: 40% accuracy improvement + 60-80% cost reduction
-- Research backing: IBM/Redis, LangGraph, MongoDB studies
+IMPORTANT: Focus on practical improvements to existing debate system
+- Chain-of-debate: Track WHY models disagree, not just THAT they disagree
+- Provides transparency into agent reasoning conflicts
+- Helps users understand debate dynamics
 
 MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md  
-TodoWrite: Memory system Phase 1 integration + Test with /test-memory + Document results + Update PRIORITIES.md
+TodoWrite: Implement chain-of-debate tracking + Test functionality + Update PRIORITIES.md
 Follow structured workflow: Work → Test → Document → Commit → Push → New prompt
 ```
