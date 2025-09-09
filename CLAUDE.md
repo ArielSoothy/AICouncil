@@ -50,6 +50,17 @@ git diff    # Review changes
 git reset --hard HEAD  # Nuclear option
 ```
 
+## 🤖 SUB-AGENT SYSTEM:
+**For complex features, use the orchestrated sub-agent system defined in SUB_AGENTS.md:**
+- **Orchestration Agent**: Coordinates all other agents
+- **Research Agent**: Analyzes codebase structure  
+- **Dependency Agent**: Maps dependencies to prevent breakage
+- **Implementation Agent**: Executes code changes
+- **Testing Agent**: Verifies all protected features
+- **Documentation Agent**: Syncs all documentation
+
+**Launch Pattern**: Start with Orchestration Agent for multi-file features
+
 ## 🚀 MANDATORY SESSION START PROTOCOL:
 1. **Read this file** (current session context)
 2. **Read WORKFLOW.md** (step-by-step work method)  
@@ -57,6 +68,7 @@ git reset --hard HEAD  # Nuclear option
 4. **Read FEATURES.md** (protected features)
 5. **Read PROJECT_OVERVIEW.md** (architecture context)
 6. **Optional: Read BEST_PRACTICES.md** (debugging patterns)
+7. **Optional: Read SUB_AGENTS.md** (when using autonomous agents)
 
 ## 📂 DOCUMENTATION STRUCTURE:
 
@@ -67,6 +79,7 @@ git reset --hard HEAD  # Nuclear option
 | **FEATURES.md** | Protected features | Before any changes |
 | **PROJECT_OVERVIEW.md** | Architecture + vision + status | For context |
 | **BEST_PRACTICES.md** | Debugging patterns | When issues arise |
+| **SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
 
 
 ## 📋 CONVERSATION PROMPT TEMPLATE:
