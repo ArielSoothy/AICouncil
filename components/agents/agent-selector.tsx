@@ -40,10 +40,10 @@ export function AgentSelector({
     const initialStates: Record<string, any> = {}
     
     // Assign different default models to each agent for diversity
-    // Using different Groq models for heterogeneous agent debate
+    // Using different providers (Groq + Google) for heterogeneous agent debate
     const agentDefaults: Record<string, { model: string; provider: string }> = {
       'analyst-001': { model: 'llama-3.1-8b-instant', provider: 'groq' },     // Fast, good for initial analysis
-      'critic-001': { model: 'gemma2-9b-it', provider: 'groq' },              // Different architecture for diversity
+      'critic-001': { model: 'gemini-1.5-flash-8b', provider: 'google' },     // Different provider for diversity
       'synthesizer-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' } // Best model for final synthesis
     }
     

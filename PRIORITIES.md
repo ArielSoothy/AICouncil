@@ -1,18 +1,29 @@
 # 🎯 CURRENT PRIORITIES & SESSION PROGRESS
 
 ## 📝 CURRENT SESSION CONTEXT:
-**Previous Session:** ✅ Complete system cleanup - Memory disabled, agent diversity fixed, defensive patterns added  
-**Current Priority:** To be determined from remaining priorities
-**System Status:** Clean codebase, memory on backlog, heterogeneous agents verified working
+**Previous Session:** ✅ Fixed llama-3.3-70b rate limit issue + changed default Critic model to gemini-1.5-flash-8b  
+**Current Priority:** Chain-of-Debate display implementation (Phase 1)
+**System Status:** Rate limit fallback working, heterogeneous agents using Groq + Google providers
 
-## ✅ RECENTLY COMPLETED (January 8, 2025):
+## ✅ RECENTLY COMPLETED (January 9, 2025):
+
+**Rate Limit Fix & Model Optimization - COMPLETED**
+- ✅ Fixed llama-3.3-70b-versatile "No response" issue - was hitting Groq daily token limit (100k)
+- ✅ Implemented automatic fallback mechanism in Groq provider:
+  - llama-3.3-70b-versatile → gemma2-9b-it → llama-3.1-8b-instant
+  - Detects rate limit errors and tries alternative models
+- ✅ Changed default Critic model from gemma2-9b-it to gemini-1.5-flash-8b (Google)
+  - Better provider diversity (Groq + Google)
+  - Avoids single-provider rate limits
+- ✅ Current agent configuration:
+  - Analyst: llama-3.1-8b-instant (Groq)
+  - Critic: gemini-1.5-flash-8b (Google)
+  - Synthesizer: llama-3.3-70b-versatile (Groq with fallback)
+
+## ✅ PREVIOUSLY COMPLETED (January 8, 2025):
 
 **System Cleanup & Research Focus - COMPLETED**
 - ✅ Disabled memory system cleanly (on backlog) with MEMORY_ENABLED = false flag
-- ✅ Fixed agent model diversity bug - each agent now uses different Groq models:
-  - Analyst: llama-3.1-8b-instant (fast initial analysis)
-  - Critic: gemma2-9b-it (different architecture for diversity)
-  - Synthesizer: llama-3.3-70b-versatile (best model for synthesis)
 - ✅ Added defensive development patterns to WORKFLOW.md and CLAUDE.md
 - ✅ Removed memory UI display from debate-interface.tsx
 - ✅ Fixed TypeScript errors (consensus_fact → learned_fact)
@@ -180,15 +191,28 @@
 ```
 Continue AI Council development work.
 
-Previous session: ✅ Removed research validation testing plan, kept debate_research.md for reference
-Next priority: 🔬 Chain-of-debate tracking implementation (Phase 2 enhancements)
+Previous session: ✅ Fixed llama-3.3-70b rate limit with fallback + changed Critic to gemini-1.5-flash-8b
+Next priority: 🎯 Chain-of-Debate Display Enhancement (Phase 1)
 
-IMPORTANT: Focus on practical improvements to existing debate system
-- Chain-of-debate: Track WHY models disagree, not just THAT they disagree
-- Provides transparency into agent reasoning conflicts
-- Helps users understand debate dynamics
+IMPORTANT: Build UI to show WHY agents disagree
+- Create disagreement visualization component
+- Add "Why They Disagree" section to debate display
+- Show confidence levels for each position
+- Display disagreement patterns (binary opposition, evidence conflict, etc.)
+- Evolution timeline showing how positions changed across rounds
 
-MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md  
-TodoWrite: Implement chain-of-debate tracking + Test functionality + Update PRIORITIES.md
-Follow structured workflow: Work → Test → Document → Commit → Push → New prompt
+Current agent models (DO NOT CHANGE):
+- Analyst: llama-3.1-8b-instant (Groq)
+- Critic: gemini-1.5-flash-8b (Google)  
+- Synthesizer: llama-3.3-70b-versatile (Groq with auto-fallback)
+
+Protected features (DO NOT MODIFY):
+- Agent debate system (lib/agents/)
+- Heterogeneous agent models (components/agents/agent-selector.tsx)
+- Round tabs display (components/agents/debate-display.tsx)
+- Rate limit fallback in groq.ts
+
+MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
+TodoWrite: Create disagreement viz component + Add to debate display + Test UI + Update docs
+Follow defensive development: Read → Grep → Edit (not Write) → Test → Commit
 ```
