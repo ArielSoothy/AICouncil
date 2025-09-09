@@ -137,6 +137,7 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
           body: JSON.stringify({
             query: prompt,
             responses: consensusResult,
+            isGuestMode,
           }),
         })
         

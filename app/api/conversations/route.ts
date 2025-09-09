@@ -16,6 +16,26 @@ export async function GET(request: NextRequest) {
       userAgent: request.headers.get('user-agent')
     })
     
+    // Parse request body first to check for guest mode
+    const body = await request.json()
+    const { query, responses, isGuestMode = false } = body
+
+    // ==========================================
+    // 🧪 TESTING MODE ONLY - EASY REVERT BLOCK
+    // ==========================================
+    // In guest mode, skip saving conversations (no database storage)
+    if (isGuestMode) {
+      console.log('Conversations API - Guest mode: skipping conversation save')
+      return NextResponse.json({ 
+        message: 'Guest mode: conversation not saved',
+        id: null 
+      })
+    }
+    // ==========================================
+    // END TESTING MODE BLOCK
+    // ==========================================
+
+    // Only check auth for non-guest mode
     const supabase = await createClient()
     
     // Get the authenticated user  
@@ -119,9 +139,6 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    const body = await request.json()
-    const { query, responses } = body
 
     if (!query || !responses) {
       return NextResponse.json(
