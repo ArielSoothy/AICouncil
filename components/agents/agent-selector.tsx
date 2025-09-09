@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Brain, Target, Shield, Users } from 'lucide-react'
 import { canUseModel } from '@/lib/user-tiers'
+import { AgentAvatar } from '@/components/shared'
 
 interface AgentSelectorProps {
   selectedAgents: AgentConfig[]
@@ -17,11 +18,6 @@ interface AgentSelectorProps {
   userTier: 'guest' | 'free' | 'pro' | 'enterprise'
 }
 
-const agentIcons = {
-  analyst: Brain,
-  critic: Shield,
-  synthesizer: Users
-}
 
 export function AgentSelector({ 
   selectedAgents, 
@@ -150,7 +146,6 @@ export function AgentSelector({
       
       <div className="grid gap-4">
         {Object.values(AGENT_PERSONAS).map(persona => {
-          const Icon = agentIcons[persona.role]
           const state = agentStates[persona.id] || { enabled: false, model: '', provider: '' }
           
           return (
@@ -168,8 +163,12 @@ export function AgentSelector({
                   
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <Icon className="w-5 h-5" style={{ color: persona.color }} />
-                      <h4 className="font-semibold">{persona.name}</h4>
+                      <AgentAvatar 
+                        role={persona.role}
+                        name={persona.name}
+                        size="md"
+                        showName={true}
+                      />
                       <Badge variant="secondary" className="text-xs">
                         {persona.role}
                       </Badge>

@@ -2,10 +2,11 @@
 
 import { ModelConfig } from '@/types/consensus'
 import { Button } from '@/components/ui/button'
-import { Plus, Trash2, DollarSign, Globe } from 'lucide-react'
+import { Plus, Trash2, Globe } from 'lucide-react'
 import { getAvailableModels, getAllModelsWithTierInfo, canUseModel, hasInternetAccess, UserTier } from '@/lib/user-tiers'
 import { MODEL_COSTS_PER_1K, MODEL_POWER } from '@/lib/model-metadata'
 import { useAuth } from '@/contexts/auth-context'
+import { CostDisplay, TierBadge, EfficiencyBadge } from '@/components/shared'
 
 interface ModelSelectorProps {
   models: ModelConfig[]
@@ -75,21 +76,7 @@ Object.entries(MODEL_COSTS_PER_1K).forEach(([model, cost]) => {
   modelCosts[model] = { input, output, tier }
 })
 
-const tierColors = {
-  free: 'text-green-600 bg-green-50 dark:bg-green-900/20',
-  budget: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20',
-  balanced: 'text-orange-600 bg-orange-50 dark:bg-orange-900/20',
-  premium: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20',
-  flagship: 'text-red-600 bg-red-50 dark:bg-red-900/20'
-}
-
-const tierLabels = {
-  free: 'FREE',
-  budget: 'BUDGET',
-  balanced: 'BALANCED',
-  premium: 'PREMIUM',
-  flagship: 'FLAGSHIP'
-}
+// Tier colors and labels now handled by TierBadge component
 
 const providerNames = {
   openai: 'OpenAI',
@@ -102,23 +89,7 @@ const providerNames = {
   cohere: 'Cohere'
 }
 
-// Cost efficiency calculation (lower is better, cost per token)
-const getCostEfficiency = (model: string): number => {
-  const cost = modelCosts[model as keyof typeof modelCosts]
-  if (!cost) return 0
-  if (cost.input === 0 && cost.output === 0) return 0
-  // Average of input and output cost per token
-  return (cost.input + cost.output) / 2
-}
-
-const getEfficiencyBadge = (model: string): string => {
-  const efficiency = getCostEfficiency(model)
-  if (efficiency === 0) return '🆓'
-  if (efficiency < 0.002) return '💰'  // Great value
-  if (efficiency < 0.01) return '⚖️'   // Balanced
-  if (efficiency < 0.05) return '💎'   // Premium
-  return '🏆' // Flagship
-}
+// Cost efficiency calculation and badge now handled by EfficiencyBadge component
 
 export function ModelSelector({ models, onChange, usePremiumQuery = false, maxModels, userTier: propUserTier }: ModelSelectorProps) {
   const { userTier, loading } = useAuth()
@@ -260,59 +231,26 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false, maxMo
               <div className="flex-shrink-0">
                 <div className="text-xs space-y-1">
                   <div className="flex items-center gap-1">
-                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      tierColors[modelCosts[config.model as keyof typeof modelCosts]?.tier || 'budget']
-                    }`}>
-                      {tierLabels[modelCosts[config.model as keyof typeof modelCosts]?.tier || 'budget']}
-                    </div>
-                    <span className="text-lg" title="Cost efficiency indicator">
-                      {getEfficiencyBadge(config.model)}
-                    </span>
+                    <TierBadge tier={modelCosts[config.model as keyof typeof modelCosts]?.tier || 'budget'} />
+                    <EfficiencyBadge 
+                      model={config.model} 
+                      modelCosts={modelCosts}
+                      className="text-lg"
+                    />
                   </div>
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <span>Weight:</span>
                     <span className="font-mono">{(MODEL_POWER[config.model as keyof typeof MODEL_POWER] || 0.7).toFixed(2)}</span>
                   </div>
-                  <div className="text-muted-foreground">
-                    {modelCosts[config.model as keyof typeof modelCosts]?.input === 0 && 
-                     modelCosts[config.model as keyof typeof modelCosts]?.output === 0 ? (
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="h-3 w-3" />
-                        <span className="font-medium text-green-600">FREE</span>
-                      </div>
-                    ) : (
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          <span className="font-mono">
-                            ${modelCosts[config.model as keyof typeof modelCosts]?.input.toFixed(4)}/1K in
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="w-3"></span>
-                          <span className="font-mono">
-                            ${modelCosts[config.model as keyof typeof modelCosts]?.output.toFixed(4)}/1K out
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <CostDisplay 
+                    cost={modelCosts[config.model as keyof typeof modelCosts]} 
+                    variant="detailed"
+                    className="text-muted-foreground"
+                  />
                 </div>
               </div>
             )}
 
-            {/* Efficiency Badge */}
-            {config.enabled && (
-              <div className="flex-shrink-0">
-                <div className="text-xs">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full font-medium 
-                    {getEfficiencyBadge(config.model)}"
-                  >
-                    {getEfficiencyBadge(config.model)}
-                  </span>
-                </div>
-              </div>
-            )}
 
             {models.length > 1 && (
               <Button

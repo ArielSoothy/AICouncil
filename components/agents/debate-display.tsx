@@ -10,9 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Progress } from '@/components/ui/progress'
 import { 
-  Brain, 
-  Shield, 
-  Users, 
   MessageSquare, 
   CheckCircle2, 
   XCircle,
@@ -24,12 +21,12 @@ import {
   ArrowRight,
   GitCompare,
   Globe,
-  ChevronDown,
-  ChevronUp,
+  Users,
   AlertTriangle
 } from 'lucide-react'
 import { ComparisonDisplay } from '@/components/consensus/comparison-display'
 import { ThreeWayComparison } from '@/components/consensus/three-way-comparison'
+import { AgentAvatar, CollapsibleMessageCard } from '@/components/shared'
 // Removed DisagreementInsights - using simple indicators instead
 
 // Model cost calculation helper
@@ -71,17 +68,7 @@ interface DebateDisplayProps {
   webSearchUsed?: boolean
 }
 
-const agentIcons = {
-  analyst: Brain,
-  critic: Shield,
-  synthesizer: Users
-}
-
-const agentColors = {
-  analyst: '#3B82F6',
-  critic: '#EF4444',
-  synthesizer: '#10B981'
-}
+// Agent icons and colors now handled by AgentAvatar component
 
 export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddRound, webSearchUsed = false }: DebateDisplayProps) {
   const [followUpAnswers, setFollowUpAnswers] = useState<Record<string | number, string>>({})
@@ -138,50 +125,24 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
   }
 
   const renderMessage = (message: AgentMessage) => {
-    const Icon = agentIcons[message.role]
     const agent = session.agents.find(a => a.id === message.agentId)
     const messageId = getMessageId(message)
-    const isLong = isLongMessage(message.content)
-    const isExpanded = expandedMessages.has(messageId)
-    
-    // For long messages, show more content before truncating (increased from 400 to 600 chars)
-    // Always respect sentence boundaries to avoid cutting mid-sentence
-    const getDisplayContent = () => {
-      if (!isLong || isExpanded) return message.content
-      
-      // Split into sentences using proper sentence endings
-      const sentences = message.content.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0)
-      let truncated = ''
-      
-      // Take complete sentences up to ~600 characters (increased limit)
-      for (const sentence of sentences) {
-        const nextLength = (truncated + sentence).length
-        // Only add if it fits comfortably or if we haven't added any sentences yet
-        if (nextLength <= 600 || truncated.length === 0) {
-          truncated += (truncated ? ' ' : '') + sentence
-        } else {
-          break
-        }
-      }
-      
-      // If no sentences fit, take first 600 chars and find last complete word
-      if (truncated.length === 0) {
-        const firstChunk = message.content.substring(0, 600)
-        const lastSpace = firstChunk.lastIndexOf(' ')
-        truncated = lastSpace > 0 ? firstChunk.substring(0, lastSpace) : firstChunk
-      }
-      
-      return truncated + (truncated.length < message.content.length ? '...' : '')
-    }
-    
-    const displayContent = getDisplayContent()
     
     return (
-      <Card key={messageId} className="p-4 space-y-3">
-        <div className="flex items-start justify-between">
+      <CollapsibleMessageCard
+        key={messageId}
+        content={message.content}
+        maxLength={600}
+        className="space-y-3"
+      >
+        <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Icon className="w-5 h-5" style={{ color: agentColors[message.role] }} />
-            <span className="font-semibold">{agent?.name || message.role}</span>
+            <AgentAvatar 
+              role={message.role}
+              name={agent?.name}
+              size="md"
+              showName={true}
+            />
             <Badge variant="outline" className="text-xs">
               Round {message.round}
             </Badge>
@@ -194,35 +155,6 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
           <span className="text-xs text-muted-foreground">
             {formatTime(message.timestamp)}
           </span>
-        </div>
-
-        <div className="w-full">
-          <div className="whitespace-pre-wrap break-words border border-border/30 rounded p-3 bg-card/50 text-sm leading-relaxed">
-            {displayContent}
-          </div>
-          
-          {isLong && (
-            <div className="flex justify-center pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toggleMessageExpansion(messageId)}
-                className="h-8 px-3 text-xs font-medium border-dashed hover:border-solid transition-colors bg-background/80 hover:bg-background"
-              >
-                {isExpanded ? (
-                  <>
-                    <ChevronUp className="w-4 h-4 mr-1" />
-                    Show less
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="w-4 h-4 mr-1" />
-                    Show more ({Math.ceil((message.content.length - 600) / 100)} more lines)
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
         </div>
 
         {message.keyPoints && message.keyPoints.length > 0 && (
@@ -280,7 +212,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
           </span>
           <span>{message.model}</span>
         </div>
-      </Card>
+      </CollapsibleMessageCard>
     )
   }
 
@@ -368,8 +300,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
                 {session.rounds.map((round) =>
                   round.messages.map((message) => {
                     const agent = session.agents.find(a => a.id === message.agentId)
-                    const agentIcon = agentIcons[message.role]
-                    const AgentIcon = agentIcon || MessageSquare
+                    // Agent icon now handled by AgentAvatar component
                     
                     // Calculate actual cost based on model pricing
                     const estimatedCost = calculateMessageCost(message)
@@ -377,8 +308,12 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
                     return (
                       <div key={`${message.agentId}-${message.round}-cost`} className="flex items-center justify-between py-1 px-2 bg-muted/30 rounded text-xs">
                         <div className="flex items-center gap-2">
-                          <AgentIcon className="w-3 h-3" style={{ color: agentColors[message.role] }} />
-                          <span className="font-medium">{agent?.name || message.role}</span>
+                          <AgentAvatar 
+                            role={message.role}
+                            name={agent?.name}
+                            size="sm"
+                            showName={true}
+                          />
                           <Badge variant="outline" className="text-xs px-1 py-0">
                             Round {message.round}
                           </Badge>
@@ -594,11 +529,15 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
                         </h4>
                         <div className="space-y-3">
                           {disagreements.map((disagreement, idx) => {
-                            const Icon = agentIcons[disagreement.agent] || MessageSquare
+                            // Icon now handled by AgentAvatar component
                             return (
                               <div key={idx} className="border rounded-lg p-4 bg-red-50/50 dark:bg-red-950/20">
                                 <div className="flex items-start gap-3">
-                                  <Icon className="w-5 h-5 mt-0.5" style={{ color: agentColors[disagreement.agent] }} />
+                                  <AgentAvatar 
+                                    role={disagreement.agent}
+                                    size="md"
+                                    showName={false}
+                                  />
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-2">
                                       <span className="font-medium capitalize">{disagreement.agent}</span>
@@ -627,11 +566,15 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
                         </h4>
                         <div className="space-y-3">
                           {recommendations.map((rec, idx) => {
-                            const Icon = agentIcons[rec.agent] || MessageSquare
+                            // Icon now handled by AgentAvatar component
                             return (
                               <div key={idx} className="border rounded-lg p-4 bg-blue-50/50 dark:bg-blue-950/20">
                                 <div className="flex items-start gap-3">
-                                  <Icon className="w-5 h-5 mt-0.5" style={{ color: agentColors[rec.agent] }} />
+                                  <AgentAvatar 
+                                    role={rec.agent}
+                                    size="md"
+                                    showName={false}
+                                  />
                                   <div className="flex-1">
                                     <div className="font-medium capitalize mb-2">{rec.agent}&apos;s Approach:</div>
                                     {rec.recommendations.map((recommendation, ridx) => (
