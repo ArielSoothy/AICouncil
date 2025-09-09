@@ -171,5 +171,25 @@
 - **Last Modified**: January 2025 (Complete rebrand from "AI Council/Consensus AI")
 - **DO NOT**: Hardcode project names in components, remove branding.ts file, or bypass centralized system
 
+### 11. Pro Mode Testing Unlock (TEMPORARY)
+- **Status**: 🧪 TESTING FEATURE - FOR DEVELOPMENT ONLY
+- **Location**: `app/app/page.tsx` (lines 63-66, 100-136)
+- **Purpose**: Allow testing of all premium AI models without authentication
+- **Key Components**:
+  - Pro mode unlock button for guest/free tiers
+  - State management: `isProModeUnlocked` state variable
+  - Visual indicators: Yellow "🔓 TESTING MODE" badge when active
+  - Disable button to revert to normal tier
+  - Passes `testingTierOverride` prop to QueryInterface
+- **How to Remove**: 
+  1. Remove `isProModeUnlocked` state and `effectiveTier` logic (lines 63-66)
+  2. Remove Pro unlock/disable buttons UI (lines 107-136)
+  3. Change tier display back to use `userTier` instead of `effectiveTier` (line 100)
+  4. Remove `testingTierOverride` prop from QueryInterface (line 145)
+  5. Remove corresponding props from QueryInterface component
+- **Security Note**: This is CLIENT-SIDE ONLY for UI testing. Backend still enforces actual tier limits
+- **Last Modified**: January 2025 (Added for testing all agents functionality)
+- **TODO**: Remove before production deployment
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

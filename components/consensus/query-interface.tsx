@@ -21,14 +21,19 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-function QueryInterfaceContent() {
+interface QueryInterfaceContentProps {
+  testingTierOverride?: 'pro' | 'enterprise';
+}
+
+function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentProps) {
   const { userTier } = useAuth()
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
   const { toast } = useToast()
   
-  // Override userTier for guest mode
-  const effectiveUserTier = isGuestMode ? 'guest' : userTier
+  // Override userTier for guest mode or testing
+  const baseUserTier = isGuestMode ? 'guest' : userTier
+  const effectiveUserTier = testingTierOverride || baseUserTier
   const [prompt, setPrompt] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
@@ -155,6 +160,7 @@ function QueryInterfaceContent() {
           models={selectedModels}
           onChange={setSelectedModels}
           usePremiumQuery={usePremiumQuery}
+          userTier={effectiveUserTier as any}
         />
         
         <div className="mt-4">
@@ -327,14 +333,18 @@ function QueryInterfaceContent() {
   )
 }
 
-export function QueryInterface() {
+interface QueryInterfaceProps {
+  testingTierOverride?: 'pro' | 'enterprise';
+}
+
+export function QueryInterface({ testingTierOverride }: QueryInterfaceProps = {}) {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     }>
-      <QueryInterfaceContent />
+      <QueryInterfaceContent testingTierOverride={testingTierOverride} />
     </Suspense>
   )
 }

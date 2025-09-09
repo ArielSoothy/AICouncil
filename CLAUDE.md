@@ -93,7 +93,7 @@ Previous session: ✅ Fixed ESLint warnings & completed project rebrand to "Verd
 Next priority: Chain-of-Debate Display Enhancement (Phase 1) - Build UI to show WHY agents disagree
 
 MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
-Launch orchestration-master: Coordinate Chain-of-Debate Display implementation
+Launch orchestration-master agent to coordinate the next task that is approved by user on the todo list/priorities
 TodoWrite: Research debate data structure + Design disagreement components + Implement visualization + Test all features + Update docs
 Follow structured workflow: Work → Test → Document → Ask approval → Push → New prompt
 ```
@@ -111,7 +111,7 @@ Previous session: ✅ Fixed ESLint warnings & completed project rebrand to "Verd
 Next priority: Chain-of-Debate Display Enhancement (Phase 1) - Build UI to show WHY agents disagree
 
 MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
-Launch orchestration-master: Coordinate Chain-of-Debate Display implementation
+Launch orchestration-master agent to coordinate the next task that is approved by user on the todo list/priorities
 TodoWrite: Research debate data structure + Design disagreement components + Implement visualization + Test all features + Update docs
 Follow structured workflow: Work → Test → Document → Ask approval → Push → New prompt
 
