@@ -61,6 +61,7 @@ export interface QueryRequest {
   comparisonModel?: ModelConfig; // Optional single model to compare against
   includeComparison?: boolean; // Enable comparison mode
   enableWebSearch?: boolean; // Enable web search enrichment
+  testingTierOverride?: 'pro' | 'enterprise'; // Testing-only tier override for development
 }
 
 // New enhanced response structure

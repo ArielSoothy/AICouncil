@@ -109,7 +109,8 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
           isGuestMode,
           includeComparison,
           comparisonModel: includeComparison ? comparisonModel : undefined,
-          enableWebSearch
+          enableWebSearch,
+          testingTierOverride // Send testing tier override to API
         }),
       })
 

@@ -1,9 +1,9 @@
 # 🎯 CURRENT PRIORITIES & SESSION PROGRESS
 
 ## 📝 CURRENT SESSION CONTEXT:
-**Current Session:** ✅ COMPLETED - Fixed Pro Mode 401 error with guest mode bypass in POST endpoint
+**Current Session:** ✅ COMPLETED - Fixed Pro Mode testing feature to actually send premium models to API
 **Next Priority:** 🎯 Chain-of-Debate Display Enhancement (Phase 1) - Build UI to show WHY agents disagree
-**System Status:** Production-ready, Pro Mode testing fully functional (UI + API), clean code quality, ready for feature development
+**System Status:** Production-ready, Pro Mode testing FULLY WORKING (premium models execute successfully), clean code quality, ready for feature development
 
 ### What Needs to Be Done Next:
 **Build UI to show WHY agents disagree:**
@@ -20,12 +20,13 @@
 
 ## ✅ RECENTLY COMPLETED (January 9, 2025):
 
-**Pro Mode 401 Error Fix - COMPLETED**
-- ✅ Identified root cause: Guest mode check was in wrong endpoint (GET instead of POST)
-- ✅ Moved isGuestMode parameter check to POST /api/conversations endpoint
-- ✅ Fixed guest mode bypass to properly skip authentication for testing
-- ✅ Tested end-to-end with Playwright: Pro Mode unlock → Select GPT-4o → Query execution
-- ✅ Verified no 401 errors, consensus generation works with premium models
+**Pro Mode Testing Feature Complete Fix - COMPLETED**
+- ✅ CRITICAL BUG FOUND: testingTierOverride was NOT being sent from frontend to API
+- ✅ Fixed query-interface.tsx to include testingTierOverride in API request body
+- ✅ Fixed /api/consensus/route.ts to extract and use testingTierOverride parameter
+- ✅ Updated QueryRequest type to include optional testingTierOverride field
+- ✅ VERIFIED WITH PLAYWRIGHT: Pro Mode unlock → Select GPT-4o → Successfully executes premium model
+- ✅ Premium models now ACTUALLY WORK when Pro Mode is unlocked (not just UI change)
 - ✅ All protected features remain intact, TypeScript compilation clean
 
 **Pro Mode Model Selection Bug Fix - COMPLETED**

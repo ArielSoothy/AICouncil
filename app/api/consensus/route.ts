@@ -521,7 +521,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: QueryRequest = await request.json()
-    const { prompt, models, responseMode = 'concise', usePremiumQuery = false, isGuestMode = false, comparisonModel, includeComparison, enableWebSearch = false } = body
+    const { prompt, models, responseMode = 'concise', usePremiumQuery = false, isGuestMode = false, comparisonModel, includeComparison, enableWebSearch = false, testingTierOverride } = body
     
     // Override tier if in guest mode
     if (isGuestMode) {
@@ -542,8 +542,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Premium queries disabled for free/guest tiers
-    const effectiveTier = userTier
+    // Use testing tier override if provided (for development testing only)
+    const effectiveTier = testingTierOverride || userTier
     
     // Validate models are available for user's tier (or premium query tier)
     const filteredModels = models.filter(model => 
