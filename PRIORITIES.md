@@ -2,8 +2,21 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 **Previous Session:** ✅ Fixed llama-3.3-70b rate limit issue + changed default Critic model to gemini-1.5-flash-8b  
-**Current Priority:** Chain-of-Debate display implementation (Phase 1)
+**Current Priority:** 🎯 Chain-of-Debate Display Enhancement (Phase 1)
 **System Status:** Rate limit fallback working, heterogeneous agents using Groq + Google providers
+
+### What Needs to Be Done Next:
+**Build UI to show WHY agents disagree:**
+- Create disagreement visualization component
+- Add "Why They Disagree" section to debate display
+- Show confidence levels for each position
+- Display disagreement patterns (binary opposition, evidence conflict, etc.)
+- Evolution timeline showing how positions changed across rounds
+
+### Current Agent Configuration (Working - DO NOT CHANGE):
+- **Analyst:** llama-3.1-8b-instant (Groq)
+- **Critic:** gemini-1.5-flash-8b (Google)  
+- **Synthesizer:** llama-3.3-70b-versatile (Groq with auto-fallback)
 
 ## ✅ RECENTLY COMPLETED (January 9, 2025):
 
