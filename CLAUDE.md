@@ -68,40 +68,6 @@ git reset --hard HEAD  # Nuclear option
 | **PROJECT_OVERVIEW.md** | Architecture + vision + status | For context |
 | **BEST_PRACTICES.md** | Debugging patterns | When issues arise |
 
-## 📋 NEXT CONVERSATION PROMPT:
-
-**Copy and paste to start next session:**
-
----
-
-Continue AI Council development work.
-
-Previous session: ✅ Fixed llama-3.3-70b rate limit with fallback + changed Critic to gemini-1.5-flash-8b
-Next priority: 🎯 Chain-of-Debate Display Enhancement (Phase 1)
-
-IMPORTANT: Build UI to show WHY agents disagree
-- Create disagreement visualization component
-- Add "Why They Disagree" section to debate display
-- Show confidence levels for each position
-- Display disagreement patterns (binary opposition, evidence conflict, etc.)
-- Evolution timeline showing how positions changed across rounds
-
-Current agent models (DO NOT CHANGE):
-- Analyst: llama-3.1-8b-instant (Groq)
-- Critic: gemini-1.5-flash-8b (Google)  
-- Synthesizer: llama-3.3-70b-versatile (Groq with auto-fallback)
-
-Protected features (DO NOT MODIFY):
-- Agent debate system (lib/agents/)
-- Heterogeneous agent models (components/agents/agent-selector.tsx)
-- Round tabs display (components/agents/debate-display.tsx)
-- Rate limit fallback in groq.ts
-
-MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
-TodoWrite: Create disagreement viz component + Add to debate display + Test UI + Update docs
-Follow defensive development: Read → Grep → Edit (not Write) → Test → Commit
-
----
 
 ## 📋 CONVERSATION PROMPT TEMPLATE:
 
