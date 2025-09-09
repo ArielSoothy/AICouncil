@@ -60,6 +60,20 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
       ]
     }
     
+    if (effectiveUserTier === 'pro') {
+      // Pro tier: Mix of premium and free models for better results
+      return [
+        // Premium models (3)
+        { provider: 'openai', model: 'gpt-4o', enabled: true },
+        { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', enabled: true },
+        { provider: 'google', model: 'gemini-1.5-pro', enabled: true },
+        // Best free models (3)
+        { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
+        { provider: 'google', model: 'gemini-2.5-flash', enabled: true },
+        { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
+      ]
+    }
+    
     // Free tier: All free models (6 models)
     return [
       // 3 Best Free Groq Models

@@ -3,7 +3,7 @@
 import { ModelConfig } from '@/types/consensus'
 import { Button } from '@/components/ui/button'
 import { Plus, Trash2, DollarSign, Globe } from 'lucide-react'
-import { getAvailableModels, getAllModelsWithTierInfo, canUseModel, hasInternetAccess } from '@/lib/user-tiers'
+import { getAvailableModels, getAllModelsWithTierInfo, canUseModel, hasInternetAccess, UserTier } from '@/lib/user-tiers'
 import { MODEL_COSTS_PER_1K, MODEL_POWER } from '@/lib/model-metadata'
 import { useAuth } from '@/contexts/auth-context'
 
@@ -125,8 +125,8 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false, maxMo
   
   // Show ALL models with tier info, using effective tier for premium queries
   const currentTier = loading ? 'free' : (userTier || 'free')
-  // Disallow premium upgrade for free/guest tiers in UI
-  const effectiveTier = currentTier
+  // Use propUserTier if provided (for testing override), otherwise use auth tier
+  const effectiveTier = (propUserTier || currentTier) as UserTier
   const allModelsWithTierInfo = getAllModelsWithTierInfo(effectiveTier)
   
   // For provider dropdown, show all providers
