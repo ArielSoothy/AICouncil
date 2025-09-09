@@ -102,6 +102,22 @@ Follow structured workflow: Work → Test → Document → Ask approval → Push
 - `[Brief summary of what was completed]` - 1-2 key achievements from the session
 - `[Next high priority task from PRIORITIES.md]` - Top item from PRIORITIES.md high priority section
 
+## 🚀 NEXT SESSION PROMPT (Ready to Use):
+
+```
+Continue Verdict AI development work.
+
+Previous session: ✅ Fixed ESLint warnings & completed project rebrand to "Verdict AI" with centralized branding system
+Next priority: Chain-of-Debate Display Enhancement (Phase 1) - Build UI to show WHY agents disagree
+
+MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
+Launch orchestration-master: Coordinate Chain-of-Debate Display implementation
+TodoWrite: Research debate data structure + Design disagreement components + Implement visualization + Test all features + Update docs
+Follow structured workflow: Work → Test → Document → Ask approval → Push → New prompt
+
+Status: All ESLint warnings fixed, project rebranded to "Verdict AI", centralized branding system implemented, production-ready for next feature development.
+```
+
 ## 🌐 CRITICAL: Playwright Browser Management
 **ALWAYS FOLLOW PROPER BROWSER WORKFLOW TO AVOID "browser already in use" ERRORS:**
 - **NEVER** call `browser_navigate()` multiple times without closing
