@@ -6,6 +6,7 @@ import { AuthWrapper } from '@/components/auth/auth-wrapper'
 import { LandingPage } from '@/components/landing/landing-page'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
+import { PROJECT_NAME } from '@/lib/config/branding'
 import { useEffect, Suspense } from 'react'
 
 function HomePageContent() {
@@ -59,7 +60,7 @@ function MainApp() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold tracking-tight mb-4 consensus-gradient bg-clip-text text-transparent">
-              AI Council
+              {PROJECT_NAME}
             </h1>
             <p className="text-xl text-muted-foreground mb-2">
               Multi-Model AI Decision Engine

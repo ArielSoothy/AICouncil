@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Check, Zap, Shield, DollarSign, Brain, Users, ArrowRight } from 'lucide-react';
+import { PROJECT_NAME, TAGLINE_PRIMARY, TAGLINE_SECONDARY, BRANDING } from '@/lib/config/branding';
 
 interface LandingPageProps {
   onTryGuest: () => void;
@@ -72,13 +73,13 @@ export function LandingPage({ onTryGuest, onSignIn, onSignUp }: LandingPageProps
       <div className="openai-container pt-20 pb-32">
         <div className="text-center mb-16">
           <h1 className="openai-title mb-8 openai-gradient-text">
-            AI Council
+            {PROJECT_NAME}
           </h1>
           <p className="text-2xl md:text-3xl openai-heading mb-6">
-            Why ask one AI when you can ask them all?
+            {TAGLINE_PRIMARY}
           </p>
           <p className="openai-body mb-16 max-w-4xl mx-auto">
-            Get consensus from multiple AI models for better decisions, fewer mistakes, lower costs
+            {TAGLINE_SECONDARY}
           </p>
           
           {/* Interactive Query Box */}
@@ -91,7 +92,7 @@ export function LandingPage({ onTryGuest, onSignIn, onSignUp }: LandingPageProps
                 onClick={scrollToDemo}
                 className="openai-button-primary absolute right-2 top-2 bottom-2 px-8"
               >
-                Ask Council
+                {BRANDING.ACTION_VERBS.ASK}
               </button>
             </div>
           </div>
@@ -193,7 +194,7 @@ export function LandingPage({ onTryGuest, onSignIn, onSignUp }: LandingPageProps
       {/* Value Demonstration */}
       <div id="ai-council-demo" className="openai-section bg-background">
         <div className="openai-container">
-          <h2 className="openai-subtitle text-center mb-16">See AI Council in Action</h2>
+          <h2 className="openai-subtitle text-center mb-16">See {PROJECT_NAME} in Action</h2>
           
           <div className="openai-card openai-card-hover mb-12">
             <div className="p-8">
@@ -280,7 +281,7 @@ export function LandingPage({ onTryGuest, onSignIn, onSignUp }: LandingPageProps
               <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-3xl">🤖</span>
               </div>
-              <h3 className="openai-heading text-xl mb-4">AI Council queries 5+ models</h3>
+              <h3 className="openai-heading text-xl mb-4">{PROJECT_NAME} queries 5+ models</h3>
               <p className="openai-text">We simultaneously ask GPT-4, Claude, Gemini, and other top AI models</p>
             </div>
             <div className="text-center">
@@ -340,7 +341,7 @@ export function LandingPage({ onTryGuest, onSignIn, onSignUp }: LandingPageProps
             
             <div className="openai-card ring-2 ring-primary/20">
               <div className="p-8">
-                <h3 className="openai-heading text-xl text-center mb-2">AI Council</h3>
+                <h3 className="openai-heading text-xl text-center mb-2">{PROJECT_NAME}</h3>
                 <div className="text-center mb-8">
                   <span className="openai-badge openai-badge-success">79% savings</span>
                 </div>
@@ -386,7 +387,7 @@ export function LandingPage({ onTryGuest, onSignIn, onSignUp }: LandingPageProps
       {/* Features Grid */}
       <div className="openai-section bg-background">
         <div className="openai-container">
-          <h2 className="openai-subtitle text-center mb-16">Why Choose AI Council?</h2>
+          <h2 className="openai-subtitle text-center mb-16">Why Choose {PROJECT_NAME}?</h2>
           <div className="openai-grid max-w-7xl mx-auto">
             {features.map((feature, index) => (
               <div key={index} className="openai-card text-center">
@@ -408,7 +409,7 @@ export function LandingPage({ onTryGuest, onSignIn, onSignUp }: LandingPageProps
         <div className="openai-container text-center">
           <h2 className="openai-subtitle mb-8">Ready to make better decisions with AI consensus?</h2>
           <p className="openai-body mb-12 max-w-3xl mx-auto">
-            Join thousands of users who trust AI Council for smarter, more reliable AI insights
+            Join thousands of users who trust {PROJECT_NAME} for smarter, more reliable AI insights
           </p>
           <div className="flex flex-col lg:flex-row gap-6 justify-center">
             <button 

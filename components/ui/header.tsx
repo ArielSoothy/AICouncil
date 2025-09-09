@@ -3,6 +3,7 @@
 import { Brain, User, LogOut, BarChart3, Users } from 'lucide-react'
 import { Button } from './button'
 import { useAuth } from '@/contexts/auth-context'
+import { PROJECT_NAME } from '@/lib/config/branding'
 import Link from 'next/link'
 
 export function Header() {
@@ -14,7 +15,7 @@ export function Header() {
         <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <Brain className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-xl font-bold">Consensus AI</h1>
+            <h1 className="text-xl font-bold">{PROJECT_NAME}</h1>
             <p className="text-xs text-muted-foreground">Multi-Model Decision Engine</p>
           </div>
         </Link>

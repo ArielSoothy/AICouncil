@@ -1,4 +1,4 @@
-# AI Council Features Documentation
+# Verdict AI Features Documentation
 
 **PURPOSE**: This file documents all features to prevent accidental deletion and ensure system integrity.
 
@@ -155,6 +155,21 @@
 - **Expected Performance**: 20-40% accuracy improvement, 30-50% hallucination reduction
 - **Last Modified**: September 2025 (Phase 1 implementation complete)
 - **DO NOT**: Remove query analysis, disable model mixing logic, or remove research-based selection strategies
+
+### 10. Centralized Branding System
+- **Status**: ✅ ACTIVE & CRITICAL  
+- **Location**: `lib/config/branding.ts` + all frontend components using PROJECT_NAME
+- **Purpose**: Centralized project branding for easy future name changes and consistent UI
+- **Key Components**:
+  - BRANDING configuration object with project name, taglines, meta tags
+  - PROJECT_NAME, PROJECT_TITLE, TAGLINE_PRIMARY, TAGLINE_SECONDARY exports
+  - Integrated into layout.tsx, landing-page.tsx, header.tsx, app pages
+  - TypeScript-safe branding configuration
+- **Current Branding**: "Verdict AI - Multi-Model Decision Engine"  
+- **Legacy Support**: Old names preserved in LEGACY_NAMES for reference
+- **Integration**: All main UI components use centralized variables instead of hardcoded strings
+- **Last Modified**: January 2025 (Complete rebrand from "AI Council/Consensus AI")
+- **DO NOT**: Hardcode project names in components, remove branding.ts file, or bypass centralized system
 
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

@@ -87,13 +87,14 @@ git reset --hard HEAD  # Nuclear option
 **Use this template to create future conversation prompts:**
 
 ```
-Continue AI Council development work.
+Continue Verdict AI development work.
 
-Previous session: ✅ [Brief summary of what was completed]
-Next priority: [Next high priority task from PRIORITIES.md]
+Previous session: ✅ Fixed ESLint warnings & completed project rebrand to "Verdict AI" with centralized branding system
+Next priority: Chain-of-Debate Display Enhancement (Phase 1) - Build UI to show WHY agents disagree
 
 MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
-TodoWrite: Next task from PRIORITIES.md + "Update PRIORITIES.md" + "Create next prompt"
+Launch orchestration-master: Coordinate Chain-of-Debate Display implementation
+TodoWrite: Research debate data structure + Design disagreement components + Implement visualization + Test all features + Update docs
 Follow structured workflow: Work → Test → Document → Ask approval → Push → New prompt
 ```
 

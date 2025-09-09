@@ -255,7 +255,7 @@ export default function TestMemoryPage() {
         <div className="space-y-3">
           {testResults.length === 0 && !isRunning && (
             <p className="text-muted-foreground text-center py-8">
-              Click "Run Tests" to validate memory system functionality
+              Click &quot;Run Tests&quot; to validate memory system functionality
             </p>
           )}
           
@@ -288,7 +288,7 @@ export default function TestMemoryPage() {
         
         <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            <strong>Next Step:</strong> Once these tests pass, we'll connect the memory system to actual agent debates 
+            <strong>Next Step:</strong> Once these tests pass, we&apos;ll connect the memory system to actual agent debates 
             so agents can remember and learn from past conversations.
           </p>
         </div>
