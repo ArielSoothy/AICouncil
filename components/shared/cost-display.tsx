@@ -1,9 +1,11 @@
 'use client'
 
 import { DollarSign } from 'lucide-react'
+import { CostService } from '@/lib/services'
 
 interface CostDisplayProps {
-  cost: {
+  model?: string
+  cost?: {
     input: number
     output: number
   }
@@ -11,8 +13,12 @@ interface CostDisplayProps {
   className?: string
 }
 
-export function CostDisplay({ cost, variant = 'detailed', className = '' }: CostDisplayProps) {
-  const isFree = cost.input === 0 && cost.output === 0
+export function CostDisplay({ model, cost, variant = 'detailed', className = '' }: CostDisplayProps) {
+  // Use service if model provided, otherwise fall back to cost prop
+  const actualCost = model ? CostService.getModelCosts(model) : cost
+  if (!actualCost) return null
+  
+  const isFree = actualCost.input === 0 && actualCost.output === 0
 
   if (variant === 'free-badge' && isFree) {
     return (
@@ -29,7 +35,7 @@ export function CostDisplay({ cost, variant = 'detailed', className = '' }: Cost
     }
     return (
       <span className={`font-mono text-sm ${className}`}>
-        ${cost.input.toFixed(4)}/${cost.output.toFixed(4)}
+        ${actualCost.input.toFixed(4)}/${actualCost.output.toFixed(4)}
       </span>
     )
   }
@@ -49,13 +55,13 @@ export function CostDisplay({ cost, variant = 'detailed', className = '' }: Cost
       <div className="flex items-center gap-1">
         <DollarSign className="h-3 w-3" />
         <span className="font-mono">
-          ${cost.input.toFixed(4)}/1K in
+          ${actualCost.input.toFixed(4)}/1K in
         </span>
       </div>
       <div className="flex items-center gap-1">
         <span className="w-3"></span>
         <span className="font-mono">
-          ${cost.output.toFixed(4)}/1K out
+          ${actualCost.output.toFixed(4)}/1K out
         </span>
       </div>
     </div>

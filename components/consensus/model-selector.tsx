@@ -234,7 +234,6 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false, maxMo
                     <TierBadge tier={modelCosts[config.model as keyof typeof modelCosts]?.tier || 'budget'} />
                     <EfficiencyBadge 
                       model={config.model} 
-                      modelCosts={modelCosts}
                       className="text-lg"
                     />
                   </div>
@@ -243,7 +242,7 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false, maxMo
                     <span className="font-mono">{(MODEL_POWER[config.model as keyof typeof MODEL_POWER] || 0.7).toFixed(2)}</span>
                   </div>
                   <CostDisplay 
-                    cost={modelCosts[config.model as keyof typeof modelCosts]} 
+                    model={config.model}
                     variant="detailed"
                     className="text-muted-foreground"
                   />

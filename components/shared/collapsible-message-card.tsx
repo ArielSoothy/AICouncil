@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { FormattingService } from '@/lib/services'
 
 interface CollapsibleMessageCardProps {
   content: string
@@ -20,39 +21,10 @@ export function CollapsibleMessageCard({
 }: CollapsibleMessageCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   
-  const isLong = content.length > 800 || content.split('\n').length > 12
-  
-  // For long messages, show more content before truncating
-  // Always respect sentence boundaries to avoid cutting mid-sentence
-  const getDisplayContent = () => {
-    if (!isLong || isExpanded) return content
-    
-    // Split into sentences using proper sentence endings
-    const sentences = content.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0)
-    let truncated = ''
-    
-    // Take complete sentences up to maxLength characters
-    for (const sentence of sentences) {
-      const nextLength = (truncated + sentence).length
-      // Only add if it fits comfortably or if we haven't added any sentences yet
-      if (nextLength <= maxLength || truncated.length === 0) {
-        truncated += (truncated ? ' ' : '') + sentence
-      } else {
-        break
-      }
-    }
-    
-    // If no sentences fit, take first maxLength chars and find last complete word
-    if (truncated.length === 0) {
-      const firstChunk = content.substring(0, maxLength)
-      const lastSpace = firstChunk.lastIndexOf(' ')
-      truncated = lastSpace > 0 ? firstChunk.substring(0, lastSpace) : firstChunk
-    }
-    
-    return truncated + (truncated.length < content.length ? '...' : '')
-  }
-  
-  const displayContent = getDisplayContent()
+  const isLong = FormattingService.isLongMessage(content)
+  const displayContent = isLong && !isExpanded 
+    ? FormattingService.truncateAtSentence(content, maxLength)
+    : content
 
   return (
     <Card className={`p-4 space-y-3 ${className}`}>
@@ -77,7 +49,7 @@ export function CollapsibleMessageCard({
               ) : (
                 <>
                   <ChevronDown className="w-4 h-4 mr-1" />
-                  Show more ({Math.ceil((content.length - maxLength) / 100)} more lines)
+                  Show more ({FormattingService.estimateLineCount(content.substring(maxLength))}) more lines)
                 </>
               )}
             </Button>
