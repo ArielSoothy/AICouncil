@@ -242,5 +242,38 @@
 - **Last Modified**: January 2025 (Fixed guest mode 404 error + UUID handling + comprehensive testing)
 - **DO NOT**: Remove guest mode support, disable feedback collection, or break credit reward system
 
+### 14. AI-Powered Question Generator
+- **Status**: ✅ ACTIVE & CRITICAL - SELF-TESTING SYSTEM
+- **Location**: `lib/question-generator/` + `/api/question-generator` + UI integration
+- **Purpose**: Generate relevant questions for testing consensus system and inspiring users
+- **Key Components**:
+  - **Smart Question Categories**: MVP Development, AI-Tech, Product Strategy, UX, Business Model
+  - **Template System**: 16+ question templates with 50+ variable options
+  - **AI Generation**: Uses llama-3.1-8b-instant for dynamic question creation
+  - **Cache Integration**: Avoids duplicate questions with 24hr memory cache
+  - **Priority Questions**: Pre-curated high-value questions for product validation
+- **UI Features**:
+  - **Generate Button**: ✨ Sparkles icon button next to prompt input
+  - **Smart Fallbacks**: Priority → AI → Template generation hierarchy
+  - **User Feedback**: Toast notifications with question complexity/category
+  - **Tier Integration**: Pro/Enterprise users get AI-generated questions
+- **Self-Testing Benefits**:
+  - **Eating Own Dog Food**: Using AI consensus to improve the consensus system
+  - **MVP Validation**: Questions directly aligned with product development decisions
+  - **User Inspiration**: Help users discover effective question types
+  - **Data Collection**: Learn which questions perform best for consensus analysis
+- **Technical Architecture**:
+  - Memory cache with 24hr TTL for recent questions (max 20)
+  - Template variable system with contextual substitutions
+  - Category-based filtering and complexity levels (quick/analysis/strategic)
+  - Graceful error handling with template fallbacks
+- **File Locations**:
+  - `lib/question-generator/question-categories.ts` - Categories and templates
+  - `lib/question-generator/question-generator.ts` - Core generation logic
+  - `app/api/question-generator/route.ts` - API endpoint
+  - `components/consensus/query-interface.tsx` - UI integration
+- **Last Modified**: January 2025 (Complete implementation with UI integration)
+- **DO NOT**: Remove question generation system, modify template categories, or disable caching
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
