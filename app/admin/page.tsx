@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Header } from '@/components/ui/header'
 import { BarChart3, Users, MessageSquare, TrendingUp, Database } from 'lucide-react'
 
 interface AnalyticsData {
@@ -82,50 +83,64 @@ export default function AdminAnalyticsPage() {
 
   if (checkingAuth) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4">Checking admin access...</p>
+      <>
+        <Header />
+        <div className="container mx-auto py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4">Checking admin access...</p>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   if (!isAdmin) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
-          <p className="text-muted-foreground">{error}</p>
+      <>
+        <Header />
+        <div className="container mx-auto py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+            <p className="text-muted-foreground">{error}</p>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4">Loading analytics...</p>
+      <>
+        <Header />
+        <div className="container mx-auto py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4">Loading analytics...</p>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   if (error) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-          <p className="text-muted-foreground">{error}</p>
+      <>
+        <Header />
+        <div className="container mx-auto py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
+            <p className="text-muted-foreground">{error}</p>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-6xl">
+    <>
+      <Header />
+      <div className="container mx-auto py-8 max-w-6xl">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <BarChart3 className="w-8 h-8 text-blue-600" />
@@ -270,6 +285,7 @@ export default function AdminAnalyticsPage() {
           </Card>
         </>
       )}
-    </div>
+      </div>
+    </>
   )
 }
