@@ -104,8 +104,8 @@ function MainApp({ userTier }: MainAppProps) {
               )}
             </div>
             
-            {/* TESTING FEATURE: Pro Mode Unlock Button */}
-            {(userTier === 'guest' || userTier === 'free') && !isProModeUnlocked && (
+            {/* TESTING FEATURE: Pro Mode Unlock Button - DEVELOPMENT ONLY */}
+            {process.env.NODE_ENV === 'development' && (userTier === 'guest' || userTier === 'free') && !isProModeUnlocked && (
               <div className="mt-4">
                 <button
                   onClick={() => setIsProModeUnlocked(true)}
@@ -119,8 +119,8 @@ function MainApp({ userTier }: MainAppProps) {
                 </p>
               </div>
             )}
-            
-            {isProModeUnlocked && (
+
+            {process.env.NODE_ENV === 'development' && isProModeUnlocked && (
               <div className="mt-4">
                 <button
                   onClick={() => setIsProModeUnlocked(false)}
