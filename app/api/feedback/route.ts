@@ -9,17 +9,61 @@ type FeedbackInsert = Database['public']['Tables']['feedback']['Insert']
 
 export async function POST(request: NextRequest) {
   try {
+    const body = await request.json()
+    const { conversation_id, user_rating, comments, isGuestMode = false } = body
+
+    // Handle guest mode feedback (no authentication required)
+    if (isGuestMode || conversation_id === 'general') {
+      // Store guest feedback anonymously for evaluation research
+      const supabase = await createClient()
+
+      const guestFeedbackData: FeedbackInsert = {
+        conversation_id: conversation_id || 'guest_general',
+        user_rating: user_rating || null,
+        comments: comments || null,
+      }
+
+      try {
+        const { data: feedback, error } = await supabase
+          .from('feedback')
+          .insert(guestFeedbackData)
+          .select()
+          .single()
+
+        if (error) {
+          console.error('Error storing guest feedback:', error)
+          // Still return success to user, but log the error
+          return NextResponse.json({
+            message: 'Guest feedback received (storage failed)',
+            creditsEarned: 0,
+            success: true
+          }, { status: 200 })
+        }
+
+        return NextResponse.json({
+          message: 'Guest feedback received and stored for research',
+          creditsEarned: 0,
+          success: true,
+          feedbackId: feedback.id
+        }, { status: 200 })
+      } catch (error) {
+        console.error('Error in guest feedback storage:', error)
+        return NextResponse.json({
+          message: 'Guest feedback received (storage failed)',
+          creditsEarned: 0,
+          success: true
+        }, { status: 200 })
+      }
+    }
+
     const supabase = await createClient()
-    
+
     // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    const body = await request.json()
-    const { conversation_id, user_rating, comments } = body
 
     if (!conversation_id) {
       return NextResponse.json(
