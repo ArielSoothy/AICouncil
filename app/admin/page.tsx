@@ -202,6 +202,57 @@ export default function AdminAnalyticsPage() {
             </div>
           </Card>
 
+          {/* Saved Conversations */}
+          <Card className="p-6 mb-8">
+            <h2 className="text-xl font-semibold mb-4">Saved Conversations (Q&A)</h2>
+            <div className="space-y-4">
+              {analytics.savedConversations.slice(0, 10).map((conversation) => (
+                <div key={conversation.id} className="border-l-4 border-green-500 pl-4 py-3">
+                  <div className="mb-3">
+                    <p className="font-medium text-sm text-muted-foreground mb-1">Question:</p>
+                    <p className="font-medium">{conversation.query}</p>
+                  </div>
+
+                  {conversation.responses && (
+                    <div className="mb-3">
+                      <p className="font-medium text-sm text-muted-foreground mb-2">Answers:</p>
+                      <div className="space-y-2 text-sm">
+                        {typeof conversation.responses === 'object' && conversation.responses !== null ? (
+                          Object.entries(conversation.responses).map(([provider, response]: [string, any]) => (
+                            <div key={provider} className="bg-gray-50 p-2 rounded">
+                              <div className="font-medium text-xs text-blue-600 mb-1">{provider.toUpperCase()}</div>
+                              <div className="text-gray-700 line-clamp-3">
+                                {typeof response === 'string'
+                                  ? response.substring(0, 200) + (response.length > 200 ? '...' : '')
+                                  : JSON.stringify(response).substring(0, 200) + '...'
+                                }
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="bg-gray-50 p-2 rounded text-sm text-gray-700">
+                            {String(conversation.responses).substring(0, 200)}...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>{new Date(conversation.created_at).toLocaleDateString()}</span>
+                    <span>{new Date(conversation.created_at).toLocaleTimeString()}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {conversation.user_id ? 'Authenticated' : 'Guest'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+              {analytics.savedConversations.length === 0 && (
+                <p className="text-muted-foreground text-center py-4">No saved conversations yet</p>
+              )}
+            </div>
+          </Card>
+
           {/* Daily Stats */}
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Daily Activity</h2>
