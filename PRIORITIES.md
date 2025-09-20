@@ -1,24 +1,52 @@
 # 🎯 CURRENT PRIORITIES & SESSION PROGRESS
 
 ## 📝 CURRENT SESSION CONTEXT:
-**Current Session:** ✅ COMPLETED - Complete project modularization with 16 new components, ~800 lines duplicate code eliminated
-**Next Priority:** 🎯 Chain-of-Debate Display Enhancement (Phase 1) - Build UI to show WHY agents disagree  
-**System Status:** Highly modular architecture, 53% component size reduction, Pro Mode working, TypeScript/ESLint clean, ready for enhanced development
+**Current Session:** ✅ COMPLETED - Evaluation data collection system + feedback form guest mode fix implemented and tested
+**Next Priority:** 🎯 USER FEEDBACK COLLECTION - Analytics dashboard and MVP strategy continuation
+**System Status:** Full evaluation/feedback pipeline working, guest mode supported, ready for data analysis
 
-### What Needs to Be Done Next:
-**Build UI to show WHY agents disagree:**
-- Create disagreement visualization component
-- Add "Why They Disagree" section to debate display
-- Show confidence levels for each position
-- Display disagreement patterns (binary opposition, evidence conflict, etc.)
-- Evolution timeline showing how positions changed across rounds
+### **STRATEGIC SHIFT: MVP-DRIVEN DEVELOPMENT** 🎯
+**Based on MVP.md analysis - PAUSE feature development until user feedback collected:**
+
+### **IMMEDIATE NEXT STEPS** (User-Driven Approach):
+1. **Deploy current system** and start collecting evaluation data
+2. **Add basic feedback collection**:
+   - Simple helpful/not helpful rating after results
+   - Optional comment box for user feedback
+   - Email signup for product updates
+3. **Monitor usage patterns** for 1-2 weeks
+4. **Build only what users explicitly request** through feedback
+
+### **DEPRECATED APPROACH** (Feature-First Development):
+~~Build UI to show WHY agents disagree~~ - **HOLD** until users request this feature
 
 ### Current Agent Configuration (Working - DO NOT CHANGE):
 - **Analyst:** llama-3.1-8b-instant (Groq)
 - **Critic:** gemini-1.5-flash-8b (Google)  
 - **Synthesizer:** llama-3.3-70b-versatile (Groq with auto-fallback)
 
-## ✅ RECENTLY COMPLETED (January 9, 2025):
+## ✅ RECENTLY COMPLETED (January 20, 2025):
+
+**✅ EVALUATION DATA COLLECTION SYSTEM - COMPLETED**
+- ✅ **Database Schema Extended** - Added `evaluation_data` JSONB field to conversations table
+- ✅ **TypeScript Types Updated** - Full type safety for evaluation data structures
+- ✅ **Debate API Enhanced** - Captures structured agent debate data with verdicts, confidence scores
+- ✅ **Consensus API Enhanced** - Captures structured consensus data via conversations endpoint
+- ✅ **Guest Mode Compatible** - Anonymous evaluation data collection for testing
+- ✅ **evals.md Documentation** - Comprehensive evaluation framework documentation created
+- ✅ **MVP Strategy Integration** - System aligned with user-driven development approach
+- ✅ **Training Ready Format** - Data structure prepared for ML pipeline compatibility
+- ✅ **TypeScript Compilation Clean** - All changes verified and error-free
+
+**✅ FEEDBACK SYSTEM GUEST MODE FIX - COMPLETED**
+- ✅ **Fixed 404 Error** - Feedback API now supports guest mode submissions
+- ✅ **Guest Mode Support** - Modified `/api/feedback/route.ts` to handle isGuestMode flag
+- ✅ **Component Updates** - Updated feedback-form.tsx for guest mode compatibility
+- ✅ **Playwright Testing** - End-to-end tested feedback submission in guest mode
+- ✅ **User Experience** - Guest users can provide feedback without authentication
+- ✅ **Data Collection Ready** - Full pipeline now working for evaluation data gathering
+
+## ✅ PREVIOUSLY COMPLETED (January 9, 2025):
 
 **Complete Project Modularization - COMPLETED**
 - ✅ **16 new modular components** created across shared and domain-specific layers
@@ -136,16 +164,26 @@
 - Removed redundancy, clear file responsibilities, proper organization
 - Proper workflow: Work → Test → Document → Ask approval → Push → New prompt
 
-## 🚀 NEXT SESSION PRIORITIES:
+## 🚀 NEXT SESSION PRIORITIES (MVP STRATEGY):
 
-### 🎯 PRIMARY FOCUS - Chain-of-Debate Enhancement:
+### 🎯 PRIMARY FOCUS - User Feedback Collection System:
 
-**Phase 1: Chain-of-Debate Display (CURRENT)**
-- Create disagreement visualization component
-- Add "Why They Disagree" section to debate display  
-- Show confidence levels for each position
-- Display disagreement patterns (binary opposition, evidence conflict, etc.)
-- Evolution timeline showing how positions changed across rounds
+**Phase 1: Basic Feedback Infrastructure (IMMEDIATE)**
+- Add simple helpful/not helpful rating component after consensus results
+- Add optional comment text field for detailed user feedback
+- Implement feedback storage in database with conversation correlation
+- Add unobtrusive email signup in header/footer area
+
+**Phase 2: Value Proposition & Analytics (WEEK 1)**
+- Add clear explanation of AI Council value on main interface
+- Implement basic usage analytics (daily queries, engagement patterns)
+- Create feedback analysis dashboard for reviewing user comments
+- Monitor which query types receive best user satisfaction
+
+**DEPRECATED UNTIL USER DEMAND**: Chain-of-Debate Display Enhancement
+- ~~Create disagreement visualization component~~
+- ~~Add "Why They Disagree" section~~
+- **HOLD** until users explicitly request debate analysis features
 
 **Phase 2: Enhanced Analysis**
 - Add query type auto-classification (factual, mathematical, reasoning, creative, current)

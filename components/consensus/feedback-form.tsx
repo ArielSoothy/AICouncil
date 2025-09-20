@@ -9,9 +9,10 @@ import { useAuth } from '@/contexts/auth-context'
 interface FeedbackFormProps {
   conversationId?: string
   onSuccess?: () => void
+  isGuestMode?: boolean
 }
 
-export function FeedbackForm({ conversationId, onSuccess }: FeedbackFormProps) {
+export function FeedbackForm({ conversationId, onSuccess, isGuestMode = false }: FeedbackFormProps) {
   const { user, refreshUserProfile } = useAuth()
   const [rating, setRating] = useState<number>(0)
   const [hoveredRating, setHoveredRating] = useState<number>(0)
@@ -20,7 +21,8 @@ export function FeedbackForm({ conversationId, onSuccess }: FeedbackFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false)
 
   const handleSubmit = async () => {
-    if (!user || rating === 0) return
+    if (rating === 0) return
+    if (!isGuestMode && !user) return
 
     setIsSubmitting(true)
     try {
@@ -33,6 +35,7 @@ export function FeedbackForm({ conversationId, onSuccess }: FeedbackFormProps) {
           conversation_id: conversationId || 'general',
           user_rating: rating,
           comments: comments.trim() || null,
+          isGuestMode: isGuestMode,
         }),
       })
 
@@ -43,16 +46,22 @@ export function FeedbackForm({ conversationId, onSuccess }: FeedbackFormProps) {
       const result = await response.json()
       
       setIsSubmitted(true)
-      
-      // Refresh user profile to update premium credits
-      await refreshUserProfile()
-      
+
+      // Refresh user profile to update premium credits (only for authenticated users)
+      if (!isGuestMode && user) {
+        await refreshUserProfile()
+      }
+
       onSuccess?.()
-      
+
       // Show success message based on credits earned
       if (result.creditsEarned > 0) {
         setTimeout(() => {
           alert(`🎉 Thanks for your feedback! You earned ${result.creditsEarned} premium credits!`)
+        }, 500)
+      } else if (isGuestMode) {
+        setTimeout(() => {
+          alert(`🎉 Thanks for your feedback! Sign up to earn premium credits for future feedback.`)
         }, 500)
       }
       
@@ -64,15 +73,20 @@ export function FeedbackForm({ conversationId, onSuccess }: FeedbackFormProps) {
     }
   }
 
-  if (!user) {
-    return null // Don't show feedback form for non-authenticated users
+  if (!user && !isGuestMode) {
+    return null // Don't show feedback form for non-authenticated users (unless guest mode)
   }
 
   if (isSubmitted) {
     return (
       <div className="p-4 bg-green-950/20 border border-green-800/30 rounded-lg text-center">
         <div className="text-green-400 mb-2">✅ Thank you for your feedback!</div>
-        <div className="text-sm text-green-300/80">You earned +2 premium credits for helping us improve!</div>
+        <div className="text-sm text-green-300/80">
+          {isGuestMode
+            ? "Sign up to earn premium credits for future feedback!"
+            : "You earned +2 premium credits for helping us improve!"
+          }
+        </div>
       </div>
     )
   }
@@ -133,7 +147,10 @@ export function FeedbackForm({ conversationId, onSuccess }: FeedbackFormProps) {
 
         <div className="flex justify-between items-center">
           <div className="text-xs text-blue-300">
-            💰 Earn +2 premium credits per feedback
+            {isGuestMode
+              ? "💰 Sign up to earn credits!"
+              : "💰 Earn +2 premium credits per feedback"
+            }
           </div>
           <Button
             onClick={handleSubmit}

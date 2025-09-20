@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       const supabase = await createClient()
 
       const guestFeedbackData: FeedbackInsert = {
-        conversation_id: conversation_id || 'guest_general',
+        conversation_id: (conversation_id && conversation_id !== 'general') ? conversation_id : null,
         user_rating: user_rating || null,
         comments: comments || null,
       }

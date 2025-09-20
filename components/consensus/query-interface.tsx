@@ -344,7 +344,7 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
         </div>
       </div>
 
-      {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} />}
+      {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={isGuestMode} />}
     </div>
   )
 }

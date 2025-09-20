@@ -231,13 +231,48 @@ export async function POST(request: NextRequest) {
       try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
-        
+
         if (user) {
+          // Create evaluation data structure for training/analysis
+          const evaluationData = {
+            query_type: 'debate', // Could be enhanced with auto-classification
+            mode: 'agents',
+            agent_verdicts: session.rounds?.[session.rounds.length - 1]?.responses?.map((resp: any) => ({
+              agent: resp.agent || 'unknown',
+              verdict: resp.response || '',
+              confidence: resp.confidence || 0.5
+            })) || [],
+            consensus_verdict: session.synthesis?.response || 'No consensus reached',
+            confidence_scores: {
+              overall: session.synthesis?.confidence || 0.5,
+              agreement_level: session.agreementScore || 0.5,
+              certainty: session.synthesis?.confidence || 0.5
+            },
+            reasoning_chain: session.rounds?.map((round: any) =>
+              round.responses?.map((resp: any) => resp.reasoning || '').filter(Boolean)
+            ).flat() || [],
+            disagreement_points: session.rounds?.map((round: any) =>
+              round.responses?.map((resp: any) => resp.disagreements || []).flat()
+            ).flat().filter(Boolean) || [],
+            metadata: {
+              models_used: agentConfigs.map(agent => agent.model),
+              providers_used: agentConfigs.map(agent => agent.provider),
+              total_cost: session.estimatedCost || 0,
+              response_time_ms: Date.now() - (session.startTime || Date.now()),
+              rounds_executed: session.rounds?.length || 0,
+              auto_trigger_round_2: session.autoTriggeredRound2 || false,
+              timestamp: new Date().toISOString(),
+              is_guest_session: false
+            },
+            ground_truth: null, // For future manual validation
+            training_ready: true
+          }
+
           await supabase.from('conversations').insert({
             user_id: user.id,
-            type: 'debate',
             query,
-            data: session,
+            responses: session, // Keep existing format
+            evaluation_data: evaluationData, // Add structured evaluation data
             created_at: new Date().toISOString()
           })
         }

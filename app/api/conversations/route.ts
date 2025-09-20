@@ -146,11 +146,50 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create evaluation data structure for consensus results
+    let evaluationData = null
+
+    // Check if this is a consensus result (vs debate result which has its own logic)
+    if (responses && !responses.rounds) { // Consensus doesn't have rounds, debates do
+      evaluationData = {
+        query_type: 'consensus', // Could be enhanced with auto-classification
+        mode: 'consensus',
+        model_verdicts: responses.models?.map((model: any) => ({
+          model: model.model || 'unknown',
+          verdict: model.response || '',
+          confidence: model.confidence || 0.5,
+          provider: model.provider || 'unknown'
+        })) || [],
+        consensus_verdict: responses.consensus || 'No consensus reached',
+        confidence_scores: {
+          overall: responses.consensusScore || 0.5,
+          agreement_level: responses.consensusScore || 0.5,
+          certainty: responses.confidence || 0.5
+        },
+        reasoning_chain: responses.models?.map((model: any) => model.response || '').filter(Boolean) || [],
+        disagreement_points: responses.models?.map((model: any) => model.disagreements || []).flat().filter(Boolean) || [],
+        metadata: {
+          models_used: responses.models?.map((model: any) => model.model) || [],
+          providers_used: responses.models?.map((model: any) => model.provider) || [],
+          total_cost: responses.totalCost || 0,
+          response_time_ms: (responses.responseTime || 0) * 1000, // Convert seconds to ms
+          consensus_score: responses.consensusScore || 0.5,
+          judge_model: responses.judgeModel || 'unknown',
+          web_search_enabled: responses.webSearchContext ? true : false,
+          timestamp: new Date().toISOString(),
+          is_guest_session: false
+        },
+        ground_truth: null, // For future manual validation
+        training_ready: true
+      }
+    }
+
     // Insert new conversation
     const conversationData: ConversationInsert = {
       user_id: user.id,
       query,
       responses,
+      evaluation_data: evaluationData,
     }
 
     const { data: conversation, error } = await supabase

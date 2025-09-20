@@ -25,6 +25,7 @@ export interface Database {
           user_id: string
           query: string
           responses: any // JSONB type
+          evaluation_data?: any // JSONB type for structured evaluation data
           created_at: string
           updated_at: string
         }
@@ -32,10 +33,12 @@ export interface Database {
           user_id: string
           query: string
           responses: any
+          evaluation_data?: any
         }
         Update: {
           query?: string
           responses?: any
+          evaluation_data?: any
         }
       }
       feedback: {

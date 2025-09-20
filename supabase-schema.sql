@@ -22,9 +22,41 @@ CREATE TABLE public.conversations (
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
   query TEXT NOT NULL,
   responses JSONB NOT NULL, -- Store all model responses and consensus data
+  evaluation_data JSONB, -- Store structured evaluation data for testing/training (optional)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- evaluation_data structure for model training and evaluation:
+-- {
+--   "query_type": "factual|reasoning|creative|mathematical|...",
+--   "mode": "single|consensus|debate",
+--   "agent_verdicts": [
+--     {"agent": "analyst", "verdict": "...", "confidence": 0.85},
+--     {"agent": "critic", "verdict": "...", "confidence": 0.72},
+--     {"agent": "synthesizer", "verdict": "...", "confidence": 0.91}
+--   ],
+--   "consensus_verdict": "final agreed upon answer",
+--   "confidence_scores": {
+--     "overall": 0.89,
+--     "agreement_level": 0.76,
+--     "certainty": 0.84
+--   },
+--   "reasoning_chain": ["step1", "step2", "step3"],
+--   "disagreement_points": ["point1", "point2"],
+--   "metadata": {
+--     "models_used": ["gpt-4", "claude-3.5-sonnet", "gemini-1.5-pro"],
+--     "providers_used": ["openai", "anthropic", "google"],
+--     "total_cost": 0.001,
+--     "response_time_ms": 2500,
+--     "rounds_executed": 2,
+--     "auto_trigger_round_2": true,
+--     "timestamp": "2025-01-09T12:34:56Z",
+--     "is_guest_session": false
+--   },
+--   "ground_truth": null, // For future manual validation
+--   "training_ready": true // Flag for ML pipeline compatibility
+-- }
 
 -- Feedback table
 CREATE TABLE public.feedback (

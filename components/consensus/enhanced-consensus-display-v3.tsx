@@ -13,6 +13,7 @@ import { MODEL_POWER } from '@/lib/model-metadata'
 interface EnhancedConsensusDisplayProps {
   result: EnhancedConsensusResponse
   conversationId?: string | null
+  isGuestMode?: boolean
 }
 
 // Model pricing per 1K tokens (input → output) - same as in model selector
@@ -280,7 +281,7 @@ function describeTopPreference(top: string, others: string[], query: string): st
   return 'Top-ranked by consensus across models'
 }
 
-export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedConsensusDisplayProps) {
+export function EnhancedConsensusDisplay({ result, conversationId, isGuestMode = false }: EnhancedConsensusDisplayProps) {
   const [currentLevel, setCurrentLevel] = useState<'concise' | 'normal' | 'detailed'>(result.consensus.elaborationLevel)
   const [normalAnswer, setNormalAnswer] = useState(result.consensus.normalAnswer || '')
   const [detailedAnswer, setDetailedAnswer] = useState(result.consensus.detailedAnswer || '')
@@ -802,11 +803,12 @@ export function EnhancedConsensusDisplay({ result, conversationId }: EnhancedCon
       </div>
 
       {/* Feedback Section */}
-      <FeedbackForm 
-        conversationId={conversationId || "general"} 
+      <FeedbackForm
+        conversationId={conversationId || "general"}
+        isGuestMode={isGuestMode}
         onSuccess={() => {
           // Feedback submitted successfully - credits should be automatically updated via context
-        }} 
+        }}
       />
     </div>
   )

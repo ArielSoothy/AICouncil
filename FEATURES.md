@@ -181,7 +181,7 @@
   - Visual indicators: Yellow "🔓 TESTING MODE" badge when active
   - Disable button to revert to normal tier
   - Passes `testingTierOverride` prop to QueryInterface
-- **How to Remove**: 
+- **How to Remove**:
   1. Remove `isProModeUnlocked` state and `effectiveTier` logic (lines 63-66)
   2. Remove Pro unlock/disable buttons UI (lines 107-136)
   3. Change tier display back to use `userTier` instead of `effectiveTier` (line 100)
@@ -190,6 +190,57 @@
 - **Security Note**: This is CLIENT-SIDE ONLY for UI testing. Backend still enforces actual tier limits
 - **Last Modified**: January 2025 (Added for testing all agents functionality)
 - **TODO**: Remove before production deployment
+
+### 12. Evaluation Data Collection System
+- **Status**: ✅ ACTIVE & CRITICAL - PRODUCTION READY
+- **Location**: Database schema + API endpoints + type definitions
+- **Purpose**: Comprehensive data collection system for ML training and evaluation research
+- **Key Components**:
+  - **Database Schema**: Extended conversations table with `evaluation_data` JSONB field
+  - **TypeScript Types**: Full type safety in `types/database.ts`
+  - **Agent Debate API**: Enhanced `/api/agents/debate/route.ts` captures structured agent verdicts
+  - **Consensus API**: Enhanced `/api/conversations/route.ts` captures consensus data
+  - **Guest Mode Support**: Anonymous data collection for research/testing
+- **Data Structure Captured**:
+  - Query type, mode, user tier, response time
+  - Agent/model verdicts with confidence scores
+  - Consensus mechanisms and agreement metrics
+  - Provider diversity and cost tracking
+  - Structured for immediate ML pipeline compatibility
+- **File Locations**:
+  - `supabase-schema.sql` - Database field definition
+  - `types/database.ts` - TypeScript type definitions
+  - `app/api/agents/debate/route.ts` - Agent debate data capture
+  - `app/api/conversations/route.ts` - Consensus data capture
+  - `evals.md` - Comprehensive evaluation framework documentation
+- **Research Integration**: Aligned with MVP strategy for user-driven development
+- **Last Modified**: January 2025 (Complete implementation + testing)
+- **DO NOT**: Remove evaluation data capture, modify data structure, or disable guest mode support
+
+### 13. Feedback Collection System
+- **Status**: ✅ ACTIVE & CRITICAL - GUEST MODE ENABLED
+- **Location**: `components/consensus/feedback-form.tsx` + `/api/feedback/route.ts`
+- **Purpose**: Comprehensive user feedback collection with guest mode support for MVP validation
+- **Key Components**:
+  - **5-Star Rating System**: Visual star interface with hover effects
+  - **Optional Comments**: Text area for detailed user feedback
+  - **Guest Mode Support**: Anonymous feedback collection without authentication
+  - **Credit Rewards**: +2 premium credits for authenticated users
+  - **API Endpoint**: `/api/feedback/route.ts` handles both authenticated and guest submissions
+- **User Experience Features**:
+  - Clear success/failure feedback with appropriate messaging
+  - Guest mode shows signup prompts for credit earning
+  - Prevents duplicate feedback per conversation
+  - Graceful error handling and user notifications
+- **Data Storage**:
+  - Authenticated users: Full feedback stored in database with credit rewards
+  - Guest users: Anonymous feedback stored in database with null conversation_id for research
+  - Conversation correlation for feedback analysis (when available)
+- **Testing**: Verified working with Playwright end-to-end testing in guest mode
+- **UUID Fix**: Fixed conversation_id handling for guest feedback (uses null instead of invalid UUID)
+- **Database Storage**: Guest feedback now properly stored with null conversation_id for research analysis
+- **Last Modified**: January 2025 (Fixed guest mode 404 error + UUID handling + comprehensive testing)
+- **DO NOT**: Remove guest mode support, disable feedback collection, or break credit reward system
 
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
