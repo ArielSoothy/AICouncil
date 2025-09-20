@@ -384,7 +384,7 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
           <div className="text-xs text-muted-foreground mt-1">
             💡 Concise mode: Ultra-brief answers (lists, phrases). Normal/Detailed: Full analysis with evidence.
             <br />
-            🎲 Use "Generate Question" to get AI-powered questions perfect for testing consensus!
+            🎲 Use &ldquo;Generate Question&rdquo; to get AI-powered questions perfect for testing consensus!
           </div>
         </div>
         
