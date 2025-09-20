@@ -32,6 +32,13 @@ export async function GET() {
       .order('created_at', { ascending: false })
       .limit(50)
 
+    // Get saved conversations with full Q&A data (last 20)
+    const { data: savedConversations } = await supabase
+      .from('conversations')
+      .select('id, query, responses, created_at, user_id')
+      .order('created_at', { ascending: false })
+      .limit(20)
+
     // Get daily stats for last 30 days
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -85,6 +92,7 @@ export async function GET() {
       totalFeedback: totalFeedback || 0,
       averageRating,
       recentQueries: recentQueries || [],
+      savedConversations: savedConversations || [],
       dailyStats: dailyStatsArray
     }
 

@@ -15,6 +15,13 @@ interface AnalyticsData {
     created_at: string
     user_id: string | null
   }>
+  savedConversations: Array<{
+    id: string
+    query: string
+    responses: any
+    created_at: string
+    user_id: string | null
+  }>
   dailyStats: Array<{
     date: string
     conversations: number
