@@ -80,7 +80,7 @@ export class QuestionGenerator {
 
     if (avoidRecent) {
       const recentQuestions = this.getRecentQuestions()
-      availableQuestions = PRIORITY_QUESTIONS.filter(q => !recentQuestions.includes(q))
+      availableQuestions = PRIORITY_QUESTIONS.filter(q => !recentQuestions.includes(q.toLowerCase()))
     }
 
     if (availableQuestions.length === 0) {

@@ -243,8 +243,8 @@
 - **DO NOT**: Remove guest mode support, disable feedback collection, or break credit reward system
 
 ### 14. AI-Powered Question Generator
-- **Status**: ✅ ACTIVE & CRITICAL - SELF-TESTING SYSTEM
-- **Location**: `lib/question-generator/` + `/api/question-generator` + UI integration
+- **Status**: ✅ ACTIVE & CRITICAL - SELF-TESTING SYSTEM - FULLY VALIDATED
+- **Location**: `lib/question-generator/` + `/api/question-generator` + UI integration + `/test-question-intelligence`
 - **Purpose**: Generate relevant questions for testing consensus system and inspiring users
 - **Key Components**:
   - **Smart Question Categories**: MVP Development, AI-Tech, Product Strategy, UX, Business Model
@@ -257,6 +257,11 @@
   - **Smart Fallbacks**: Priority → AI → Template generation hierarchy
   - **User Feedback**: Toast notifications with question complexity/category
   - **Tier Integration**: Pro/Enterprise users get AI-generated questions
+- **Intelligence Features (ALL VALIDATED ✅)**:
+  - **🔄 Cache Deduplication (24h TTL)**: ✅ WORKING - Avoids duplicate questions for 24 hours
+  - **📝 Recent Tracking (20 limit)**: ✅ WORKING - Remembers last 20 questions for variety
+  - **👤 Tier Awareness**: ✅ WORKING - Free users get templates, Pro+ get AI generation
+  - **⚠️ Error Handling**: ✅ WORKING - Graceful fallbacks if AI generation fails
 - **Self-Testing Benefits**:
   - **Eating Own Dog Food**: Using AI consensus to improve the consensus system
   - **MVP Validation**: Questions directly aligned with product development decisions
@@ -267,13 +272,19 @@
   - Template variable system with contextual substitutions
   - Category-based filtering and complexity levels (quick/analysis/strategic)
   - Graceful error handling with template fallbacks
+- **Testing & Validation**:
+  - **Comprehensive Test Suite**: `/test-question-intelligence` page with real-time validation
+  - **Playwright Testing**: End-to-end browser automation validation completed
+  - **Bug Fixes Applied**: Fixed case-sensitivity issue in priority question deduplication
+  - **Production Ready**: All intelligence features validated and operational
 - **File Locations**:
   - `lib/question-generator/question-categories.ts` - Categories and templates
   - `lib/question-generator/question-generator.ts` - Core generation logic
   - `app/api/question-generator/route.ts` - API endpoint
   - `components/consensus/query-interface.tsx` - UI integration
-- **Last Modified**: January 2025 (Complete implementation with UI integration)
-- **DO NOT**: Remove question generation system, modify template categories, or disable caching
+  - `app/test-question-intelligence/page.tsx` - Comprehensive test suite
+- **Last Modified**: January 2025 (Intelligence features validated, critical bug fixed)
+- **DO NOT**: Remove question generation system, modify template categories, disable caching, or remove intelligence test suite
 
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
