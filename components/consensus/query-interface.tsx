@@ -10,7 +10,7 @@ import { ConsensusResult, ModelConfig, EnhancedConsensusResponse } from '@/types
 import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
-import { Send, Loader2, GitCompare, Search } from 'lucide-react'
+import { Send, Loader2, GitCompare, Search, Sparkles } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import {
@@ -43,6 +43,7 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
   const [includeComparison, setIncludeComparison] = useState(false)
   const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>(null)
   const [enableWebSearch, setEnableWebSearch] = useState(false)
+  const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   
   // Default models based on user tier
   const getDefaultModels = (): ModelConfig[] => {
@@ -88,6 +89,47 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
   }
 
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(getDefaultModels())
+
+  const handleGenerateQuestion = async () => {
+    if (isGeneratingQuestion) return
+
+    setIsGeneratingQuestion(true)
+    try {
+      const response = await fetch('/api/question-generator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priority: 'high',
+          useAI: effectiveUserTier === 'pro' || effectiveUserTier === 'enterprise',
+          avoidRecent: true
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate question')
+      }
+
+      const data = await response.json()
+      if (data.success && data.question) {
+        setPrompt(data.question.question)
+        toast({
+          title: "Question Generated!",
+          description: `Generated a ${data.question.complexity} ${data.question.category.toLowerCase()} question`,
+        })
+      } else {
+        throw new Error(data.message || 'No question generated')
+      }
+    } catch (error) {
+      console.error('Question generation error:', error)
+      toast({
+        variant: "destructive",
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : 'Failed to generate question',
+      })
+    } finally {
+      setIsGeneratingQuestion(false)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!prompt.trim() || isLoading) return
@@ -307,9 +349,30 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
         )}
         
         <div className="mt-4">
-          <label htmlFor="prompt" className="block text-sm font-medium mb-2">
-            Enter your prompt
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="prompt" className="block text-sm font-medium">
+              Enter your prompt
+            </label>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateQuestion}
+              disabled={isGeneratingQuestion}
+              className="text-xs gap-1"
+            >
+              {isGeneratingQuestion ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3 w-3" />
+                  Generate Question
+                </>
+              )}
+            </Button>
+          </div>
           <Textarea
             id="prompt"
             placeholder="What are the top 3 AI coding tools for solo entrepreneurs ranked?"
@@ -320,6 +383,8 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
           />
           <div className="text-xs text-muted-foreground mt-1">
             💡 Concise mode: Ultra-brief answers (lists, phrases). Normal/Detailed: Full analysis with evidence.
+            <br />
+            🎲 Use "Generate Question" to get AI-powered questions perfect for testing consensus!
           </div>
         </div>
         
