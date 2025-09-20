@@ -1,6 +1,6 @@
 'use client'
 
-import { Brain, User, LogOut, BarChart3, Users } from 'lucide-react'
+import { Brain, User, LogOut, BarChart3, Users, Shield } from 'lucide-react'
 import { Button } from './button'
 import { useAuth } from '@/contexts/auth-context'
 import { PROJECT_NAME } from '@/lib/config/branding'
@@ -27,6 +27,16 @@ export function Header() {
               Agents
             </Button>
           </Link>
+
+          {/* Admin button - Development only */}
+          {process.env.NODE_ENV === 'development' && (
+            <Link href="/admin">
+              <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700">
+                <Shield className="h-4 w-4 mr-2" />
+                Admin
+              </Button>
+            </Link>
+          )}
           {user ? (
             <>
               <Link href="/dashboard">
