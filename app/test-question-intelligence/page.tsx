@@ -91,9 +91,10 @@ export default function QuestionIntelligenceTest() {
   const inspectCache = () => {
     // Access the memory cache to inspect contents
     const recentKey = 'question_gen_recent_questions'
+    const stats = MemoryCache.getStats()
     const cacheData = {
       recentQuestions: MemoryCache.get(recentKey) || [],
-      cacheSize: MemoryCache.size || 'Unknown'
+      cacheSize: stats.totalEntries || 0
     }
     setCacheContents(cacheData)
     return cacheData
