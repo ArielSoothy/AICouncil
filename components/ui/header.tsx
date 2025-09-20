@@ -21,6 +21,13 @@ export function Header() {
         </Link>
         
         <div className="flex items-center gap-2">
+          <Link href="/marketing">
+            <Button variant="ghost" size="sm">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              About
+            </Button>
+          </Link>
+
           <Link href="/agents">
             <Button variant="ghost" size="sm">
               <Users className="h-4 w-4 mr-2" />
