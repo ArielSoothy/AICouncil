@@ -17,7 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AgentConfig, DebateSession, DEBATE_CONFIG } from '@/lib/agents/types'
 import { ModelConfig } from '@/types/consensus'
 import { estimateDebateCost, formatCost, calculateDisagreementScore } from '@/lib/agents/cost-calculator'
-import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe } from 'lucide-react'
+import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -77,6 +77,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [enableWebSearch, setEnableWebSearch] = useState(false)
   const [costEstimate, setCostEstimate] = useState<any>(null)
   const [showRound2Prompt, setShowRound2Prompt] = useState(false)
+  const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   
   // Web search tracking
   const [webSearchStatus, setWebSearchStatus] = useState<{
@@ -241,6 +242,40 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       setCostEstimate(estimate)
     }
   }, [selectedAgents, selectedLLMs, rounds, responseMode, round1Mode])
+
+  const handleGenerateQuestion = async () => {
+    if (isGeneratingQuestion) return
+
+    setIsGeneratingQuestion(true)
+    try {
+      const response = await fetch('/api/question-generator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priority: 'high',
+          useAI: userTier === 'pro' || userTier === 'enterprise',
+          avoidRecent: true
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate question')
+      }
+
+      const data = await response.json()
+      if (data.success && data.question) {
+        setQuery(data.question.question)
+        // You could add a toast notification here if the useToast hook is available
+      } else {
+        throw new Error(data.message || 'No question generated')
+      }
+    } catch (error) {
+      console.error('Question generation error:', error)
+      // Handle error - could show a toast or set an error state
+    } finally {
+      setIsGeneratingQuestion(false)
+    }
+  }
 
   // Add state for tracking streaming updates
   const [streamingUpdates, setStreamingUpdates] = useState<any[]>([])
@@ -972,9 +1007,30 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           <Card className="p-6">
             <div className="space-y-4">
               <div className="space-y-3">
-                <Label htmlFor="query" className="text-lg font-semibold">
-                  Debate Query
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="query" className="text-lg font-semibold">
+                    Debate Query
+                  </Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateQuestion}
+                    disabled={isGeneratingQuestion}
+                    className="text-xs gap-1"
+                  >
+                    {isGeneratingQuestion ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3 w-3" />
+                        Generate Question
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <Textarea
                   id="query"
                   value={query}
