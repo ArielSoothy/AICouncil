@@ -286,5 +286,111 @@
 - **Last Modified**: January 2025 (Intelligence features validated, critical bug fixed)
 - **DO NOT**: Remove question generation system, modify template categories, disable caching, or remove intelligence test suite
 
+### 15. Agent Debate Conversation Saving System
+- **Status**: ✅ ACTIVE & CRITICAL - DATA COLLECTION ESSENTIAL
+- **Location**: `components/agents/debate-interface.tsx` + `/api/conversations` integration
+- **Purpose**: Comprehensive saving of all agent debates for analytics and user history
+- **Key Components**:
+  - **Database Integration**: All debates saved to conversations table via existing `/api/conversations` API
+  - **Guest Mode Support**: Both authenticated and guest debates properly saved with user type flagging
+  - **Error Handling**: Graceful fallback with toast notifications if saving fails
+  - **Admin Visibility**: All debates appear in admin dashboard for complete usage analytics
+  - **Data Consistency**: Uses same storage format as consensus queries for unified analytics
+- **Implementation Details**:
+  - Added to both streaming (`startDebateWithStreaming`) and regular (`startDebate`) functions
+  - Saves after `setDebateSession` calls in both execution paths (lines 756+ and 981+)
+  - Uses `userTier === 'guest'` for guest mode detection
+  - Includes `useToast` integration for user feedback
+- **File Locations**:
+  - `components/agents/debate-interface.tsx` - Main implementation with dual save points
+  - `/api/conversations/route.ts` - Existing API handles debate data structure
+- **Last Modified**: January 2025 (Complete implementation with dual-path coverage)
+- **DO NOT**: Remove conversation saving logic, disable database integration, or break guest mode support
+
+### 16. Interactive Follow-up Questions System
+- **Status**: ✅ ACTIVE & CRITICAL - USER-REQUESTED RESTORATION
+- **Location**: `components/debate/synthesis-tab.tsx` + `components/agents/debate-display.tsx`
+- **Purpose**: Allow users to answer follow-up questions and continue debates with additional context
+- **Key Components**:
+  - **Answer Collection Interface**: Beautiful UI with text areas for each generated follow-up question
+  - **Custom Question Input**: Users can add their own questions beyond AI-generated ones
+  - **Continue Debate Functionality**: Answers passed to new debate round via `onFollowUpRound` callback
+  - **Professional Styling**: Blue-themed interface with proper spacing and responsive design
+  - **State Management**: React state handling for answer collection, form submission, and UI toggle
+  - **UX Flow**: Toggle between view mode (static questions) and input mode (interactive form)
+- **Technical Architecture**:
+  - `SynthesisTab` receives `onFollowUpRound` prop from `DebateDisplay`
+  - State: `followUpAnswers`, `showFollowUpInput`, `customQuestion`
+  - Functions: `handleAnswerChange`, `handleCustomQuestionChange`, `handleSubmitFollowUp`
+  - UI: "Answer & Continue Debate" button → Interactive form → "Continue Debate with Answers" submission
+- **Integration Points**:
+  - `debate-display.tsx:275` - Passes `onFollowUpRound` prop to SynthesisTab
+  - `debate-interface.tsx` - Receives follow-up answers and incorporates into new debate context
+  - Existing infrastructure: `onFollowUpRound` callback already implemented in debate system
+- **File Locations**:
+  - `components/debate/synthesis-tab.tsx` - Main interactive UI implementation
+  - `components/agents/debate-display.tsx` - Prop passing and integration
+  - `components/agents/debate-interface.tsx` - Follow-up answer processing
+- **Last Modified**: January 2025 (Complete restoration with enhanced UI)
+- **DO NOT**: Remove interactive follow-up UI, disable answer collection, or break continue debate functionality
+
+### 17. Generate Question Button for Agent Debates
+- **Status**: ✅ ACTIVE & CRITICAL - FEATURE PARITY ESSENTIAL
+- **Location**: `components/agents/debate-interface.tsx`
+- **Purpose**: Provide same question generation capability on agent debate page as consensus interface
+- **Key Components**:
+  - **Feature Parity**: Same Generate Question button functionality as consensus page
+  - **API Integration**: Uses existing `/api/question-generator` endpoint with proper tier handling
+  - **Loading States**: Proper spinner animation and disabled states during generation
+  - **Error Handling**: Graceful fallbacks if question generation fails
+  - **UI Consistency**: Sparkles icon and same button positioning as consensus interface
+- **Implementation Details**:
+  - Added `Sparkles` import to lucide-react icons
+  - Added `isGeneratingQuestion` state variable for loading tracking
+  - Implemented `handleGenerateQuestion` function with same API pattern as consensus
+  - Button positioned next to "Debate Query" label with consistent styling
+  - Updates `query` state with generated question on success
+- **Technical Integration**:
+  - Uses existing question generation infrastructure from consensus interface
+  - Proper tier awareness: Pro/Enterprise users get AI generation, Free users get templates
+  - Same fallback hierarchy: Priority → AI → Template generation
+  - Consistent user feedback via loading states and question updates
+- **File Locations**:
+  - `components/agents/debate-interface.tsx` - Complete implementation (lines 20, 35, 246-278, 1014-1032)
+  - `/api/question-generator/route.ts` - Existing API endpoint (shared)
+  - `lib/question-generator/` - Existing generation logic (shared)
+- **Last Modified**: January 2025 (Complete feature parity implementation)
+- **DO NOT**: Remove generate question button, disable API integration, or break UI consistency with consensus page
+
+### 18. Admin Dashboard Format Consistency
+- **Status**: ✅ ACTIVE & CRITICAL - DATA VISUALIZATION ESSENTIAL
+- **Location**: `app/admin/page.tsx`
+- **Purpose**: Unified professional table format matching user dashboard for better analytics viewing
+- **Key Components**:
+  - **Table Format**: Clean table layout with columns (Prompt, Answer, User, Created) matching user dashboard
+  - **Professional Display**: Proper table headers, consistent spacing, responsive design
+  - **Answer Extraction**: Smart parsing of both consensus and debate response formats for unified display
+  - **Data Truncation**: Clean line-clamp-2 display for readability and consistent formatting
+  - **User Type Badges**: Clear Auth/Guest indicators for user classification
+  - **Improved Capacity**: Shows 20 conversations instead of 10 with better performance
+- **Technical Implementation**:
+  - Replaced card-style layout with responsive table format
+  - Smart answer extraction function handles multiple response formats:
+    - Consensus: `responses.consensus?.unifiedAnswer`
+    - Agent Debate: `responses.finalSynthesis?.conclusion`
+    - Fallback: First response object or truncated string
+  - Consistent styling with user dashboard: same table classes, truncation, spacing
+  - Badge system for user type identification (Auth vs Guest)
+- **Data Format Handling**:
+  - Graceful parsing of JSON response objects
+  - Fallback mechanisms for malformed data
+  - Consistent truncation and display formatting
+  - Proper date formatting with `toLocaleString()`
+- **File Locations**:
+  - `app/admin/page.tsx` - Main implementation (lines 221-284)
+  - `app/dashboard/page.tsx` - Reference format (maintained consistency)
+- **Last Modified**: January 2025 (Complete format unification)
+- **DO NOT**: Revert to card format, remove answer extraction logic, or break consistency with user dashboard
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
