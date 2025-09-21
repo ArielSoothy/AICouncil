@@ -3,10 +3,11 @@
 import { DebateSession } from '@/lib/agents/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { 
+import {
   TrendingUp,
   CheckCircle2,
-  XCircle
+  XCircle,
+  HelpCircle
 } from 'lucide-react'
 import { ComparisonDisplay } from '@/components/consensus/comparison-display'
 import { ThreeWayComparison } from '@/components/consensus/three-way-comparison'
@@ -125,6 +126,24 @@ export function SynthesisTab({ session }: SynthesisTabProps) {
                     <li key={idx} className="text-sm flex items-start gap-2">
                       <XCircle className="w-3 h-3 mt-1 text-red-500 flex-shrink-0" />
                       <span>{disagreement}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Follow-up Questions Section */}
+            {session.informationRequest?.followUpQuestions && session.informationRequest.followUpQuestions.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                  <HelpCircle className="w-4 h-4 text-blue-500" />
+                  Follow-up Questions
+                </h4>
+                <ul className="space-y-1 pl-6">
+                  {session.informationRequest.followUpQuestions.map((question, idx) => (
+                    <li key={idx} className="text-sm flex items-start gap-2">
+                      <HelpCircle className="w-3 h-3 mt-1 text-blue-500 flex-shrink-0" />
+                      <span>{question}</span>
                     </li>
                   ))}
                 </ul>
