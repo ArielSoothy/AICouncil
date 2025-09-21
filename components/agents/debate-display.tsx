@@ -272,7 +272,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
         </TabsContent>
 
         <TabsContent value="synthesis">
-          <SynthesisTab session={session} />
+          <SynthesisTab session={session} onFollowUpRound={onFollowUpRound} />
         </TabsContent>
       </Tabs>
       

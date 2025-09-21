@@ -220,52 +220,67 @@ export default function AdminAnalyticsPage() {
           {/* Saved Conversations */}
           <Card className="p-6 mb-8">
             <h2 className="text-xl font-semibold mb-4">Saved Conversations (Q&A)</h2>
-            <div className="space-y-4">
-              {analytics.savedConversations.slice(0, 10).map((conversation) => (
-                <div key={conversation.id} className="border-l-4 border-green-500 pl-4 py-3">
-                  <div className="mb-3">
-                    <p className="font-medium text-sm text-muted-foreground mb-1">Question:</p>
-                    <p className="font-medium">{conversation.query}</p>
-                  </div>
-
-                  {conversation.responses && (
-                    <div className="mb-3">
-                      <p className="font-medium text-sm text-muted-foreground mb-2">Answers:</p>
-                      <div className="space-y-2 text-sm">
-                        {typeof conversation.responses === 'object' && conversation.responses !== null ? (
-                          Object.entries(conversation.responses).map(([provider, response]: [string, any]) => (
-                            <div key={provider} className="bg-gray-50 p-2 rounded">
-                              <div className="font-medium text-xs text-blue-600 mb-1">{provider.toUpperCase()}</div>
-                              <div className="text-gray-700 line-clamp-3">
-                                {typeof response === 'string'
-                                  ? response.substring(0, 200) + (response.length > 200 ? '...' : '')
-                                  : JSON.stringify(response).substring(0, 200) + '...'
+            {analytics.savedConversations.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No saved conversations yet</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                      <th className="py-3 pr-4">Prompt</th>
+                      <th className="py-3 pr-4">Answer</th>
+                      <th className="py-3 pr-4">User</th>
+                      <th className="py-3 pr-4">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.savedConversations.slice(0, 20).map((conversation) => (
+                      <tr key={conversation.id} className="border-b border-gray-100 dark:border-gray-700/50">
+                        <td className="py-3 pr-4 align-top max-w-[400px]">
+                          <div className="text-gray-900 dark:text-gray-100 line-clamp-2">{conversation.query}</div>
+                        </td>
+                        <td className="py-3 pr-4 align-top max-w-[500px]">
+                          <div className="text-gray-700 dark:text-gray-300 line-clamp-2">
+                            {(() => {
+                              try {
+                                // Extract answer from different response formats
+                                if (typeof conversation.responses === 'object' && conversation.responses !== null) {
+                                  // Check for consensus response format
+                                  if (conversation.responses.consensus?.unifiedAnswer) {
+                                    return conversation.responses.consensus.unifiedAnswer
+                                  }
+                                  // Check for agent debate format
+                                  if (conversation.responses.finalSynthesis?.conclusion) {
+                                    return conversation.responses.finalSynthesis.conclusion
+                                  }
+                                  // Fallback to first response in object
+                                  const firstKey = Object.keys(conversation.responses)[0]
+                                  if (firstKey && conversation.responses[firstKey]) {
+                                    const response = conversation.responses[firstKey]
+                                    return typeof response === 'string' ? response : JSON.stringify(response).substring(0, 150)
+                                  }
                                 }
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="bg-gray-50 p-2 rounded text-sm text-gray-700">
-                            {String(conversation.responses).substring(0, 200)}...
+                                return String(conversation.responses).substring(0, 150)
+                              } catch {
+                                return 'Response data available'
+                              }
+                            })() || <span className="italic text-gray-400">No answer saved</span>}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>{new Date(conversation.created_at).toLocaleDateString()}</span>
-                    <span>{new Date(conversation.created_at).toLocaleTimeString()}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {conversation.user_id ? 'Authenticated' : 'Guest'}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-              {analytics.savedConversations.length === 0 && (
-                <p className="text-muted-foreground text-center py-4">No saved conversations yet</p>
-              )}
-            </div>
+                        </td>
+                        <td className="py-3 pr-4 align-top">
+                          <Badge variant="outline" className="text-xs">
+                            {conversation.user_id ? 'Auth' : 'Guest'}
+                          </Badge>
+                        </td>
+                        <td className="py-3 pr-4 align-top text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                          {new Date(conversation.created_at).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
 
           {/* Daily Stats */}

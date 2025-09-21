@@ -1,22 +1,63 @@
 'use client'
 
+import { useState } from 'react'
 import { DebateSession } from '@/lib/agents/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import {
   TrendingUp,
   CheckCircle2,
   XCircle,
-  HelpCircle
+  HelpCircle,
+  ArrowRight,
+  Plus
 } from 'lucide-react'
 import { ComparisonDisplay } from '@/components/consensus/comparison-display'
 import { ThreeWayComparison } from '@/components/consensus/three-way-comparison'
 
 interface SynthesisTabProps {
   session: DebateSession
+  onFollowUpRound?: (answers: Record<string | number, string>) => void
 }
 
-export function SynthesisTab({ session }: SynthesisTabProps) {
+export function SynthesisTab({ session, onFollowUpRound }: SynthesisTabProps) {
+  const [followUpAnswers, setFollowUpAnswers] = useState<Record<string | number, string>>({})
+  const [showFollowUpInput, setShowFollowUpInput] = useState(false)
+  const [customQuestion, setCustomQuestion] = useState('')
+
+  const handleAnswerChange = (questionIndex: number, answer: string) => {
+    setFollowUpAnswers(prev => ({
+      ...prev,
+      [questionIndex]: answer
+    }))
+  }
+
+  const handleCustomQuestionChange = (question: string) => {
+    setCustomQuestion(question)
+    if (question.trim()) {
+      setFollowUpAnswers(prev => ({
+        ...prev,
+        custom: question
+      }))
+    } else {
+      setFollowUpAnswers(prev => {
+        const { custom, ...rest } = prev
+        return rest
+      })
+    }
+  }
+
+  const handleSubmitFollowUp = () => {
+    if (Object.keys(followUpAnswers).length > 0 && onFollowUpRound) {
+      onFollowUpRound(followUpAnswers)
+      setShowFollowUpInput(false)
+      setFollowUpAnswers({})
+      setCustomQuestion('')
+    }
+  }
   return (
     <div className="space-y-4">
       {/* Show three-way comparison if all data available */}
@@ -134,19 +175,91 @@ export function SynthesisTab({ session }: SynthesisTabProps) {
 
             {/* Follow-up Questions Section */}
             {session.informationRequest?.followUpQuestions && session.informationRequest.followUpQuestions.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-semibold mb-2 flex items-center gap-2">
-                  <HelpCircle className="w-4 h-4 text-blue-500" />
-                  Follow-up Questions
-                </h4>
-                <ul className="space-y-1 pl-6">
-                  {session.informationRequest.followUpQuestions.map((question, idx) => (
-                    <li key={idx} className="text-sm flex items-start gap-2">
-                      <HelpCircle className="w-3 h-3 mt-1 text-blue-500 flex-shrink-0" />
-                      <span>{question}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-blue-500" />
+                    Follow-up Questions
+                  </h4>
+                  {onFollowUpRound && !showFollowUpInput && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowFollowUpInput(true)}
+                      className="text-xs gap-1"
+                    >
+                      <ArrowRight className="w-3 h-3" />
+                      Answer & Continue Debate
+                    </Button>
+                  )}
+                </div>
+
+                {showFollowUpInput ? (
+                  <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <div className="space-y-3">
+                      {session.informationRequest.followUpQuestions.map((question, idx) => (
+                        <div key={idx} className="space-y-2">
+                          <Label className="text-sm font-medium flex items-start gap-2">
+                            <HelpCircle className="w-3 h-3 mt-0.5 text-blue-500 flex-shrink-0" />
+                            {question}
+                          </Label>
+                          <Textarea
+                            placeholder="Your answer..."
+                            value={followUpAnswers[idx] || ''}
+                            onChange={(e) => handleAnswerChange(idx, e.target.value)}
+                            className="min-h-[60px] text-sm"
+                          />
+                        </div>
+                      ))}
+
+                      {/* Custom question input */}
+                      <div className="space-y-2 pt-3 border-t border-blue-200 dark:border-blue-700">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <Plus className="w-3 h-3 text-blue-500" />
+                          Add your own question or context (optional)
+                        </Label>
+                        <Textarea
+                          placeholder="Ask a specific question or provide additional context..."
+                          value={customQuestion}
+                          onChange={(e) => handleCustomQuestionChange(e.target.value)}
+                          className="min-h-[60px] text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowFollowUpInput(false)
+                          setFollowUpAnswers({})
+                          setCustomQuestion('')
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSubmitFollowUp}
+                        disabled={Object.keys(followUpAnswers).length === 0}
+                        className="gap-1"
+                      >
+                        <ArrowRight className="w-3 h-3" />
+                        Continue Debate with Answers
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <ul className="space-y-1 pl-6">
+                    {session.informationRequest.followUpQuestions.map((question, idx) => (
+                      <li key={idx} className="text-sm flex items-start gap-2">
+                        <HelpCircle className="w-3 h-3 mt-1 text-blue-500 flex-shrink-0" />
+                        <span>{question}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>

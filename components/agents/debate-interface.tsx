@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AgentConfig, DebateSession, DEBATE_CONFIG } from '@/lib/agents/types'
 import { ModelConfig } from '@/types/consensus'
 import { estimateDebateCost, formatCost, calculateDisagreementScore } from '@/lib/agents/cost-calculator'
+import { useToast } from '@/hooks/use-toast'
 import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles } from 'lucide-react'
 import {
   Select,
@@ -31,6 +32,7 @@ interface AgentDebateInterfaceProps {
 }
 
 export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
+  const { toast } = useToast()
   const [query, setQuery] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
   const [selectedAgents, setSelectedAgents] = useState<AgentConfig[]>([])
   // For ModelSelector compatibility
@@ -752,6 +754,34 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     // disagreementAnalysis: removed - using simple frontend indicators
                   })
                   setDebateSession(session as any)
+
+                  // Save conversation to database if user is authenticated
+                  try {
+                    const saveResponse = await fetch('/api/conversations', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        query: fullQuery,
+                        responses: session,
+                        isGuestMode: userTier === 'guest',
+                      }),
+                    })
+
+                    if (saveResponse.ok) {
+                      const conversation = await saveResponse.json()
+                      // Could store conversation ID if needed for future reference
+                      console.log('Debate conversation saved:', conversation.id)
+                    }
+                  } catch (saveError) {
+                    console.error('Failed to save debate conversation:', saveError)
+                    toast({
+                      variant: "default",
+                      title: "Save Warning",
+                      description: "Failed to save debate conversation. Results will be shown but not stored.",
+                    })
+                  }
                   break
                   
                 case 'debate_completed':
@@ -949,7 +979,35 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       
       if (data.success && data.session) {
         setDebateSession(data.session)
-        
+
+        // Save conversation to database if user is authenticated
+        try {
+          const saveResponse = await fetch('/api/conversations', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: fullQuery,
+              responses: data.session,
+              isGuestMode: userTier === 'guest',
+            }),
+          })
+
+          if (saveResponse.ok) {
+            const conversation = await saveResponse.json()
+            // Could store conversation ID if needed for future reference
+            console.log('Debate conversation saved:', conversation.id)
+          }
+        } catch (saveError) {
+          console.error('Failed to save debate conversation:', saveError)
+          toast({
+            variant: "default",
+            title: "Save Warning",
+            description: "Failed to save debate conversation. Results will be shown but not stored.",
+          })
+        }
+
         // Mark all models as completed
         const completedStatuses: Record<string, any> = {}
         Object.keys(modelStatuses).forEach(modelId => {
