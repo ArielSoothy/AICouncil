@@ -18,6 +18,9 @@ import { AgentConfig, DebateSession, DEBATE_CONFIG } from '@/lib/agents/types'
 import { ModelConfig } from '@/types/consensus'
 import { estimateDebateCost, formatCost, calculateDisagreementScore } from '@/lib/agents/cost-calculator'
 import { useToast } from '@/hooks/use-toast'
+import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
+import { ConversationHistoryDropdown } from '@/components/conversation/conversation-history-dropdown'
+import { SavedConversation } from '@/lib/types/conversation'
 import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles } from 'lucide-react'
 import {
   Select,
@@ -34,6 +37,7 @@ interface AgentDebateInterfaceProps {
 export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const { toast } = useToast()
   const [query, setQuery] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
+  const [conversationId, setConversationId] = useState<string | null>(null)
   const [selectedAgents, setSelectedAgents] = useState<AgentConfig[]>([])
   // For ModelSelector compatibility
   const [modelConfigs, setModelConfigs] = useState<ModelConfig[]>([
@@ -117,7 +121,28 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     hasReceivedResponse?: boolean
   }>>({})
   const [debateStartTime, setDebateStartTime] = useState<number | null>(null)
-  
+
+  // Conversation persistence: restore results on page refresh/URL sharing
+  const { saveConversation, isRestoring } = useConversationPersistence({
+    storageKey: 'agent-debate-last-conversation',
+    onRestored: (conversation: SavedConversation) => {
+      // Restore the full conversation state
+      setQuery(conversation.query)
+      setDebateSession(conversation.responses as DebateSession)
+      setConversationId(conversation.id)
+      setActiveTab('results')
+
+      toast({
+        title: 'Conversation Restored',
+        description: 'Your previous agent debate has been restored.',
+      })
+    },
+    onError: (error: Error) => {
+      console.error('Failed to restore conversation:', error)
+      // Silent fail - user can just start a new debate
+    },
+  })
+
   // Use ref to track loading state for setTimeout callbacks
   const isLoadingRef = useRef(false)
   
@@ -771,7 +796,11 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
 
                     if (saveResponse.ok) {
                       const conversation = await saveResponse.json()
-                      // Could store conversation ID if needed for future reference
+                      setConversationId(conversation.id)
+
+                      // Enable persistence: update URL and localStorage
+                      saveConversation(conversation.id)
+
                       console.log('Debate conversation saved:', conversation.id)
                     }
                   } catch (saveError) {
@@ -996,7 +1025,11 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
 
           if (saveResponse.ok) {
             const conversation = await saveResponse.json()
-            // Could store conversation ID if needed for future reference
+            setConversationId(conversation.id)
+
+            // Enable persistence: update URL and localStorage
+            saveConversation(conversation.id)
+
             console.log('Debate conversation saved:', conversation.id)
           }
         } catch (saveError) {
@@ -1069,25 +1102,28 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   <Label htmlFor="query" className="text-lg font-semibold">
                     Debate Query
                   </Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleGenerateQuestion}
-                    disabled={isGeneratingQuestion}
-                    className="text-xs gap-1"
-                  >
-                    {isGeneratingQuestion ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-3 w-3" />
-                        Generate Question
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <ConversationHistoryDropdown mode="agent-debate" limit={5} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateQuestion}
+                      disabled={isGeneratingQuestion}
+                      className="text-xs gap-1"
+                    >
+                      {isGeneratingQuestion ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3 w-3" />
+                          Generate Question
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <Textarea
                   id="query"
@@ -1101,12 +1137,17 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 <div className="flex justify-end">
                   <Button
                     onClick={() => startDebateWithStreaming()}
-                    disabled={isLoading || 
+                    disabled={isLoading || isRestoring ||
                       (round1Mode === 'llm' ? selectedLLMs.length < 2 : selectedAgents.length < DEBATE_CONFIG.minAgents)}
                     size="lg"
                     className="min-w-[200px]"
                   >
-                    {isLoading ? (
+                    {isRestoring ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Restoring...
+                      </>
+                    ) : isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         Starting Debate...
