@@ -774,6 +774,14 @@ export async function POST(request: NextRequest) {
     // Override judge's bestAnswer with algorithmic rankings for consistency
     if (rankedOptions.length > 0) {
       const top3 = rankedOptions.slice(0, 3)
+
+      console.log('=== DETERMINISTIC RANKING DEBUG ===')
+      console.log('Top 3 Ranked Options:')
+      top3.forEach((opt, i) => {
+        console.log(`${i + 1}. ${opt.answer} - ${opt.mentions}/${modelResponses.length} models, score: ${opt.weightedScore.toFixed(2)}`)
+      })
+      console.log('====================================')
+
       const formattedAnswer = `Top 3 Recommendations:\n${top3.map((opt, i) =>
         `${i + 1}. ${opt.answer} (${opt.mentions}/${modelResponses.length} models, ${Math.round(opt.confidence)}% confidence)`
       ).join('\n')}\n\n${top3[0].answer} is the top recommendation based on ${top3[0].mentions} model${top3[0].mentions > 1 ? 's' : ''} agreeing.`
