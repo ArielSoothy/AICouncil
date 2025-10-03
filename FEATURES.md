@@ -402,7 +402,15 @@
     - **Enabled**: GPT-5 Chat (gpt-5-chat-latest), Claude Sonnet 4.5 (claude-sonnet-4-5-20250929), Gemini 2.0 Flash, Llama 3.3 70B, Grok 4 (grok-4-0709)
     - **Optional** (disabled, requires API keys): Sonar Pro, Mistral Large
   - **Ultra Mode Defaults**: Concise mode ON, Web search ON, GPT-5 comparison enabled
-  - **Simplified UI**: Prompt area first, collapsible model selector, minimal configuration
+  - **Redesigned Unified UI** (October 3, 2025):
+    - **Single Card Interface**: Merged question input, model selection, and info into 1 unified card
+    - **Interactive Model Badges** (`components/consensus/ultra-model-badge-selector.tsx`):
+      - Clickable badges with dropdown menus to swap models within same provider
+      - Brand-themed colors from `lib/brand-colors.ts` (OpenAI white, Anthropic orange, Google blue, etc.)
+      - Add/remove model functionality with [+ Add Model] button
+      - Dark mode compatibility with `!important` modifiers
+    - **CTA Button**: "Get Ultimate Answer" (premium positioning)
+    - **Generate Question Button**: Top-right for AI-powered question generation
   - **Premium Positioning**: Purple branding, Gem icon, "💎 ULTRA MODE" badge
   - **Default Question**: Pre-filled with scooter comparison question for immediate testing
   - **Navigation**: Purple "Ultra Mode" link in header (desktop + mobile)
