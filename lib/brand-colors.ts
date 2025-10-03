@@ -5,7 +5,7 @@
 
 export const PROVIDER_COLORS = {
   anthropic: 'bg-orange-500 hover:bg-orange-600 text-white',
-  openai: 'bg-white hover:bg-gray-50 text-black border-2 border-gray-300',
+  openai: 'bg-white hover:bg-gray-100 text-black border border-gray-400',
   google: 'bg-blue-500 hover:bg-blue-600 text-white',
   groq: 'bg-purple-600 hover:bg-purple-700 text-white',
   xai: 'bg-gray-900 hover:bg-black text-white',
