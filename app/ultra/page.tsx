@@ -239,7 +239,7 @@ function UltraPageContent() {
               </div>
               <Textarea
                 id="prompt"
-                placeholder="What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?"
+                placeholder="What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, including mp3 500, that can drive from tlv to jerusalem but can get to eilat comfortably? im 43 male from tel aviv, 1.75 cm, 70kilo, with a wife and a 1 year old baby, we also have car"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 rows={4}
