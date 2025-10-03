@@ -478,5 +478,77 @@
 - **Last Modified**: January 2026 (Claude Sonnet 4.5 integration, benchmark fixes, scrolling improvements)
 - **DO NOT**: Remove localhost restriction, disable flagship models, revert benchmark fixes, or change premium positioning without user approval
 
+### 20. Conversation Persistence System
+- **Status**: ✅ ACTIVE & CRITICAL - CORE UX FEATURE
+- **Location**: `hooks/use-conversation-persistence.ts`, `app/api/conversations/[id]/route.ts`
+- **Purpose**: Enable URL-based conversation sharing and page refresh restoration for expensive queries
+- **Access**: Currently active on Ultra Mode only (will expand to all modes)
+- **Key Components**:
+  - **Custom Hook** (`useConversationPersistence`):
+    - URL parameter detection (`?c=<conversation-id>`)
+    - localStorage fallback for last conversation
+    - Automatic restoration on mount
+    - Loading states and error handling
+    - Browser history support
+  - **API Endpoints**:
+    - POST `/api/conversations` - Save conversation with guest mode support
+    - GET `/api/conversations/[id]` - Fetch conversation by ID
+  - **Database Integration**:
+    - Nullable user_id for guest mode support
+    - evaluation_data JSONB column for structured metrics
+    - RLS policies for guest INSERT + SELECT operations
+    - GIN index on evaluation_data for performance
+  - **TypeScript Types** (`lib/types/conversation.ts`):
+    - SavedConversation interface
+    - ConversationPersistenceOptions
+    - ConversationPersistenceReturn
+- **Technical Implementation**:
+  - URL updates automatically on save: `http://localhost:3000/ultra?c=<uuid>`
+  - Page refresh fetches conversation from `/api/conversations/[id]`
+  - Restores: query text, model selection, complete results
+  - Toast notifications for restoration status
+  - SSR-safe with 'use client' directive
+- **Database Migrations Required** (User ran in Supabase Dashboard):
+  ```sql
+  -- Allow NULL user_id for guest conversations
+  ALTER TABLE conversations ALTER COLUMN user_id DROP NOT NULL;
+
+  -- Add evaluation_data column
+  ALTER TABLE conversations ADD COLUMN evaluation_data JSONB;
+  CREATE INDEX idx_conversations_evaluation_data ON conversations USING GIN (evaluation_data);
+
+  -- RLS policies for guest mode
+  CREATE POLICY "Allow user and guest conversation inserts" ON conversations FOR INSERT...
+  CREATE POLICY "Allow user and guest conversation selects" ON conversations FOR SELECT...
+  ```
+- **User Value**:
+  - Share expensive query results ($0.02-0.05) via URL
+  - Refresh page without losing results
+  - Send links to colleagues/clients
+  - Professional UX (like ChatGPT, Claude.ai)
+- **Testing Verified** (October 3, 2025):
+  - ✅ Query submission saves to database
+  - ✅ URL updates with conversation ID parameter
+  - ✅ Page refresh fully restores query + results
+  - ✅ Guest mode working (no authentication required)
+  - ✅ $0 cost testing with free Llama model
+  - ✅ Screenshot: `.playwright-mcp/ultra-mode-persistence-success.png`
+- **Files**:
+  - `hooks/use-conversation-persistence.ts` - Reusable custom hook
+  - `lib/types/conversation.ts` - TypeScript types
+  - `app/api/conversations/route.ts` - POST endpoint (modified for guest mode)
+  - `app/api/conversations/[id]/route.ts` - GET endpoint (new)
+  - `app/ultra/page.tsx` - Ultra Mode integration
+  - `types/database.ts` - Nullable user_id support
+  - `scripts/migrate-guest-conversations.js` - Database migration reference
+- **Next Steps** (Planned):
+  1. Conversation history dropdown (last 5 conversations)
+  2. Extend to regular consensus mode (/)
+  3. Extend to agent debate mode (/agents)
+  4. Full history page (/history)
+  5. Share & export features
+- **Last Modified**: October 3, 2025 (Initial implementation - Ultra Mode only)
+- **DO NOT**: Remove URL persistence, disable guest mode, change conversation data structure, or modify without testing restoration flow
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

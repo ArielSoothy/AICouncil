@@ -107,30 +107,36 @@ Follow structured workflow: Work → Test → Document → Ask approval → Push
 ```
 Continue Verdict AI development work.
 
-Previous session: ✅ COMPLETED - User Acquisition System Validation - Live deployment fully tested and ready
-Next priority: 🚀 LAUNCH TO AI COURSE COLLEAGUES - Begin user acquisition and real feedback collection
+Previous session: ✅ COMPLETED - Ultra Mode Conversation Persistence - URL sharing + page refresh restoration working
+Next priority: 🎯 CONVERSATION HISTORY DROPDOWN + EXTEND TO ALL MODES
 
 MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
 
-SYSTEM VALIDATION COMPLETE:
-✅ Live deployment tested: https://ai-council-new.vercel.app/
-✅ Question generator working
-✅ Agent debate properly configured (defaults to 'agents' mode)
-✅ All 18 protected features validated
-✅ Free models (6) pre-configured for zero-cost testing
-✅ Ready for AI course colleague launch
+CONVERSATION PERSISTENCE COMPLETE:
+✅ Ultra Mode: URL persistence (?c=<id>) working
+✅ Page refresh: Full restoration of query + results
+✅ Guest mode: Works without authentication
+✅ Custom hook: useConversationPersistence (reusable)
+✅ API endpoints: POST /api/conversations, GET /api/conversations/[id]
+✅ Database: user_id nullable, evaluation_data JSONB column
+✅ Testing: $0 cost verified with free Llama model
+✅ Feature #20 documented in FEATURES.md
 
-NEXT ACTIONS:
-1. Create user acquisition launch plan for AI course colleagues
-2. Prepare quick-start guide for new users
-3. Set up feedback monitoring process
-4. Define success metrics for initial rollout
-5. Launch to small group (5-10 users) for first feedback
+NEXT ACTIONS (Phase 2):
+1. Create conversation history dropdown component (last 5 conversations)
+2. Add dropdown to Ultra Mode header
+3. Extend persistence to regular consensus mode (/)
+4. Extend persistence to agent debate mode (/agents)
+5. Plan full history page (/history) for later
 
-Follow structured workflow: Work → Document → Ask approval → Launch
-Key Focus: Real user feedback collection to drive next development phase
+Follow structured workflow: Work → Test → Document → Commit → Push
+Key Focus: Conversation history UI + extend to all query modes
 
-IMPORTANT: System is production-ready, no critical issues found, proceed with confidence
+TECHNICAL NOTES:
+- Reuse useConversationPersistence hook for all modes
+- Storage keys: 'ultra-mode', 'consensus-mode', 'agent-debate'
+- Dropdown: shadcn/ui DropdownMenu component
+- Show: query snippet (50 chars), timestamp, model count badge
 ```
 
 ## 🌐 CRITICAL: Playwright Browser Management
