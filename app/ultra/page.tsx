@@ -29,7 +29,7 @@ const DEFAULT_ULTRA_MODELS: ModelConfig[] = [
 
 function UltraPageContent() {
   const { toast } = useToast()
-  const [prompt, setPrompt] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
+  const [prompt, setPrompt] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, including mp3 500, that can drive from tlv to jerusalem but can get to eilat comfortably? im 43 male from tel aviv, 1.75 cm, 70kilo, with a wife and a 1 year old baby, we also have car')
   const [isLoading, setIsLoading] = useState(false)
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
@@ -239,7 +239,7 @@ function UltraPageContent() {
               </div>
               <Textarea
                 id="prompt"
-                placeholder="What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, including mp3 500, that can drive from tlv to jerusalem but can get to eilat comfortably? im 43 male from tel aviv, 1.75 cm, 70kilo, with a wife and a 1 year old baby, we also have car"
+                placeholder="What should I have for dinner tonight?"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 rows={4}
@@ -271,33 +271,34 @@ function UltraPageContent() {
             </div>
           </div>
 
-          {/* Model Information Alert - Shown After Prompt */}
+          {/* Model Information Alert - Dynamically shows enabled models */}
           <Alert className="mb-6 border-purple-200 bg-purple-50">
             <AlertCircle className="h-4 w-4 text-purple-600" />
             <AlertTitle className="text-purple-900">Ultra Mode - Flagship Models Running</AlertTitle>
             <AlertDescription className="text-purple-800">
               <div className="flex flex-wrap gap-2 mt-2">
-                <span className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
-                  GPT-5 Chat 🌐
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
-                  Claude Sonnet 4.5 🌐
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
-                  Gemini 2.0 Flash 🌐
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
-                  Llama 3.3 70B 🌐
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
-                  Grok 4 🌐
-                </span>
+                {selectedModels.filter(m => m.enabled).map((model) => {
+                  const modelDisplayNames: Record<string, string> = {
+                    'gpt-5-chat-latest': 'GPT-5 Chat',
+                    'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5',
+                    'gemini-2.0-flash': 'Gemini 2.0 Flash',
+                    'llama-3.3-70b-versatile': 'Llama 3.3 70B',
+                    'grok-4-fast-non-reasoning': 'Grok 4 Fast',
+                    'sonar-pro': 'Perplexity Sonar Pro',
+                    'mistral-large-latest': 'Mistral Large'
+                  };
+                  return (
+                    <span key={`${model.provider}-${model.model}`} className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
+                      {modelDisplayNames[model.model] || model.model} 🌐
+                    </span>
+                  );
+                })}
               </div>
               <p className="text-xs mt-3 text-purple-600">
-                💡 2025 Flagship models • Concise mode • Web search enabled • Comparing with GPT-5 • Judge: Claude Sonnet 4.5
+                💡 {selectedModels.filter(m => m.enabled).length} models enabled • Concise mode • Web search enabled • Comparing with GPT-5 • Judge: Claude Sonnet 4.5
               </p>
               <p className="text-xs mt-2 text-muted-foreground">
-                Click "Show Model Selection" to add Perplexity or Mistral (optional)
+                Click "Show Model Selection" to customize which models to use
               </p>
             </AlertDescription>
           </Alert>
