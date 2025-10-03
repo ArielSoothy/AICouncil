@@ -10,6 +10,9 @@ import { ConsensusResult, ModelConfig, EnhancedConsensusResponse } from '@/types
 import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
+import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
+import { ConversationHistoryDropdown } from '@/components/conversation/conversation-history-dropdown'
+import { SavedConversation } from '@/lib/types/conversation'
 import { Send, Loader2, GitCompare, Search, Sparkles } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -51,7 +54,27 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
   const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>(null)
   const [enableWebSearch, setEnableWebSearch] = useState(ultraModeDefaults?.enableWebSearch || false)
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
-  
+
+  // Conversation persistence: restore results on page refresh/URL sharing
+  const { saveConversation, isRestoring } = useConversationPersistence({
+    storageKey: 'consensus-mode-last-conversation',
+    onRestored: (conversation: SavedConversation) => {
+      // Restore the full conversation state
+      setPrompt(conversation.query)
+      setResult(conversation.responses as EnhancedConsensusResponse)
+      setConversationId(conversation.id)
+
+      toast({
+        title: 'Conversation Restored',
+        description: 'Your previous consensus query has been restored.',
+      })
+    },
+    onError: (error: Error) => {
+      console.error('Failed to restore conversation:', error)
+      // Silent fail - user can just start a new query
+    },
+  })
+
   // Default models based on user tier
   const getDefaultModels = (): ModelConfig[] => {
     if (effectiveUserTier === 'guest') {
@@ -188,6 +211,9 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
         if (saveResponse.ok) {
           const conversation = await saveResponse.json()
           setConversationId(conversation.id)
+
+          // Enable persistence: update URL and localStorage
+          saveConversation(conversation.id)
         }
       } catch (saveError) {
         console.error('Failed to save conversation:', saveError)
@@ -354,25 +380,28 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
             <label htmlFor="prompt" className="block text-sm font-medium">
               Enter your prompt
             </label>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleGenerateQuestion}
-              disabled={isGeneratingQuestion}
-              className="text-xs gap-1"
-            >
-              {isGeneratingQuestion ? (
-                <>
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-3 w-3" />
-                  Generate Question
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <ConversationHistoryDropdown mode="consensus" limit={5} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateQuestion}
+                disabled={isGeneratingQuestion}
+                className="text-xs gap-1"
+              >
+                {isGeneratingQuestion ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3 w-3" />
+                    Generate Question
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
           <Textarea
             id="prompt"
@@ -392,10 +421,15 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
         <div className="flex justify-end mt-4">
           <Button
             onClick={handleSubmit}
-            disabled={!prompt.trim() || isLoading || !selectedModels.some(m => m.enabled)}
+            disabled={!prompt.trim() || isLoading || isRestoring || !selectedModels.some(m => m.enabled)}
             className="min-w-[120px] ai-button"
           >
-            {isLoading ? (
+            {isRestoring ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Restoring...
+              </>
+            ) : isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Querying...
