@@ -478,11 +478,15 @@
 - **Last Modified**: January 2026 (Claude Sonnet 4.5 integration, benchmark fixes, scrolling improvements)
 - **DO NOT**: Remove localhost restriction, disable flagship models, revert benchmark fixes, or change premium positioning without user approval
 
-### 20. Conversation Persistence System
-- **Status**: ✅ ACTIVE & CRITICAL - CORE UX FEATURE
-- **Location**: `hooks/use-conversation-persistence.ts`, `app/api/conversations/[id]/route.ts`
-- **Purpose**: Enable URL-based conversation sharing and page refresh restoration for expensive queries
-- **Access**: Currently active on Ultra Mode only (will expand to all modes)
+### 20. Conversation Persistence & History System
+- **Status**: ✅ ACTIVE & CRITICAL - CORE UX FEATURE (ALL 3 MODES)
+- **Location**:
+  - `hooks/use-conversation-persistence.ts` - Persistence hook
+  - `components/conversation/conversation-history-dropdown.tsx` - History UI
+  - `app/api/conversations/[id]/route.ts` - Fetch by ID
+  - `app/api/conversations/route.ts` - Fetch all conversations
+- **Purpose**: Enable URL-based conversation sharing, page refresh restoration, and conversation history browsing
+- **Access**: ✅ Active on ALL modes (Ultra Mode, Consensus Mode, Agent Debate)
 - **Key Components**:
   - **Custom Hook** (`useConversationPersistence`):
     - URL parameter detection (`?c=<conversation-id>`)
@@ -490,9 +494,19 @@
     - Automatic restoration on mount
     - Loading states and error handling
     - Browser history support
+  - **History Dropdown** (`ConversationHistoryDropdown`):
+    - Shows last 5 conversations with query snippet, timestamp, model count
+    - Lazy loading: fetches only when dropdown opens
+    - Smart navigation: detects current path (/ultra, /agents, /)
+    - Query truncation to 50 characters
+    - Custom `formatRelativeTime` utility (no external dependencies)
+    - Empty state: "No saved conversations yet"
+    - "See all history" link to future `/history` page
+    - Graceful 401 error handling for guest mode
   - **API Endpoints**:
     - POST `/api/conversations` - Save conversation with guest mode support
     - GET `/api/conversations/[id]` - Fetch conversation by ID
+    - GET `/api/conversations` - Fetch all user conversations (for history dropdown)
   - **Database Integration**:
     - Nullable user_id for guest mode support
     - evaluation_data JSONB column for structured metrics
@@ -526,28 +540,36 @@
   - Refresh page without losing results
   - Send links to colleagues/clients
   - Professional UX (like ChatGPT, Claude.ai)
-- **Testing Verified** (October 3, 2025):
-  - ✅ Query submission saves to database
-  - ✅ URL updates with conversation ID parameter
-  - ✅ Page refresh fully restores query + results
+- **Testing Verified** (October 3, 2025 - All 3 Modes):
+  - ✅ Query submission saves to database (all modes)
+  - ✅ URL updates with conversation ID parameter (all modes)
+  - ✅ Page refresh fully restores query + results (all modes)
+  - ✅ History dropdown shows recent conversations (all modes)
   - ✅ Guest mode working (no authentication required)
+  - ✅ 401 errors handled gracefully with empty state
   - ✅ $0 cost testing with free Llama model
-  - ✅ Screenshot: `.playwright-mcp/ultra-mode-persistence-success.png`
+  - ✅ Screenshots:
+    - Ultra Mode: `conversation-history-dropdown-ui.png`
+    - Consensus Mode: `consensus-history-dropdown-ui.png`
+    - Agent Debate: `agent-debate-history-dropdown-ui.png`
 - **Files**:
-  - `hooks/use-conversation-persistence.ts` - Reusable custom hook
+  - `hooks/use-conversation-persistence.ts` - Reusable custom hook (all modes)
+  - `components/conversation/conversation-history-dropdown.tsx` - History dropdown UI
   - `lib/types/conversation.ts` - TypeScript types
-  - `app/api/conversations/route.ts` - POST endpoint (modified for guest mode)
-  - `app/api/conversations/[id]/route.ts` - GET endpoint (new)
+  - `app/api/conversations/route.ts` - POST/GET endpoints (guest mode support)
+  - `app/api/conversations/[id]/route.ts` - GET by ID endpoint
   - `app/ultra/page.tsx` - Ultra Mode integration
+  - `components/consensus/query-interface.tsx` - Consensus Mode integration
+  - `components/agents/debate-interface.tsx` - Agent Debate integration
   - `types/database.ts` - Nullable user_id support
   - `scripts/migrate-guest-conversations.js` - Database migration reference
 - **Next Steps** (Planned):
-  1. Conversation history dropdown (last 5 conversations)
-  2. Extend to regular consensus mode (/)
-  3. Extend to agent debate mode (/agents)
-  4. Full history page (/history)
-  5. Share & export features
-- **Last Modified**: October 3, 2025 (Initial implementation - Ultra Mode only)
+  1. ✅ ~~Conversation history dropdown (last 5 conversations)~~ - COMPLETE
+  2. ✅ ~~Extend to regular consensus mode (/)~~ - COMPLETE
+  3. ✅ ~~Extend to agent debate mode (/agents)~~ - COMPLETE
+  4. Full history page (/history) - Build comprehensive history view
+  5. Share & Export features (copy link, social sharing, PDF export)
+- **Last Modified**: October 3, 2025 (Extended to all 3 modes with history dropdown)
 - **DO NOT**: Remove URL persistence, disable guest mode, change conversation data structure, or modify without testing restoration flow
 
 ## 🛡️ PROTECTION RULE:

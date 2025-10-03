@@ -27,13 +27,17 @@
 
 ## ✅ RECENTLY COMPLETED (October 3, 2025):
 
-**✅ ULTRA MODE CONVERSATION PERSISTENCE - COMPLETED (October 3, 2025)**
+**✅ CONVERSATION HISTORY & PERSISTENCE - ALL 3 MODES COMPLETE (October 3, 2025)**
+
+### **Phase 1: Ultra Mode Persistence** (commit: 142e7a6)
 - ✅ **URL-Based Persistence** - Conversations automatically saved with `?c=<conversation-id>` parameter
 - ✅ **Page Refresh Restoration** - Full query, model selection, and results restored after refresh
 - ✅ **Custom React Hook** - Created reusable `useConversationPersistence` hook for all modes
+- ✅ **ConversationHistoryDropdown Component** - Reusable dropdown showing last 5 conversations
 - ✅ **API Endpoints Created**:
   - POST `/api/conversations` - Enhanced with guest mode support
   - GET `/api/conversations/[id]` - New endpoint for fetching conversations by ID
+  - GET `/api/conversations` - Fetch all user conversations
 - ✅ **Guest Mode Support** - Conversations work without authentication (user_id can be NULL)
 - ✅ **Database Migrations** - User ran SQL migrations in Supabase Dashboard:
   - ALTER TABLE conversations ALTER COLUMN user_id DROP NOT NULL
@@ -44,10 +48,39 @@
 - ✅ **Error Handling** - Toast notifications for restoration success/failure
 - ✅ **Browser History** - Clean URL management with router.replace
 - ✅ **localStorage Fallback** - Saves last conversation ID for quick access
-- ✅ **Testing Verified**:
+
+### **Phase 2: Consensus Mode Persistence** (commit: 0dd5b71)
+- ✅ **History Dropdown Integration** - Added to QueryInterface component next to Generate Question button
+- ✅ **URL Parameter Support** - `?c=<conversation-id>` updates on query submission
+- ✅ **Full State Restoration** - Query, model selection, and results restored on page refresh
+- ✅ **Storage Key**: `'consensus-mode-last-conversation'`
+- ✅ **Graceful Guest Mode** - 401 errors handled gracefully with empty state message
+- ✅ **Playwright Testing** - Screenshot: `consensus-history-dropdown-ui.png`
+
+### **Phase 3: Agent Debate Persistence** (commit: 010a7fe)
+- ✅ **History Dropdown Integration** - Added to AgentDebateInterface next to Generate Question button
+- ✅ **Streaming Debate Support** - Conversation saved after streaming debate completes
+- ✅ **Tab Navigation** - Automatically switches to results tab on restoration
+- ✅ **Storage Key**: `'agent-debate-last-conversation'`
+- ✅ **Dual Save Points** - Saves in both `startDebateWithStreaming` and fallback `startDebate`
+- ✅ **Playwright Testing** - Screenshot: `agent-debate-history-dropdown-ui.png`
+
+### **Shared Features Across All Modes**:
+- ✅ **Reusable Dropdown Component** - `ConversationHistoryDropdown` works across all modes
+- ✅ **Custom Time Formatter** - `formatRelativeTime` utility (no external dependencies)
+- ✅ **Lazy Loading** - Conversations fetched only when dropdown opens
+- ✅ **Smart Navigation** - Detects current path and navigates correctly
+- ✅ **Query Truncation** - 50-character limit with ellipsis
+- ✅ **Model Count Badges** - Extracts and displays number of models used
+- ✅ **Empty State UX** - "No saved conversations yet" message
+- ✅ **"See all history" Link** - Links to future `/history` page
+
+**Testing Verified**:
   - Query submission saves to database ✅
   - URL updates with conversation ID ✅
   - Page refresh fully restores results ✅
+  - History dropdown shows recent conversations ✅
+  - Guest mode handles 401 errors gracefully ✅
   - Guest mode working ✅
   - $0 cost testing with free Llama model ✅
   - Screenshot captured: `.playwright-mcp/ultra-mode-persistence-success.png`
