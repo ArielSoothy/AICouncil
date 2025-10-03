@@ -6,7 +6,9 @@ import { AIProvider } from './types';
 export class AnthropicProvider implements AIProvider {
   name = 'Anthropic';
   models = [
-    // Latest Claude 4 models
+    // Claude 4.5 Series (2025)
+    'claude-sonnet-4-5-20250929',
+    // Claude 4 Series
     'claude-opus-4-20250514',
     'claude-sonnet-4-20250514',
     // Claude 3.7 models

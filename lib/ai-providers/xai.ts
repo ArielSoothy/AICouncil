@@ -6,12 +6,18 @@ import { AIProvider } from './types';
 export class XAIProvider implements AIProvider {
   name = 'xAI';
   models = [
+    // Grok 4 Series (2025)
+    'grok-code-fast-1',
+    'grok-4-fast-reasoning',
+    'grok-4-fast-non-reasoning',
     'grok-4-0709',
+    // Grok 3 Series
     'grok-3',
     'grok-3-mini',
-    // legacy/alt
-    'grok-2-latest',
-    'grok-2-mini'
+    // Grok 2 Series
+    'grok-2-vision-1212',
+    'grok-2-1212',
+    'grok-2-latest'
   ];
 
   isConfigured(): boolean {

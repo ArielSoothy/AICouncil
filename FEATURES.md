@@ -392,5 +392,76 @@
 - **Last Modified**: January 2025 (Complete format unification)
 - **DO NOT**: Revert to card format, remove answer extraction logic, or break consistency with user dashboard
 
+### 19. Ultra Mode - Flagship Models Consensus
+- **Status**: ✅ ACTIVE & CRITICAL - PREMIUM FEATURE (LOCALHOST-ONLY)
+- **Location**: `/app/ultra/page.tsx` (standalone simplified UI)
+- **Purpose**: Premium "best answer now" mode with all flagship models pre-selected for maximum accuracy
+- **Access Restriction**: **LOCALHOST-ONLY** - Shows "Coming Soon" page on production to prevent unauthorized costly usage
+- **Key Components**:
+  - **Flagship Model Selection** (7 models, 5 enabled by default):
+    - **Enabled**: GPT-5 Chat (gpt-5-chat-latest), Claude Sonnet 4.5 (claude-sonnet-4-5-20250929), Gemini 2.0 Flash, Llama 3.3 70B, Grok 4 (grok-4-0709)
+    - **Optional** (disabled, requires API keys): Sonar Pro, Mistral Large
+  - **Ultra Mode Defaults**: Concise mode ON, Web search ON, GPT-5 comparison enabled
+  - **Simplified UI**: Prompt area first, collapsible model selector, minimal configuration
+  - **Premium Positioning**: Purple branding, Gem icon, "💎 ULTRA MODE" badge
+  - **Default Question**: Pre-filled with scooter comparison question for immediate testing
+  - **Navigation**: Purple "Ultra Mode" link in header (desktop + mobile)
+- **Technical Implementation**:
+  - Localhost detection prevents production access (lines 40-75)
+  - Standalone page with simplified UI (not using QueryInterface component)
+  - DEFAULT_ULTRA_MODELS constant with flagship models pre-configured (lines 17-28)
+  - Collapsible ModelSelector for advanced users who want to customize
+  - testingTierOverride='enterprise' to bypass tier restrictions
+  - Cost estimate: ~$0.02-0.05 per query (5 models, concise mode)
+  - Judge model: claude-sonnet-4-5-20250929 for quality/cost balance
+- **Model Configuration** (Updated October 2025):
+  - **GPT-5 Chat** (gpt-5-chat-latest): $1.25/$10 per 1M tokens 🌐
+  - **Claude Sonnet 4.5** (claude-sonnet-4-5-20250929): $3/$15 per 1M tokens 🌐
+  - **Gemini 2.0 Flash** (gemini-2.0-flash): Free tier 🌐
+  - **Llama 3.3 70B** (llama-3.3-70b-versatile): Free (Groq) 🌐
+  - **Grok 4** (grok-4-0709): $3/$15 per 1M tokens 🌐
+- **Grok Models Added** (9 models with official pricing):
+  - grok-code-fast-1: $0.20/$1.50 per 1M
+  - grok-4-fast-reasoning: $0.20/$0.50 per 1M
+  - grok-4-fast-non-reasoning: $0.20/$0.50 per 1M
+  - grok-4-0709: $3/$15 per 1M (default)
+  - grok-3: $3/$15 per 1M
+  - grok-3-mini: $0.30/$0.50 per 1M
+  - grok-2-vision-1212: $2/$10 per 1M
+  - grok-2-1212: $2/$10 per 1M
+  - grok-2-latest: $2/$10 per 1M
+- **User Tier Updates**:
+  - Added 'xai' to Pro and Enterprise availableProviders
+  - Updated TierConfig type to include all providers: openai, anthropic, google, groq, xai, perplexity, mistral, cohere
+- **Native Search Handling**:
+  - Perplexity Sonar's built-in search + DuckDuckGo web search for comprehensive coverage
+  - Both search sources provide complementary information
+- **File Locations**:
+  - `app/ultra/page.tsx` - Ultra mode page (lines 17-28: model config, 40-75: localhost check)
+  - `components/ui/header.tsx` - Navigation links (lines 41-46, 123-128)
+  - `lib/model-metadata.ts` - Pricing/benchmarks for all flagship models + Grok models
+  - `lib/ai-providers/openai.ts` - GPT-5 Chat support (line 10: gpt-5-chat-latest)
+  - `lib/ai-providers/anthropic.ts` - Claude Sonnet 4.5 support (line 10)
+  - `lib/ai-providers/xai.ts` - All 9 Grok models (lines 9-20)
+  - `lib/user-tiers.ts` - xAI provider added to Pro/Enterprise (lines 8, 46, 61)
+  - `components/consensus/model-selector.tsx` - All Grok models added (lines 68-81)
+- **User Value Proposition**: "F*** it, I want the best answer now" - no configuration needed
+- **Business Model**: Premium feature for paid tiers, validates willingness to pay
+- **Security**: Localhost-only access prevents unauthorized costly API usage
+- **Recent Updates** (January 2026):
+  - ✅ **Claude Sonnet 4.5 Integration**: Added claude-sonnet-4-5-20250929 to all systems (metadata, providers, model selector, tier configs)
+  - ✅ **Model Benchmark Fix**: Corrected GPT-5-chat-latest benchmarks (AAII: 1069 → 1340, MMLU: 87% → 89%) for accurate weight calculation
+  - ✅ **Consensus Display Scrolling Fix**: Doubled max-height (150px → 300px) in comparison-display.tsx with visible scrollbars
+  - ✅ **API Verification**: Direct API testing confirms Claude Sonnet 4.5 responds correctly
+  - 🔄 **Known Issue**: AI Consensus summary may not match parsed rankings (judge generates independently from ranking algorithm)
+- **Model Weights** (Post-Fix):
+  - gpt-5-chat-latest: 1.00 (was 0.66 - FIXED)
+  - claude-sonnet-4-5-20250929: 0.88
+  - gemini-2.0-flash: 0.75
+  - llama-3.3-70b-versatile: 0.63
+  - grok-4-0709: 0.50
+- **Last Modified**: January 2026 (Claude Sonnet 4.5 integration, benchmark fixes, scrolling improvements)
+- **DO NOT**: Remove localhost restriction, disable flagship models, revert benchmark fixes, or change premium positioning without user approval
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

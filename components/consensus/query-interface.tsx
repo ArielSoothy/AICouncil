@@ -23,9 +23,16 @@ import {
 
 interface QueryInterfaceContentProps {
   testingTierOverride?: 'pro' | 'enterprise';
+  defaultModels?: ModelConfig[];
+  ultraModeDefaults?: {
+    responseMode?: 'concise' | 'normal' | 'detailed';
+    enableWebSearch?: boolean;
+    includeComparison?: boolean;
+    comparisonModelId?: string;
+  };
 }
 
-function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentProps) {
+function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDefaults }: QueryInterfaceContentProps) {
   const { userTier } = useAuth()
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
@@ -37,58 +44,52 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
   const [prompt, setPrompt] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
-  const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
+  const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>(ultraModeDefaults?.responseMode || 'concise')
   const [usePremiumQuery, setUsePremiumQuery] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
-  const [includeComparison, setIncludeComparison] = useState(false)
+  const [includeComparison, setIncludeComparison] = useState(ultraModeDefaults?.includeComparison || false)
   const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>(null)
-  const [enableWebSearch, setEnableWebSearch] = useState(false)
+  const [enableWebSearch, setEnableWebSearch] = useState(ultraModeDefaults?.enableWebSearch || false)
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   
   // Default models based on user tier
   const getDefaultModels = (): ModelConfig[] => {
     if (effectiveUserTier === 'guest') {
-      // Guest mode: All 6 free models for impressive demo
+      // Guest mode: Best 4 free models for impressive demo
       return [
-        // 3 Best Free Groq Models
+        // Top Free Groq Models
         { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
         { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
-        { provider: 'groq', model: 'gemma2-9b-it', enabled: true },
-        // 3 Free Google Models (no Pro on guest)
-        { provider: 'google', model: 'gemini-2.5-flash', enabled: true },
+        // Best Free Google Models
         { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
         { provider: 'google', model: 'gemini-1.5-flash', enabled: true },
       ]
     }
-    
+
     if (effectiveUserTier === 'pro') {
-      // Pro tier: Mix of premium and free models for better results
+      // Pro tier: Best premium + free models for maximum quality
       return [
-        // Premium models (3)
+        // Best Premium Models (3)
         { provider: 'openai', model: 'gpt-4o', enabled: true },
         { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', enabled: true },
-        { provider: 'google', model: 'gemini-1.5-pro', enabled: true },
-        // Best free models (3)
+        { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
+        // Best Free Model (1)
         { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
-        { provider: 'google', model: 'gemini-2.5-flash', enabled: true },
-        { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
       ]
     }
-    
-    // Free tier: All free models (6 models)
+
+    // Free tier: Best 4 free models for quality consensus
     return [
-      // 3 Best Free Groq Models
+      // Top Free Groq Models
       { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
       { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
-      { provider: 'groq', model: 'gemma2-9b-it', enabled: true },
-      // 3 Free Google Models (no Pro on free tier by default)
-      { provider: 'google', model: 'gemini-2.5-flash', enabled: true },
+      // Best Free Google Models
       { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
       { provider: 'google', model: 'gemini-1.5-flash', enabled: true },
     ]
   }
 
-  const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(getDefaultModels())
+  const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(defaultModels || getDefaultModels())
 
   const handleGenerateQuestion = async () => {
     if (isGeneratingQuestion) return
@@ -416,16 +417,27 @@ function QueryInterfaceContent({ testingTierOverride }: QueryInterfaceContentPro
 
 interface QueryInterfaceProps {
   testingTierOverride?: 'pro' | 'enterprise';
+  defaultModels?: ModelConfig[];
+  ultraModeDefaults?: {
+    responseMode?: 'concise' | 'normal' | 'detailed';
+    enableWebSearch?: boolean;
+    includeComparison?: boolean;
+    comparisonModelId?: string;
+  };
 }
 
-export function QueryInterface({ testingTierOverride }: QueryInterfaceProps = {}) {
+export function QueryInterface({ testingTierOverride, defaultModels, ultraModeDefaults }: QueryInterfaceProps = {}) {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     }>
-      <QueryInterfaceContent testingTierOverride={testingTierOverride} />
+      <QueryInterfaceContent
+        testingTierOverride={testingTierOverride}
+        defaultModels={defaultModels}
+        ultraModeDefaults={ultraModeDefaults}
+      />
     </Suspense>
   )
 }

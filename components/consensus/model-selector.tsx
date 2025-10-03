@@ -17,8 +17,22 @@ interface ModelSelectorProps {
 }
 
 const availableModels = {
-  openai: ['gpt-4-turbo-preview', 'gpt-4', 'gpt-4o', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'],
+  openai: [
+    // GPT-5 Series (2025 Flagship)
+    'gpt-5-chat-latest',
+    'gpt-5',
+    'gpt-5-mini',
+    'gpt-5-nano',
+    // GPT-4 Series
+    'gpt-4-turbo-preview',
+    'gpt-4',
+    'gpt-4o',
+    'gpt-3.5-turbo',
+    'gpt-3.5-turbo-16k'
+  ],
   anthropic: [
+    // Claude 4.5 Series (2025 Flagship)
+    'claude-sonnet-4-5-20250929',
     // Claude 4 Series (2025)
     'claude-opus-4-20250514',
     'claude-sonnet-4-20250514',
@@ -38,11 +52,11 @@ const availableModels = {
   google: [
     // Current Generation (Free)
     'gemini-2.5-pro',
-    'gemini-2.5-flash', 
+    'gemini-2.5-flash',
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
     // Deprecated but still working
-    'gemini-1.5-flash', 
+    'gemini-1.5-flash',
     'gemini-1.5-flash-8b'
   ],
   groq: [
@@ -51,7 +65,20 @@ const availableModels = {
     'llama-3.1-8b-instant',
     'gemma2-9b-it'
   ],
-  xai: ['grok-2-latest', 'grok-2-mini'],
+  xai: [
+    // Grok 4 Series (2025 Flagship)
+    'grok-code-fast-1',
+    'grok-4-fast-reasoning',
+    'grok-4-fast-non-reasoning',
+    'grok-4-0709',
+    // Grok 3 Series
+    'grok-3',
+    'grok-3-mini',
+    // Grok 2 Series
+    'grok-2-vision-1212',
+    'grok-2-1212',
+    'grok-2-latest'
+  ],
   perplexity: ['sonar-pro', 'sonar-small'],
   mistral: ['mistral-large-latest', 'mistral-small-latest'],
   cohere: ['command-r-plus', 'command-r']

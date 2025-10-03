@@ -1,0 +1,347 @@
+'use client';
+
+import { Header } from '@/components/ui/header'
+import { PROJECT_NAME } from '@/lib/config/branding'
+import { Suspense, useState } from 'react'
+import { ModelConfig, EnhancedConsensusResponse } from '@/types/consensus'
+import { AlertCircle, Send, Loader2, Sparkles } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { EnhancedConsensusDisplay } from '@/components/consensus/enhanced-consensus-display-v3'
+import { ModelSelector } from '@/components/consensus/model-selector'
+import { useToast } from '@/hooks/use-toast'
+
+// Ultra Mode: Best FLAGSHIP models (2025 releases) - ENABLED BY DEFAULT
+// Users can modify the selection via the UI
+const DEFAULT_ULTRA_MODELS: ModelConfig[] = [
+  // 2025 Flagship models (enabled by default)
+  { provider: 'openai', model: 'gpt-5-chat-latest', enabled: true }, // #1 GPT-5 (released Aug 7, 2025)
+  { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929', enabled: true }, // #2 Claude Sonnet 4.5 (released Sep 29, 2025)
+  { provider: 'google', model: 'gemini-2.0-flash', enabled: true }, // #3 Gemini 2.0 Flash (free)
+  { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true }, // #4 Best free model
+  { provider: 'xai', model: 'grok-4-0709', enabled: true }, // #5 Grok 4 (2025 flagship)
+
+  // Optional premium models (disabled by default - enable if you have API keys)
+  { provider: 'perplexity', model: 'sonar-pro', enabled: false }, // #6 Perplexity with native search (needs API key)
+  { provider: 'mistral', model: 'mistral-large-latest', enabled: false }, // #7 Mistral (needs API key)
+];
+
+function UltraPageContent() {
+  const { toast } = useToast()
+  const [prompt, setPrompt] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
+  const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
+  const [conversationId, setConversationId] = useState<string | null>(null)
+  const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(DEFAULT_ULTRA_MODELS)
+  const [showModelSelector, setShowModelSelector] = useState(false)
+
+  // LOCALHOST-ONLY ACCESS: Ultra Mode is restricted to development environment
+  const isLocalhost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.includes('localhost')
+  )
+
+  if (typeof window !== 'undefined' && !isLocalhost) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 mb-4">
+              <h1 className="text-4xl font-bold tracking-tight consensus-gradient bg-clip-text text-transparent">
+                Ultra Mode - Coming Soon
+              </h1>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                💎 PREMIUM
+              </span>
+            </div>
+            <p className="text-xl text-muted-foreground mb-8">
+              Ultra Mode is currently in development and will be available soon for premium subscribers.
+            </p>
+            <Alert className="border-purple-200 bg-purple-50 max-w-2xl mx-auto">
+              <AlertCircle className="h-4 w-4 text-purple-600" />
+              <AlertTitle className="text-purple-900">Premium Feature</AlertTitle>
+              <AlertDescription className="text-purple-800">
+                This feature uses the most advanced AI models (GPT-5, Claude Sonnet 4.5, Grok 4) and requires a subscription to access.
+              </AlertDescription>
+            </Alert>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  const handleGenerateQuestion = async () => {
+    if (isGeneratingQuestion) return
+
+    setIsGeneratingQuestion(true)
+    try {
+      const response = await fetch('/api/question-generator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priority: 'high',
+          useAI: true,
+          avoidRecent: true
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate question')
+      }
+
+      const data = await response.json()
+      if (data.success && data.question) {
+        setPrompt(data.question.question)
+        toast({
+          title: "Question Generated!",
+          description: `Generated a ${data.question.complexity} ${data.question.category.toLowerCase()} question`,
+        })
+      } else {
+        throw new Error(data.message || 'No question generated')
+      }
+    } catch (error) {
+      console.error('Question generation error:', error)
+      toast({
+        variant: "destructive",
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : 'Failed to generate question',
+      })
+    } finally {
+      setIsGeneratingQuestion(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!prompt.trim() || isLoading) return
+
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/consensus', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          models: selectedModels.filter(m => m.enabled),
+          responseMode: 'concise',
+          usePremiumQuery: false,
+          isGuestMode: false,
+          includeComparison: true,
+          // Comparison: Prefer GPT-5, fallback to first enabled model
+          comparisonModel: selectedModels.find(m => m.model === 'gpt-5' && m.enabled)
+            || selectedModels.find(m => m.enabled)
+            || { provider: 'openai', model: 'gpt-4o', enabled: true },
+          enableWebSearch: true,
+          testingTierOverride: 'enterprise'
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to get consensus')
+      }
+
+      const consensusResult = await response.json()
+      setResult(consensusResult)
+
+      toast({
+        variant: "success",
+        title: "Query Successful",
+        description: `Generated consensus from ${consensusResult.models?.length || 'multiple'} models in ${(consensusResult.responseTime || 0).toFixed(1)}s`,
+      })
+
+      // Save conversation
+      try {
+        const saveResponse = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: prompt,
+            responses: consensusResult,
+            isGuestMode: false,
+          }),
+        })
+
+        if (saveResponse.ok) {
+          const conversation = await saveResponse.json()
+          setConversationId(conversation.id)
+        }
+      } catch (saveError) {
+        console.error('Failed to save conversation:', saveError)
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
+      toast({
+        variant: "destructive",
+        title: "Query Failed",
+        description: errorMessage,
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 mb-4">
+              <h1 className="text-4xl font-bold tracking-tight consensus-gradient bg-clip-text text-transparent">
+                {PROJECT_NAME}
+              </h1>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                💎 ULTRA MODE
+              </span>
+            </div>
+            <p className="text-xl text-muted-foreground mb-2">
+              Ultimate AI Decision Engine
+            </p>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Best answer, right now. No configuration needed.
+            </p>
+          </div>
+
+          {/* Prompt Input Area - Shown First */}
+          <div className="model-card space-y-4 mb-6">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="prompt" className="block text-sm font-medium">
+                  Enter your question
+                </label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateQuestion}
+                  disabled={isGeneratingQuestion}
+                  className="text-xs gap-1"
+                >
+                  {isGeneratingQuestion ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3 w-3" />
+                      Generate Question
+                    </>
+                  )}
+                </Button>
+              </div>
+              <Textarea
+                id="prompt"
+                placeholder="What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={4}
+                className="resize-none ai-input"
+              />
+              <div className="text-xs text-muted-foreground mt-1">
+                💡 Ask anything - ultra mode uses the best models with web search for maximum accuracy
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSubmit}
+                disabled={!prompt.trim() || isLoading}
+                className="min-w-[120px] ai-button"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Querying...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Get Best Answer
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Model Information Alert - Shown After Prompt */}
+          <Alert className="mb-6 border-purple-200 bg-purple-50">
+            <AlertCircle className="h-4 w-4 text-purple-600" />
+            <AlertTitle className="text-purple-900">Ultra Mode - Flagship Models Running</AlertTitle>
+            <AlertDescription className="text-purple-800">
+              <div className="flex flex-wrap gap-2 mt-2">
+                <span className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
+                  GPT-5 Chat 🌐
+                </span>
+                <span className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
+                  Claude Sonnet 4.5 🌐
+                </span>
+                <span className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
+                  Gemini 2.0 Flash 🌐
+                </span>
+                <span className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
+                  Llama 3.3 70B 🌐
+                </span>
+                <span className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
+                  Grok 4 🌐
+                </span>
+              </div>
+              <p className="text-xs mt-3 text-purple-600">
+                💡 2025 Flagship models • Concise mode • Web search enabled • Comparing with GPT-5 • Judge: Claude Sonnet 4.5
+              </p>
+              <p className="text-xs mt-2 text-muted-foreground">
+                Click "Show Model Selection" to add Perplexity or Mistral (optional)
+              </p>
+            </AlertDescription>
+          </Alert>
+
+          {/* Collapsible Model Selector */}
+          <div className="mb-6">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowModelSelector(!showModelSelector)}
+              className="w-full"
+            >
+              {showModelSelector ? '🔽 Hide' : '🔼 Show'} Model Selection ({selectedModels.filter(m => m.enabled).length} enabled)
+            </Button>
+            {showModelSelector && (
+              <div className="mt-4 p-4 border rounded-lg bg-muted/30">
+                <ModelSelector
+                  models={selectedModels}
+                  onChange={setSelectedModels}
+                  usePremiumQuery={false}
+                  userTier="enterprise"
+                />
+                <p className="text-xs text-muted-foreground mt-3">
+                  💡 Enable/disable any model. Flagship models available if you have API keys configured.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={false} />}
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export default function UltraPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <UltraPageContent />
+    </Suspense>
+  )
+}

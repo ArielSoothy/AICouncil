@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Brain, User, LogOut, BarChart3, Users, Shield, Menu, X } from 'lucide-react'
+import { Brain, User, LogOut, BarChart3, Users, Shield, Menu, X, Gem } from 'lucide-react'
 import { Button } from './button'
 import { useAuth } from '@/contexts/auth-context'
 import { PROJECT_NAME } from '@/lib/config/branding'
@@ -35,6 +35,13 @@ export function Header() {
             <Button variant="ghost" size="sm">
               <Users className="h-4 w-4 mr-2" />
               Agents
+            </Button>
+          </Link>
+
+          <Link href="/ultra">
+            <Button variant="ghost" size="sm" className="text-purple-600 hover:text-purple-700 font-semibold">
+              <Gem className="h-4 w-4 mr-2" />
+              Ultra Mode
             </Button>
           </Link>
 
@@ -110,6 +117,13 @@ export function Header() {
               <Button variant="ghost" size="sm" className="w-full justify-start">
                 <Users className="h-4 w-4 mr-2" />
                 Agents
+              </Button>
+            </Link>
+
+            <Link href="/ultra" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="ghost" size="sm" className="w-full justify-start text-purple-600 hover:text-purple-700 font-semibold">
+                <Gem className="h-4 w-4 mr-2" />
+                Ultra Mode
               </Button>
             </Link>
 

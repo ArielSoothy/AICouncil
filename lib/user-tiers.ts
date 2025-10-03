@@ -5,7 +5,7 @@ export interface TierConfig {
   price: string
   queryLimit: number
   premiumCredits?: number // For free tier premium sampling
-  availableProviders: ('openai' | 'anthropic' | 'google' | 'groq')[]
+  availableProviders: ('openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'perplexity' | 'mistral' | 'cohere')[]
   judgeModel: string
   features: string[]
 }
@@ -43,7 +43,7 @@ export const TIER_CONFIGS: Record<UserTier, TierConfig> = {
     name: 'Pro',
     price: '$9/month',
     queryLimit: 100, // queries per day
-    availableProviders: ['openai', 'anthropic', 'google', 'groq'], // All models
+    availableProviders: ['openai', 'anthropic', 'google', 'groq', 'xai'], // All models
     judgeModel: 'claude-opus-4-20250514', // Premium judge
     features: [
       'All AI models (25+ models)',
@@ -58,8 +58,8 @@ export const TIER_CONFIGS: Record<UserTier, TierConfig> = {
     name: 'Enterprise',
     price: '$29/month',
     queryLimit: 500, // queries per day
-    availableProviders: ['openai', 'anthropic', 'google', 'groq'], // All models
-    judgeModel: 'claude-opus-4-20250514', // Premium judge
+    availableProviders: ['openai', 'anthropic', 'google', 'groq', 'xai'], // All models
+    judgeModel: 'claude-sonnet-4-20250514', // Claude Sonnet 4.5 for quality/cost balance (per FEATURES.md line 409)
     features: [
       'All AI models (25+ models)',
       '500 queries per day',
@@ -114,6 +114,7 @@ export const FREE_TIER_MODELS = {
 export const ALL_MODELS = {
   openai: ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'o3', 'o4-mini', 'gpt-4o', 'gpt-4o-realtime-preview', 'gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'],
   anthropic: [
+    'claude-sonnet-4-5-20250929',
     'claude-opus-4-20250514',
     'claude-sonnet-4-20250514',
     'claude-3-7-sonnet-20250219',

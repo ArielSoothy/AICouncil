@@ -84,7 +84,7 @@ export function ComparisonDisplay({ singleModel, consensus, showAsAgentDebate = 
             {/* Response */}
             <div>
               <p className="text-sm text-muted-foreground mb-1">Response:</p>
-              <div className="text-sm max-h-[150px] overflow-y-auto pr-2 whitespace-pre-wrap">{singleModel.response}</div>
+              <div className="text-sm max-h-[300px] overflow-y-auto pr-2 whitespace-pre-wrap scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">{singleModel.response}</div>
             </div>
             
             {/* Metrics */}
@@ -131,7 +131,7 @@ export function ComparisonDisplay({ singleModel, consensus, showAsAgentDebate = 
             {/* Response */}
             <div>
               <p className="text-sm text-muted-foreground mb-1">Unified Answer:</p>
-              <div className="text-sm max-h-[150px] overflow-y-auto pr-2 whitespace-pre-wrap">{consensus.unifiedAnswer}</div>
+              <div className="text-sm max-h-[300px] overflow-y-auto pr-2 whitespace-pre-wrap scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">{consensus.unifiedAnswer}</div>
             </div>
             
             {/* Metrics with improvements */}

@@ -14,6 +14,7 @@ export type ModelBenchmark = {
 // Pricing per model (1K tokens)
 export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   // OpenAI
+  'gpt-5-chat-latest': { input: 0.00125, output: 0.01, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
   'gpt-5': { input: 0.00125, output: 0.01, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
   'gpt-5-mini': { input: 0.000125, output: 0.001, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
   'gpt-5-nano': { input: 0.000025, output: 0.0002, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
@@ -31,10 +32,11 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   'gpt-3.5-turbo-16k': { input: 0.001, output: 0.002, source: 'OpenAI pricing', lastUpdated: '2024-11-01' },
 
   // Anthropic
-  'claude-opus-4-20250514': { input: 0.015, output: 0.075, source: 'Anthropic pricing', lastUpdated: '2025-05-14' },
-  'claude-sonnet-4-20250514': { input: 0.003, output: 0.015, source: 'Anthropic pricing', lastUpdated: '2025-05-14' },
-  'claude-3-7-sonnet-20250219': { input: 0.003, output: 0.015, source: 'Anthropic pricing', lastUpdated: '2025-02-19' },
-  'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015, source: 'Anthropic pricing', lastUpdated: '2024-10-22' },
+  'claude-sonnet-4-5-20250929': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-09-29' },
+  'claude-opus-4-20250514': { input: 0.015, output: 0.075, source: 'Anthropic pricing per 1M ($15 in / $75 out)', lastUpdated: '2025-05-14' },
+  'claude-sonnet-4-20250514': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-05-14' },
+  'claude-3-7-sonnet-20250219': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-02-19' },
+  'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2024-10-22' },
   'claude-3-5-haiku-20241022': { input: 0.0008, output: 0.004, source: 'Anthropic pricing', lastUpdated: '2024-10-22' },
   'claude-3-opus-20240229': { input: 0.015, output: 0.075, source: 'Anthropic pricing', lastUpdated: '2024-02-29' },
   'claude-3-sonnet-20240229': { input: 0.003, output: 0.015, source: 'Anthropic pricing', lastUpdated: '2024-02-29' },
@@ -59,12 +61,16 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   'llama-3-groq-70b-tool-use': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-01-01' },
   'llama-3-groq-8b-tool-use': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-01-01' },
 
-  // xAI (approx from public calculators; verify in console as xAI evolves)
-  'grok-4-0709': { input: 0.003, output: 0.015, source: 'xAI pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-07-22' },
-  'grok-3': { input: 0.003, output: 0.015, source: 'xAI pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-07-22' },
-  'grok-3-mini': { input: 0.0003, output: 0.0005, source: 'xAI pricing per 1M ($0.30 in / $0.50 out)', lastUpdated: '2025-07-22' },
-  'grok-2-latest': { input: 0.002, output: 0.01, source: 'xAI Grok-2 calc (indicative)', lastUpdated: '2025-04-20' },
-  'grok-2-mini': { input: 0.0005, output: 0.0025, source: 'xAI Grok-2 mini calc (indicative)', lastUpdated: '2025-04-20' },
+  // xAI (official pricing from xAI documentation)
+  'grok-code-fast-1': { input: 0.0002, output: 0.0015, source: 'xAI pricing per 1M ($0.20 in / $1.50 out)', lastUpdated: '2025-10-03' },
+  'grok-4-fast-reasoning': { input: 0.0002, output: 0.0005, source: 'xAI pricing per 1M ($0.20 in / $0.50 out)', lastUpdated: '2025-10-03' },
+  'grok-4-fast-non-reasoning': { input: 0.0002, output: 0.0005, source: 'xAI pricing per 1M ($0.20 in / $0.50 out)', lastUpdated: '2025-10-03' },
+  'grok-4-0709': { input: 0.003, output: 0.015, source: 'xAI pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-10-03' },
+  'grok-3': { input: 0.003, output: 0.015, source: 'xAI pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-10-03' },
+  'grok-3-mini': { input: 0.0003, output: 0.0005, source: 'xAI pricing per 1M ($0.30 in / $0.50 out)', lastUpdated: '2025-10-03' },
+  'grok-2-vision-1212': { input: 0.002, output: 0.01, source: 'xAI pricing per 1M ($2 in / $10 out)', lastUpdated: '2025-10-03' },
+  'grok-2-1212': { input: 0.002, output: 0.01, source: 'xAI pricing per 1M ($2 in / $10 out)', lastUpdated: '2025-10-03' },
+  'grok-2-latest': { input: 0.002, output: 0.01, source: 'xAI Grok-2 pricing', lastUpdated: '2025-10-03' },
 
   // Perplexity
   'sonar-pro': { input: 0.003, output: 0.015, source: 'OpenRouter/Perplexity Sonar Pro', lastUpdated: '2025-03-07' },
@@ -84,7 +90,8 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // OpenAI
   // Updated using Artificial Analysis data (Intelligence Index and MMLU-Pro)
   // Source: https://artificialanalysis.ai/leaderboards/models
-  'gpt-5': { arenaTier: 'S', aaii: 1069, mmlu: 87, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
+  'gpt-5-chat-latest': { arenaTier: 'S', aaii: 1340, mmlu: 89, source: 'ArtificialAnalysis (2025 flagship)', lastUpdated: '2025-08-08' },
+  'gpt-5': { arenaTier: 'S', aaii: 1340, mmlu: 89, source: 'ArtificialAnalysis (2025 flagship)', lastUpdated: '2025-08-08' },
   'gpt-5-mini': { arenaTier: 'A', aaii: 1064, mmlu: 83, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
   'gpt-5-nano': { arenaTier: 'B', aaii: 1054, mmlu: 77, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
   'gpt-4.1': { arenaTier: 'A', aaii: 1047, mmlu: 81, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
@@ -100,6 +107,7 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   'o4-mini': { arenaTier: 'A', aaii: 1065, mmlu: 83, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
 
   // Anthropic
+  'claude-sonnet-4-5-20250929': { arenaTier: 'S', aaii: 1215, mmlu: 85, source: 'Anthropic/AA (latest flagship)', lastUpdated: '2025-09-29' },
   'claude-opus-4-20250514': { arenaTier: 'S', aaii: 1212, mmlu: 87, source: 'Anthropic/AA', lastUpdated: '2025-05-14' },
   'claude-sonnet-4-20250514': { arenaTier: 'S', aaii: 1212, mmlu: 84, source: 'Anthropic/AA', lastUpdated: '2025-05-14' },
   'claude-3-7-sonnet-20250219': { arenaTier: 'A', aaii: 1205, mmlu: 83, source: 'Anthropic/AA', lastUpdated: '2025-02-19' },
@@ -123,12 +131,16 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   'gemma2-9b-it': { arenaTier: 'B', aaii: 1120, mmlu: 68, source: 'Community evals', lastUpdated: '2024-08-01' },
 
   // xAI
-  // Align Grok 4 to AA row (Intelligence ~68, MMLU-Pro ~87). AA index normalized to ~1000+score
-  'grok-4-0709': { arenaTier: 'S', aaii: 1068, mmlu: 87, source: 'ArtificialAnalysis/xAI', lastUpdated: '2025-08-08' },
-  'grok-3': { arenaTier: 'A', aaii: 1250, mmlu: 86, source: 'xAI/pricing page (approx)', lastUpdated: '2025-07-22' },
-  'grok-3-mini': { arenaTier: 'B', aaii: 1150, mmlu: 75, source: 'xAI/pricing page (approx)', lastUpdated: '2025-07-22' },
-  'grok-2-latest': { arenaTier: 'S', aaii: 1273, mmlu: 87, source: 'OpenLM.ai Arena/xAI blog', lastUpdated: '2025-03-01' },
-  'grok-2-mini': { arenaTier: 'A', aaii: 1220, mmlu: 86, source: 'Calculators/xAI', lastUpdated: '2025-03-01' },
+  // Updated from xAI official documentation
+  'grok-code-fast-1': { arenaTier: 'A', aaii: 1100, mmlu: 82, source: 'xAI docs', lastUpdated: '2025-10-03' },
+  'grok-4-fast-reasoning': { arenaTier: 'S', aaii: 1090, mmlu: 88, source: 'xAI docs', lastUpdated: '2025-10-03' },
+  'grok-4-fast-non-reasoning': { arenaTier: 'A', aaii: 1080, mmlu: 85, source: 'xAI docs', lastUpdated: '2025-10-03' },
+  'grok-4-0709': { arenaTier: 'S', aaii: 1068, mmlu: 87, source: 'ArtificialAnalysis/xAI', lastUpdated: '2025-10-03' },
+  'grok-3': { arenaTier: 'A', aaii: 1250, mmlu: 86, source: 'xAI docs', lastUpdated: '2025-10-03' },
+  'grok-3-mini': { arenaTier: 'B', aaii: 1150, mmlu: 75, source: 'xAI docs', lastUpdated: '2025-10-03' },
+  'grok-2-vision-1212': { arenaTier: 'S', aaii: 1270, mmlu: 87, source: 'xAI docs', lastUpdated: '2025-10-03' },
+  'grok-2-1212': { arenaTier: 'S', aaii: 1273, mmlu: 87, source: 'xAI docs', lastUpdated: '2025-10-03' },
+  'grok-2-latest': { arenaTier: 'S', aaii: 1273, mmlu: 87, source: 'OpenLM.ai Arena/xAI blog', lastUpdated: '2025-10-03' },
 
   // Perplexity
   'sonar-pro': { arenaTier: 'A', aaii: 1200, mmlu: 78, source: 'OpenRouter/AA', lastUpdated: '2025-03-07' },

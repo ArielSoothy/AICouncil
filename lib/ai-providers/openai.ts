@@ -6,6 +6,14 @@ import { AIProvider } from './types';
 export class OpenAIProvider implements AIProvider {
   name = 'OpenAI';
   models = [
+    // GPT-5 Series (2025)
+    'gpt-5-chat-latest',
+    'gpt-5',
+    'gpt-5-2025-08-07',
+    'gpt-5-mini',
+    'gpt-5-nano',
+    // GPT-4 Series
+    'gpt-4o',
     'gpt-4-turbo-preview',
     'gpt-4',
     'gpt-3.5-turbo',
