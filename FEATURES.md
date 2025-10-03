@@ -563,14 +563,46 @@
   - `components/agents/debate-interface.tsx` - Agent Debate integration
   - `types/database.ts` - Nullable user_id support
   - `scripts/migrate-guest-conversations.js` - Database migration reference
+- **Phase 4: Full History Page & Sharing Features** (October 3, 2025 - COMPLETE):
+  - ✅ **Full History Page** (`/app/history/page.tsx`):
+    - Search by query text with real-time filtering
+    - Filter by mode (ultra/consensus/agent) with mode detection
+    - Sort by newest/oldest conversations
+    - Pagination (10 conversations per page)
+    - Delete conversations with confirmation dialog
+    - Smart mode detection from response structure
+    - Professional table layout with responsive design
+    - Empty states for no conversations/no results
+  - ✅ **ShareButtons Component** (`components/conversation/share-buttons.tsx`):
+    - Copy link to clipboard functionality with Clipboard API
+    - Twitter/X sharing with Intent API
+    - LinkedIn sharing with Share API
+    - Dropdown menu UI for clean UX
+    - Query truncation (100 chars) for social media
+    - Mode-specific descriptions for sharing context
+  - ✅ **Share Integration** (All 3 Modes):
+    - Ultra Mode: Share section before feedback form
+    - Consensus Mode: Share section before feedback form
+    - Agent Debate: Share section after debate display
+    - Conditional rendering (only when conversation saved)
+    - Smart URL generation with mode detection
+    - Format: `{origin}/{path}?c=<conversation-id>`
+  - ✅ **API Enhancements**:
+    - DELETE endpoint at `/api/conversations/[id]/route.ts`
+    - RLS policies ensure users can only delete their own conversations
+    - Guest conversations (null user_id) deletable by anyone
+  - ✅ **UI Components Created**:
+    - `components/ui/input.tsx` - Search input for history page
+    - `components/ui/alert-dialog.tsx` - Confirmation dialog for deletions
 - **Next Steps** (Planned):
   1. ✅ ~~Conversation history dropdown (last 5 conversations)~~ - COMPLETE
   2. ✅ ~~Extend to regular consensus mode (/)~~ - COMPLETE
   3. ✅ ~~Extend to agent debate mode (/agents)~~ - COMPLETE
-  4. Full history page (/history) - Build comprehensive history view
-  5. Share & Export features (copy link, social sharing, PDF export)
-- **Last Modified**: October 3, 2025 (Extended to all 3 modes with history dropdown)
-- **DO NOT**: Remove URL persistence, disable guest mode, change conversation data structure, or modify without testing restoration flow
+  4. ✅ ~~Full history page (/history)~~ - COMPLETE
+  5. ✅ ~~Share features (copy link, Twitter, LinkedIn)~~ - COMPLETE
+  6. PDF export (future consideration if requested by users)
+- **Last Modified**: October 3, 2025 (Complete history page + sharing features across all modes)
+- **DO NOT**: Remove URL persistence, disable guest mode, change conversation data structure, remove sharing features, or modify without testing restoration flow
 
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
