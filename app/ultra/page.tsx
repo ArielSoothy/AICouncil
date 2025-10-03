@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { EnhancedConsensusDisplay } from '@/components/consensus/enhanced-consensus-display-v3'
 import { UltraModelBadgeSelector } from '@/components/consensus/ultra-model-badge-selector'
 import { useToast } from '@/hooks/use-toast'
+import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
+import { SavedConversation } from '@/lib/types/conversation'
 
 // Ultra Mode: Best FLAGSHIP models (2025 releases) - ENABLED BY DEFAULT
 // Users can modify the selection via the UI
@@ -35,6 +37,26 @@ function UltraPageContent() {
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(DEFAULT_ULTRA_MODELS)
+
+  // Conversation persistence: restore results on page refresh/URL sharing
+  const { saveConversation, isRestoring } = useConversationPersistence({
+    storageKey: 'ultra-mode-last-conversation',
+    onRestored: (conversation: SavedConversation) => {
+      // Restore the full conversation state
+      setPrompt(conversation.query)
+      setResult(conversation.responses as EnhancedConsensusResponse)
+      setConversationId(conversation.id)
+
+      toast({
+        title: 'Conversation Restored',
+        description: 'Your previous Ultra Mode query has been restored.',
+      })
+    },
+    onError: (error: Error) => {
+      console.error('Failed to restore conversation:', error)
+      // Silent fail - user can just start a new query
+    },
+  })
 
   // LOCALHOST-ONLY ACCESS: Ultra Mode is restricted to development environment
   const isLocalhost = typeof window !== 'undefined' && (
@@ -153,7 +175,7 @@ function UltraPageContent() {
         description: `Generated consensus from ${consensusResult.models?.length || 'multiple'} models in ${(consensusResult.responseTime || 0).toFixed(1)}s`,
       })
 
-      // Save conversation
+      // Save conversation to database
       try {
         const saveResponse = await fetch('/api/conversations', {
           method: 'POST',
@@ -170,6 +192,9 @@ function UltraPageContent() {
         if (saveResponse.ok) {
           const conversation = await saveResponse.json()
           setConversationId(conversation.id)
+
+          // Enable persistence: update URL and localStorage
+          saveConversation(conversation.id)
         }
       } catch (saveError) {
         console.error('Failed to save conversation:', saveError)
@@ -262,10 +287,15 @@ function UltraPageContent() {
             <div className="flex justify-end">
               <Button
                 onClick={handleSubmit}
-                disabled={!prompt.trim() || isLoading}
+                disabled={!prompt.trim() || isLoading || isRestoring}
                 className="min-w-[200px] py-4 text-lg ai-button"
               >
-                {isLoading ? (
+                {isRestoring ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Restoring...
+                  </>
+                ) : isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     Querying...
