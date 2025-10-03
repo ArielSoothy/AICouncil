@@ -185,11 +185,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
+      console.error('❌ Conversation insert error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    console.log('✅ Conversation saved:', conversation.id)
     return NextResponse.json(conversation, { status: 201 })
   } catch (error) {
+    console.error('❌ Conversation API error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

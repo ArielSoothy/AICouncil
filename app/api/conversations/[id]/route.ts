@@ -4,72 +4,57 @@ import { createClient } from '@/lib/supabase/server'
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = await createClient()
-    
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Get specific conversation
-    const { data: conversation, error } = await supabase
-      .from('conversations')
-      .select('*')
-      .eq('id', params.id)
-      .eq('user_id', user.id)
-      .single()
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    if (!conversation) {
-      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
-    }
-
-    return NextResponse.json(conversation)
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+interface RouteParams {
+  params: {
+    id: string
   }
 }
 
-export async function DELETE(
+export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
-    const supabase = await createClient()
-    
-    // Get the authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { id } = params
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Conversation ID is required' },
+        { status: 400 }
+      )
     }
 
-    // Delete conversation
-    const { error } = await supabase
+    const supabase = await createClient()
+
+    // Fetch the conversation by ID
+    // Note: This allows fetching guest conversations (user_id IS NULL)
+    // RLS policies will handle authorization for user conversations
+    const { data: conversation, error } = await supabase
       .from('conversations')
-      .delete()
-      .eq('id', params.id)
-      .eq('user_id', user.id)
+      .select('*')
+      .eq('id', id)
+      .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Failed to fetch conversation:', error)
+      return NextResponse.json(
+        { error: 'Conversation not found' },
+        { status: 404 }
+      )
     }
 
-    return NextResponse.json({ success: true })
+    if (!conversation) {
+      return NextResponse.json(
+        { error: 'Conversation not found' },
+        { status: 404 }
+      )
+    }
+
+    // Guest conversations (user_id IS NULL) are publicly accessible
+    // User conversations require authentication via RLS policies
+    return NextResponse.json(conversation)
   } catch (error) {
+    console.error('Error fetching conversation:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
