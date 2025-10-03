@@ -115,27 +115,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { query, responses, isGuestMode = false } = body
 
-    // ==========================================
-    // 🧪 TESTING MODE ONLY - EASY REVERT BLOCK
-    // ==========================================
-    // In guest mode, skip saving conversations (no database storage)
-    if (isGuestMode) {
-      console.log('Conversations API POST - Guest mode: skipping conversation save')
-      return NextResponse.json({ 
-        message: 'Guest mode: conversation not saved',
-        id: null 
-      })
-    }
-    // ==========================================
-    // END TESTING MODE BLOCK
-    // ==========================================
-
     const supabase = await createClient()
-    
-    // Get the authenticated user
+
+    // Get the authenticated user (optional for guest mode)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+
+    // For non-guest mode, require authentication
+    if (!isGuestMode && (authError || !user)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -177,7 +163,7 @@ export async function POST(request: NextRequest) {
           judge_model: responses.judgeModel || 'unknown',
           web_search_enabled: responses.webSearchContext ? true : false,
           timestamp: new Date().toISOString(),
-          is_guest_session: false
+          is_guest_session: isGuestMode
         },
         ground_truth: null, // For future manual validation
         training_ready: true
@@ -186,7 +172,7 @@ export async function POST(request: NextRequest) {
 
     // Insert new conversation
     const conversationData: ConversationInsert = {
-      user_id: user.id,
+      user_id: user?.id || null, // Allow null for guest mode
       query,
       responses,
       evaluation_data: evaluationData,

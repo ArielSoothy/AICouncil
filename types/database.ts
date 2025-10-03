@@ -22,7 +22,7 @@ export interface Database {
       conversations: {
         Row: {
           id: string
-          user_id: string
+          user_id: string | null
           query: string
           responses: any // JSONB type
           evaluation_data?: any // JSONB type for structured evaluation data
@@ -30,7 +30,7 @@ export interface Database {
           updated_at: string
         }
         Insert: {
-          user_id: string
+          user_id?: string | null // Optional for guest mode
           query: string
           responses: any
           evaluation_data?: any
