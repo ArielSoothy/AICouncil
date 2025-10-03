@@ -185,7 +185,7 @@ function UltraPageContent() {
           body: JSON.stringify({
             query: prompt,
             responses: consensusResult,
-            isGuestMode: false,
+            isGuestMode: true, // Allow guest mode for localhost testing
           }),
         })
 
