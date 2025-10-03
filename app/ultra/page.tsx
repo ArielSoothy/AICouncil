@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { EnhancedConsensusDisplay } from '@/components/consensus/enhanced-consensus-display-v3'
-import { ModelSelector } from '@/components/consensus/model-selector'
+import { UltraModelBadgeSelector } from '@/components/consensus/ultra-model-badge-selector'
 import { useToast } from '@/hooks/use-toast'
 
 // Ultra Mode: Best FLAGSHIP models (2025 releases) - ENABLED BY DEFAULT
@@ -35,7 +35,6 @@ function UltraPageContent() {
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(DEFAULT_ULTRA_MODELS)
-  const [showModelSelector, setShowModelSelector] = useState(false)
 
   // LOCALHOST-ONLY ACCESS: Ultra Mode is restricted to development environment
   const isLocalhost = typeof window !== 'undefined' && (
@@ -210,122 +209,75 @@ function UltraPageContent() {
             </p>
           </div>
 
-          {/* Prompt Input Area - Shown First */}
+          {/* Unified Ultra Mode Interface */}
           <div className="model-card space-y-4 mb-6">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label htmlFor="prompt" className="block text-sm font-medium">
-                  Enter your question
-                </label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGenerateQuestion}
-                  disabled={isGeneratingQuestion}
-                  className="text-xs gap-1"
-                >
-                  {isGeneratingQuestion ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-3 w-3" />
-                      Generate Question
-                    </>
-                  )}
-                </Button>
-              </div>
-              <Textarea
-                id="prompt"
-                placeholder="What should I have for dinner tonight?"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                rows={4}
-                className="resize-none ai-input"
-              />
-              <div className="text-xs text-muted-foreground mt-1">
-                💡 Ask anything - ultra mode uses the best models with web search for maximum accuracy
-              </div>
-            </div>
-
-            <div className="flex justify-end">
+            {/* Header row with label and Generate Question button */}
+            <div className="flex items-center justify-between">
+              <label htmlFor="prompt" className="block text-sm font-medium">
+                Enter your question
+              </label>
               <Button
-                onClick={handleSubmit}
-                disabled={!prompt.trim() || isLoading}
-                className="min-w-[120px] ai-button"
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateQuestion}
+                disabled={isGeneratingQuestion}
+                className="text-xs gap-1"
               >
-                {isLoading ? (
+                {isGeneratingQuestion ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Querying...
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Generating...
                   </>
                 ) : (
                   <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Get Best Answer
+                    <Sparkles className="h-3 w-3" />
+                    Generate Question
                   </>
                 )}
               </Button>
             </div>
-          </div>
 
-          {/* Model Information Alert - Dynamically shows enabled models */}
-          <Alert className="mb-6 border-purple-200 bg-purple-50">
-            <AlertCircle className="h-4 w-4 text-purple-600" />
-            <AlertTitle className="text-purple-900">Ultra Mode - Flagship Models Running</AlertTitle>
-            <AlertDescription className="text-purple-800">
-              <div className="flex flex-wrap gap-2 mt-2">
-                {selectedModels.filter(m => m.enabled).map((model) => {
-                  const modelDisplayNames: Record<string, string> = {
-                    'gpt-5-chat-latest': 'GPT-5 Chat',
-                    'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5',
-                    'gemini-2.0-flash': 'Gemini 2.0 Flash',
-                    'llama-3.3-70b-versatile': 'Llama 3.3 70B',
-                    'grok-4-fast-non-reasoning': 'Grok 4 Fast',
-                    'sonar-pro': 'Perplexity Sonar Pro',
-                    'mistral-large-latest': 'Mistral Large'
-                  };
-                  return (
-                    <span key={`${model.provider}-${model.model}`} className="inline-flex items-center px-2 py-1 rounded-md bg-white/50 text-xs font-medium">
-                      {modelDisplayNames[model.model] || model.model} 🌐
-                    </span>
-                  );
-                })}
-              </div>
-              <p className="text-xs mt-3 text-purple-600">
-                💡 {selectedModels.filter(m => m.enabled).length} models enabled • Concise mode • Web search enabled • Comparing with GPT-5 • Judge: Claude Sonnet 4.5
-              </p>
-              <p className="text-xs mt-2 text-muted-foreground">
-                Click "Show Model Selection" to customize which models to use
-              </p>
-            </AlertDescription>
-          </Alert>
+            {/* Question textarea */}
+            <Textarea
+              id="prompt"
+              placeholder="What should I have for dinner tonight?"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              rows={4}
+              className="resize-none ai-input"
+            />
 
-          {/* Collapsible Model Selector */}
-          <div className="mb-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowModelSelector(!showModelSelector)}
-              className="w-full"
-            >
-              {showModelSelector ? '🔽 Hide' : '🔼 Show'} Model Selection ({selectedModels.filter(m => m.enabled).length} enabled)
-            </Button>
-            {showModelSelector && (
-              <div className="mt-4 p-4 border rounded-lg bg-muted/30">
-                <ModelSelector
-                  models={selectedModels}
-                  onChange={setSelectedModels}
-                  usePremiumQuery={false}
-                  userTier="enterprise"
-                />
-                <p className="text-xs text-muted-foreground mt-3">
-                  💡 Enable/disable any model. Flagship models available if you have API keys configured.
-                </p>
-              </div>
-            )}
+            {/* Branded clickable model badges */}
+            <UltraModelBadgeSelector
+              models={selectedModels}
+              onChange={setSelectedModels}
+            />
+
+            {/* Info text */}
+            <p className="text-xs text-muted-foreground">
+              💡 {selectedModels.filter(m => m.enabled).length} models enabled • Concise mode • Web search enabled • Comparing with GPT-5 • Judge: Claude Sonnet 4.5
+            </p>
+
+            {/* CTA Button - Larger and more prominent */}
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSubmit}
+                disabled={!prompt.trim() || isLoading}
+                className="min-w-[200px] py-4 text-lg ai-button"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Querying...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-5 w-5" />
+                    Get Ultimate Answer
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={false} />}
