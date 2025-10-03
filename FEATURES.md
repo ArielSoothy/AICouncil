@@ -487,8 +487,12 @@
   - `app/api/conversations/route.ts` - Fetch all conversations
 - **Purpose**: Enable URL-based conversation sharing, page refresh restoration, and conversation history browsing
 - **Access**: ✅ Active on ALL modes (Ultra Mode, Consensus Mode, Agent Debate)
-- **Privacy Model**:
-  - 🔒 **Guests**: LocalStorage only (same browser persistence, no URL sharing, no cross-device)
+- **Privacy Model** (Anonymous Analytics):
+  - 📊 **Guests**: Queries saved anonymously (user_id = NULL) for analytics & ML training
+    - GET API returns empty array (can't see their own or others' history)
+    - No URL sharing, no cross-device access
+    - Admin can analyze all guest queries for product insights
+    - Legal & privacy-compliant (industry standard anonymous analytics)
   - ☁️ **Authenticated**: Full cloud sync (URL sharing, cross-device, history, social sharing)
 - **Key Components**:
   - **Custom Hook** (`useConversationPersistence`):
@@ -525,12 +529,14 @@
     - Page refresh fetches conversation from `/api/conversations/[id]`
     - Restores: query text, model selection, complete results
     - Full cloud history accessible from any device
-  - **Guest Users (Privacy-First)**:
-    - POST `/api/conversations` returns success without database save
-    - GET `/api/conversations` returns empty array (no cloud history)
-    - LocalStorage-only persistence on same browser
+  - **Guest Users (Anonymous Analytics)**:
+    - POST `/api/conversations` saves to database with `user_id = NULL`
+    - GET `/api/conversations` returns empty array (guests can't retrieve)
+    - Admin dashboard shows all guest conversations for analytics
+    - Evaluation data captured for ML training
     - No URL sharing capability (conversion incentive)
     - No cross-device access (conversion incentive)
+    - Privacy-protected: guests can't see each other's data
   - Toast notifications for restoration status
   - SSR-safe with 'use client' directive
 - **Database Migrations Required** (User ran in Supabase Dashboard):
@@ -554,14 +560,16 @@
     - Access history from any device
     - Professional UX (like ChatGPT, Claude.ai)
   - **For Guest Users**:
-    - Page refresh persistence on same browser
-    - Try product without signup
-    - Clear upgrade incentive (URL sharing, cloud sync)
-  - **For Platform**:
-    - No database bloat from anonymous users
-    - Privacy compliant (no guest data collection)
-    - Lower storage costs
-    - Clear conversion funnel (local → cloud)
+    - Try product without signup barriers
+    - Clear upgrade incentive (URL sharing, cloud sync, history access)
+    - Privacy protected (can't see other guests' data)
+  - **For Platform (Anonymous Analytics)**:
+    - Product insights from guest behavior
+    - ML training data collection (evaluation_data)
+    - Query pattern analysis for improvement
+    - Legal & privacy-compliant analytics
+    - Clear conversion funnel (anonymous → authenticated)
+    - Industry standard approach (Google Analytics, Mixpanel, etc.)
 - **Testing Verified** (October 3, 2025 - All 3 Modes):
   - ✅ Query submission saves to database (all modes)
   - ✅ URL updates with conversation ID parameter (all modes)
@@ -625,10 +633,12 @@
   6. PDF export (future consideration if requested by users)
 - **Last Modified**: October 3, 2025
   - Complete history page + sharing features across all modes
-  - **PRIVACY FIX**: Guest conversations now localStorage-only (no database save)
-  - Prevents guest data leakage and database bloat
-  - Clear conversion incentive for cloud features
-- **DO NOT**: Remove URL persistence for authenticated users, change localStorage approach for guests, modify conversation data structure, remove sharing features, or modify without testing both auth and guest flows
+  - **ANONYMOUS ANALYTICS**: Guest queries saved anonymously (user_id = NULL)
+  - Guests can't retrieve their own data (GET returns empty array)
+  - Admin can analyze all guest queries for product insights & ML training
+  - Privacy-protected: guests can't see each other's conversations
+  - Legal & privacy-compliant (industry standard anonymous analytics)
+- **DO NOT**: Remove URL persistence for authenticated users, change guest GET behavior, modify conversation data structure, remove sharing features, or modify without testing both auth and guest flows
 
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

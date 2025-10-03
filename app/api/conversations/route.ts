@@ -131,18 +131,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // GUEST MODE: Skip database save, localStorage only
-    // This prevents guest data leakage and reduces database bloat
+    // GUEST MODE: Save anonymously for analytics (user_id = NULL)
+    // Guests can't retrieve via API (GET returns empty), but admin can analyze
+    // This enables product insights and ML training while protecting guest privacy
     if (isGuestMode) {
-      console.log('🔒 Guest mode: Skipping database save, using localStorage only')
-      return NextResponse.json(
-        {
-          id: null,
-          message: 'Guest mode: Conversation saved to localStorage only',
-          guest_mode: true
-        },
-        { status: 201 }
-      )
+      console.log('📊 Guest mode: Saving anonymously for analytics (user_id = NULL)')
     }
 
     // Create evaluation data structure for consensus results
