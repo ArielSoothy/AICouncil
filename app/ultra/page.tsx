@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { EnhancedConsensusDisplay } from '@/components/consensus/enhanced-consensus-display-v3'
 import { UltraModelBadgeSelector } from '@/components/consensus/ultra-model-badge-selector'
+import { ConversationHistoryDropdown } from '@/components/conversation/conversation-history-dropdown'
 import { useToast } from '@/hooks/use-toast'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { SavedConversation } from '@/lib/types/conversation'
@@ -236,30 +237,33 @@ function UltraPageContent() {
 
           {/* Unified Ultra Mode Interface */}
           <div className="model-card space-y-4 mb-6">
-            {/* Header row with label and Generate Question button */}
+            {/* Header row with label, History dropdown, and Generate Question button */}
             <div className="flex items-center justify-between">
               <label htmlFor="prompt" className="block text-sm font-medium">
                 Enter your question
               </label>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleGenerateQuestion}
-                disabled={isGeneratingQuestion}
-                className="text-xs gap-1"
-              >
-                {isGeneratingQuestion ? (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-3 w-3" />
-                    Generate Question
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <ConversationHistoryDropdown mode="ultra-mode" limit={5} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateQuestion}
+                  disabled={isGeneratingQuestion}
+                  className="text-xs gap-1"
+                >
+                  {isGeneratingQuestion ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3 w-3" />
+                      Generate Question
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
             {/* Question textarea */}
