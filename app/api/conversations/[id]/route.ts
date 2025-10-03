@@ -61,3 +61,45 @@ export async function GET(
     )
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: RouteParams
+) {
+  try {
+    const { id } = params
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Conversation ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+
+    // Delete the conversation
+    // RLS policies will ensure users can only delete their own conversations
+    // Guest conversations (user_id IS NULL) can be deleted by anyone
+    const { error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Failed to delete conversation:', error)
+      return NextResponse.json(
+        { error: 'Failed to delete conversation' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting conversation:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
