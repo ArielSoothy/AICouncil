@@ -5,13 +5,25 @@
 
 export const PROVIDER_COLORS = {
   anthropic: 'bg-orange-500 hover:bg-orange-600 text-white',
-  openai: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+  openai: 'bg-white hover:bg-gray-50 text-black border-2 border-gray-300',
   google: 'bg-blue-500 hover:bg-blue-600 text-white',
   groq: 'bg-purple-600 hover:bg-purple-700 text-white',
   xai: 'bg-gray-900 hover:bg-black text-white',
   perplexity: 'bg-teal-500 hover:bg-teal-600 text-white',
   mistral: 'bg-red-500 hover:bg-red-600 text-white',
   cohere: 'bg-indigo-500 hover:bg-indigo-600 text-white'
+} as const
+
+// Generic icons for each provider (using emojis - safe and legal)
+export const PROVIDER_ICONS = {
+  anthropic: '🧠', // Brain for Claude's intelligence
+  openai: '⚡', // Lightning for GPT's speed
+  google: '🔍', // Search for Google
+  groq: '🚀', // Rocket for Groq's speed
+  xai: '✨', // Sparkles for Grok's creativity
+  perplexity: '🔎', // Magnifying glass for search
+  mistral: '💨', // Wind for Mistral
+  cohere: '🔗', // Link for Cohere
 } as const
 
 export const PROVIDER_NAMES = {
