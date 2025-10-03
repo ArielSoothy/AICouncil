@@ -12,7 +12,7 @@ import {
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu'
 import { Plus, X, ChevronDown } from 'lucide-react'
-import { PROVIDER_COLORS, PROVIDER_ICONS } from '@/lib/brand-colors'
+import { PROVIDER_COLORS } from '@/lib/brand-colors'
 import { useState } from 'react'
 
 interface UltraModelBadgeSelectorProps {
@@ -164,16 +164,14 @@ export function UltraModelBadgeSelector({ models, onChange }: UltraModelBadgeSel
       {enabledModels.map((model, index) => {
         const colorClass = PROVIDER_COLORS[model.provider as keyof typeof PROVIDER_COLORS] || PROVIDER_COLORS.openai
         const displayName = modelDisplayNames[model.model] || model.model
-        const icon = PROVIDER_ICONS[model.provider as keyof typeof PROVIDER_ICONS] || '🤖'
 
         return (
           <div key={`${model.provider}-${index}`} className="flex items-center gap-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className={`${colorClass} transition-colors cursor-pointer px-3 py-1 h-auto text-sm font-medium rounded-full flex items-center gap-1.5 border-0 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
+                  className={`${colorClass} transition-colors cursor-pointer px-3 py-1 h-auto text-sm font-medium rounded-full flex items-center gap-1.5 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
                 >
-                  <span className="text-base">{icon}</span>
                   {displayName}
                   <ChevronDown className="h-3 w-3" />
                 </button>
