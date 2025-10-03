@@ -20,7 +20,7 @@ const DEFAULT_ULTRA_MODELS: ModelConfig[] = [
   { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929', enabled: true }, // #2 Claude Sonnet 4.5 (released Sep 29, 2025)
   { provider: 'google', model: 'gemini-2.0-flash', enabled: true }, // #3 Gemini 2.0 Flash (free)
   { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true }, // #4 Best free model
-  { provider: 'xai', model: 'grok-4-0709', enabled: true }, // #5 Grok 4 (2025 flagship)
+  { provider: 'xai', model: 'grok-4-fast-non-reasoning', enabled: true }, // #5 Grok 4 Fast (faster responses)
 
   // Optional premium models (disabled by default - enable if you have API keys)
   { provider: 'perplexity', model: 'sonar-pro', enabled: false }, // #6 Perplexity with native search (needs API key)
