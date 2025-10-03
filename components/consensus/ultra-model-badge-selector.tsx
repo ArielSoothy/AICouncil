@@ -169,13 +169,12 @@ export function UltraModelBadgeSelector({ models, onChange }: UltraModelBadgeSel
           <div key={`${model.provider}-${index}`} className="flex items-center gap-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={`${colorClass} transition-colors cursor-pointer px-3 py-1 h-auto text-sm font-medium rounded-full flex items-center gap-1.5`}
+                <button
+                  className={`${colorClass} transition-colors cursor-pointer px-3 py-1 h-auto text-sm font-medium rounded-full flex items-center gap-1.5 border-0 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
                 >
                   {displayName}
                   <ChevronDown className="h-3 w-3" />
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
                 <DropdownMenuLabel>{providerNames[model.provider as keyof typeof providerNames]} Models</DropdownMenuLabel>
