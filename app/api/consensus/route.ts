@@ -18,6 +18,84 @@ import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
 
+// Deterministic answer parsing and ranking
+interface ParsedOption {
+  answer: string
+  models: string[]
+  confidence: number
+  mentions: number
+  weightedScore: number
+}
+
+function parseAndRankAnswers(responses: StructuredModelResponse[]): ParsedOption[] {
+  const extractedOptions: { answer: string; model: string; confidence: number; weight: number }[] = []
+
+  // Extract options from each response
+  responses.forEach(response => {
+    if (response.error || !response.response) return
+
+    const text = response.response.trim()
+    const modelWeight = MODEL_POWER[response.model] || 0.7
+
+    // Try to extract numbered list items (1., 2., 3., etc.)
+    const numberedMatches = text.match(/^\s*\d+\.\s*([^\n]+)/gm)
+    if (numberedMatches && numberedMatches.length > 0) {
+      numberedMatches.forEach(match => {
+        const cleaned = match.replace(/^\s*\d+\.\s*/, '').trim()
+        if (cleaned.length > 10 && cleaned.length < 200) {
+          extractedOptions.push({
+            answer: cleaned,
+            model: response.model,
+            confidence: 85,
+            weight: modelWeight
+          })
+        }
+      })
+    } else {
+      // Fallback: take first sentence
+      const firstSentence = text.split('.')[0].trim()
+      if (firstSentence.length > 10) {
+        extractedOptions.push({
+          answer: firstSentence.length > 150 ? firstSentence.substring(0, 150) + '...' : firstSentence,
+          model: response.model,
+          confidence: 75,
+          weight: modelWeight
+        })
+      }
+    }
+  })
+
+  // Group similar answers - extract just the product/brand name (before : or -)
+  const answerGroups: { [key: string]: ParsedOption } = {}
+
+  extractedOptions.forEach(option => {
+    // Extract just the brand/model name (before : or - or –)
+    const productName = option.answer.split(/[:\-–]/)[0].trim()
+    // Normalize: remove numbers like "300/350" → "300", lowercase for matching
+    const key = productName.toLowerCase().replace(/\/\d+/g, '').split(/\s+/).slice(0, 3).join(' ')
+
+    if (!answerGroups[key]) {
+      answerGroups[key] = {
+        answer: option.answer,
+        models: [option.model],
+        confidence: option.confidence,
+        mentions: 1,
+        weightedScore: option.weight
+      }
+    } else {
+      answerGroups[key].models.push(option.model)
+      answerGroups[key].mentions += 1
+      answerGroups[key].confidence = Math.min(95, answerGroups[key].confidence + 5)
+      answerGroups[key].weightedScore += option.weight
+    }
+  })
+
+  // Rank by weighted score (mentions * average model weight)
+  return Object.values(answerGroups)
+    .sort((a, b) => b.weightedScore - a.weightedScore)
+    .slice(0, 6)
+}
+
 // Cost calculation per 1K tokens (in USD) - Updated with official 2025 pricing
 const TOKEN_COSTS = {
   'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
@@ -689,6 +767,21 @@ export async function POST(request: NextRequest) {
 
     // Run judge analysis using effective tier for premium queries
     const judgeAnalysis = await runJudgeAnalysis(prompt, modelResponses, responseMode as JudgeResponseMode, effectiveTier)
+
+    // DETERMINISTIC RANKING: Parse and rank answers algorithmically
+    const rankedOptions = parseAndRankAnswers(modelResponses)
+
+    // Override judge's bestAnswer with algorithmic rankings for consistency
+    if (rankedOptions.length > 0) {
+      const top3 = rankedOptions.slice(0, 3)
+      const formattedAnswer = `Top 3 Recommendations:\n${top3.map((opt, i) =>
+        `${i + 1}. ${opt.answer} (${opt.mentions}/${modelResponses.length} models, ${Math.round(opt.confidence)}% confidence)`
+      ).join('\n')}\n\n${top3[0].answer} is the top recommendation based on ${top3[0].mentions} model${top3[0].mentions > 1 ? 's' : ''} agreeing.`
+
+      judgeAnalysis.unifiedAnswer = formattedAnswer
+      judgeAnalysis.conciseAnswer = formattedAnswer
+      judgeAnalysis.normalAnswer = formattedAnswer
+    }
 
     // Calculate total tokens and cost
     let totalTokensUsed = modelResponses.reduce((sum, r) => sum + r.tokens.total, 0)

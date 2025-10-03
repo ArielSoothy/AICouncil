@@ -44,7 +44,8 @@ export class AnthropicProvider implements AIProvider {
         prompt,
         temperature: config.temperature || 0.7,
         maxTokens: config.maxTokens || 1000,
-        topP: config.topP || 1,
+        // Claude Sonnet 4.5 doesn't allow both temperature and topP
+        // topP: config.topP || 1,
       });
 
       const responseTime = Date.now() - startTime;

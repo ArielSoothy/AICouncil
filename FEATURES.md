@@ -453,7 +453,14 @@
   - ✅ **Model Benchmark Fix**: Corrected GPT-5-chat-latest benchmarks (AAII: 1069 → 1340, MMLU: 87% → 89%) for accurate weight calculation
   - ✅ **Consensus Display Scrolling Fix**: Doubled max-height (150px → 300px) in comparison-display.tsx with visible scrollbars
   - ✅ **API Verification**: Direct API testing confirms Claude Sonnet 4.5 responds correctly
-  - 🔄 **Known Issue**: AI Consensus summary may not match parsed rankings (judge generates independently from ranking algorithm)
+  - ✅ **Deterministic Ranking System** (CRITICAL FIX): Implemented algorithmic consensus ranking to override judge's non-deterministic summaries
+    - **Problem**: Judge (LLM) generated inconsistent summaries that didn't match parsed rankings table
+    - **Solution**: Created `parseAndRankAnswers()` function in app/api/consensus/route.ts (lines 30-94)
+    - **Algorithm**: Extract numbered lists → Group by product name (first 3 words before : or -) → Rank by weighted score (sum of model weights)
+    - **Result**: AI Consensus summary now shows deterministic rankings based on actual model agreement
+    - **Philosophy**: "Make it structured as much as possible to be deterministic" - same inputs = same outputs
+    - **Files Modified**: app/api/consensus/route.ts (parseAndRankAnswers function + override logic at lines 693-706)
+  - ✅ **Anthropic API Fix**: Removed topP parameter that conflicted with temperature in Claude Sonnet 4.5 (lib/ai-providers/anthropic.ts line 48)
 - **Model Weights** (Post-Fix):
   - gpt-5-chat-latest: 1.00 (was 0.66 - FIXED)
   - claude-sonnet-4-5-20250929: 0.88
