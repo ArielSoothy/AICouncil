@@ -5,6 +5,7 @@ import { EnhancedConsensusResponse } from '@/types/consensus'
 import { JudgeAnalysisDisplay } from './judge-analysis-display'
 import { FeedbackForm } from './feedback-form'
 import { ComparisonDisplay } from './comparison-display'
+import { ShareButtons } from '@/components/conversation/share-buttons'
 import { hasInternetAccess } from '@/lib/user-tiers'
 import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp, Globe, ExternalLink } from 'lucide-react'
 import { useEffect } from 'react'
@@ -14,6 +15,8 @@ interface EnhancedConsensusDisplayProps {
   result: EnhancedConsensusResponse
   conversationId?: string | null
   isGuestMode?: boolean
+  query?: string
+  mode?: 'ultra' | 'consensus' | 'agent-debate'
 }
 
 // Model pricing per 1K tokens (input → output) - same as in model selector
@@ -281,7 +284,7 @@ function describeTopPreference(top: string, others: string[], query: string): st
   return 'Top-ranked by consensus across models'
 }
 
-export function EnhancedConsensusDisplay({ result, conversationId, isGuestMode = false }: EnhancedConsensusDisplayProps) {
+export function EnhancedConsensusDisplay({ result, conversationId, isGuestMode = false, query, mode = 'consensus' }: EnhancedConsensusDisplayProps) {
   const [currentLevel, setCurrentLevel] = useState<'concise' | 'normal' | 'detailed'>(result.consensus.elaborationLevel)
   const [normalAnswer, setNormalAnswer] = useState(result.consensus.normalAnswer || '')
   const [detailedAnswer, setDetailedAnswer] = useState(result.consensus.detailedAnswer || '')
@@ -801,6 +804,20 @@ export function EnhancedConsensusDisplay({ result, conversationId, isGuestMode =
           </div>
         </div>
       </div>
+
+      {/* Share Section */}
+      {conversationId && query && (
+        <div className="model-card">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Share this result</h3>
+            <ShareButtons
+              conversationId={conversationId}
+              query={query}
+              mode={mode}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Feedback Section */}
       <FeedbackForm

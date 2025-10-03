@@ -314,7 +314,7 @@ function UltraPageContent() {
             </div>
           </div>
 
-          {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={false} />}
+          {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={false} query={prompt} mode="ultra" />}
         </div>
       </main>
     </div>

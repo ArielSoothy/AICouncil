@@ -20,6 +20,7 @@ import { estimateDebateCost, formatCost, calculateDisagreementScore } from '@/li
 import { useToast } from '@/hooks/use-toast'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { ConversationHistoryDropdown } from '@/components/conversation/conversation-history-dropdown'
+import { ShareButtons } from '@/components/conversation/share-buttons'
 import { SavedConversation } from '@/lib/types/conversation'
 import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles } from 'lucide-react'
 import {
@@ -1823,7 +1824,19 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   setTimeout(() => startDebate(false), 100)
                 }}
               />
-              <div className="flex justify-center">
+              {conversationId && query && (
+                <Card className="p-4 mt-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Share this debate</h3>
+                    <ShareButtons
+                      conversationId={conversationId}
+                      query={query}
+                      mode="agent-debate"
+                    />
+                  </div>
+                </Card>
+              )}
+              <div className="flex justify-center mt-6">
                 <Button onClick={resetDebate} variant="outline">
                   Start New Debate
                 </Button>

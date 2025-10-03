@@ -444,7 +444,7 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
         </div>
       </div>
 
-      {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={isGuestMode} />}
+      {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={isGuestMode} query={prompt} mode="consensus" />}
     </div>
   )
 }
