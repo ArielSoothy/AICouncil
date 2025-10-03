@@ -487,6 +487,9 @@
   - `app/api/conversations/route.ts` - Fetch all conversations
 - **Purpose**: Enable URL-based conversation sharing, page refresh restoration, and conversation history browsing
 - **Access**: ✅ Active on ALL modes (Ultra Mode, Consensus Mode, Agent Debate)
+- **Privacy Model**:
+  - 🔒 **Guests**: LocalStorage only (same browser persistence, no URL sharing, no cross-device)
+  - ☁️ **Authenticated**: Full cloud sync (URL sharing, cross-device, history, social sharing)
 - **Key Components**:
   - **Custom Hook** (`useConversationPersistence`):
     - URL parameter detection (`?c=<conversation-id>`)
@@ -517,9 +520,17 @@
     - ConversationPersistenceOptions
     - ConversationPersistenceReturn
 - **Technical Implementation**:
-  - URL updates automatically on save: `http://localhost:3000/ultra?c=<uuid>`
-  - Page refresh fetches conversation from `/api/conversations/[id]`
-  - Restores: query text, model selection, complete results
+  - **Authenticated Users**:
+    - URL updates automatically on save: `http://localhost:3000/ultra?c=<uuid>`
+    - Page refresh fetches conversation from `/api/conversations/[id]`
+    - Restores: query text, model selection, complete results
+    - Full cloud history accessible from any device
+  - **Guest Users (Privacy-First)**:
+    - POST `/api/conversations` returns success without database save
+    - GET `/api/conversations` returns empty array (no cloud history)
+    - LocalStorage-only persistence on same browser
+    - No URL sharing capability (conversion incentive)
+    - No cross-device access (conversion incentive)
   - Toast notifications for restoration status
   - SSR-safe with 'use client' directive
 - **Database Migrations Required** (User ran in Supabase Dashboard):
@@ -536,10 +547,21 @@
   CREATE POLICY "Allow user and guest conversation selects" ON conversations FOR SELECT...
   ```
 - **User Value**:
-  - Share expensive query results ($0.02-0.05) via URL
-  - Refresh page without losing results
-  - Send links to colleagues/clients
-  - Professional UX (like ChatGPT, Claude.ai)
+  - **For Authenticated Users**:
+    - Share expensive query results ($0.02-0.05) via URL
+    - Refresh page without losing results
+    - Send links to colleagues/clients
+    - Access history from any device
+    - Professional UX (like ChatGPT, Claude.ai)
+  - **For Guest Users**:
+    - Page refresh persistence on same browser
+    - Try product without signup
+    - Clear upgrade incentive (URL sharing, cloud sync)
+  - **For Platform**:
+    - No database bloat from anonymous users
+    - Privacy compliant (no guest data collection)
+    - Lower storage costs
+    - Clear conversion funnel (local → cloud)
 - **Testing Verified** (October 3, 2025 - All 3 Modes):
   - ✅ Query submission saves to database (all modes)
   - ✅ URL updates with conversation ID parameter (all modes)
@@ -601,8 +623,12 @@
   4. ✅ ~~Full history page (/history)~~ - COMPLETE
   5. ✅ ~~Share features (copy link, Twitter, LinkedIn)~~ - COMPLETE
   6. PDF export (future consideration if requested by users)
-- **Last Modified**: October 3, 2025 (Complete history page + sharing features across all modes)
-- **DO NOT**: Remove URL persistence, disable guest mode, change conversation data structure, remove sharing features, or modify without testing restoration flow
+- **Last Modified**: October 3, 2025
+  - Complete history page + sharing features across all modes
+  - **PRIVACY FIX**: Guest conversations now localStorage-only (no database save)
+  - Prevents guest data leakage and database bloat
+  - Clear conversion incentive for cloud features
+- **DO NOT**: Remove URL persistence for authenticated users, change localStorage approach for guests, modify conversation data structure, remove sharing features, or modify without testing both auth and guest flows
 
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

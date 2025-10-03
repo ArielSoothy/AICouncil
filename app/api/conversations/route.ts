@@ -37,10 +37,9 @@ export async function GET(request: NextRequest) {
     }
     
     if (!user) {
-      console.log('Conversations API - No user found')
-      return NextResponse.json({ 
-        error: 'No authenticated user found' 
-      }, { status: 401 })
+      console.log('Conversations API - No user found (guest mode), returning empty array')
+      // Guests use localStorage only, no cloud history
+      return NextResponse.json([])
     }
 
     // Check if user exists in public.users table
@@ -129,6 +128,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Query and responses are required' },
         { status: 400 }
+      )
+    }
+
+    // GUEST MODE: Skip database save, localStorage only
+    // This prevents guest data leakage and reduces database bloat
+    if (isGuestMode) {
+      console.log('🔒 Guest mode: Skipping database save, using localStorage only')
+      return NextResponse.json(
+        {
+          id: null,
+          message: 'Guest mode: Conversation saved to localStorage only',
+          guest_mode: true
+        },
+        { status: 201 }
       )
     }
 
