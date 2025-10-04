@@ -27,12 +27,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data: profile, error } = await supabase
+      const { data: profile, error} = await supabase
         .from('users')
-        .select('subscription_tier, premium_credits')
+        .select('subscription_tier')
         .eq('id', userId)
         .single()
-      
+
       if (error) {
         console.error('Error fetching user profile:', error)
         // User might not exist in our users table yet, create them
@@ -54,8 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserTier('free')
         setPremiumCredits(5) // Default free tier credits
       } else {
-        setUserTier(profile?.subscription_tier || 'free')
-        setPremiumCredits(profile?.premium_credits || 5)
+        const tier = profile?.subscription_tier || 'free'
+        setUserTier(tier)
+        // Set premium credits based on tier (no database column needed)
+        setPremiumCredits(tier === 'free' ? 5 : tier === 'pro' ? 50 : 999)
       }
     } catch (error) {
       console.error('Error fetching user profile:', error)

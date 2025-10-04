@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { EnhancedConsensusDisplay } from './enhanced-consensus-display-v3'
@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { ConversationHistoryDropdown } from '@/components/conversation/conversation-history-dropdown'
 import { SavedConversation } from '@/lib/types/conversation'
-import { Send, Loader2, GitCompare, Search, Sparkles } from 'lucide-react'
+import { Send, Loader2, GitCompare, Search, Sparkles, Info } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import {
@@ -23,6 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface QueryInterfaceContentProps {
   testingTierOverride?: 'pro' | 'enterprise';
@@ -54,6 +60,18 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
   const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>(null)
   const [enableWebSearch, setEnableWebSearch] = useState(ultraModeDefaults?.enableWebSearch || false)
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
+
+  // Ref for auto-scroll to results
+  const resultsRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to results when they're loaded
+  useEffect(() => {
+    if (result && resultsRef.current) {
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100) // Small delay to ensure content is rendered
+    }
+  }, [result])
 
   // Conversation persistence: restore results on page refresh/URL sharing
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -263,6 +281,16 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
               <Label htmlFor="comparison-mode" className="font-medium">
                 Compare with Single Model
               </Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">Shows how a single model's answer compares to the full consensus of all selected models</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <Switch
               id="comparison-mode"
@@ -444,7 +472,11 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
         </div>
       </div>
 
-      {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={isGuestMode} query={prompt} mode="consensus" />}
+      {result && (
+        <div ref={resultsRef}>
+          <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={isGuestMode} query={prompt} mode="consensus" />
+        </div>
+      )}
     </div>
   )
 }
