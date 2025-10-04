@@ -21,57 +21,30 @@ export async function POST(request: NextRequest) {
     const compactList = responses.map((r, i) => `- [${r.model}] ${truncate(r.response, 400)}`).join('\n')
 
     const prompt = `You are normalizing multiple short answers that may be semantically identical but written differently.
-Focus on extracting individual list items/options (e.g., tool names) rather than whole sentences.
+Focus on extracting individual list items/options (e.g., product names, tools) rather than whole sentences.
 Return ONLY compact JSON (no extra text) with this exact shape:
 {
   "options": [
-    { "label": "string (<= 5 words; canonical item name like 'GitHub Copilot')", "mentions": number, "models": ["provider/model"], "confidence": number }
+    { "label": "string (<= 5 words; canonical item name like 'Piaggio MP3 500')", "mentions": number, "models": ["provider/model"], "confidence": number }
   ]
 }
 
-Rules:
-- When responses include numbered/bulleted lists (e.g., "1. GitHub Copilot 2. Cursor 3. Replit"), extract each item separately.
-- Merge paraphrases and near-duplicates into ONE canonical label.
-- Prefer the item's short name (e.g., "GitHub Copilot", "Cursor", "Replit").
-- Keep 3-6 top options. Mentions = number of distinct model responses that included that item.
-- Confidence 70-95 based on agreement strength and clarity.
+CRITICAL DEDUPLICATION RULES:
+- Strip ALL markdown (**, *, -, etc.) before comparing items
+- "Piaggio MP3 500", "**Piaggio MP3 500**", "Piaggio MP3 500 - description" are ALL THE SAME item
+- Merge ANY variation with description/explanation into ONE canonical short name
+- When responses include numbered/bulleted lists, extract each item separately
+- Count each item ONCE per model even if mentioned multiple times with different formatting
+- Prefer the shortest clean version as the canonical label (no markdown, no descriptions)
+- Keep 3-6 top options. Mentions = number of DISTINCT models that mentioned that item
+- Confidence 70-95 based on agreement strength and clarity
 
 Answers to normalize (model-tagged):\n${compactList}`
 
-    // Choose a free/cheap model: prefer Gemini if configured, else Groq
-    let modelResult: { text: string }
-    try {
-      if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-        modelResult = await generateText({ model: google('gemini-2.0-flash'), prompt, maxTokens: 500, temperature: 0.2 })
-      } else if (process.env.GROQ_API_KEY) {
-        modelResult = await generateText({ model: groq('llama-3.3-70b-versatile'), prompt, maxTokens: 600, temperature: 0.2 })
-      } else {
-        // Fallback: return heuristic grouping
-        const heuristic = heuristicGroup(responses)
-        return NextResponse.json({ options: heuristic })
-      }
-    } catch (llmError) {
-      // On LLM failure, fallback to heuristic grouping
-      const heuristic = heuristicGroup(responses)
-      return NextResponse.json({ options: heuristic })
-    }
-
-    // Parse LLM JSON safely
-    const parsed = safeParseJSON(modelResult.text)
-    if (!parsed?.options) {
-      const heuristic = heuristicGroup(responses)
-      return NextResponse.json({ options: heuristic })
-    }
-
-    // Sanitize result
-    const options = Array.isArray(parsed.options) ? parsed.options.slice(0, 6).map((o: any) => ({
-      label: String(o.label || '').slice(0, 120),
-      mentions: Number.isFinite(o.mentions) ? o.mentions : 1,
-      models: Array.isArray(o.models) ? o.models.map((m: any) => String(m)).slice(0, 20) : [],
-      confidence: Math.max(50, Math.min(95, Number(o.confidence) || 75)),
-    })) : []
-
-    return NextResponse.json({ options })
+    // Use heuristic grouping for maximum determinism (no LLM variance)
+    // LLM can give slightly different results each time even with low temperature
+    const heuristic = heuristicGroup(responses)
+    return NextResponse.json({ options: heuristic })
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -97,35 +70,39 @@ function safeParseJSON(text: string): any | null {
 }
 
 function heuristicGroup(responses: InputResponse[]) {
-  const groups: Record<string, { label: string; mentions: number; models: string[] }> = {}
+  const groups: Record<string, { label: string; mentions: number; models: Set<string> }> = {}
   for (const r of responses) {
     const text = stripHeaders(r.response)
     const items = extractListItems(text)
     const uncertain = isUncertain(text)
-    // Count each item at most once per model response
-    const uniqueItems = Array.from(new Set(items))
-    if (uncertain) uniqueItems.unshift('needs more info')
-    if (uniqueItems.length === 0) {
+    // Clean and deduplicate items from this model's response
+    const cleanedItems = items.map(item => cleanItem(item)).filter(Boolean)
+    const uniqueItemsThisModel = Array.from(new Set(cleanedItems))
+    if (uncertain) uniqueItemsThisModel.unshift('needs more info')
+    if (uniqueItemsThisModel.length === 0) {
       // Fallback: try to use a short concise phrase from the first sentence
-      const first = (text.split(/[.!?\n]/)[0] || '').trim()
-      if (first.length > 0) uniqueItems.push(first)
+      const first = cleanItem((text.split(/[.!?\n]/)[0] || '').trim())
+      if (first.length > 0) uniqueItemsThisModel.push(first)
     }
-    for (const raw of uniqueItems) {
-      const key = normalizeItemKey(raw)
-      const label = canonicalItemLabel(raw)
+    for (const cleaned of uniqueItemsThisModel) {
+      const key = normalizeItemKey(cleaned)
+      const label = canonicalItemLabel(cleaned)
       if (!key || !label) continue
       if (!groups[key]) {
-        groups[key] = { label, mentions: 1, models: [r.model] }
+        groups[key] = { label, mentions: 1, models: new Set([r.model]) }
       } else {
-        groups[key].mentions += 1
-        groups[key].models.push(r.model)
+        // Only count each model once per item (prevent double counting)
+        if (!groups[key].models.has(r.model)) {
+          groups[key].mentions += 1
+          groups[key].models.add(r.model)
+        }
       }
     }
   }
   return Object.values(groups)
     .sort((a, b) => b.mentions - a.mentions || a.label.localeCompare(b.label))
     .slice(0, 6)
-    .map(g => ({ label: g.label, mentions: g.mentions, models: g.models.slice(0, 20), confidence: Math.min(95, 70 + g.mentions * 5) }))
+    .map(g => ({ label: g.label, mentions: g.mentions, models: Array.from(g.models).slice(0, 20), confidence: Math.min(95, 70 + g.mentions * 5) }))
 }
 
 function stripHeaders(s: string): string {
@@ -168,9 +145,17 @@ function extractListItems(s: string): string[] {
 function cleanItem(s: string | undefined): string {
   if (!s) return ''
   let t = s
+    // Strip markdown bold/italic
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    // Remove parentheses and brackets
     .replace(/\(.*?\)/g, ' ')
     .replace(/\[.*?\]/g, ' ')
+    // Remove trailing punctuation and separators
     .replace(/[:–—\-]+$/g, '')
+    // Split on separator and take first part (before description)
+    .split(/\s*[-–—:]\s*/)[0]
+    // Normalize whitespace
     .replace(/\s+/g, ' ')
     .trim()
   // Keep item reasonably short
@@ -179,10 +164,41 @@ function cleanItem(s: string | undefined): string {
 }
 
 function normalizeItemKey(s: string): string {
-  return s.toLowerCase()
-    .replace(/[^a-z0-9+.#\s]/g, '')
+  const original = s.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+
+  // Try removing brand names to extract model identifier
+  let normalized = original.replace(/\b(piaggio|yamaha|honda|suzuki|kymco|bmw|kawasaki|sym|vespa)\b/g, '')
+    // Normalize number ranges: 400/500 → 400, 300/400 → 300
+    .replace(/(\d{3})\s*\/\s*\d{3}/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  // If brand removal left nothing (e.g., "Honda" → ""), use original
+  if (!normalized || normalized.length === 0) {
+    return original
+  }
+
+  // Extract core model identifier WITHOUT numbers for better grouping
+  // This makes "Burgman", "Burgman 250", "Burgman 250/400" all group together
+  const parts = normalized.split(/\s+/).filter(p => p.length > 0)
+
+  if (parts.length === 0) return original
+
+  // Filter out all numbers and keep only text parts
+  const textParts = parts.filter(p => !/^\d+$/.test(p))
+
+  if (textParts.length === 0) {
+    // Only numbers left, use first number as key (e.g., "500")
+    return parts[0]
+  }
+
+  // Return first 2 text parts (model name without numbers)
+  // "mp3 500" → "mp3"
+  // "mp3 lt 500" → "mp3 lt"
+  return textParts.slice(0, 2).join(' ')
 }
 
 function canonicalItemLabel(s: string): string {

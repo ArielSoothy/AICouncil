@@ -690,6 +690,41 @@ export async function POST(request: NextRequest) {
     // Run judge analysis using effective tier for premium queries
     const judgeAnalysis = await runJudgeAnalysis(prompt, modelResponses, responseMode as JudgeResponseMode, effectiveTier)
 
+    // Get normalized rankings from the normalize API for deterministic unified answer
+    let normalizedRankings: Array<{ label: string; mentions: number; models: string[]; confidence: number }> = []
+    try {
+      const normalizeResponse = await fetch(`${request.nextUrl.origin}/api/consensus/normalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          responses: modelResponses.map(r => ({
+            model: `${r.provider}/${r.model}`,
+            response: r.response
+          }))
+        })
+      })
+      if (normalizeResponse.ok) {
+        const normalizeData = await normalizeResponse.json()
+        normalizedRankings = normalizeData.options || []
+      }
+    } catch (normalizeError) {
+      console.error('Normalize API failed, judge answer will use default synthesis:', normalizeError)
+    }
+
+    // Override judge's answer with deterministic format using accurate normalize API counts
+    if (normalizedRankings.length > 0) {
+      const top3 = normalizedRankings.slice(0, 3)
+      const totalModels = modelResponses.filter(r => !r.error).length
+
+      const formattedAnswer = `Top 3 Recommendations:\n${top3.map((opt, i) =>
+        `${i + 1}. ${opt.label} (${opt.mentions}/${totalModels} models, ${opt.confidence}% confidence)`
+      ).join('\n')}\n\n${top3[0].label} is the top recommendation based on ${top3[0].mentions} model${top3[0].mentions > 1 ? 's' : ''} agreeing.`
+
+      judgeAnalysis.unifiedAnswer = formattedAnswer
+      judgeAnalysis.conciseAnswer = formattedAnswer
+      judgeAnalysis.normalAnswer = formattedAnswer
+    }
+
     // Calculate total tokens and cost
     let totalTokensUsed = modelResponses.reduce((sum, r) => sum + r.tokens.total, 0)
     totalTokensUsed += judgeAnalysis.judgeTokensUsed
