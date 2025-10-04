@@ -107,31 +107,34 @@ Follow structured workflow: Work → Test → Document → Ask approval → Push
 ```
 Continue Verdict AI development work.
 
-Previous session: ✅ COMPLETED - Anonymous Analytics Privacy Fix - Guest mode now secure with analytics enabled
+Previous session: ✅ COMPLETED - Ranking Deduplication & Deterministic Format Fix
 Next priority: 🚀 LAUNCH TO AI COURSE COLLEAGUES - Begin user acquisition and real feedback collection
 
 MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
 
-ANONYMOUS ANALYTICS PRIVACY FIX - COMPLETED (commit: cfa0594):
-✅ Privacy Protection: Guests can't see their own or others' conversation history
-✅ Analytics Enabled: Admin can analyze all guest queries for product improvement
-✅ Legal & Compliant: Industry standard approach (Google Analytics, Mixpanel pattern)
-✅ API Implementation: POST saves guest data (user_id = NULL), GET returns empty
-✅ Conversion Incentive: Clear value proposition for signing up (history, sharing, cross-device)
-✅ Playwright Testing: Verified guest query saves + history remains empty
-✅ Documentation: FEATURES.md updated with privacy model
+RANKING DEDUPLICATION & DETERMINISTIC FORMAT FIX - COMPLETED (commit: eb002ae):
+✅ Short Format Restored: Judge synthesis shows "Top 3: 1. X (2/4 models, 90% confidence)"
+✅ Pure Heuristic Normalization: Deterministic grouping with zero LLM variance
+✅ Accurate Model Counts: Single source of truth from normalize API
+✅ Deduplication Working: "Suzuki Burgman", "Burgman 250", "Burgman 400" → merged
+✅ Number-Agnostic Grouping: Normalization keys strip numbers for better variant matching
+✅ Markdown Stripping: Removes **bold**, *italic*, descriptions before comparing
+✅ Set-Based Tracking: Prevents double-counting same model
+✅ Brand Name Handling: Smart removal with fallback for brand-only identifiers
+✅ Browser Testing: Verified "2/4 models" aggregation working correctly
 
-CONVERSATION HISTORY & SHARING - COMPLETE SYSTEM:
-✅ Phase 1-4: Full persistence across all 3 modes (Ultra, Consensus, Agent Debate)
-✅ Full History Page: Search, filter, sort, pagination, delete
-✅ ShareButtons Component: Copy link, Twitter/X, LinkedIn sharing
-✅ Professional UX: ChatGPT/Claude.ai-style URL sharing with ?c=<id>
+PREVIOUS WORK CONTEXT:
+✅ Anonymous Analytics Privacy Fix (commit: cfa0594)
+✅ Conversation History & Sharing - Complete System
+✅ Full persistence across all 3 modes (Ultra, Consensus, Agent Debate)
+✅ Professional sharing (copy link, Twitter/X, LinkedIn)
 
 SYSTEM VALIDATION COMPLETE:
 ✅ Live deployment: https://ai-council-new.vercel.app/
-✅ All 18 protected features validated
+✅ All protected features validated
 ✅ Free models (6) pre-configured for zero-cost testing
 ✅ Anonymous analytics collecting guest data securely
+✅ Ranking system now deterministic with accurate counts
 ✅ Ready for user acquisition and feedback collection
 
 NEXT ACTIONS - USER ACQUISITION:
@@ -144,7 +147,7 @@ NEXT ACTIONS - USER ACQUISITION:
 Follow structured workflow: Work → Document → Launch → Monitor Feedback
 Key Focus: Real user validation to drive next development phase
 
-IMPORTANT: System is production-ready with privacy-compliant analytics, proceed with confidence
+IMPORTANT: System is production-ready with privacy-compliant analytics and deterministic ranking
 ```
 
 ## 🌐 CRITICAL: Playwright Browser Management

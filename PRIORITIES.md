@@ -27,6 +27,18 @@
 
 ## ✅ RECENTLY COMPLETED (October 4, 2025):
 
+**✅ RANKING DEDUPLICATION & DETERMINISTIC FORMAT FIX (October 4, 2025)** (commit: eb002ae)
+- ✅ **Short Deterministic Format Restored** - Judge synthesis shows "Top 3: 1. X (2/4 models, 90% confidence)"
+- ✅ **Pure Heuristic Normalization** - Switched from LLM to deterministic grouping (no variance between runs)
+- ✅ **Accurate Model Counts** - Backend calls normalize API for single source of truth on rankings
+- ✅ **Deduplication Working** - "Suzuki Burgman", "Burgman 250", "Burgman 400" now group as one option
+- ✅ **Number-Agnostic Grouping** - Normalization keys strip numbers for better variant matching
+- ✅ **Markdown & Description Stripping** - Removes `**bold**`, `*italic*`, and descriptions before comparing
+- ✅ **Set-Based Tracking** - Prevents double-counting same model mentioning item multiple times
+- ✅ **Brand Name Handling** - Smart removal with fallback when brand is only identifier
+- ✅ **Consensus Route Integration** - Override judge synthesis with normalize API formatted answer
+- ✅ **Testing Verified** - Browser testing confirmed "2/4 models" aggregation working correctly
+
 **✅ ANONYMOUS ANALYTICS FOR GUEST MODE - PRIVACY FIX (October 4, 2025)** (commit: cfa0594)
 - ✅ **Privacy Protection** - Guests can't see their own or others' conversation history
 - ✅ **Analytics Enabled** - Admin can analyze all guest queries for product improvement and ML training
