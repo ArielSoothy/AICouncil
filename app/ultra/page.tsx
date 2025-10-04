@@ -2,7 +2,7 @@
 
 import { Header } from '@/components/ui/header'
 import { PROJECT_NAME } from '@/lib/config/branding'
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import { ModelConfig, EnhancedConsensusResponse } from '@/types/consensus'
 import { AlertCircle, Send, Loader2, Sparkles } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -38,6 +38,18 @@ function UltraPageContent() {
   const [result, setResult] = useState<EnhancedConsensusResponse | null>(null)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(DEFAULT_ULTRA_MODELS)
+
+  // Ref for auto-scroll to results
+  const resultsRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to results when they're loaded
+  useEffect(() => {
+    if (result && resultsRef.current) {
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100) // Small delay to ensure content is rendered
+    }
+  }, [result])
 
   // Conversation persistence: restore results on page refresh/URL sharing
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -314,7 +326,11 @@ function UltraPageContent() {
             </div>
           </div>
 
-          {result && <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={false} query={prompt} mode="ultra" />}
+          {result && (
+            <div ref={resultsRef}>
+              <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={false} query={prompt} mode="ultra" />
+            </div>
+          )}
         </div>
       </main>
     </div>
