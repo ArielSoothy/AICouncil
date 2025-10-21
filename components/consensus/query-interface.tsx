@@ -287,7 +287,7 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
                     <Info className="w-4 h-4 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p className="max-w-xs">Shows how a single model's answer compares to the full consensus of all selected models</p>
+                    <p className="max-w-xs">Shows how a single model&apos;s answer compares to the full consensus of all selected models</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Header } from '@/components/ui/header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -116,15 +116,7 @@ export default function HistoryPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
-  useEffect(() => {
-    fetchConversations()
-  }, [])
-
-  useEffect(() => {
-    filterAndSortConversations()
-  }, [conversations, searchQuery, modeFilter, sortOrder])
-
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     setIsLoading(true)
     try {
       const response = await fetch('/api/conversations')
@@ -145,9 +137,9 @@ export default function HistoryPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [toast])
 
-  const filterAndSortConversations = () => {
+  const filterAndSortConversations = useCallback(() => {
     let filtered = [...conversations]
 
     // Apply search filter
@@ -175,7 +167,15 @@ export default function HistoryPage() {
 
     setFilteredConversations(filtered)
     setCurrentPage(1) // Reset to first page when filters change
-  }
+  }, [conversations, searchQuery, modeFilter, sortOrder])
+
+  useEffect(() => {
+    fetchConversations()
+  }, [fetchConversations])
+
+  useEffect(() => {
+    filterAndSortConversations()
+  }, [filterAndSortConversations])
 
   const handleDelete = async (id: string) => {
     setIsDeleting(true)

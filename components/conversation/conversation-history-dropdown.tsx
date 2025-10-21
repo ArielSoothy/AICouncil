@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { History, Clock, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -50,14 +50,7 @@ export function ConversationHistoryDropdown({
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
 
-  // Fetch conversations when dropdown opens
-  useEffect(() => {
-    if (isOpen && conversations.length === 0) {
-      fetchConversations()
-    }
-  }, [isOpen])
-
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     setIsLoading(true)
     try {
       const response = await fetch('/api/conversations')
@@ -77,7 +70,14 @@ export function ConversationHistoryDropdown({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [limit])
+
+  // Fetch conversations when dropdown opens
+  useEffect(() => {
+    if (isOpen && conversations.length === 0) {
+      fetchConversations()
+    }
+  }, [isOpen, conversations.length, fetchConversations])
 
   const handleConversationClick = (conversation: SavedConversation) => {
     // Determine the route based on mode or current page
