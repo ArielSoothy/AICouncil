@@ -39,7 +39,7 @@ export function AgentSelector({
     // Using different providers (Groq + Google) for heterogeneous agent debate
     const agentDefaults: Record<string, { model: string; provider: string }> = {
       'analyst-001': { model: 'llama-3.1-8b-instant', provider: 'groq' },     // Fast, good for initial analysis
-      'critic-001': { model: 'gemini-1.5-flash-8b', provider: 'google' },     // Different provider for diversity
+      'critic-001': { model: 'gemini-2.0-flash-lite', provider: 'google' },   // Different provider for diversity
       'synthesizer-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' } // Best model for final synthesis
     }
     

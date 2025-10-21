@@ -103,7 +103,7 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
         { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
         // Best Free Google Models
         { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
-        { provider: 'google', model: 'gemini-1.5-flash', enabled: true },
+        { provider: 'google', model: 'gemini-2.0-flash-lite', enabled: true },
       ]
     }
 
@@ -126,7 +126,7 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
       { provider: 'groq', model: 'llama-3.1-8b-instant', enabled: true },
       // Best Free Google Models
       { provider: 'google', model: 'gemini-2.0-flash', enabled: true },
-      { provider: 'google', model: 'gemini-1.5-flash', enabled: true },
+      { provider: 'google', model: 'gemini-2.0-flash-lite', enabled: true },
     ]
   }
 
