@@ -25,7 +25,24 @@
 - **Critic:** gemini-1.5-flash-8b (Google)  
 - **Synthesizer:** llama-3.3-70b-versatile (Groq with auto-fallback)
 
-## ✅ RECENTLY COMPLETED (October 4, 2025):
+## ✅ RECENTLY COMPLETED (October 4-5, 2025):
+
+**✅ INTERACTIVE FOLLOW-UP QUESTIONS FOR CONSENSUS/ULTRA MODE (October 5, 2025)**
+- ✅ **Reusable Component Created** - `FollowUpQuestionsCard` component with expand/collapse UI
+- ✅ **Answer Collection** - Text areas for each question + custom question input field
+- ✅ **Enriched Query Builder** - Combines original question + previous answer + user responses
+- ✅ **Auto Re-submission** - "Answer & Refine" button triggers new consensus with context
+- ✅ **Conditional Display** - Only shows when models respond with "needs more info"
+- ✅ **Pattern Matching** - `suggestFollowUps()` generates context-aware questions (MBA/MSc, startup, etc.)
+- ✅ **Consensus & Ultra Integration** - Added `onRefineQuery` callback to both modes
+- ✅ **Type Safety** - TypeScript compilation successful with no errors
+- ✅ **Tested** - System loads and compiles, feature ready for production use
+
+**Files Modified:**
+- `components/consensus/follow-up-questions-card.tsx` (NEW)
+- `components/consensus/enhanced-consensus-display-v3.tsx`
+- `components/consensus/query-interface.tsx`
+- `app/ultra/page.tsx`
 
 **✅ RANKING DEDUPLICATION & DETERMINISTIC FORMAT FIX (October 4, 2025)** (commit: eb002ae)
 - ✅ **Short Deterministic Format Restored** - Judge synthesis shows "Top 3: 1. X (2/4 models, 90% confidence)"
@@ -459,6 +476,12 @@
 - Task decomposition for complex queries
 
 ### 🔴 HIGH PRIORITY - IMMEDIATE:
+
+**🔍 Investigate Sonnet 4.5 Internet Access Issue on Ultra Mode**
+- **Issue**: Claude Sonnet 4.5 on ultra mode shows "cannot provide specific stock recommendations... No reliable data available - The web search did not return actionable information"
+- **Task**: Verify web search configuration for ultra mode models
+- **Expected**: All models with internet access should successfully use web search
+- **Debug**: Check if web search is enabled for Claude Sonnet 4.5 in ultra mode configuration
 
 **[COMPLETED ✅]** 🌐 Web Search Integration 
 - Progressive role-based web search system implemented

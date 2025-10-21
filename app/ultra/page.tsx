@@ -328,7 +328,18 @@ function UltraPageContent() {
 
           {result && (
             <div ref={resultsRef}>
-              <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={false} query={prompt} mode="ultra" />
+              <EnhancedConsensusDisplay
+                result={result}
+                conversationId={conversationId}
+                isGuestMode={false}
+                query={prompt}
+                mode="ultra"
+                onRefineQuery={(enrichedQuery) => {
+                  setPrompt(enrichedQuery)
+                  // Trigger re-submission with enriched query
+                  setTimeout(() => handleSubmit(), 100)
+                }}
+              />
             </div>
           )}
         </div>

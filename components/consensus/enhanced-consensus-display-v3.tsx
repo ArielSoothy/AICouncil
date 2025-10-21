@@ -7,6 +7,7 @@ import { FeedbackForm } from './feedback-form'
 import { ComparisonDisplay } from './comparison-display'
 import { ShareButtons } from '@/components/conversation/share-buttons'
 import { hasInternetAccess } from '@/lib/user-tiers'
+import { FollowUpQuestionsCard } from './follow-up-questions-card'
 import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp, Globe, ExternalLink } from 'lucide-react'
 import { useEffect } from 'react'
 import { MODEL_POWER } from '@/lib/model-metadata'
@@ -17,6 +18,7 @@ interface EnhancedConsensusDisplayProps {
   isGuestMode?: boolean
   query?: string
   mode?: 'ultra' | 'consensus' | 'agent-debate'
+  onRefineQuery?: (enrichedQuery: string) => void
 }
 
 // Model pricing per 1K tokens (input → output) - same as in model selector
@@ -284,7 +286,7 @@ function describeTopPreference(top: string, others: string[], query: string): st
   return 'Top-ranked by consensus across models'
 }
 
-export function EnhancedConsensusDisplay({ result, conversationId, isGuestMode = false, query, mode = 'consensus' }: EnhancedConsensusDisplayProps) {
+export function EnhancedConsensusDisplay({ result, conversationId, isGuestMode = false, query, mode = 'consensus', onRefineQuery }: EnhancedConsensusDisplayProps) {
   const [currentLevel, setCurrentLevel] = useState<'concise' | 'normal' | 'detailed'>(result.consensus.elaborationLevel)
   const [normalAnswer, setNormalAnswer] = useState(result.consensus.normalAnswer || '')
   const [detailedAnswer, setDetailedAnswer] = useState(result.consensus.detailedAnswer || '')
@@ -668,15 +670,33 @@ export function EnhancedConsensusDisplay({ result, conversationId, isGuestMode =
         )}
 
         {/* Follow-up questions if normalization indicates insufficient info */}
-        {normalizedOptions && normalizedOptions.some(o => o.label.toLowerCase() === 'needs more info') && (
-          <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-700">
-            <h4 className="text-sm font-medium mb-2">Follow-up questions to improve the answer</h4>
-            <ul className="list-disc pl-5 text-sm space-y-1 text-yellow-900 dark:text-yellow-100">
-              {suggestFollowUps(result.query).map((q, idx) => (
-                <li key={idx}>{q}</li>
-              ))}
-            </ul>
-          </div>
+        {normalizedOptions && normalizedOptions.some(o => o.label.toLowerCase() === 'needs more info') && onRefineQuery && (
+          <FollowUpQuestionsCard
+            questions={suggestFollowUps(result.query)}
+            onSubmit={(answers) => {
+              // Build enriched query from answers
+              const followUpContext = Object.entries(answers)
+                .filter(([key, answer]) => answer && answer.trim())
+                .map(([key, answer]) => {
+                  if (key === 'custom') {
+                    return `Additional request: ${answer}`
+                  }
+                  const questionIndex = parseInt(key)
+                  if (!isNaN(questionIndex)) {
+                    const question = suggestFollowUps(result.query)[questionIndex]
+                    return question ? `Q: ${question}\nA: ${answer}` : `Answer ${questionIndex + 1}: ${answer}`
+                  }
+                  return `${key}: ${answer}`
+                }).join('\n')
+
+              const enrichedQuery = `Original question: ${result.query}\n\n` +
+                `Previous answer: ${result.consensus.conciseAnswer}\n\n` +
+                `Follow-up context:\n${followUpContext}\n\n` +
+                `Please provide an updated analysis that builds upon the previous answer with this new information.`
+
+              onRefineQuery(enrichedQuery)
+            }}
+          />
         )}
         
         {/* Quick insights about the options */}

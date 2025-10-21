@@ -474,7 +474,18 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
 
       {result && (
         <div ref={resultsRef}>
-          <EnhancedConsensusDisplay result={result} conversationId={conversationId} isGuestMode={isGuestMode} query={prompt} mode="consensus" />
+          <EnhancedConsensusDisplay
+            result={result}
+            conversationId={conversationId}
+            isGuestMode={isGuestMode}
+            query={prompt}
+            mode="consensus"
+            onRefineQuery={(enrichedQuery) => {
+              setPrompt(enrichedQuery)
+              // Trigger re-submission with enriched query
+              setTimeout(() => handleSubmit(), 100)
+            }}
+          />
         </div>
       )}
     </div>
