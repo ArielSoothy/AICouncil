@@ -12,6 +12,8 @@ export interface AlpacaAccount {
   buying_power: string;
   cash: string;
   portfolio_value: string;
+  equity: string;
+  last_equity: string;
 }
 
 // Alpaca position

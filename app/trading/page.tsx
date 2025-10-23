@@ -10,6 +10,7 @@ import { IndividualMode } from '@/components/trading/individual-mode'
 import { ConsensusMode } from '@/components/trading/consensus-mode'
 import { DebateMode } from '@/components/trading/debate-mode'
 import { TradeHistory } from '@/components/trading/trade-history'
+import { PortfolioDisplay } from '@/components/trading/portfolio-display'
 
 function TradingPageContent() {
   const { user, userTier } = useAuth()
@@ -51,6 +52,11 @@ function TradingPageContent() {
                 <span>3 Trading Modes</span>
               </div>
             </div>
+          </div>
+
+          {/* Portfolio Overview */}
+          <div className="mb-8">
+            <PortfolioDisplay />
           </div>
 
           {/* Mode selector tabs */}

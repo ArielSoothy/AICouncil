@@ -49,6 +49,21 @@ export async function getAccount(): Promise<AlpacaAccount> {
 }
 
 /**
+ * Get current portfolio positions
+ */
+export async function getPositions(): Promise<any[]> {
+  try {
+    const alpaca = getAlpacaClient();
+    const positions = await alpaca.getPositions();
+    console.log(`📊 Current positions: ${positions.length}`);
+    return positions;
+  } catch (error) {
+    console.error('❌ Failed to get positions:', error);
+    throw error;
+  }
+}
+
+/**
  * Place a market order (buy or sell)
  * @param symbol - Stock symbol (e.g., 'AAPL')
  * @param quantity - Number of shares
