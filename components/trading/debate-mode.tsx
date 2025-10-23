@@ -2,7 +2,16 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react'
+import { DebateTranscript, createDebateMessage, type DebateMessage } from './debate-transcript'
+
+// Available models for debate roles
+const AVAILABLE_MODELS = [
+  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
+  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google' },
+  { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B', provider: 'groq' },
+]
 
 interface DebateAgent {
   role: 'analyst' | 'critic' | 'synthesizer'
@@ -33,16 +42,29 @@ export function DebateMode() {
   const [loading, setLoading] = useState(false)
   const [debate, setDebate] = useState<DebateResult | null>(null)
   const [activeRound, setActiveRound] = useState<1 | 2>(1)
+  const [showTranscript, setShowTranscript] = useState(false)
+  const [transcriptMessages, setTranscriptMessages] = useState<DebateMessage[]>([])
+
+  // Model selection for each debate role
+  const [analystModel, setAnalystModel] = useState('claude-3-5-sonnet-20241022')
+  const [criticModel, setCriticModel] = useState('gpt-4o')
+  const [synthesizerModel, setSynthesizerModel] = useState('gemini-2.0-flash-exp')
 
   const startDebate = async () => {
     setLoading(true)
     setDebate(null)
     setActiveRound(1)
+    setTranscriptMessages([])
 
     try {
       const response = await fetch('/api/trading/debate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analystModel,
+          criticModel,
+          synthesizerModel,
+        }),
       })
 
       if (!response.ok) {
@@ -52,6 +74,38 @@ export function DebateMode() {
 
       const data = await response.json()
       setDebate(data.debate)
+
+      // Build transcript from debate results
+      if (data.debate) {
+        const messages: DebateMessage[] = []
+
+        // Round 1 messages
+        data.debate.round1.forEach((agent: DebateAgent) => {
+          messages.push(
+            createDebateMessage(
+              agent.role,
+              agent.name,
+              `${agent.decision.action}${agent.decision.symbol ? ` ${agent.decision.symbol}` : ''} - ${agent.decision.reasoning}`,
+              1
+            )
+          )
+        })
+
+        // Round 2 messages
+        data.debate.round2.forEach((agent: DebateAgent) => {
+          messages.push(
+            createDebateMessage(
+              agent.role,
+              agent.name,
+              `${agent.decision.action}${agent.decision.symbol ? ` ${agent.decision.symbol}` : ''} - ${agent.decision.reasoning}`,
+              2
+            )
+          )
+        })
+
+        setTranscriptMessages(messages)
+        setShowTranscript(true) // Auto-show transcript
+      }
     } catch (error) {
       console.error('Failed to start trading debate:', error)
       alert(error instanceof Error ? error.message : 'Failed to start trading debate')
@@ -64,19 +118,73 @@ export function DebateMode() {
 
   return (
     <div className="space-y-6">
-      {/* Start Debate Button */}
+      {/* Model Selection for Debate Roles */}
       <div className="bg-card rounded-lg border p-6">
-        <div className="mb-4">
-          <h3 className="font-semibold mb-2">Agent Debate Trading System</h3>
-          <p className="text-sm text-muted-foreground">
-            Three AI agents debate trading strategy through multiple rounds to reach a final decision.
-          </p>
+        <h3 className="font-semibold mb-4">Select AI Models for Each Role</h3>
+
+        <div className="space-y-4">
+          {/* Analyst Model */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-2 block">
+              📊 Analyst (Proposes trades)
+            </label>
+            <select
+              value={analystModel}
+              onChange={(e) => setAnalystModel(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border bg-background"
+              disabled={loading}
+            >
+              {AVAILABLE_MODELS.map(model => (
+                <option key={model.id} value={model.id}>
+                  {model.name} ({model.provider})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Critic Model */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-2 block">
+              🔍 Critic (Challenges recommendations)
+            </label>
+            <select
+              value={criticModel}
+              onChange={(e) => setCriticModel(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border bg-background"
+              disabled={loading}
+            >
+              {AVAILABLE_MODELS.map(model => (
+                <option key={model.id} value={model.id}>
+                  {model.name} ({model.provider})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Synthesizer Model */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-2 block">
+              ⚖️ Synthesizer (Makes final decision)
+            </label>
+            <select
+              value={synthesizerModel}
+              onChange={(e) => setSynthesizerModel(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border bg-background"
+              disabled={loading}
+            >
+              {AVAILABLE_MODELS.map(model => (
+                <option key={model.id} value={model.id}>
+                  {model.name} ({model.provider})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <Button
           onClick={startDebate}
           disabled={loading}
-          className="w-full"
+          className="w-full mt-4"
           size="lg"
         >
           {loading ? (
@@ -92,6 +200,27 @@ export function DebateMode() {
           )}
         </Button>
       </div>
+
+      {/* Debate Transcript */}
+      {transcriptMessages.length > 0 && (
+        <div>
+          <button
+            onClick={() => setShowTranscript(!showTranscript)}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+          >
+            {showTranscript ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+            {showTranscript ? 'Hide' : 'Show'} Agent Debate Transcript
+          </button>
+
+          {showTranscript && (
+            <DebateTranscript messages={transcriptMessages} />
+          )}
+        </div>
+      )}
 
       {/* Debate Results */}
       {debate && (

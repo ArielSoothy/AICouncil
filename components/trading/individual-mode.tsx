@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react'
+import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 
 // Simple model list for trading (we'll expand this later)
 const AVAILABLE_MODELS = [
@@ -21,6 +22,14 @@ interface TradingDecision {
   confidence: number
 }
 
+interface AnalysisContext {
+  accountBalance: string
+  buyingPower: string
+  cash: string
+  analysisDate: string
+  promptSummary: string
+}
+
 export function IndividualMode() {
   const [selectedModels, setSelectedModels] = useState<string[]>([
     'claude-3-5-sonnet-20241022',
@@ -28,6 +37,9 @@ export function IndividualMode() {
   ])
   const [loading, setLoading] = useState(false)
   const [decisions, setDecisions] = useState<TradingDecision[]>([])
+  const [context, setContext] = useState<AnalysisContext | null>(null)
+  const [showContext, setShowContext] = useState(false)
+  const [contextSteps, setContextSteps] = useState<ReasoningStep[]>([])
 
   const toggleModel = (modelId: string) => {
     if (selectedModels.includes(modelId)) {
@@ -46,6 +58,8 @@ export function IndividualMode() {
   const getTradingDecisions = async () => {
     setLoading(true)
     setDecisions([])
+    setContext(null)
+    setContextSteps([])
 
     try {
       const response = await fetch('/api/trading/individual', {
@@ -61,6 +75,22 @@ export function IndividualMode() {
 
       const data = await response.json()
       setDecisions(data.decisions)
+
+      // Set context and create reasoning steps for transparency
+      if (data.context) {
+        setContext(data.context)
+
+        const steps: ReasoningStep[] = [
+          createReasoningStep('thinking', `Analyzing portfolio with balance of $${parseFloat(data.context.accountBalance).toLocaleString()}`),
+          createReasoningStep('analysis', `Available buying power: $${parseFloat(data.context.buyingPower).toLocaleString()}`),
+          createReasoningStep('analysis', `Available cash: $${parseFloat(data.context.cash).toLocaleString()}`),
+          createReasoningStep('thinking', data.context.promptSummary),
+          createReasoningStep('decision', `Querying ${selectedModels.length} AI models for trading recommendations...`)
+        ]
+
+        setContextSteps(steps)
+        setShowContext(true) // Auto-show context on first load
+      }
     } catch (error) {
       console.error('Failed to get trading decisions:', error)
       alert(error instanceof Error ? error.message : 'Failed to get trading decisions')
@@ -112,6 +142,32 @@ export function IndividualMode() {
           )}
         </Button>
       </div>
+
+      {/* AI Analysis Context - Transparency */}
+      {context && contextSteps.length > 0 && (
+        <div>
+          <button
+            onClick={() => setShowContext(!showContext)}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+          >
+            {showContext ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+            {showContext ? 'Hide' : 'Show'} AI Analysis Context
+          </button>
+
+          {showContext && (
+            <ReasoningStream
+              steps={contextSteps}
+              isStreaming={false}
+              title="AI Analysis Context"
+              modelName={`${selectedModels.length} Models`}
+            />
+          )}
+        </div>
+      )}
 
       {/* Results */}
       {decisions.length > 0 && (

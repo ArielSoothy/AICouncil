@@ -102,7 +102,17 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Got', decisions.length, 'trading decisions');
 
-    return NextResponse.json({ decisions });
+    // Return decisions along with context for transparency
+    return NextResponse.json({
+      decisions,
+      context: {
+        accountBalance: account.portfolio_value,
+        buyingPower: account.buying_power,
+        cash: account.cash,
+        analysisDate: date,
+        promptSummary: 'AI models analyze current portfolio, market conditions, and generate trading recommendations based on risk assessment and growth opportunities.'
+      }
+    });
 
   } catch (error) {
     console.error('❌ API Error:', error);
