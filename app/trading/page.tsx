@@ -9,6 +9,7 @@ import { ModeSelector, TradingMode } from '@/components/trading/mode-selector'
 import { IndividualMode } from '@/components/trading/individual-mode'
 import { ConsensusMode } from '@/components/trading/consensus-mode'
 import { DebateMode } from '@/components/trading/debate-mode'
+import { TradeHistory } from '@/components/trading/trade-history'
 
 function TradingPageContent() {
   const { user, userTier } = useAuth()
@@ -64,6 +65,11 @@ function TradingPageContent() {
           {selectedMode === 'consensus' && <ConsensusMode />}
 
           {selectedMode === 'debate' && <DebateMode />}
+
+          {/* Trading History - Shows below all modes */}
+          <div className="mt-12 pt-8 border-t">
+            <TradeHistory />
+          </div>
         </div>
       </main>
     </div>
