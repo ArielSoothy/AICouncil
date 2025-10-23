@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
 import { TrendingUp, LineChart, Brain } from 'lucide-react'
 import { ModeSelector, TradingMode } from '@/components/trading/mode-selector'
+import { IndividualMode } from '@/components/trading/individual-mode'
 
 function TradingPageContent() {
   const { user, userTier } = useAuth()
@@ -55,15 +56,24 @@ function TradingPageContent() {
             onModeChange={setSelectedMode}
           />
 
-          {/* Trading interface will go here */}
-          <div className="bg-card rounded-lg border p-6">
-            <p className="text-center text-muted-foreground">
-              Selected mode: <span className="font-semibold">{selectedMode}</span>
-            </p>
-            <p className="text-center text-muted-foreground mt-2">
-              Trading interface for this mode coming next...
-            </p>
-          </div>
+          {/* Trading interface based on selected mode */}
+          {selectedMode === 'individual' && <IndividualMode />}
+
+          {selectedMode === 'consensus' && (
+            <div className="bg-card rounded-lg border p-6">
+              <p className="text-center text-muted-foreground">
+                Consensus Trade mode coming in Step 5...
+              </p>
+            </div>
+          )}
+
+          {selectedMode === 'debate' && (
+            <div className="bg-card rounded-lg border p-6">
+              <p className="text-center text-muted-foreground">
+                Debate Trade mode coming in Step 7...
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </div>

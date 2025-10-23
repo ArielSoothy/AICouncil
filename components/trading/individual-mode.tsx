@@ -1,0 +1,184 @@
+'use client'
+
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+
+// Simple model list for trading (we'll expand this later)
+const AVAILABLE_MODELS = [
+  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
+  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google' },
+  { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B', provider: 'groq' },
+]
+
+interface TradingDecision {
+  model: string
+  action: 'BUY' | 'SELL' | 'HOLD'
+  symbol?: string
+  quantity?: number
+  reasoning: string
+  confidence: number
+}
+
+export function IndividualMode() {
+  const [selectedModels, setSelectedModels] = useState<string[]>([
+    'claude-3-5-sonnet-20241022',
+    'gpt-4o'
+  ])
+  const [loading, setLoading] = useState(false)
+  const [decisions, setDecisions] = useState<TradingDecision[]>([])
+
+  const toggleModel = (modelId: string) => {
+    if (selectedModels.includes(modelId)) {
+      // Remove model (minimum 1)
+      if (selectedModels.length > 1) {
+        setSelectedModels(selectedModels.filter(id => id !== modelId))
+      }
+    } else {
+      // Add model (maximum 4)
+      if (selectedModels.length < 4) {
+        setSelectedModels([...selectedModels, modelId])
+      }
+    }
+  }
+
+  const getTradingDecisions = async () => {
+    setLoading(true)
+    setDecisions([])
+
+    try {
+      // TODO: Call API endpoint
+      // For now, placeholder
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      // Mock decisions
+      const mockDecisions: TradingDecision[] = selectedModels.map(modelId => ({
+        model: AVAILABLE_MODELS.find(m => m.id === modelId)?.name || modelId,
+        action: Math.random() > 0.5 ? 'BUY' : 'HOLD',
+        symbol: 'NVDA',
+        quantity: Math.floor(Math.random() * 50) + 10,
+        reasoning: 'Mock reasoning - AI analysis will appear here',
+        confidence: 0.7 + Math.random() * 0.25,
+      }))
+
+      setDecisions(mockDecisions)
+    } catch (error) {
+      console.error('Failed to get trading decisions:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Model Selector */}
+      <div className="bg-card rounded-lg border p-6">
+        <h3 className="font-semibold mb-4">Select AI Models to Compare (2-4)</h3>
+        <div className="grid grid-cols-2 gap-3">
+          {AVAILABLE_MODELS.map(model => {
+            const isSelected = selectedModels.includes(model.id)
+            return (
+              <button
+                key={model.id}
+                onClick={() => toggleModel(model.id)}
+                className={`
+                  p-3 rounded-lg border-2 text-left transition-all
+                  ${isSelected
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-primary/50'
+                  }
+                `}
+              >
+                <div className="font-medium">{model.name}</div>
+                <div className="text-xs text-muted-foreground">{model.provider}</div>
+              </button>
+            )
+          })}
+        </div>
+
+        <Button
+          onClick={getTradingDecisions}
+          disabled={loading || selectedModels.length < 2}
+          className="w-full mt-4"
+          size="lg"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Getting Trading Decisions...
+            </>
+          ) : (
+            <>Get Trading Decisions from {selectedModels.length} Models</>
+          )}
+        </Button>
+      </div>
+
+      {/* Results */}
+      {decisions.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {decisions.map((decision, index) => (
+            <div key={index} className="bg-card rounded-lg border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold">{decision.model}</h4>
+                <ActionBadge action={decision.action} />
+              </div>
+
+              {decision.action !== 'HOLD' && (
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Symbol:</span>
+                    <span className="font-mono font-medium">{decision.symbol}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Quantity:</span>
+                    <span className="font-medium">{decision.quantity} shares</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Reasoning:</div>
+                <div className="text-sm">{decision.reasoning}</div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Confidence:</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary"
+                        style={{ width: `${decision.confidence * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium">
+                      {(decision.confidence * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ActionBadge({ action }: { action: 'BUY' | 'SELL' | 'HOLD' }) {
+  const config = {
+    BUY: { icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-950' },
+    SELL: { icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-950' },
+    HOLD: { icon: Minus, color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-950' },
+  }
+
+  const { icon: Icon, color, bg } = config[action]
+
+  return (
+    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${bg}`}>
+      <Icon className={`w-4 h-4 ${color}`} />
+      <span className={`text-sm font-semibold ${color}`}>{action}</span>
+    </div>
+  )
+}
