@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation'
 import { TrendingUp, LineChart, Brain } from 'lucide-react'
 import { ModeSelector, TradingMode } from '@/components/trading/mode-selector'
 import { IndividualMode } from '@/components/trading/individual-mode'
+import { ConsensusMode } from '@/components/trading/consensus-mode'
 
 function TradingPageContent() {
   const { user, userTier } = useAuth()
@@ -59,13 +60,7 @@ function TradingPageContent() {
           {/* Trading interface based on selected mode */}
           {selectedMode === 'individual' && <IndividualMode />}
 
-          {selectedMode === 'consensus' && (
-            <div className="bg-card rounded-lg border p-6">
-              <p className="text-center text-muted-foreground">
-                Consensus Trade mode coming in Step 5...
-              </p>
-            </div>
-          )}
+          {selectedMode === 'consensus' && <ConsensusMode />}
 
           {selectedMode === 'debate' && (
             <div className="bg-card rounded-lg border p-6">
