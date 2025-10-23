@@ -1,5 +1,6 @@
 import Alpaca from '@alpacahq/alpaca-trade-api';
 import type { AlpacaAccount, AlpacaOrder, OrderSide } from './types';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Get or create Alpaca client instance
@@ -77,6 +78,69 @@ export async function placeMarketOrder(
     return order as AlpacaOrder;
   } catch (error) {
     console.error('❌ Failed to place order:', error);
+    throw error;
+  }
+}
+
+/**
+ * Save trade to database
+ * @param mode - Trading mode (e.g., 'individual_claude', 'consensus', 'debate')
+ * @param symbol - Stock symbol
+ * @param action - Trade action (BUY, SELL, HOLD)
+ * @param quantity - Number of shares
+ * @param price - Price per share
+ * @param reasoning - Trade reasoning from AI
+ * @param confidence - Confidence score (0-1)
+ * @param alpacaOrderId - Alpaca order ID
+ */
+export async function saveTrade(
+  mode: string,
+  symbol: string,
+  action: string,
+  quantity: number,
+  price: number,
+  reasoning: string,
+  confidence: number,
+  alpacaOrderId: string
+) {
+  try {
+    // Use direct Supabase client for script compatibility
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    console.log('Attempting to save:', { mode, symbol, action, quantity, price, confidence });
+
+    const { data, error} = await supabase
+      .from('paper_trades')
+      .insert({
+        mode,
+        symbol,
+        action,
+        quantity,
+        price,
+        reasoning,
+        confidence,
+        alpaca_order_id: alpacaOrderId,
+      })
+      .select();
+
+    if (error) {
+      console.error('❌ Database save failed:');
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
+      console.error('Error hint:', error.hint);
+      console.error('Full error:', JSON.stringify(error, null, 2));
+      throw new Error(`Database save failed: ${error.message || JSON.stringify(error)}`);
+    }
+
+    console.log('✅ Trade saved to database!');
+    console.log('Database record:', data);
+    return data ? data[0] : null;
+  } catch (error) {
+    console.error('❌ Failed to save trade:', error);
     throw error;
   }
 }
