@@ -1,15 +1,17 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { Header } from '@/components/ui/header'
 import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
 import { TrendingUp, LineChart, Brain } from 'lucide-react'
+import { ModeSelector, TradingMode } from '@/components/trading/mode-selector'
 
 function TradingPageContent() {
   const { user, userTier } = useAuth()
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
+  const [selectedMode, setSelectedMode] = useState<TradingMode>('individual')
 
   const effectiveUserTier = isGuestMode ? 'guest' : userTier
 
@@ -47,10 +49,19 @@ function TradingPageContent() {
             </div>
           </div>
 
+          {/* Mode selector tabs */}
+          <ModeSelector
+            selectedMode={selectedMode}
+            onModeChange={setSelectedMode}
+          />
+
           {/* Trading interface will go here */}
           <div className="bg-card rounded-lg border p-6">
             <p className="text-center text-muted-foreground">
-              Trading interface coming next...
+              Selected mode: <span className="font-semibold">{selectedMode}</span>
+            </p>
+            <p className="text-center text-muted-foreground mt-2">
+              Trading interface for this mode coming next...
             </p>
           </div>
         </div>
