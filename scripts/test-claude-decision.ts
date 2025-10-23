@@ -28,8 +28,10 @@ async function main() {
     console.log('3️⃣ Asking Claude for trade decision...\n');
     const result = await claudeProvider.query(prompt, {
       model: 'claude-3-5-sonnet-20241022',
+      provider: 'anthropic',
       temperature: 0.7,
       maxTokens: 200,
+      enabled: true,
     });
     const response = result.response;
 

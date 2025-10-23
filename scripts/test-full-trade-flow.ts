@@ -30,8 +30,10 @@ async function main() {
     console.log('\n3️⃣ Asking Claude for trade decision...');
     const result = await claudeProvider.query(prompt, {
       model: 'claude-3-5-sonnet-20241022',
+      provider: 'anthropic',
       temperature: 0.7,
       maxTokens: 200,
+      enabled: true,
     });
 
     const decision: TradeDecision = JSON.parse(result.response);

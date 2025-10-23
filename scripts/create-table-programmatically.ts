@@ -1,5 +1,7 @@
+// @ts-nocheck
+// DEPRECATED: This script is not used - table was created manually in Supabase dashboard
 import dotenv from 'dotenv';
-import fetch from 'node-fetch';
+// import fetch from 'node-fetch'; // Not used - table creation done manually
 
 // Load environment variables
 dotenv.config({ path: '.env.local' });
