@@ -1,5 +1,5 @@
 import Alpaca from '@alpacahq/alpaca-trade-api';
-import type { AlpacaAccount } from './types';
+import type { AlpacaAccount, AlpacaOrder, OrderSide } from './types';
 
 /**
  * Get or create Alpaca client instance
@@ -43,6 +43,40 @@ export async function getAccount(): Promise<AlpacaAccount> {
     return account as AlpacaAccount;
   } catch (error) {
     console.error('❌ Failed to get account:', error);
+    throw error;
+  }
+}
+
+/**
+ * Place a market order (buy or sell)
+ * @param symbol - Stock symbol (e.g., 'AAPL')
+ * @param quantity - Number of shares
+ * @param side - 'buy' or 'sell'
+ */
+export async function placeMarketOrder(
+  symbol: string,
+  quantity: number,
+  side: OrderSide
+): Promise<AlpacaOrder> {
+  try {
+    console.log(`📈 Placing ${side.toUpperCase()} order: ${quantity} shares of ${symbol}`);
+
+    const alpaca = getAlpacaClient();
+    const order = await alpaca.createOrder({
+      symbol,
+      qty: quantity,
+      side,
+      type: 'market',
+      time_in_force: 'day',
+    });
+
+    console.log('✅ Order placed successfully!');
+    console.log('Order ID:', order.id);
+    console.log('Status:', order.status);
+
+    return order as AlpacaOrder;
+  } catch (error) {
+    console.error('❌ Failed to place order:', error);
     throw error;
   }
 }
