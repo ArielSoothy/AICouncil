@@ -654,7 +654,7 @@
   - ✅ Real paper trades executed (AAPL, NVDA)
   - ✅ Claude AI decision generation validated
   - ✅ Database persistence working
-- **Phase 2: 50% Complete** (Frontend UI + API Integration):
+- **Phase 2: 67% Complete (8/12 steps)** - ALL 3 TRADING MODES FUNCTIONAL:
   - ✅ **Step 1-2**: `/trading` route + Mode selector (3 tabs)
   - ✅ **Step 3**: Individual LLMs mode UI with mock data
   - ✅ **Step 4**: Individual mode API endpoint (`/api/trading/individual`)
@@ -672,9 +672,20 @@
     * Symbol selection: most common among agreeing models
     * Quantity/confidence averaging
     * **Tested**: Unanimous 3/3 BUY MSFT (100% agreement, 82% confidence)
+  - ✅ **Step 7**: Debate Trade mode UI
+    * Round selector (Round 1 vs Round 2)
+    * 3-agent card grid (Analyst, Critic, Synthesizer)
+    * Final Decision display with consensus summary
+    * Professional round-based navigation
+  - ✅ **Step 8**: Debate mode API endpoint (`/api/trading/debate`)
+    * Multi-round agent debate system
+    * Round 1: Analyst proposes, Critic challenges, Synthesizer balances
+    * Round 2: All agents refine positions based on full debate
+    * **Tested**: Round 1: Analyst BUY 75 (85%), Critic HOLD (65%), Synthesizer BUY 37 (75%)
+    * **Tested**: Round 2: Analyst BUY 50 (80%), Critic BUY 37 (75%), Synthesizer BUY 25 (70%)
+    * **Critic changed HOLD → BUY** after debate! (proves agents reason about arguments)
   - ✅ Navigation: Green "Trading" link in header (desktop + mobile)
-  - ⏳ **Step 7-8**: Debate Trade mode (UI + Backend) - NEXT
-  - ⏳ **Step 9**: Trading history display
+  - ⏳ **Step 9**: Trading history display - NEXT
   - ⏳ **Step 10**: Portfolio balance + positions display
   - ⏳ **Step 11**: END-TO-END UI test
   - ⏳ **Step 12**: Final documentation
@@ -688,9 +699,9 @@
   - **Alpaca Integration**: Real market data, realistic paper trading environment
 - **File Structure**:
   - Backend: `lib/alpaca/{types.ts, client.ts, prompts.ts}`
-  - API Routes: `app/api/trading/{individual/route.ts, consensus/route.ts}`
+  - API Routes: `app/api/trading/{individual/route.ts, consensus/route.ts, debate/route.ts}`
   - Frontend: `app/trading/page.tsx`
-  - Components: `components/trading/{mode-selector.tsx, individual-mode.tsx, consensus-mode.tsx}`
+  - Components: `components/trading/{mode-selector.tsx, individual-mode.tsx, consensus-mode.tsx, debate-mode.tsx}`
   - Database: `scripts/create-trading-tables.sql`
   - Tests: `scripts/test-*.ts` (12-step test suite)
   - Docs: `PAPER_TRADE.MD`, `PHASE_2_PLAN.md`
@@ -715,7 +726,10 @@
   - Phase 2 Step 4: Individual mode API (commit: d1c272a)
   - Phase 2 Step 5: Consensus UI (commit: 607586d)
   - Phase 2 Step 6: Consensus API (commit: 75b2d58)
-  - Branch: `feature/paper-trading-phase2`
+  - Phase 2 Step 7: Debate UI (commit: f9e0834)
+  - Phase 2 Step 8: Debate API (commit: 7ae4625)
+  - Documentation updates (commit: 6537c0f)
+  - Branch: `feature/paper-trading-phase2` (67% complete - ALL 3 modes functional)
 - **DO NOT**: Delete paper trading feature, remove Alpaca integration, modify database schema without migration, skip test validation steps
 
 ## 🛡️ PROTECTION RULE:
