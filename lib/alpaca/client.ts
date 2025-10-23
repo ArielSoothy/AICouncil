@@ -31,3 +31,18 @@ export async function testConnection(): Promise<AlpacaAccount> {
     throw new Error(`Alpaca connection failed: ${error}`);
   }
 }
+
+/**
+ * Get current account information
+ */
+export async function getAccount(): Promise<AlpacaAccount> {
+  try {
+    const alpaca = getAlpacaClient();
+    const account = await alpaca.getAccount();
+    console.log('💰 Current Balance:', account.portfolio_value);
+    return account as AlpacaAccount;
+  } catch (error) {
+    console.error('❌ Failed to get account:', error);
+    throw error;
+  }
+}
