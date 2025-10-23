@@ -48,23 +48,22 @@ export function IndividualMode() {
     setDecisions([])
 
     try {
-      // TODO: Call API endpoint
-      // For now, placeholder
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const response = await fetch('/api/trading/individual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedModels }),
+      })
 
-      // Mock decisions
-      const mockDecisions: TradingDecision[] = selectedModels.map(modelId => ({
-        model: AVAILABLE_MODELS.find(m => m.id === modelId)?.name || modelId,
-        action: Math.random() > 0.5 ? 'BUY' : 'HOLD',
-        symbol: 'NVDA',
-        quantity: Math.floor(Math.random() * 50) + 10,
-        reasoning: 'Mock reasoning - AI analysis will appear here',
-        confidence: 0.7 + Math.random() * 0.25,
-      }))
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to get trading decisions')
+      }
 
-      setDecisions(mockDecisions)
+      const data = await response.json()
+      setDecisions(data.decisions)
     } catch (error) {
       console.error('Failed to get trading decisions:', error)
+      alert(error instanceof Error ? error.message : 'Failed to get trading decisions')
     } finally {
       setLoading(false)
     }
