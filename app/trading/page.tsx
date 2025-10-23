@@ -8,6 +8,7 @@ import { TrendingUp, LineChart, Brain } from 'lucide-react'
 import { ModeSelector, TradingMode } from '@/components/trading/mode-selector'
 import { IndividualMode } from '@/components/trading/individual-mode'
 import { ConsensusMode } from '@/components/trading/consensus-mode'
+import { DebateMode } from '@/components/trading/debate-mode'
 
 function TradingPageContent() {
   const { user, userTier } = useAuth()
@@ -62,13 +63,7 @@ function TradingPageContent() {
 
           {selectedMode === 'consensus' && <ConsensusMode />}
 
-          {selectedMode === 'debate' && (
-            <div className="bg-card rounded-lg border p-6">
-              <p className="text-center text-muted-foreground">
-                Debate Trade mode coming in Step 7...
-              </p>
-            </div>
-          )}
+          {selectedMode === 'debate' && <DebateMode />}
         </div>
       </main>
     </div>
