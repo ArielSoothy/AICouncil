@@ -640,5 +640,70 @@
   - Legal & privacy-compliant (industry standard anonymous analytics)
 - **DO NOT**: Remove URL persistence for authenticated users, change guest GET behavior, modify conversation data structure, remove sharing features, or modify without testing both auth and guest flows
 
+### 19. AI Paper Trading System
+- **Status**: ✅ ACTIVE & IN DEVELOPMENT - PHASE 2 FRONTEND UI IN PROGRESS
+- **Location**: `/trading` route + `lib/alpaca/` + `components/trading/` + `scripts/test-*.ts`
+- **Purpose**: Multi-model paper trading arena where AI models compete with trading decisions
+- **Phase 1 Complete** (Backend Infrastructure):
+  - ✅ Alpaca Trading API integration with lazy initialization
+  - ✅ TypeScript types (`lib/alpaca/types.ts`): TradeDecision, AlpacaOrder, AlpacaAccount
+  - ✅ Client functions (`lib/alpaca/client.ts`): testConnection(), getAccount(), placeMarketOrder(), saveTrade()
+  - ✅ AI trading prompt generator (`lib/alpaca/prompts.ts`)
+  - ✅ Database schema: `paper_trades` table (Supabase)
+  - ✅ END-TO-END test suite (12 incremental steps with git checkpoints)
+  - ✅ Real paper trades executed (AAPL, NVDA)
+  - ✅ Claude AI decision generation validated
+  - ✅ Database persistence working
+- **Phase 2 In Progress** (Frontend UI):
+  - ✅ `/trading` route created with professional layout
+  - ✅ Mode selector: 3 trading modes (Individual LLMs, Consensus Trade, Debate Trade)
+  - ✅ Individual LLMs mode UI:
+    * Model selector (Claude, GPT-4o, Gemini, Llama)
+    * Multi-select interface (2-4 models)
+    * Side-by-side comparison grid
+    * Action badges (BUY=green, SELL=red, HOLD=yellow)
+    * Trading decision cards with reasoning & confidence bars
+    * Mock data implementation for UI testing
+  - ✅ Navigation: Green "Trading" link added to header (desktop + mobile)
+  - ⏳ Individual mode API endpoint (Step 4 - pending)
+  - ⏳ Consensus Trade mode (Steps 5-6 - pending)
+  - ⏳ Debate Trade mode (Steps 7-8 - pending)
+  - ⏳ Trading history display (Step 9 - pending)
+  - ⏳ Portfolio balance display (Step 10 - pending)
+- **Key Features**:
+  - **3 Trading Modes**:
+    1. Individual LLMs: Compare decisions from multiple AI models side-by-side
+    2. Consensus Trade: Multi-model consensus for trading strategy
+    3. Debate Trade: Agent debate system (Analyst → Critic → Synthesizer) for trades
+  - **Paper Trading Only**: All trades are simulated ($100k paper balance)
+  - **Database Tracking**: Full trade history with reasoning, confidence, outcomes
+  - **Alpaca Integration**: Real market data, realistic paper trading environment
+- **File Structure**:
+  - Backend: `lib/alpaca/{types.ts, client.ts, prompts.ts}`
+  - Frontend: `app/trading/page.tsx`, `components/trading/{mode-selector.tsx, individual-mode.tsx}`
+  - Database: `scripts/create-trading-tables.sql`
+  - Tests: `scripts/test-*.ts` (12-step test suite)
+  - Docs: `PAPER_TRADE.MD`, `PHASE_2_PLAN.md`
+- **Environment Variables Required**:
+  ```
+  ALPACA_API_KEY=<your_key>
+  ALPACA_SECRET_KEY=<your_secret>
+  ALPACA_BASE_URL=https://paper-api.alpaca.markets
+  ```
+- **Database Schema** (`paper_trades` table):
+  - id (UUID), mode (VARCHAR), symbol (VARCHAR), action (VARCHAR)
+  - quantity (INTEGER), price (DECIMAL), reasoning (TEXT)
+  - confidence (DECIMAL), executed_at (TIMESTAMP)
+  - alpaca_order_id (VARCHAR), created_at (TIMESTAMP)
+- **Test Results** (Phase 1):
+  - Claude Decision: BUY 50 NVDA @ 0.85 confidence
+  - Order Executed: ID e2b2b2e1-978b-456a-b702-d4111d224077
+  - Database Saved: Record ID 22c550da-348d-4063-a46e-9c7227a2e357
+- **Last Modified**: October 23-24, 2025
+  - Phase 1: Backend complete (commit: 67154a7)
+  - Phase 2: Steps 1-3 complete (commits: 4a09433, 2c8df2d, 8ae29d9)
+  - Navigation added to header
+- **DO NOT**: Delete paper trading feature, remove Alpaca integration, modify database schema without migration, skip test validation steps
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Brain, User, LogOut, BarChart3, Users, Shield, Menu, X, Gem } from 'lucide-react'
+import { Brain, User, LogOut, BarChart3, Users, Shield, Menu, X, Gem, TrendingUp } from 'lucide-react'
 import { Button } from './button'
 import { useAuth } from '@/contexts/auth-context'
 import { PROJECT_NAME } from '@/lib/config/branding'
@@ -35,6 +35,13 @@ export function Header() {
             <Button variant="ghost" size="sm">
               <Users className="h-4 w-4 mr-2" />
               Agents
+            </Button>
+          </Link>
+
+          <Link href="/trading">
+            <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Trading
             </Button>
           </Link>
 
@@ -117,6 +124,13 @@ export function Header() {
               <Button variant="ghost" size="sm" className="w-full justify-start">
                 <Users className="h-4 w-4 mr-2" />
                 Agents
+              </Button>
+            </Link>
+
+            <Link href="/trading" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="ghost" size="sm" className="w-full justify-start text-green-600 hover:text-green-700">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Trading
               </Button>
             </Link>
 
