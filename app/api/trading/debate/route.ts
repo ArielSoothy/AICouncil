@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccount } from '@/lib/alpaca/client';
-import { generateTradingPrompt } from '@/lib/alpaca/prompts';
+import { generateEnhancedTradingPrompt } from '@/lib/alpaca/enhanced-prompts';
+import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
 import { GoogleProvider } from '@/lib/ai-providers/google';
@@ -123,23 +124,23 @@ Return your response in JSON format:
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🎭 Starting agent debate for trading decision...');
-
-    // Parse request body for model selections
+    // Parse request body for model selections and timeframe
     const body = await request.json();
     const analystModel = body.analystModel || 'claude-3-5-sonnet-20241022';
     const criticModel = body.criticModel || 'gpt-4o';
     const synthesizerModel = body.synthesizerModel || 'gemini-2.5-flash';
+    const timeframe = body.timeframe || 'swing';
 
+    console.log('🎭 Starting agent debate for', timeframe, 'trading decision...');
     console.log('📋 Selected models:', { analystModel, criticModel, synthesizerModel });
 
     // Step 1: Get Alpaca account info
     const account = await getAccount();
     console.log('💰 Account balance:', account.portfolio_value);
 
-    // Step 2: Generate base trading prompt
+    // Step 2: Generate enhanced trading prompt with timeframe-specific analysis
     const date = new Date().toISOString().split('T')[0];
-    const basePrompt = generateTradingPrompt(account, [], date);
+    const basePrompt = generateEnhancedTradingPrompt(account, [], date, timeframe as TradingTimeframe);
 
     // Initialize all AI providers
     const providers = {
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
       model: analystModel,
       provider: getProviderName(analystModel),
       temperature: 0.7,
-      maxTokens: 300,
+      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
       enabled: true,
     });
     const analystDecision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(analystResult.response));
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
       model: criticModel,
       provider: getProviderName(criticModel),
       temperature: 0.7,
-      maxTokens: 300,
+      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
       enabled: true,
     });
     const criticDecision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(criticResult.response));
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
       model: synthesizerModel,
       provider: getProviderName(synthesizerModel),
       temperature: 0.7,
-      maxTokens: 300,
+      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
       enabled: true,
     });
     const synthesizerDecision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(synthesizerResult.response));
@@ -225,7 +226,7 @@ export async function POST(request: NextRequest) {
       model: analystModel,
       provider: getProviderName(analystModel),
       temperature: 0.7,
-      maxTokens: 300,
+      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
       enabled: true,
     });
     const analystR2Decision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(analystR2Result.response));
@@ -241,7 +242,7 @@ export async function POST(request: NextRequest) {
       model: criticModel,
       provider: getProviderName(criticModel),
       temperature: 0.7,
-      maxTokens: 300,
+      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
       enabled: true,
     });
     const criticR2Decision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(criticR2Result.response));
@@ -257,7 +258,7 @@ export async function POST(request: NextRequest) {
       model: synthesizerModel,
       provider: getProviderName(synthesizerModel),
       temperature: 0.7,
-      maxTokens: 300,
+      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
       enabled: true,
     });
     const synthesizerR2Decision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(synthesizerR2Result.response));

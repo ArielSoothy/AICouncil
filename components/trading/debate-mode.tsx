@@ -6,6 +6,7 @@ import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, Chevron
 import { DebateTranscript, createDebateMessage, type DebateMessage } from './debate-transcript'
 import { getModelDisplayName, getDefaultModelForProvider } from '@/lib/trading/models-config'
 import { ProviderModelSelector } from './provider-model-selector'
+import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 
 interface DebateAgent {
   role: 'analyst' | 'critic' | 'synthesizer'
@@ -38,6 +39,7 @@ export function DebateMode() {
   const [activeRound, setActiveRound] = useState<1 | 2>(1)
   const [showTranscript, setShowTranscript] = useState(false)
   const [transcriptMessages, setTranscriptMessages] = useState<DebateMessage[]>([])
+  const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
 
   // Model selection for each debate role (best model from each provider)
   const [analystModel, setAnalystModel] = useState(getDefaultModelForProvider('anthropic') || 'claude-3-5-sonnet-20241022')
@@ -58,6 +60,7 @@ export function DebateMode() {
           analystModel,
           criticModel,
           synthesizerModel,
+          timeframe,
         }),
       })
 
@@ -141,6 +144,13 @@ export function DebateMode() {
             onChange={(value) => setSynthesizerModel(value as string)}
             mode="single"
             label="⚖️ Synthesizer (Makes final decision)"
+            disabled={loading}
+          />
+
+          {/* Timeframe Selection */}
+          <TimeframeSelector
+            value={timeframe}
+            onChange={setTimeframe}
             disabled={loading}
           />
         </div>
