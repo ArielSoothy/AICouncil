@@ -9,12 +9,21 @@ import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { ModelConfig } from '@/types/consensus'
 
+interface ReasoningDetails {
+  bullishCase?: string
+  bearishCase?: string
+  technicalAnalysis?: string
+  fundamentalAnalysis?: string
+  sentiment?: string
+  timing?: string
+}
+
 interface TradingDecision {
   model: string
   action: 'BUY' | 'SELL' | 'HOLD'
   symbol?: string
   quantity?: number
-  reasoning: string
+  reasoning: string | ReasoningDetails
   confidence: number
 }
 
@@ -196,7 +205,48 @@ export function IndividualMode() {
 
               <div className="space-y-2">
                 <div className="text-sm text-muted-foreground">Reasoning:</div>
-                <div className="text-sm">{decision.reasoning}</div>
+                {typeof decision.reasoning === 'string' ? (
+                  <div className="text-sm">{decision.reasoning}</div>
+                ) : (
+                  <div className="text-sm space-y-3">
+                    {decision.reasoning.bullishCase && (
+                      <div>
+                        <div className="font-medium text-green-600 mb-1">📈 Bullish Case:</div>
+                        <div className="text-muted-foreground">{decision.reasoning.bullishCase}</div>
+                      </div>
+                    )}
+                    {decision.reasoning.bearishCase && (
+                      <div>
+                        <div className="font-medium text-red-600 mb-1">📉 Bearish Case:</div>
+                        <div className="text-muted-foreground">{decision.reasoning.bearishCase}</div>
+                      </div>
+                    )}
+                    {decision.reasoning.technicalAnalysis && (
+                      <div>
+                        <div className="font-medium mb-1">📊 Technical Analysis:</div>
+                        <div className="text-muted-foreground">{decision.reasoning.technicalAnalysis}</div>
+                      </div>
+                    )}
+                    {decision.reasoning.fundamentalAnalysis && (
+                      <div>
+                        <div className="font-medium mb-1">📋 Fundamental Analysis:</div>
+                        <div className="text-muted-foreground">{decision.reasoning.fundamentalAnalysis}</div>
+                      </div>
+                    )}
+                    {decision.reasoning.sentiment && (
+                      <div>
+                        <div className="font-medium mb-1">💭 Sentiment:</div>
+                        <div className="text-muted-foreground">{decision.reasoning.sentiment}</div>
+                      </div>
+                    )}
+                    {decision.reasoning.timing && (
+                      <div>
+                        <div className="font-medium mb-1">⏰ Timing:</div>
+                        <div className="text-muted-foreground">{decision.reasoning.timing}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 pt-4 border-t">
