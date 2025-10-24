@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Header } from '@/components/ui/header'
 import { Button } from '@/components/ui/button'
 import { Trophy, Play, Settings, TrendingUp, TrendingDown, Award } from 'lucide-react'
+import { ArenaModelSelector } from '@/components/arena/arena-model-selector'
 
 interface ModelPerformance {
   rank: number
@@ -63,6 +65,26 @@ export default function ArenaModePage() {
     }
   }
 
+  const handleModelsChange = async (modelIds: string[]) => {
+    if (!config) return
+
+    // Optimistic update
+    setConfig({ ...config, enabled_models: modelIds })
+
+    // Save to API
+    try {
+      await fetch('/api/arena/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled_models: modelIds })
+      })
+    } catch (error) {
+      console.error('Error updating config:', error)
+      // Revert on error
+      await fetchConfig()
+    }
+  }
+
   const executeArenaRun = async () => {
     setExecuting(true)
     try {
@@ -110,17 +132,33 @@ export default function ArenaModePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Trophy className="w-10 h-10 text-primary" />
-          <h1 className="text-4xl font-bold">Arena Mode</h1>
+    <div>
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Trophy className="w-10 h-10 text-primary" />
+            <h1 className="text-4xl font-bold">Arena Mode</h1>
+          </div>
+          <p className="text-xl text-muted-foreground">
+            Autonomous AI Trading Competition - Real-time Leaderboard
+          </p>
         </div>
-        <p className="text-xl text-muted-foreground">
-          Autonomous AI Trading Competition - Real-time Leaderboard
-        </p>
-      </div>
+
+        {/* Model Selection */}
+        <div className="mb-8 bg-card rounded-lg border p-6">
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold mb-1">Select Competing Models</h2>
+            <p className="text-sm text-muted-foreground">
+              Choose which AI models will compete in Arena Mode. Click badges to swap models or add new ones.
+            </p>
+          </div>
+          <ArenaModelSelector
+            enabledModels={config?.enabled_models || []}
+            onChange={handleModelsChange}
+          />
+        </div>
 
       {/* Arena Stats & Controls */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -312,6 +350,7 @@ export default function ArenaModePage() {
           <li>• Leaderboard updates in real-time based on trading results</li>
           <li>• Runs can be triggered manually or scheduled (hourly/daily/weekly)</li>
         </ul>
+      </div>
       </div>
     </div>
   )
