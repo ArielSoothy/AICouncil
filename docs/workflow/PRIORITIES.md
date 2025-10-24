@@ -1,5 +1,18 @@
 # 🎯 CURRENT PRIORITIES & SESSION PROGRESS
 
+## 📚 REQUIRED CONTEXT FOR AI - READ THESE BASED ON WORK MODE:
+
+**🔴 CRITICAL: When working on ANY trading features, ALWAYS read:**
+- `/Users/user/AI-Counsil/AICouncil/docs/features/TRADING_ENHANCEMENTS.md` - Complete trading system documentation
+- `/Users/user/AI-Counsil/AICouncil/PAPER_TRADE.MD` - Paper trading implementation details
+
+**Other context-specific docs (see DOCUMENTATION_MAP.md for full list):**
+- Ultra Mode/Consensus work → `docs/architecture/AI_MODELS_SETUP.md`
+- Agent Debate work → `docs/guides/SUB_AGENTS.md`
+- Database changes → `docs/architecture/SUPABASE_SETUP.md`
+
+---
+
 ## 📝 CURRENT SESSION CONTEXT:
 **Current Session:** ✅ COMPLETED - Paper Trading System Phase 1 (October 23, 2025)
 **Next Priority:** 🎯 PAPER TRADING PHASE 2 - Frontend UI Integration
@@ -490,135 +503,346 @@
 - Removed redundancy, clear file responsibilities, proper organization
 - Proper workflow: Work → Test → Document → Ask approval → Push → New prompt
 
-## 🚀 NEXT SESSION PRIORITIES (MVP STRATEGY):
+## 🚀 CONSOLIDATED PROJECT TODO LIST
 
-### 🎯 PRIMARY FOCUS - User Feedback Collection System:
+**SINGLE SOURCE OF TRUTH** - All project tasks consolidated from:
+- PAPER_TRADE.MD
+- PHASE_2_PLAN.md
+- PHASE_3_PROGRESS.md
+- ULTRA_MODE_REDESIGN_PLAN.md
+- MEMORY_IMPLEMENTATION_PLAN.md
+- README.md (roadmap)
+- MVP.md (strategic guidance)
 
-**Phase 1: Basic Feedback Infrastructure (IMMEDIATE)**
-- Add simple helpful/not helpful rating component after consensus results
-- Add optional comment text field for detailed user feedback
-- Implement feedback storage in database with conversation correlation
-- Add unobtrusive email signup in header/footer area
+---
 
-**Phase 2: Value Proposition & Analytics (WEEK 1)**
-- Add clear explanation of AI Council value on main interface
-- Implement basic usage analytics (daily queries, engagement patterns)
-- Create feedback analysis dashboard for reviewing user comments
-- Monitor which query types receive best user satisfaction
+## 📊 PRIORITY LEGEND
+- 🔴 **URGENT** - Blocking or critical bugs
+- 🟠 **HIGH** - Important features for current phase
+- 🟡 **MEDIUM** - Next phase priorities
+- 🟢 **LOW** - Future enhancements
+- 💤 **BACKLOG** - Paused or future projects
 
-**DEPRECATED UNTIL USER DEMAND**: Chain-of-Debate Display Enhancement
-- ~~Create disagreement visualization component~~
-- ~~Add "Why They Disagree" section~~
-- **HOLD** until users explicitly request debate analysis features
+---
 
-**Phase 2: Enhanced Analysis**
-- Add query type auto-classification (factual, mathematical, reasoning, creative, current)
-- Implement hallucination detection flags
-- Track time to consensus metrics
-- Add cost-benefit indicator for debate vs single model
-- Evidence comparison table (side-by-side)
+## 🔴 URGENT PRIORITIES
 
-**Phase 3: Advanced Features**
-- Self-critique loops (Constitutional AI pattern)
-- Tree of thoughts visualization
-- User preference tracking (RLHF)
-- A/B testing framework (single vs debate)
-- Task decomposition for complex queries
-
-### 🔴 HIGH PRIORITY - IMMEDIATE:
-
-**🔍 Investigate Sonnet 4.5 Internet Access Issue on Ultra Mode**
+### 🔍 Investigate Sonnet 4.5 Internet Access Issue on Ultra Mode
 - **Issue**: Claude Sonnet 4.5 on ultra mode shows "cannot provide specific stock recommendations... No reliable data available - The web search did not return actionable information"
 - **Task**: Verify web search configuration for ultra mode models
 - **Expected**: All models with internet access should successfully use web search
 - **Debug**: Check if web search is enabled for Claude Sonnet 4.5 in ultra mode configuration
 
-**[COMPLETED ✅]** 🌐 Web Search Integration 
-- Progressive role-based web search system implemented
-- DuckDuckGo integration with fallback providers
-- Context-aware search queries for each agent
+---
 
-**[COMPLETED ✅]** 🧪 E2E Testing with Playwright MCP
-- Comprehensive testing completed using Playwright MCP browser automation
-- Verified live Vercel deployment at https://ai-council-new.vercel.app/
-- Tested core agent debate functionality with 3 specialized agents
-- Confirmed multi-round debate execution (2 rounds) with timeline display  
-- Validated agent personas working properly (Analyst, Critic, Synthesizer)
-- Fixed TypeScript error in role-based search system before testing
+## 🟠 HIGH PRIORITY - PAPER TRADING SYSTEM
 
-**[COMPLETED ✅]** 🏗️ Architecture Validation
-- ✅ Enhanced timeline features + web search functionality tested with Playwright MCP
-- ✅ Modular architecture separation verified (/app, /components, /lib, /features)
-- ✅ API routes RESTful patterns confirmed with proper error handling
-- ✅ Error boundaries and fallbacks validated (try/catch blocks, 400 responses)
-- ✅ Database query optimization checked (Supabase SSR, graceful fallbacks)
-- ✅ Critical user flows working: consensus query, agent debate, model selection
-- ✅ TypeScript compilation clean, ESLint passing, no code quality issues
-- ✅ All protected features intact per FEATURES.md requirements
+### 📱 Phase 2: Frontend UI Integration (CURRENT PHASE)
+**Status**: Backend complete ✅, Frontend UI pending
+**Reference**: `/docs/planning/PHASE_2_PLAN.md`
+**Goal**: Build `/trading` route with 3 trading modes (Individual, Consensus, Debate)
 
-### 🟡 MEDIUM PRIORITY - NEXT PHASE:
+#### Step-by-Step Implementation Plan:
 
-**[COMPLETED ✅]** 🔬 Research-Based Enhancement Implementation - Phase 1
-- **✅ Phase 1 COMPLETE**: Heterogeneous model mixing (optimal combinations by question type)
-  - Query analysis system (10 types: mathematical, creative, analytical, factual, etc.)
-  - Model family specialization mapping (OpenAI reasoning, Anthropic analysis, Google knowledge, etc.)
-  - Automatic optimal model selection based on query characteristics
-  - Research-based 25% accuracy improvement targeting
-  - New API endpoint: `/api/agents/debate-heterogeneous`
-  - Test interface: `/test-heterogeneous` page for validation
+**Step 1: Create /trading route + basic layout** ⏳
+- Create `app/trading/page.tsx` - Main trading page
+- Create `components/trading/trading-layout.tsx` - Layout wrapper with header
+- **Test**: Navigate to http://localhost:3000/trading, see "AI Paper Trading" header
+- **Git**: `git commit -m "step 1: Create /trading route"`
 
-**[BACKLOG - DISABLED]** 🧠 Memory System Integration
-- **Status**: DISABLED - Foundation complete but not integrated
-- **Reason**: Focus on research validation first (proving multi-agent debate value)
-- **Current State**: 
-  - Code disabled with MEMORY_ENABLED = false flag
-  - Import commented out to prevent errors
-  - Database still stores conversation history (working)
-  - Foundation preserved in docs/archived/MEMORY_IMPLEMENTATION_PLAN.md
-- **When to Re-enable**: After research validation proves 20-40% improvement
-- **Expected Impact When Enabled**: 
-  - Additional 40% accuracy improvement
-  - 60-80% cost reduction through caching
-  - Personalized user experiences
+**Step 2: Create mode selector (3 tabs)** ⏳
+- Create `components/trading/mode-selector.tsx` - Tab navigation component
+- **Test**: See 3 tabs: "Individual LLMs" | "Consensus Trade" | "Debate Trade"
+- **Git**: `git commit -m "step 2: Add mode selector tabs"`
 
-**[MEDIUM PRIORITY]** 🔬 Research-Based Enhancement Implementation - Remaining Phases
-- **Phase 2**: Chain-of-debate tracking (track WHY models disagree) 
-- **Phase 3**: Adaptive rounds (complexity-based round determination)
-- **Phase 4**: Smart synthesis strategies (confidence + accuracy weighting)
-- **Phase 5**: Benchmark suite + statistical validation
+**Step 3: Individual LLMs mode UI** ⏳
+- Create `components/trading/individual-mode.tsx` - Individual LLMs interface
+- Create `components/trading/model-selector-trading.tsx` - Select AI models to compare
+- **Test**: See model selector, "Get Trading Decisions" button, empty results area
+- **Git**: `git commit -m "step 3: Build Individual LLMs mode UI"`
 
-**[MEDIUM]** ⚨️ Performance Optimization
+**Step 4: Connect Individual mode to backend + test** ⏳
+- Create `app/api/trading/individual/route.ts` - API endpoint for individual trading
+- Implement: Get account → Generate prompt → Call AI models → Display decisions
+- **Test**: Select 2 models, click button, see side-by-side decisions
+- **Git**: `git commit -m "step 4: Connect Individual mode to backend"`
+
+**Step 5: Consensus Trade mode UI** ⏳
+- Create `components/trading/consensus-mode.tsx` - Consensus trading interface
+- **Test**: See model selection, "Get Consensus Decision" button, empty results
+- **Git**: `git commit -m "step 5: Build Consensus Trade mode UI"`
+
+**Step 6: Connect Consensus mode to backend + test** ⏳
+- Create `app/api/trading/consensus/route.ts` - Consensus trading API
+- Implement: Get all decisions → Aggregate voting → Display unified consensus
+- **Test**: Select 3 models, click button, see "Consensus: BUY AAPL (3/3 models agree)"
+- **Git**: `git commit -m "step 6: Connect Consensus mode to backend"`
+
+**Step 7: Debate Trade mode UI** ⏳
+- Create `components/trading/debate-mode.tsx` - Debate trading interface
+- **Test**: See "Start Debate" button, empty results, timeline placeholder
+- **Git**: `git commit -m "step 7: Build Debate Trade mode UI"`
+
+**Step 8: Connect Debate mode to backend + test** ⏳
+- Create `app/api/trading/debate/route.ts` - Debate trading API
+- Implement: Run Analyst→Critic→Synthesizer debate for trading decisions
+- **Test**: See Round 1 → Round 2 → Final Synthesizer decision
+- **Git**: `git commit -m "step 8: Connect Debate mode to backend"`
+
+**Step 9: Trading history display component** ⏳
+- Create `components/trading/trading-history.tsx` - Display past trades
+- Create `app/api/trading/history/route.ts` - Fetch trades from database
+- **Test**: See table with Date, Mode, Symbol, Action, Quantity, Price, Confidence
+- **Git**: `git commit -m "step 9: Add trading history display"`
+
+**Step 10: Portfolio balance + positions display** ⏳
+- Create `components/trading/portfolio-display.tsx` - Account balance + positions
+- **Test**: See account balance: $100,000, current positions, buying power
+- **Git**: `git commit -m "step 10: Add portfolio display"`
+
+**Step 11: END-TO-END UI test with browser** ⏳
+- Test all 3 modes working correctly
+- Verify trading history table populated
+- Verify portfolio balance displayed
+- **Git**: `git commit -m "step 11: END-TO-END UI testing complete"`
+
+**Step 12: Documentation + final commit** ⏳
+- Update `PRIORITIES.md` - Mark Phase 2 complete
+- Update `FEATURES.md` - Document new paper trading feature
+- Update `PAPER_TRADE.MD` - Phase 2 completion status
+- **Git**: `git commit -m "feat: Paper Trading Phase 2 - Frontend Complete"`
+
+**Success Criteria**:
+- ✅ All 3 trading modes working
+- ✅ Real paper trades executed through UI
+- ✅ Trading history displayed
+- ✅ Portfolio balance shown
+- ✅ TypeScript compilation clean
+- ✅ Browser testing passed
+- ✅ Documentation updated
+
+---
+
+### 🎯 Phase 3: Trading System Enhancements (NEXT AFTER PHASE 2)
+**Status**: Partially complete (5/12 tasks done)
+**Reference**: `/docs/planning/PHASE_3_PROGRESS.md`
+
+**Remaining Tasks (7/12)**:
+
+**⏳ Priority 3: Timeframe Selector Component**
+- Create `components/trading/timeframe-selector.tsx`
+- Support 4 timeframes: Day Trading, Swing, Position, Long-term
+- Update prompts for each timeframe's trading strategy
+- Integration with all 3 trading modes
+
+**⏳ Priority 1: Arena Mode - Competitive AI Trading**
+- Design Arena database schema for leaderboard tracking
+- Create Arena mode UI with real-time leaderboard display
+- Implement autonomous trading scheduler (daily/hourly execution)
+- Track P&L, win rates, strategy performance across all models
+- Display head-to-head model performance comparisons
+
+**⏳ Priority 5: Auto-Execution Controls & Safety Rails**
+- Add auto-execution toggle (manual vs automatic order placement)
+- Implement safety rails: position limits, daily loss limits, volatility checks
+- Emergency stop functionality
+- Trade approval workflow for new users
+
+**⏳ Test All Phase 3 Improvements**
+- Comprehensive testing of timeframe selector
+- Arena mode end-to-end testing
+- Safety rails validation
+- Update all documentation
+
+---
+
+## 🟡 MEDIUM PRIORITY
+
+### 🎨 Ultra Mode UI Enhancements
+**Reference**: `/docs/features/ULTRA_MODE_REDESIGN_PLAN.md`
+**Status**: Core UI complete ✅, Enhancement tasks pending
+
+**Implementation Tasks**:
+
+**⏳ Task 1: Brand Colors Constants** (5 min)
+- File: `lib/brand-colors.ts`
+- Define PROVIDER_COLORS with hover states
+- Define PROVIDER_NAMES mapping
+
+**⏳ Task 2: UltraModelBadgeSelector Component** (10 min)
+- File: `components/consensus/ultra-model-badge-selector.tsx`
+- Clickable badges with dropdown menus per provider
+- [+ Add Model] button with provider selection
+- [× Remove] icon on each badge (if > 1 model)
+
+**⏳ Task 3: Refactor app/ultra/page.tsx** (15 min)
+- Merge 3 sections into unified card
+- Replace model alert and collapsible selector with badge component
+- Update CTA to "Get Ultimate Answer"
+
+**⏳ Task 4: Testing Checklist**
+- [ ] All 5 default models show as branded badges
+- [ ] Click badge → dropdown with provider models
+- [ ] Select model from dropdown → badge updates
+- [ ] [+ Add Model] button works
+- [ ] [× Remove] icon removes model (only if > 1)
+- [ ] Brand colors correct for each provider
+- [ ] "Get Ultimate Answer" button displays
+- [ ] Generate Question button works
+- [ ] Page loads without TypeScript errors
+
+---
+
+### 🧠 Memory System Integration (BACKLOG - RE-ENABLE WHEN READY)
+**Reference**: `/docs/features/MEMORY_IMPLEMENTATION_PLAN.md`
+**Status**: Foundation complete ✅, Integration disabled (MEMORY_ENABLED = false)
+
+**Phase 1: Basic Integration** (NEXT PRIORITY when re-enabled)
+- Connect Memory Service to debate system endpoints
+- Store episodic memories after each completed debate
+- Implement basic retrieval for similar past queries
+- Episodic memory storage after debate completion
+- Basic memory retrieval before starting new debates
+- Integration points: `/api/agents/debate-stream`, `/api/agents/debate`
+- **Expected Results**: 15-25% accuracy improvement for repeated patterns
+
+**Phase 2: Vector Search & Embeddings** (2-3 sessions)
+- OpenAI embeddings integration for similarity search
+- Advanced semantic memory extraction from debates
+- Smart caching system with Redis integration
+- **Expected Results**: 30-35% accuracy improvement, 60-80% cost reduction
+
+**Phase 3: Procedural Learning** (3-4 sessions)
+- Pattern detection from successful debate configurations
+- Automatic rule generation from user feedback
+- Dynamic model selection based on learned patterns
+- **Expected Results**: 40%+ accuracy improvement, self-improving system
+
+**Phase 4: Advanced Features** (4-5 sessions)
+- LangGraph integration for memory-aware orchestration
+- User personalization with individual memory profiles
+- Network effects with privacy-preserving knowledge sharing
+- **Expected Results**: Enterprise-grade intelligence
+
+---
+
+### 🎯 MVP Strategy - User Feedback Collection
+**Reference**: `/docs/planning/MVP.md`
+**Strategic Guidance**: Build only what users explicitly request
+
+**Phase 1: Basic Feedback Infrastructure** ⏳
+- Add helpful/not helpful rating component after consensus results
+- Add optional comment text field for detailed feedback
+- Implement feedback storage with conversation correlation
+- Add unobtrusive email signup in header/footer
+
+**Phase 2: Value Proposition & Analytics** ⏳
+- Add clear AI Council value explanation on main interface
+- Implement basic usage analytics (daily queries, engagement patterns)
+- Create feedback analysis dashboard
+- Monitor query types with best user satisfaction
+
+**HOLD UNTIL USER DEMAND**:
+- Chain-of-Debate Display Enhancement
+- Disagreement visualization component
+- "Why They Disagree" section
+- **Wait for explicit user requests before building**
+
+---
+
+### 🔬 Research-Based Enhancement Implementation
+**Status**: Phase 1 complete ✅, Remaining phases planned
+
+**Phase 2: Chain-of-Debate Tracking** ⏳
+- Track WHY models disagree, not just THAT they disagree
+- Implement disagreement classification system
+- Evidence comparison table side-by-side
+
+**Phase 3: Adaptive Rounds** ⏳
+- Complexity-based round determination
+- Auto-detect when more rounds needed
+- Implement early consensus detection
+
+**Phase 4: Smart Synthesis Strategies** ⏳
+- Confidence + accuracy weighting
+- Cost-benefit indicator for debate vs single model
+- Enhanced analysis with query type classification
+
+**Phase 5: Benchmark Suite + Statistical Validation** ⏳
+- A/B testing framework (single vs debate)
+- Implement research-based metrics: factual accuracy, reasoning accuracy, hallucination rate
+- Statistical significance tracking
+
+---
+
+## 🟢 LOW PRIORITY - FUTURE
+
+### 📊 Performance Optimization
 - Measure actual token usage per query type
 - Calculate real costs for each mode
 - Document response times
 - Create cost/performance matrix
 
-**[MEDIUM]** ⌨️ Keyboard Shortcuts Implementation  
+### ⌨️ Keyboard Shortcuts Implementation
 - Hook infrastructure created, needs UI integration
 - Features: Ctrl+Enter submit, Escape clear, Tab navigation
 - Target: Main query interfaces
 
-**[MEDIUM]** 🎯 A/B Testing Framework (from Strategic Plan)
-- Random single vs consensus for same query
-- Track which users prefer what approach
-- Value visualization UI improvements
-- Implement research-based metrics: factual accuracy, reasoning accuracy, hallucination rate
-
-### 🟢 LOW PRIORITY - FUTURE:
-
-**[LOW]** 📊 Response Caching System
+### 📊 Response Caching System
 - Architecture created, needs implementation
 - localStorage-based with optional Redis
-- Cache search results for 1 hour (per Strategic Plan)
+- Cache search results for 1 hour
 
-**[LOW]** 📈 Analytics & Metrics Dashboard
+### 📈 Analytics & Metrics Dashboard
 - Query tracking per user
-- Web search usage metrics  
+- Web search usage metrics
 - Cost per user analysis
 - Model accuracy scoring
 
-**[LOW]** 🔧 Code Quality Improvements (from Strategic Plan)
+### 🔧 Code Quality Improvements
 - Fix remaining TypeScript 'any' types
 - Implement missing error boundaries
 - Add comprehensive error toasts
+
+---
+
+## 💤 BACKLOG - LONG-TERM ROADMAP
+
+### Q4 2025 (From README.md)
+- [x] Multi-model consensus engine ✅
+- [x] Agent debate system ✅
+- [x] Real-time streaming ✅
+- [ ] Memory system integration (ON HOLD)
+- [ ] Enhanced debate mechanisms
+
+### Q1 2026
+- [ ] REST API v1
+- [ ] Enterprise authentication
+- [ ] Value-based pricing
+- [ ] White-label capabilities
+
+### Q2 2026
+- [ ] On-premise deployment
+- [ ] Custom model integration
+- [ ] Advanced analytics
+- [ ] $10M ARR target
+
+---
+
+## 📝 PROJECT MANAGEMENT NOTES
+
+**How to Use This File**:
+1. This is the SINGLE SOURCE OF TRUTH for all project TODOs
+2. When adding tasks, place them in the appropriate priority section
+3. Update status markers: ⏳ (pending), 🔄 (in progress), ✅ (complete)
+4. Reference source documentation files where applicable
+5. Move completed tasks to "Recently Completed" section above
+6. Keep this file synchronized when creating/updating other docs
+
+**Task Status Markers**:
+- ⏳ Pending (not started)
+- 🔄 In Progress (actively working)
+- ✅ Complete (finished and tested)
+- ❌ Blocked (waiting on dependency)
+- 💤 Backlog (future consideration)
 
