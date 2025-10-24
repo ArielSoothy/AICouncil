@@ -8,6 +8,15 @@ import { getModelDisplayName } from '@/lib/trading/models-config'
 import { SingleModelBadgeSelector } from './single-model-badge-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 
+interface ReasoningDetails {
+  bullishCase?: string
+  bearishCase?: string
+  technicalAnalysis?: string
+  fundamentalAnalysis?: string
+  sentiment?: string
+  timing?: string
+}
+
 interface DebateAgent {
   role: 'analyst' | 'critic' | 'synthesizer'
   name: string
@@ -15,7 +24,7 @@ interface DebateAgent {
     action: 'BUY' | 'SELL' | 'HOLD'
     symbol?: string
     quantity?: number
-    reasoning: string
+    reasoning: string | ReasoningDetails
     confidence: number
   }
 }
@@ -27,7 +36,7 @@ interface DebateResult {
     action: 'BUY' | 'SELL' | 'HOLD'
     symbol?: string
     quantity?: number
-    reasoning: string
+    reasoning: string | ReasoningDetails
     confidence: number
     consensus: string
   }
@@ -344,7 +353,7 @@ export function DebateMode() {
 
                   <div className="space-y-2 mb-4">
                     <div className="text-xs text-muted-foreground">Reasoning:</div>
-                    <div className="text-sm leading-relaxed">{agent.decision.reasoning}</div>
+                    <ReasoningDisplay reasoning={agent.decision.reasoning} />
                   </div>
 
                   <div className="pt-4 border-t">
@@ -400,8 +409,8 @@ export function DebateMode() {
 
             <div className="space-y-3 mb-6">
               <div className="text-sm text-muted-foreground">Final Reasoning:</div>
-              <div className="text-sm leading-relaxed bg-muted/50 p-4 rounded-lg">
-                {debate.finalDecision.reasoning}
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <ReasoningDisplay reasoning={debate.finalDecision.reasoning} />
               </div>
             </div>
 
@@ -422,6 +431,53 @@ export function DebateMode() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ReasoningDisplay({ reasoning }: { reasoning: string | ReasoningDetails }) {
+  if (typeof reasoning === 'string') {
+    return <div className="text-sm leading-relaxed">{reasoning}</div>
+  }
+
+  return (
+    <div className="text-sm space-y-3">
+      {reasoning.bullishCase && (
+        <div>
+          <div className="font-medium text-green-600 mb-1">📈 Bullish Case:</div>
+          <div className="text-muted-foreground">{reasoning.bullishCase}</div>
+        </div>
+      )}
+      {reasoning.bearishCase && (
+        <div>
+          <div className="font-medium text-red-600 mb-1">📉 Bearish Case:</div>
+          <div className="text-muted-foreground">{reasoning.bearishCase}</div>
+        </div>
+      )}
+      {reasoning.technicalAnalysis && (
+        <div>
+          <div className="font-medium mb-1">📊 Technical Analysis:</div>
+          <div className="text-muted-foreground">{reasoning.technicalAnalysis}</div>
+        </div>
+      )}
+      {reasoning.fundamentalAnalysis && (
+        <div>
+          <div className="font-medium mb-1">📋 Fundamental Analysis:</div>
+          <div className="text-muted-foreground">{reasoning.fundamentalAnalysis}</div>
+        </div>
+      )}
+      {reasoning.sentiment && (
+        <div>
+          <div className="font-medium mb-1">💭 Sentiment:</div>
+          <div className="text-muted-foreground">{reasoning.sentiment}</div>
+        </div>
+      )}
+      {reasoning.timing && (
+        <div>
+          <div className="font-medium mb-1">⏰ Timing:</div>
+          <div className="text-muted-foreground">{reasoning.timing}</div>
         </div>
       )}
     </div>

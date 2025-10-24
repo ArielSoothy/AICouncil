@@ -8,11 +8,20 @@ import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { ModelConfig } from '@/types/consensus'
 
+interface ReasoningDetails {
+  bullishCase?: string
+  bearishCase?: string
+  technicalAnalysis?: string
+  fundamentalAnalysis?: string
+  sentiment?: string
+  timing?: string
+}
+
 interface ConsensusResult {
   action: 'BUY' | 'SELL' | 'HOLD'
   symbol?: string
   quantity?: number
-  reasoning: string
+  reasoning: string | ReasoningDetails
   confidence: number
   votes: {
     BUY: number
@@ -163,7 +172,48 @@ export function ConsensusMode() {
           {/* Reasoning */}
           <div className="space-y-2 mb-6">
             <div className="text-sm text-muted-foreground">Consensus Reasoning:</div>
-            <div className="text-sm leading-relaxed">{consensus.reasoning}</div>
+            {typeof consensus.reasoning === 'string' ? (
+              <div className="text-sm leading-relaxed">{consensus.reasoning}</div>
+            ) : (
+              <div className="text-sm space-y-3">
+                {consensus.reasoning.bullishCase && (
+                  <div>
+                    <div className="font-medium text-green-600 mb-1">📈 Bullish Case:</div>
+                    <div className="text-muted-foreground">{consensus.reasoning.bullishCase}</div>
+                  </div>
+                )}
+                {consensus.reasoning.bearishCase && (
+                  <div>
+                    <div className="font-medium text-red-600 mb-1">📉 Bearish Case:</div>
+                    <div className="text-muted-foreground">{consensus.reasoning.bearishCase}</div>
+                  </div>
+                )}
+                {consensus.reasoning.technicalAnalysis && (
+                  <div>
+                    <div className="font-medium mb-1">📊 Technical Analysis:</div>
+                    <div className="text-muted-foreground">{consensus.reasoning.technicalAnalysis}</div>
+                  </div>
+                )}
+                {consensus.reasoning.fundamentalAnalysis && (
+                  <div>
+                    <div className="font-medium mb-1">📋 Fundamental Analysis:</div>
+                    <div className="text-muted-foreground">{consensus.reasoning.fundamentalAnalysis}</div>
+                  </div>
+                )}
+                {consensus.reasoning.sentiment && (
+                  <div>
+                    <div className="font-medium mb-1">💭 Sentiment:</div>
+                    <div className="text-muted-foreground">{consensus.reasoning.sentiment}</div>
+                  </div>
+                )}
+                {consensus.reasoning.timing && (
+                  <div>
+                    <div className="font-medium mb-1">⏰ Timing:</div>
+                    <div className="text-muted-foreground">{consensus.reasoning.timing}</div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Confidence */}
