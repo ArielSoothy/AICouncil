@@ -62,15 +62,24 @@ git reset --hard HEAD  # Nuclear option
 **Launch Pattern**: Start with Orchestration Agent for multi-file features
 
 ## 🚀 MANDATORY SESSION START PROTOCOL:
-1. **Read this file** (current session context)
-2. **Read WORKFLOW.md** (step-by-step work method)  
-3. **Read PRIORITIES.md** (current TODO list)
-4. **Read FEATURES.md** (protected features)
-5. **Read PROJECT_OVERVIEW.md** (architecture context)
-6. **Optional: Read BEST_PRACTICES.md** (debugging patterns)
-7. **Optional: Read SUB_AGENTS.md** (when using autonomous agents)
+**EVERY NEW CONVERSATION MUST START WITH THESE STEPS IN ORDER:**
+
+1. **Read CLAUDE.md** (this file - master index & session context)
+2. **Read DOCUMENTATION_MAP.md** (find which docs are relevant to your task)
+3. **Read WORKFLOW.md** (step-by-step work method)
+4. **Read PRIORITIES.md** (current TODO list)
+5. **Read FEATURES.md** (protected features)
+6. **Read relevant feature docs** (from DOCUMENTATION_MAP.md based on task)
+7. **Optional: Read BEST_PRACTICES.md** (debugging patterns)
+8. **Optional: Read SUB_AGENTS.md** (when using autonomous agents)
+
+**Quick Reading Order**: `CLAUDE.md → DOCUMENTATION_MAP.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md`
 
 ## 📂 DOCUMENTATION STRUCTURE:
+
+**📚 For complete documentation reference, see [DOCUMENTATION_MAP.md](./DOCUMENTATION_MAP.md)**
+
+### Core Documentation (Quick Reference)
 
 | File | Purpose | When to Read |
 |------|---------|--------------|
@@ -80,6 +89,8 @@ git reset --hard HEAD  # Nuclear option
 | **PROJECT_OVERVIEW.md** | Architecture + vision + status | For context |
 | **BEST_PRACTICES.md** | Debugging patterns | When issues arise |
 | **SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
+| **TRADING_ENHANCEMENTS.md** | Paper trading system (Phase 2) | Trading feature work |
+| **DOCUMENTATION_MAP.md** | Complete documentation index | Finding specific docs |
 
 
 ## 📋 CONVERSATION PROMPT TEMPLATE:
@@ -172,10 +183,67 @@ If "browser already in use" error occurs:
 
 ## 🎯 SESSION COMPLETION CHECKLIST:
 - [ ] Work tasks completed
-- [ ] PRIORITIES.md updated with progress  
+- [ ] PRIORITIES.md updated with progress
 - [ ] ⚠️ FEATURES.md updated if new feature added (add to protected list)
+- [ ] ⚠️ DOCUMENTATION_MAP.md updated if new docs created
 - [ ] Next conversation prompt updated
 - [ ] User asked: "Any final observations?"
 - [ ] Confirmed: "Documentation updated, next session prompt ready"
 
-**This structured approach ensures bulletproof consistency across sessions.** 🔒
+---
+
+## 📝 DOCUMENTATION MAINTENANCE PROTOCOL
+
+### When Creating New Documentation Files:
+
+**MANDATORY STEPS - ALWAYS FOLLOW THIS PROCESS:**
+
+1. **Choose the right category** (consult DOCUMENTATION_MAP.md):
+   - Core Workflow? → Root level with clear name
+   - Feature-specific? → Root level or create `/docs/features/` if many
+   - Research/planning? → Root level with descriptive name
+   - Historical? → Move to `/_archive/`
+   - Sub-agent? → `/.claude/agents/`
+
+2. **Update DOCUMENTATION_MAP.md IMMEDIATELY**:
+   ```markdown
+   # Add entry to appropriate section
+   | **NEW_FILE.md** | Purpose description | When to read |
+   ```
+
+3. **Update CLAUDE.md if mandatory reading**:
+   - If new doc should be read every session, add to MANDATORY SESSION START PROTOCOL
+   - If related to core workflow, add to DOCUMENTATION STRUCTURE table
+
+4. **Commit with clear message**:
+   ```bash
+   git add NEW_FILE.md DOCUMENTATION_MAP.md CLAUDE.md
+   git commit -m "docs: Add NEW_FILE.md for [purpose]"
+   ```
+
+### When Archiving Documentation:
+
+1. **Move to /_archive/** instead of deleting
+2. **Update DOCUMENTATION_MAP.md** - move entry to "Archived" section
+3. **Remove from CLAUDE.md** if it was listed there
+4. **Commit**: `git commit -m "docs: Archive OLD_FILE.md"`
+
+### Documentation File Naming Convention:
+
+- **ALL_CAPS_WITH_UNDERSCORES.md** for important persistent docs
+- **lowercase-with-hyphens.md** for temporary/experimental docs
+- **Clear descriptive names**: `TRADING_ENHANCEMENTS.md` not `stuff.md`
+
+### Quick Reference - Where to Put New Docs:
+
+| Type of Documentation | Location | Example |
+|----------------------|----------|---------|
+| Core workflow/process | Root level | `WORKFLOW.md`, `PRIORITIES.md` |
+| Feature architecture | Root level | `TRADING_ENHANCEMENTS.md` |
+| Sub-agent specs | `/.claude/agents/` | `orchestration-master.md` |
+| Planning/roadmaps | Root level | `PHASE_3_PROGRESS.md` |
+| Research | Root level or archive if old | `MARKET_RESEARCH.md` |
+| Historical/completed | `/_archive/` | Old research, superseded docs |
+| Test documentation | `/tests/` | `tests/README.md` |
+
+**This ensures every new conversation can quickly find the right documentation.** 📚
