@@ -169,16 +169,26 @@ ALTER TABLE model_performance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE arena_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE arena_runs ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (for re-running migration)
+DROP POLICY IF EXISTS "Anyone can view arena trades" ON arena_trades;
+DROP POLICY IF EXISTS "Anyone can view model performance" ON model_performance;
+DROP POLICY IF EXISTS "Anyone can view arena runs" ON arena_runs;
+DROP POLICY IF EXISTS "Service role can insert arena trades" ON arena_trades;
+DROP POLICY IF EXISTS "Service role can update arena trades" ON arena_trades;
+DROP POLICY IF EXISTS "Service role can manage performance" ON model_performance;
+DROP POLICY IF EXISTS "Service role can manage config" ON arena_config;
+DROP POLICY IF EXISTS "Service role can manage runs" ON arena_runs;
+
 -- Public read access for leaderboard (anyone can view)
-CREATE POLICY IF NOT EXISTS "Anyone can view arena trades"
+CREATE POLICY "Anyone can view arena trades"
   ON arena_trades FOR SELECT
   USING (true);
 
-CREATE POLICY IF NOT EXISTS "Anyone can view model performance"
+CREATE POLICY "Anyone can view model performance"
   ON model_performance FOR SELECT
   USING (true);
 
-CREATE POLICY IF NOT EXISTS "Anyone can view arena runs"
+CREATE POLICY "Anyone can view arena runs"
   ON arena_runs FOR SELECT
   USING (true);
 
@@ -186,23 +196,23 @@ CREATE POLICY IF NOT EXISTS "Anyone can view arena runs"
 -- Note: These policies will allow service role key to bypass RLS
 -- For production, replace 'true' with proper authentication checks
 
-CREATE POLICY IF NOT EXISTS "Service role can insert arena trades"
+CREATE POLICY "Service role can insert arena trades"
   ON arena_trades FOR INSERT
   WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "Service role can update arena trades"
+CREATE POLICY "Service role can update arena trades"
   ON arena_trades FOR UPDATE
   USING (true);
 
-CREATE POLICY IF NOT EXISTS "Service role can manage performance"
+CREATE POLICY "Service role can manage performance"
   ON model_performance FOR ALL
   USING (true);
 
-CREATE POLICY IF NOT EXISTS "Service role can manage config"
+CREATE POLICY "Service role can manage config"
   ON arena_config FOR ALL
   USING (true);
 
-CREATE POLICY IF NOT EXISTS "Service role can manage runs"
+CREATE POLICY "Service role can manage runs"
   ON arena_runs FOR ALL
   USING (true);
 
