@@ -324,10 +324,10 @@ Trading Master (Orchestrator)
 
 ### Phase 2A.6: TradingModelSelector with Presets & xAI Model Fix
 **Status**: ✅ COMPLETED
-**Commits**: `dc323b9`, `411e8d4`
+**Commits**: `dc323b9`, `411e8d4`, `ae32ba6`
 
 **Implementation Summary:**
-Replaced dropdown-based model selection with Ultra Mode's badge-based selector and added Free/Pro/Max preset buttons for easier testing.
+Replaced dropdown-based model selection with Ultra Mode's badge-based selector and added Free/Pro/Max preset buttons for easier testing. All 3 trading modes now have consistent badge-based UI.
 
 **What Changed:**
 1. **Fixed xAI Models** (`lib/trading/models-config.ts`):
@@ -356,14 +356,17 @@ Replaced dropdown-based model selection with Ultra Mode's badge-based selector a
    - Extract enabled model IDs when calling API
    - Default: Pro preset (8 balanced models)
 
-5. **Debate Mode Enhanced with Presets** (`components/trading/debate-mode.tsx`):
+5. **Debate Mode Enhanced with Badge Selector + Presets** (`components/trading/debate-mode.tsx`):
+   - Created `SingleModelBadgeSelector` component for single model selection
+   - Replaced old provider button grid with badge-based UI
+   - Each role now shows colored badge with dropdown (matching Ultra Mode style)
    - Added Free/Pro/Max preset buttons for all 3 roles
    - **Free Preset**: gemini-2.0-flash (Analyst), llama-3.3-70b (Critic), gemini-1.5-flash (Synthesizer)
    - **Pro Preset**: claude-3-5-sonnet (Analyst), gpt-4o (Critic), llama-3.3-70b (Synthesizer)
    - **Max Preset**: claude-4.5-sonnet (Analyst), gpt-5-chat-latest (Critic), gemini-2.5-pro (Synthesizer)
    - Default changed to Pro preset (balanced models)
    - Users can still manually adjust each role after applying preset
-   - Automatically benefits from fixed xAI models in `models-config.ts`
+   - All 6 correct xAI models accessible via dropdowns
 
 **Key Benefits:**
 - **Consistent UX**: All trading modes now use same visual selector as Ultra Mode
