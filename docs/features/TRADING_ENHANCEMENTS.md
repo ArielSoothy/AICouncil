@@ -141,7 +141,7 @@ Based on comprehensive research of:
 - Position sizing and stop-losses are mandatory risk controls
 - Timeframe-specific analysis dramatically improves accuracy
 
-## 🚀 Completed Phase 2A
+## 🚀 Completed Phases
 
 ### Phase 2A: Complete Timeframe Integration
 **Status**: ✅ COMPLETED
@@ -169,6 +169,47 @@ Based on comprehensive research of:
 - Timeframe-aware trading prompts (day, swing, position, long-term)
 - Consistent UX across Individual, Consensus, and Debate modes
 - Backend validation with TypeScript type safety
+
+### Phase 2A.5: Optional Stock Symbol Analysis
+**Status**: ✅ COMPLETED
+**Commits**: `fe202c7`, `9e5d2b5`, `c015f45`, `8e9e8c9`
+
+**Implementation Summary**:
+All 3 trading modes now support optional stock symbol input for targeted analysis.
+
+**What Changed**:
+1. **Prompt System** (`lib/alpaca/enhanced-prompts.ts`):
+   - Added `targetSymbol?: string` parameter to `generateEnhancedTradingPrompt()`
+   - Conditional prompt: With symbol = "🎯 TARGET STOCK: {SYMBOL} - YOU MUST ANALYZE THIS STOCK ONLY"
+   - Without symbol = General market analysis (maintains backward compatibility)
+
+2. **All 3 Mode UIs** (individual, consensus, debate):
+   - Added optional text input field: "📊 Analyze Specific Stock (Optional)"
+   - Auto-uppercase input (TSLA, AAPL, etc.)
+   - Helper text: "💡 Leave empty for general market analysis"
+   - Consistent placement: After model selector, before timeframe
+
+3. **All 3 APIs** (individual, consensus, debate):
+   - Extract `targetSymbol` from request body
+   - Pass to `generateEnhancedTradingPrompt()` as 5th parameter
+   - Enhanced logging shows target symbol when provided
+
+**Key Benefits**:
+- **Stock-Specific Research**: Get focused analysis on any stock (e.g., "TSLA")
+- **Better Model Comparison**: All models analyze SAME asset (apples-to-apples comparison)
+- **Meaningful Consensus**: Models vote on same stock = higher quality consensus
+- **Focused Debates**: Analyst/Critic/Synthesizer debate same stock = more interesting
+- **Professional Due Diligence**: Research capability for specific investment opportunities
+- **Data Science Value**: Compare model performance on identical tasks
+
+**User Flow Example**:
+```
+1. User enters "TSLA" in optional input
+2. Clicks "Get Trading Decisions"
+3. All 8 models receive: "🎯 TARGET STOCK: TSLA - analyze THIS stock only"
+4. Each model returns BUY/SELL/HOLD recommendation for Tesla specifically
+5. User sees side-by-side Tesla analysis from Claude, GPT, Gemini, etc.
+```
 
 ### Phase 2B: Trading Master Agent System
 **Status**: 📋 PLANNED
@@ -277,4 +318,5 @@ Trading Master (Orchestrator)
 ---
 
 **Phase 2A Status**: ✅ COMPLETED - All 3 trading modes now support professional timeframe-specific analysis
-**Next Session Priority**: Test all timeframes across all modes, then begin Phase 2B (Trading Master Agent System) implementation
+**Phase 2A.5 Status**: ✅ COMPLETED - Optional stock symbol analysis across all 3 modes
+**Next Session Priority**: Test stock symbol feature + timeframes, then begin Phase 2B (Trading Master Agent System) implementation
