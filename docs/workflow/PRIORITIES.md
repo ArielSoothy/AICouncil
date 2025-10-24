@@ -575,8 +575,15 @@
 **Step 6: Connect Consensus mode to backend + test** ⏳
 - Create `app/api/trading/consensus/route.ts` - Consensus trading API
 - Implement: Get all decisions → Aggregate voting → Display unified consensus
-- **Test**: Select 3 models, click button, see "Consensus: BUY AAPL (3/3 models agree)"
-- **Git**: `git commit -m "step 6: Connect Consensus mode to backend"`
+- **IMPORTANT**: Use EXACT SAME infrastructure as Normal Consensus Mode:
+  - ✅ Judge System (Claude/GPT/Gemini synthesizes responses)
+  - ✅ Model Expertise Weighting (reasoning/factual/creative scores)
+  - ✅ Normalized Rankings (deterministic grouping, accurate model counts)
+  - ✅ Intelligent Agreement Detection (finds common themes)
+  - ✅ Professional UI (Progress component, structured layout)
+- **Reference**: Phase 2A.9 in TRADING_ENHANCEMENTS.md
+- **Test**: Select 3 models, click button, see judge-synthesized consensus with agreement level
+- **Git**: `git commit -m "step 6: Connect Consensus mode to backend with judge system"`
 
 **Step 7: Debate Trade mode UI** ⏳
 - Create `components/trading/debate-mode.tsx` - Debate trading interface
