@@ -226,8 +226,19 @@ RETURNS TRIGGER AS $$
 BEGIN
   -- Only update if trade has closed (has P&L)
   IF NEW.pnl IS NOT NULL THEN
-    INSERT INTO model_performance (model_id, model_name, provider)
-    VALUES (NEW.model_id, NEW.model_name, NEW.provider)
+    INSERT INTO model_performance (
+      model_id, model_name, provider,
+      total_trades, winning_trades, losing_trades, total_pnl, win_rate, last_trade_at
+    )
+    VALUES (
+      NEW.model_id, NEW.model_name, NEW.provider,
+      1,  -- First trade
+      CASE WHEN NEW.pnl > 0 THEN 1 ELSE 0 END,  -- winning_trades
+      CASE WHEN NEW.pnl < 0 THEN 1 ELSE 0 END,  -- losing_trades
+      NEW.pnl,  -- Include P&L from first trade
+      CASE WHEN NEW.pnl > 0 THEN 100.0 ELSE 0.0 END,  -- win_rate (100% if first trade wins)
+      NEW.exit_at  -- last_trade_at
+    )
     ON CONFLICT (model_id) DO UPDATE SET
       total_trades = model_performance.total_trades + 1,
       winning_trades = model_performance.winning_trades + CASE WHEN NEW.pnl > 0 THEN 1 ELSE 0 END,

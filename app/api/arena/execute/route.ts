@@ -170,6 +170,11 @@ export async function POST(request: NextRequest) {
         const cleanedResponse = extractJSON(result.response);
         const decision: TradeDecision = JSON.parse(cleanedResponse);
 
+        // Generate mock P&L for testing (random between -$100 and +$200)
+        // TODO: Replace with real Alpaca execution and actual P&L tracking
+        const mockPnL = (Math.random() * 300 - 100).toFixed(2);
+        const mockPnLPercent = (parseFloat(mockPnL) / 1000 * 100).toFixed(2); // Assuming $1000 position
+
         // Save trade to arena_trades table
         const { data: trade, error: tradeError } = await supabase
           .from('arena_trades')
@@ -185,6 +190,10 @@ export async function POST(request: NextRequest) {
             timeframe,
             scheduled_run_id: runId,
             order_status: 'simulated', // For now, simulate trades
+            pnl: parseFloat(mockPnL), // Mock P&L for testing leaderboard
+            pnl_percent: parseFloat(mockPnLPercent),
+            exit_reason: 'simulated_test',
+            exit_at: new Date().toISOString(),
           })
           .select()
           .single();
