@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp, Sparkles, Zap, Gift } from 'lucide-react'
 import { DebateTranscript, createDebateMessage, type DebateMessage } from './debate-transcript'
-import { getModelDisplayName, getDefaultModelForProvider } from '@/lib/trading/models-config'
-import { ProviderModelSelector } from './provider-model-selector'
+import { getModelDisplayName } from '@/lib/trading/models-config'
+import { SingleModelBadgeSelector } from './single-model-badge-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 
 interface DebateAgent {
@@ -197,28 +197,25 @@ export function DebateMode() {
 
         <div className="space-y-6">
           {/* Analyst Model Selection */}
-          <ProviderModelSelector
+          <SingleModelBadgeSelector
             value={analystModel}
-            onChange={(value) => setAnalystModel(value as string)}
-            mode="single"
+            onChange={setAnalystModel}
             label="📊 Analyst (Proposes trades)"
             disabled={loading}
           />
 
           {/* Critic Model Selection */}
-          <ProviderModelSelector
+          <SingleModelBadgeSelector
             value={criticModel}
-            onChange={(value) => setCriticModel(value as string)}
-            mode="single"
+            onChange={setCriticModel}
             label="🔍 Critic (Challenges recommendations)"
             disabled={loading}
           />
 
           {/* Synthesizer Model Selection */}
-          <ProviderModelSelector
+          <SingleModelBadgeSelector
             value={synthesizerModel}
-            onChange={(value) => setSynthesizerModel(value as string)}
-            mode="single"
+            onChange={setSynthesizerModel}
             label="⚖️ Synthesizer (Makes final decision)"
             disabled={loading}
           />
