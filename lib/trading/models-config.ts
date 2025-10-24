@@ -295,23 +295,47 @@ export const TRADING_MODELS: TradingModel[] = [
   },
 
   // ===== XAI (Grok) =====
+  // Grok 4 Series (Flagship)
   {
-    id: 'grok-2-latest',
-    name: 'Grok 2 Latest',
+    id: 'grok-4-fast-reasoning',
+    name: 'Grok 4 Fast Reasoning',
     provider: 'xai',
     tier: 'flagship',
     badge: '🌟'
   },
   {
-    id: 'grok-2-1212',
-    name: 'Grok 2 (Dec 12)',
+    id: 'grok-4-fast-non-reasoning',
+    name: 'Grok 4 Fast',
     provider: 'xai',
     tier: 'flagship',
     badge: '🌟'
   },
   {
-    id: 'grok-beta',
-    name: 'Grok Beta',
+    id: 'grok-4-0709',
+    name: 'Grok 4 (0709)',
+    provider: 'xai',
+    tier: 'flagship',
+    badge: '🌟'
+  },
+  // Grok 3 Series (Balanced)
+  {
+    id: 'grok-3',
+    name: 'Grok 3',
+    provider: 'xai',
+    tier: 'balanced',
+    badge: '⚡'
+  },
+  {
+    id: 'grok-3-mini',
+    name: 'Grok 3 Mini',
+    provider: 'xai',
+    tier: 'balanced',
+    badge: '⚡'
+  },
+  // Grok Code (Specialized)
+  {
+    id: 'grok-code-fast-1',
+    name: 'Grok Code Fast',
     provider: 'xai',
     tier: 'balanced',
     badge: '⚡'

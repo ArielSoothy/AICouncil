@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react'
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
-import { getModelDisplayName, getDefaultModelSelections } from '@/lib/trading/models-config'
-import { ProviderModelSelector } from './provider-model-selector'
+import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
+import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
+import { ModelConfig } from '@/types/consensus'
 
 interface TradingDecision {
   model: string
@@ -25,8 +26,20 @@ interface AnalysisContext {
   promptSummary: string
 }
 
+// Default models for Individual Mode (Pro preset - 8 balanced models)
+const DEFAULT_INDIVIDUAL_MODELS: ModelConfig[] = [
+  { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', enabled: true },
+  { provider: 'openai', model: 'gpt-4o', enabled: true },
+  { provider: 'openai', model: 'gpt-5-mini', enabled: true },
+  { provider: 'google', model: 'gemini-2.5-pro', enabled: true },
+  { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
+  { provider: 'xai', model: 'grok-3', enabled: true },
+  { provider: 'mistral', model: 'mistral-large-latest', enabled: true },
+  { provider: 'perplexity', model: 'sonar-pro', enabled: true },
+]
+
 export function IndividualMode() {
-  const [selectedModels, setSelectedModels] = useState<string[]>(getDefaultModelSelections())
+  const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(DEFAULT_INDIVIDUAL_MODELS)
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [targetSymbol, setTargetSymbol] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -41,11 +54,14 @@ export function IndividualMode() {
     setContext(null)
     setContextSteps([])
 
+    // Extract enabled model IDs for API
+    const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
+
     try {
       const response = await fetch('/api/trading/individual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedModels, timeframe, targetSymbol: targetSymbol.trim() || undefined }),
+        body: JSON.stringify({ selectedModels: modelIds, timeframe, targetSymbol: targetSymbol.trim() || undefined }),
       })
 
       if (!response.ok) {
@@ -65,7 +81,7 @@ export function IndividualMode() {
           createReasoningStep('analysis', `Available buying power: $${parseFloat(data.context.buyingPower).toLocaleString()}`),
           createReasoningStep('analysis', `Available cash: $${parseFloat(data.context.cash).toLocaleString()}`),
           createReasoningStep('thinking', data.context.promptSummary),
-          createReasoningStep('decision', `Querying ${selectedModels.length} AI models for trading recommendations...`)
+          createReasoningStep('decision', `Querying ${selectedModels.filter(m => m.enabled).length} AI models for trading recommendations...`)
         ]
 
         setContextSteps(steps)
@@ -83,14 +99,10 @@ export function IndividualMode() {
     <div className="space-y-6">
       {/* Model Selector & Timeframe */}
       <div className="bg-card rounded-lg border p-6 space-y-6">
-        <ProviderModelSelector
-          value={selectedModels}
-          onChange={(value) => setSelectedModels(value as string[])}
-          mode="multiple"
-          label="Select AI Models to Compare (2-10)"
+        <TradingModelSelector
+          models={selectedModels}
+          onChange={setSelectedModels}
           disabled={loading}
-          minSelections={2}
-          maxSelections={10}
         />
 
         <div className="space-y-2">
@@ -118,7 +130,7 @@ export function IndividualMode() {
 
         <Button
           onClick={getTradingDecisions}
-          disabled={loading || selectedModels.length < 2}
+          disabled={loading || selectedModels.filter(m => m.enabled).length < 2}
           className="w-full"
           size="lg"
         >
@@ -128,7 +140,7 @@ export function IndividualMode() {
               Getting Trading Decisions...
             </>
           ) : (
-            <>Get Trading Decisions from {selectedModels.length} Models</>
+            <>Get Trading Decisions from {selectedModels.filter(m => m.enabled).length} Models</>
           )}
         </Button>
       </div>
@@ -153,7 +165,7 @@ export function IndividualMode() {
               steps={contextSteps}
               isStreaming={false}
               title="AI Analysis Context"
-              modelName={`${selectedModels.length} Models`}
+              modelName={`${selectedModels.filter(m => m.enabled).length} Models`}
             />
           )}
         </div>

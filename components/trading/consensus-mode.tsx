@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, TrendingUp, TrendingDown, Minus, Users } from 'lucide-react'
-import { getModelDisplayName, getDefaultModelSelections } from '@/lib/trading/models-config'
-import { ProviderModelSelector } from './provider-model-selector'
+import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
+import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
+import { ModelConfig } from '@/types/consensus'
 
 interface ConsensusResult {
   action: 'BUY' | 'SELL' | 'HOLD'
@@ -21,8 +22,20 @@ interface ConsensusResult {
   modelCount: number
 }
 
+// Default models for Consensus Mode (Pro preset - 8 balanced models)
+const DEFAULT_CONSENSUS_MODELS: ModelConfig[] = [
+  { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', enabled: true },
+  { provider: 'openai', model: 'gpt-4o', enabled: true },
+  { provider: 'openai', model: 'gpt-5-mini', enabled: true },
+  { provider: 'google', model: 'gemini-2.5-pro', enabled: true },
+  { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
+  { provider: 'xai', model: 'grok-3', enabled: true },
+  { provider: 'mistral', model: 'mistral-large-latest', enabled: true },
+  { provider: 'perplexity', model: 'sonar-pro', enabled: true },
+]
+
 export function ConsensusMode() {
-  const [selectedModels, setSelectedModels] = useState<string[]>(getDefaultModelSelections())
+  const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(DEFAULT_CONSENSUS_MODELS)
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [targetSymbol, setTargetSymbol] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -32,11 +45,14 @@ export function ConsensusMode() {
     setLoading(true)
     setConsensus(null)
 
+    // Extract enabled model IDs for API
+    const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
+
     try {
       const response = await fetch('/api/trading/consensus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedModels, timeframe, targetSymbol: targetSymbol.trim() || undefined }),
+        body: JSON.stringify({ selectedModels: modelIds, timeframe, targetSymbol: targetSymbol.trim() || undefined }),
       })
 
       if (!response.ok) {
@@ -58,14 +74,10 @@ export function ConsensusMode() {
     <div className="space-y-6">
       {/* Model Selector & Timeframe */}
       <div className="bg-card rounded-lg border p-6 space-y-6">
-        <ProviderModelSelector
-          value={selectedModels}
-          onChange={(value) => setSelectedModels(value as string[])}
-          mode="multiple"
-          label="Select AI Models for Consensus (2-10)"
+        <TradingModelSelector
+          models={selectedModels}
+          onChange={setSelectedModels}
           disabled={loading}
-          minSelections={2}
-          maxSelections={10}
         />
 
         <div className="space-y-2">
@@ -93,19 +105,19 @@ export function ConsensusMode() {
 
         <Button
           onClick={getConsensusDecision}
-          disabled={loading || selectedModels.length < 2}
+          disabled={loading || selectedModels.filter(m => m.enabled).length < 2}
           className="w-full"
           size="lg"
         >
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Getting Consensus from {selectedModels.length} Models...
+              Getting Consensus from {selectedModels.filter(m => m.enabled).length} Models...
             </>
           ) : (
             <>
               <Users className="w-4 h-4 mr-2" />
-              Get Consensus Decision from {selectedModels.length} Models
+              Get Consensus Decision from {selectedModels.filter(m => m.enabled).length} Models
             </>
           )}
         </Button>
