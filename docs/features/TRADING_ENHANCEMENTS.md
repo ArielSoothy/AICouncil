@@ -324,7 +324,7 @@ Trading Master (Orchestrator)
 
 ### Phase 2A.6: TradingModelSelector with Presets & xAI Model Fix
 **Status**: ✅ COMPLETED
-**Commits**: `dc323b9`
+**Commits**: `dc323b9`, `411e8d4`
 
 **Implementation Summary:**
 Replaced dropdown-based model selection with Ultra Mode's badge-based selector and added Free/Pro/Max preset buttons for easier testing.
@@ -356,10 +356,14 @@ Replaced dropdown-based model selection with Ultra Mode's badge-based selector a
    - Extract enabled model IDs when calling API
    - Default: Pro preset (8 balanced models)
 
-5. **Debate Mode Automatically Fixed**:
-   - Uses single model selection (no UI changes needed)
+5. **Debate Mode Enhanced with Presets** (`components/trading/debate-mode.tsx`):
+   - Added Free/Pro/Max preset buttons for all 3 roles
+   - **Free Preset**: gemini-2.0-flash (Analyst), llama-3.3-70b (Critic), gemini-1.5-flash (Synthesizer)
+   - **Pro Preset**: claude-3-5-sonnet (Analyst), gpt-4o (Critic), llama-3.3-70b (Synthesizer)
+   - **Max Preset**: claude-4.5-sonnet (Analyst), gpt-5-chat-latest (Critic), gemini-2.5-pro (Synthesizer)
+   - Default changed to Pro preset (balanced models)
+   - Users can still manually adjust each role after applying preset
    - Automatically benefits from fixed xAI models in `models-config.ts`
-   - Analyst/Critic/Synthesizer roles now have access to correct Grok models
 
 **Key Benefits:**
 - **Consistent UX**: All trading modes now use same visual selector as Ultra Mode
@@ -369,6 +373,8 @@ Replaced dropdown-based model selection with Ultra Mode's badge-based selector a
 - **Type Safety**: Full ModelConfig[] support maintains TypeScript safety
 
 **Preset Configurations:**
+
+**Individual & Consensus Modes:**
 ```typescript
 Free: [
   'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash',
@@ -386,6 +392,27 @@ Max: [
   'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning', 'grok-4-0709',
   'llama-3.3-70b-versatile', 'sonar-pro'
 ]
+```
+
+**Debate Mode (Role-Specific):**
+```typescript
+Free: {
+  analyst: 'gemini-2.0-flash',        // Google free
+  critic: 'llama-3.3-70b-versatile',  // Groq free (best free model)
+  synthesizer: 'gemini-1.5-flash'     // Google free
+}
+
+Pro: {
+  analyst: 'claude-3-5-sonnet-20241022',  // Anthropic balanced
+  critic: 'gpt-4o',                        // OpenAI balanced
+  synthesizer: 'llama-3.3-70b-versatile'  // Groq free
+}
+
+Max: {
+  analyst: 'claude-sonnet-4-5-20250929',  // Anthropic flagship
+  critic: 'gpt-5-chat-latest',             // OpenAI flagship
+  synthesizer: 'gemini-2.5-pro'            // Google flagship
+}
 ```
 
 **Next Session Priority**: Test preset buttons + new UI, verify all 46 models accessible, then begin Phase 2B (Trading Master Agent System) implementation
