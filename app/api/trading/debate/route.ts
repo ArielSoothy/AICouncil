@@ -13,9 +13,14 @@ import { XAIProvider } from '@/lib/ai-providers/xai';
 import { getModelDisplayName as getModelName, getProviderForModel as getProviderFromConfig } from '@/lib/trading/models-config';
 import type { TradeDecision } from '@/lib/alpaca/types';
 
-// Helper function to strip markdown code blocks from JSON responses
-function stripMarkdownCodeBlocks(text: string): string {
+/**
+ * Robust JSON extraction from model responses
+ * Handles multiple formats: markdown blocks, plain text, truncated responses
+ */
+function extractJSON(text: string): string {
   let cleaned = text.trim();
+
+  // Pattern 1: Remove markdown code blocks
   if (cleaned.startsWith('```json')) {
     cleaned = cleaned.slice(7);
   } else if (cleaned.startsWith('```')) {
@@ -24,7 +29,36 @@ function stripMarkdownCodeBlocks(text: string): string {
   if (cleaned.endsWith('```')) {
     cleaned = cleaned.slice(0, -3);
   }
-  return cleaned.trim();
+  cleaned = cleaned.trim();
+
+  // Pattern 2: Extract JSON object from surrounding text
+  // Find first { and last }
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+
+  // Pattern 3: Try to fix common JSON issues
+  cleaned = cleaned
+    .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+    .replace(/'/g, '"') // Replace single quotes with double quotes
+    .trim();
+
+  // Pattern 4: If still not valid, try to find complete JSON
+  try {
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch (e) {
+    // Try to extract just the JSON object more aggressively
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      return match[0];
+    }
+    // If all else fails, return what we have
+    return cleaned;
+  }
 }
 
 // Helper function to get provider instance for a model
@@ -167,10 +201,10 @@ export async function POST(request: NextRequest) {
       model: analystModel,
       provider: getProviderName(analystModel),
       temperature: 0.7,
-      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
+      maxTokens: 1500, // Further increased to fix GPT-5 Mini, Mistral Large, Sonar Pro truncation
       enabled: true,
     });
-    const analystDecision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(analystResult.response));
+    const analystDecision: TradeDecision = JSON.parse(extractJSON(analystResult.response));
 
     // Critic (Dynamic model)
     console.log(`🔍 Critic (${getModelName(criticModel)}) evaluating recommendation...`);
@@ -180,10 +214,10 @@ export async function POST(request: NextRequest) {
       model: criticModel,
       provider: getProviderName(criticModel),
       temperature: 0.7,
-      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
+      maxTokens: 1500, // Further increased to fix GPT-5 Mini, Mistral Large, Sonar Pro truncation
       enabled: true,
     });
-    const criticDecision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(criticResult.response));
+    const criticDecision: TradeDecision = JSON.parse(extractJSON(criticResult.response));
 
     // Synthesizer (Dynamic model)
     console.log(`⚖️  Synthesizer (${getModelName(synthesizerModel)}) balancing perspectives...`);
@@ -195,10 +229,10 @@ export async function POST(request: NextRequest) {
       model: synthesizerModel,
       provider: getProviderName(synthesizerModel),
       temperature: 0.7,
-      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
+      maxTokens: 1500, // Further increased to fix GPT-5 Mini, Mistral Large, Sonar Pro truncation
       enabled: true,
     });
-    const synthesizerDecision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(synthesizerResult.response));
+    const synthesizerDecision: TradeDecision = JSON.parse(extractJSON(synthesizerResult.response));
 
     const round1 = [
       { role: 'analyst' as const, name: getModelName(analystModel), decision: analystDecision },
@@ -228,10 +262,10 @@ export async function POST(request: NextRequest) {
       model: analystModel,
       provider: getProviderName(analystModel),
       temperature: 0.7,
-      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
+      maxTokens: 1500, // Further increased to fix GPT-5 Mini, Mistral Large, Sonar Pro truncation
       enabled: true,
     });
-    const analystR2Decision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(analystR2Result.response));
+    const analystR2Decision: TradeDecision = JSON.parse(extractJSON(analystR2Result.response));
 
     // Round 2 Critic refinement
     console.log(`🔍 Critic (${getModelName(criticModel)}) refining evaluation...`);
@@ -244,10 +278,10 @@ export async function POST(request: NextRequest) {
       model: criticModel,
       provider: getProviderName(criticModel),
       temperature: 0.7,
-      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
+      maxTokens: 1500, // Further increased to fix GPT-5 Mini, Mistral Large, Sonar Pro truncation
       enabled: true,
     });
-    const criticR2Decision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(criticR2Result.response));
+    const criticR2Decision: TradeDecision = JSON.parse(extractJSON(criticR2Result.response));
 
     // Round 2 Synthesizer final decision
     console.log(`⚖️  Synthesizer (${getModelName(synthesizerModel)}) making final decision...`);
@@ -260,10 +294,10 @@ export async function POST(request: NextRequest) {
       model: synthesizerModel,
       provider: getProviderName(synthesizerModel),
       temperature: 0.7,
-      maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
+      maxTokens: 1500, // Further increased to fix GPT-5 Mini, Mistral Large, Sonar Pro truncation
       enabled: true,
     });
-    const synthesizerR2Decision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(synthesizerR2Result.response));
+    const synthesizerR2Decision: TradeDecision = JSON.parse(extractJSON(synthesizerR2Result.response));
 
     const round2 = [
       { role: 'analyst' as const, name: getModelName(analystModel), decision: analystR2Decision },

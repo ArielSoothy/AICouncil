@@ -12,7 +12,7 @@ import { CohereProvider } from '@/lib/ai-providers/cohere';
 import { XAIProvider } from '@/lib/ai-providers/xai';
 import { getModelDisplayName, getProviderForModel as getProviderType } from '@/lib/trading/models-config';
 import type { TradeDecision } from '@/lib/alpaca/types';
-import { analyzeTradingConsensus } from '@/lib/trading/judge-helper';
+import { generateTradingJudgePrompt, parseTradingJudgeResponse } from '@/lib/trading/judge-system';
 
 // Initialize all providers
 const PROVIDERS = {
@@ -26,9 +26,14 @@ const PROVIDERS = {
   xai: new XAIProvider(),
 };
 
-// Helper function to strip markdown code blocks from JSON responses
-function stripMarkdownCodeBlocks(text: string): string {
+/**
+ * Robust JSON extraction from model responses
+ * Handles multiple formats: markdown blocks, plain text, truncated responses
+ */
+function extractJSON(text: string): string {
   let cleaned = text.trim();
+
+  // Pattern 1: Remove markdown code blocks
   if (cleaned.startsWith('```json')) {
     cleaned = cleaned.slice(7);
   } else if (cleaned.startsWith('```')) {
@@ -37,7 +42,36 @@ function stripMarkdownCodeBlocks(text: string): string {
   if (cleaned.endsWith('```')) {
     cleaned = cleaned.slice(0, -3);
   }
-  return cleaned.trim();
+  cleaned = cleaned.trim();
+
+  // Pattern 2: Extract JSON object from surrounding text
+  // Find first { and last }
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+
+  // Pattern 3: Try to fix common JSON issues
+  cleaned = cleaned
+    .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+    .replace(/'/g, '"') // Replace single quotes with double quotes
+    .trim();
+
+  // Pattern 4: If still not valid, try to find complete JSON
+  try {
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch (e) {
+    // Try to extract just the JSON object more aggressively
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      return match[0];
+    }
+    // If all else fails, return what we have
+    return cleaned;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -80,12 +114,12 @@ export async function POST(request: NextRequest) {
           model: modelId,
           provider: providerType,
           temperature: 0.7,
-          maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
+          maxTokens: 1500, // Further increased to fix GPT-5 Mini, Mistral Large, Sonar Pro truncation
           enabled: true,
         });
 
-        // Parse JSON response (strip markdown code blocks if present)
-        const cleanedResponse = stripMarkdownCodeBlocks(result.response);
+        // Parse JSON response with robust extraction
+        const cleanedResponse = extractJSON(result.response);
         const decision: TradeDecision = JSON.parse(cleanedResponse);
 
         // Add model ID for judge weighting
@@ -131,9 +165,22 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Consensus action:', consensusAction);
 
-    // Step 5: Run Judge Analysis (uses model weighting and intelligent synthesis)
-    console.log('🧑‍⚖️  Running judge analysis with model weighting...');
-    const judgeResult = analyzeTradingConsensus(decisions, votes, consensusAction);
+    // Step 5: Run LLM Judge Analysis (uses Llama 3.3 70B for intelligent synthesis)
+    console.log('🧑‍⚖️  Running LLM judge analysis...');
+    const judgePrompt = generateTradingJudgePrompt(decisions, votes, consensusAction);
+
+    // Use Groq's Llama 3.3 70B (free) as judge
+    const groqProvider = PROVIDERS.groq;
+    const judgeResponse = await groqProvider.query(judgePrompt, {
+      provider: 'groq',
+      model: 'llama-3.3-70b-versatile',
+      enabled: true,
+      maxTokens: 800,
+      temperature: 0.2
+    });
+
+    const judgeResult = parseTradingJudgeResponse(judgeResponse.response);
+    judgeResult.tokenUsage = judgeResponse.tokensUsed || judgeResponse.tokens?.total || 0;
 
     // Step 6: Calculate aggregate values for BUY/SELL
     let consensusSymbol: string | undefined;
@@ -177,19 +224,21 @@ export async function POST(request: NextRequest) {
     // Step 7: Generate summary text
     const summary = `${maxVotes} out of ${decisions.length} models (${(agreementPercentage * 100).toFixed(0)}%) recommend ${consensusAction}${consensusSymbol ? ' ' + consensusSymbol : ''}. ${agreementText} achieved.`
 
-    // Step 8: Build consensus with judge results
+    // Step 8: Build consensus with LLM judge results
     const consensus = {
-      action: consensusAction,
-      symbol: consensusSymbol,
-      quantity: consensusQuantity,
-      reasoning: judgeResult.unifiedReasoning, // From judge (weighted synthesis)
-      confidence: judgeResult.confidence, // From judge (MODEL_POWER weighted)
+      action: judgeResult.bestAction, // From LLM judge analysis
+      symbol: judgeResult.symbol || consensusSymbol, // Prefer judge's symbol analysis
+      quantity: judgeResult.quantity || consensusQuantity, // Prefer judge's quantity analysis
+      reasoning: judgeResult.unifiedReasoning, // From LLM judge (intelligent synthesis)
+      confidence: judgeResult.confidence, // From LLM judge (weighted analysis)
       agreement: agreementLevel,
       agreementText,
       summary,
-      disagreements: judgeResult.disagreements, // From judge (intelligent detection)
+      disagreements: judgeResult.disagreements, // From LLM judge (intelligent detection)
       votes,
       modelCount: decisions.length,
+      judgeTokensUsed: judgeResult.tokenUsage, // Track judge API usage
+      riskLevel: judgeResult.riskLevel, // From LLM judge risk assessment
     };
 
     console.log('✅ Consensus result:', consensus);
