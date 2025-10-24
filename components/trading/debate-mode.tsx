@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp, Sparkles, Zap, Gift } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp, Sparkles, Zap, Gift, RotateCcw } from 'lucide-react'
 import { DebateTranscript, createDebateMessage, type DebateMessage } from './debate-transcript'
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName } from '@/lib/trading/models-config'
@@ -127,6 +127,20 @@ export function DebateMode() {
     setAnalystModel(preset.roles.analyst)
     setCriticModel(preset.roles.critic)
     setSynthesizerModel(preset.roles.synthesizer)
+  }
+
+  // Reset/clear results and start new analysis
+  const handleStartNew = () => {
+    setDebate(null)
+    setActiveRound(1)
+    setTranscriptMessages([])
+    setProgressSteps([])
+    // Remove URL parameter
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('c')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
   }
 
   const startDebate = async () => {
@@ -432,6 +446,25 @@ export function DebateMode() {
       {/* Debate Results */}
       {debate && (
         <div className="space-y-6">
+          {/* Results Header with Reset Button */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-2xl font-bold">Debate Results</h3>
+              <p className="text-sm text-muted-foreground">
+                3 AI agents debating across 2 rounds
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleStartNew}
+              className="gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Start New Analysis
+            </Button>
+          </div>
+
           {/* Round Selector */}
           <div className="flex gap-2">
             <button

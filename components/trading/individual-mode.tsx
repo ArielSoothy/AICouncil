@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
 import { TradingModelSelector } from './trading-model-selector'
@@ -90,6 +90,20 @@ export function IndividualMode() {
       }
     }
   })
+
+  // Reset/clear results and start new analysis
+  const handleStartNew = () => {
+    setDecisions([])
+    setContext(null)
+    setContextSteps([])
+    setProgressSteps([])
+    // Remove URL parameter
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('c')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }
 
   const getTradingDecisions = async () => {
     setLoading(true)
@@ -305,7 +319,25 @@ export function IndividualMode() {
 
       {/* Results */}
       {decisions.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-2xl font-bold">Trading Decisions</h3>
+              <p className="text-sm text-muted-foreground">
+                From {decisions.length} AI model{decisions.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleStartNew}
+              className="gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Start New Analysis
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {decisions.map((decision, index) => (
             <div key={index} className="bg-card rounded-lg border p-6">
               <div className="flex items-center justify-between mb-4">
@@ -390,7 +422,8 @@ export function IndividualMode() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   )

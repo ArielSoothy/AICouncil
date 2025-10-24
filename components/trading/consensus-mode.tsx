@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Loader2, TrendingUp, TrendingDown, Minus, Users, CheckCircle, AlertCircle, XCircle } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Minus, Users, CheckCircle, AlertCircle, XCircle, RotateCcw } from 'lucide-react'
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
 import { TradingModelSelector } from './trading-model-selector'
@@ -110,6 +110,18 @@ export function ConsensusMode() {
       }
     }
   })
+
+  // Reset/clear results and start new analysis
+  const handleStartNew = () => {
+    setConsensus(null)
+    setProgressSteps([])
+    // Remove URL parameter
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('c')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }
 
   const getConsensusDecision = async () => {
     setLoading(true)
@@ -324,7 +336,18 @@ export function ConsensusMode() {
                 Based on {consensus.modelCount} AI model{consensus.modelCount !== 1 ? 's' : ''}
               </p>
             </div>
-            <ActionBadge action={consensus.action} />
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleStartNew}
+                className="gap-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Start New Analysis
+              </Button>
+              <ActionBadge action={consensus.action} />
+            </div>
           </div>
 
           {/* Agreement Level */}
