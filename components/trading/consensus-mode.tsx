@@ -374,9 +374,9 @@ export function ConsensusMode() {
           <div className="space-y-2 mb-6">
             <div className="flex justify-between text-sm">
               <span>Overall Confidence</span>
-              <span>{Math.round(consensus.confidence * 100)}%</span>
+              <span>{Math.round(consensus.confidence)}%</span>
             </div>
-            <Progress value={consensus.confidence * 100} className="h-2" />
+            <Progress value={consensus.confidence} className="h-2" />
           </div>
 
           {/* Consensus Summary */}
