@@ -6,6 +6,7 @@ import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName, getDefaultModelSelections } from '@/lib/trading/models-config'
 import { ProviderModelSelector } from './provider-model-selector'
+import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 
 interface TradingDecision {
   model: string
@@ -26,6 +27,7 @@ interface AnalysisContext {
 
 export function IndividualMode() {
   const [selectedModels, setSelectedModels] = useState<string[]>(getDefaultModelSelections())
+  const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [loading, setLoading] = useState(false)
   const [decisions, setDecisions] = useState<TradingDecision[]>([])
   const [context, setContext] = useState<AnalysisContext | null>(null)
@@ -42,7 +44,7 @@ export function IndividualMode() {
       const response = await fetch('/api/trading/individual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedModels }),
+        body: JSON.stringify({ selectedModels, timeframe }),
       })
 
       if (!response.ok) {
@@ -78,8 +80,8 @@ export function IndividualMode() {
 
   return (
     <div className="space-y-6">
-      {/* Model Selector */}
-      <div className="bg-card rounded-lg border p-6">
+      {/* Model Selector & Timeframe */}
+      <div className="bg-card rounded-lg border p-6 space-y-6">
         <ProviderModelSelector
           value={selectedModels}
           onChange={(value) => setSelectedModels(value as string[])}
@@ -90,10 +92,16 @@ export function IndividualMode() {
           maxSelections={10}
         />
 
+        <TimeframeSelector
+          value={timeframe}
+          onChange={setTimeframe}
+          disabled={loading}
+        />
+
         <Button
           onClick={getTradingDecisions}
           disabled={loading || selectedModels.length < 2}
-          className="w-full mt-4"
+          className="w-full"
           size="lg"
         >
           {loading ? (
