@@ -21,6 +21,15 @@ interface ReasoningDetails {
   timing?: string
 }
 
+interface TradingDecision {
+  action: 'BUY' | 'SELL' | 'HOLD'
+  symbol?: string
+  quantity?: number
+  reasoning: string | ReasoningDetails
+  confidence: number
+  model?: string
+}
+
 interface ConsensusResult {
   action: 'BUY' | 'SELL' | 'HOLD'
   symbol?: string
@@ -57,6 +66,7 @@ export function ConsensusMode() {
   const [targetSymbol, setTargetSymbol] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [consensus, setConsensus] = useState<ConsensusResult | null>(null)
+  const [decisions, setDecisions] = useState<TradingDecision[]>([])
   const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
 
   // Persistence for saving/restoring trading analyses
@@ -73,6 +83,9 @@ export function ConsensusMode() {
           const parsed = JSON.parse(localData)
           if (parsed.consensus) {
             setConsensus(parsed.consensus)
+          }
+          if (parsed.decisions) {
+            setDecisions(parsed.decisions)
           }
           if (parsed.metadata) {
             const meta = parsed.metadata
@@ -95,6 +108,9 @@ export function ConsensusMode() {
         if (responses.consensus) {
           setConsensus(responses.consensus)
         }
+        if (responses.decisions) {
+          setDecisions(responses.decisions)
+        }
         if (evalData?.metadata) {
           const meta = evalData.metadata
           if (meta.timeframe) setTimeframe(meta.timeframe)
@@ -114,6 +130,7 @@ export function ConsensusMode() {
   // Reset/clear results and start new analysis
   const handleStartNew = () => {
     setConsensus(null)
+    setDecisions([])
     setProgressSteps([])
     // Remove URL parameter
     if (typeof window !== 'undefined') {
@@ -126,6 +143,7 @@ export function ConsensusMode() {
   const getConsensusDecision = async () => {
     setLoading(true)
     setConsensus(null)
+    setDecisions([])
     setProgressSteps([])
 
     // Extract enabled model IDs for API
@@ -180,6 +198,7 @@ export function ConsensusMode() {
       ])
 
       setConsensus(data.consensus)
+      setDecisions(data.decisions || [])
 
       // Save conversation for history and persistence
       try {
@@ -189,7 +208,8 @@ export function ConsensusMode() {
           body: JSON.stringify({
             query: 'Consensus Trading Analysis',
             responses: {
-              consensus: data.consensus
+              consensus: data.consensus,
+              decisions: data.decisions
             },
             mode: 'trading-consensus',
             metadata: {
@@ -214,6 +234,7 @@ export function ConsensusMode() {
           if (typeof window !== 'undefined') {
             localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
               consensus: data.consensus,
+              decisions: data.decisions,
               metadata: {
                 timeframe,
                 targetSymbol: targetSymbol.trim() || null,
@@ -233,6 +254,7 @@ export function ConsensusMode() {
         if (typeof window !== 'undefined') {
           localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
             consensus: data.consensus,
+            decisions: data.decisions,
             metadata: {
               timeframe,
               targetSymbol: targetSymbol.trim() || null,
@@ -475,6 +497,18 @@ export function ConsensusMode() {
 
         </div>
       )}
+
+      {/* Individual Model Decisions */}
+      {decisions.length > 0 && (
+        <div className="bg-card rounded-lg border p-6">
+          <h3 className="text-xl font-semibold mb-4">Individual Model Decisions</h3>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {decisions.map((decision, index) => (
+              <TradingDecisionCard key={index} decision={decision} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -522,4 +556,110 @@ function AgreementIcon({ agreement }: { agreement: number }) {
   } else {
     return <XCircle className="w-5 h-5 text-red-600" />
   }
+}
+
+function TradingDecisionCard({ decision }: { decision: TradingDecision }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const modelName = decision.model ? getModelDisplayName(decision.model) : 'Unknown Model'
+
+  const getReasoningPreview = (reasoning: string | ReasoningDetails): string => {
+    if (typeof reasoning === 'string') {
+      return reasoning.length > 150 ? reasoning.substring(0, 150) + '...' : reasoning
+    }
+    // For structured reasoning, show bullish case preview
+    if (typeof reasoning === 'object' && reasoning.bullishCase) {
+      return reasoning.bullishCase.substring(0, 150) + '...'
+    }
+    return 'No reasoning provided'
+  }
+
+  return (
+    <div className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-card">
+      {/* Model Name & Action Badge */}
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-medium text-sm truncate flex-1">{modelName}</h4>
+        <ActionBadge action={decision.action} />
+      </div>
+
+      {/* Trade Details */}
+      {decision.action !== 'HOLD' && decision.symbol && (
+        <div className="space-y-2 mb-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Symbol:</span>
+            <span className="font-mono font-medium">{decision.symbol}</span>
+          </div>
+          {decision.quantity && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Quantity:</span>
+              <span className="font-medium">{decision.quantity} shares</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Confidence */}
+      <div className="mb-3">
+        <div className="flex justify-between text-sm mb-1">
+          <span className="text-muted-foreground">Confidence:</span>
+          <span className="font-medium">{Math.round(decision.confidence * 100)}%</span>
+        </div>
+        <Progress value={decision.confidence * 100} className="h-1.5" />
+      </div>
+
+      {/* Reasoning Preview */}
+      <div className="text-sm">
+        <div className="text-muted-foreground mb-1">Reasoning:</div>
+        <div className="text-xs leading-relaxed">
+          {isExpanded ? (
+            typeof decision.reasoning === 'string' ? (
+              <div className="whitespace-pre-wrap">{decision.reasoning}</div>
+            ) : (
+              <div className="space-y-2">
+                {decision.reasoning.bullishCase && (
+                  <div>
+                    <div className="font-medium text-green-600">📈 Bullish:</div>
+                    <div className="text-muted-foreground">{decision.reasoning.bullishCase}</div>
+                  </div>
+                )}
+                {decision.reasoning.bearishCase && (
+                  <div>
+                    <div className="font-medium text-red-600">📉 Bearish:</div>
+                    <div className="text-muted-foreground">{decision.reasoning.bearishCase}</div>
+                  </div>
+                )}
+                {decision.reasoning.technicalAnalysis && (
+                  <div>
+                    <div className="font-medium">📊 Technical:</div>
+                    <div className="text-muted-foreground">{decision.reasoning.technicalAnalysis}</div>
+                  </div>
+                )}
+              </div>
+            )
+          ) : (
+            <div className="text-muted-foreground">
+              {getReasoningPreview(decision.reasoning)}
+            </div>
+          )}
+        </div>
+
+        {/* Show More/Less Button */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="mt-2 text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+        >
+          {isExpanded ? (
+            <>
+              <Minus className="h-3 w-3" />
+              Show Less
+            </>
+          ) : (
+            <>
+              <TrendingUp className="h-3 w-3" />
+              Show More
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  )
 }

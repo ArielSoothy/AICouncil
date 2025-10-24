@@ -716,10 +716,13 @@
     * **Tested**: Individual Mode reset working correctly
     * **Commit**: 7d373ff
 - **Key Features**:
-  - **3 Trading Modes**:
-    1. Individual LLMs: Compare decisions from multiple AI models side-by-side
-    2. Consensus Trade: Multi-model consensus for trading strategy
-    3. Debate Trade: Agent debate system (Analyst → Critic → Synthesizer) for trades
+  - **2 Trading Modes** (Consolidated October 24, 2025):
+    1. **Consensus Trade**: Multi-model consensus + individual model responses in one unified view
+       - Shows consensus decision (vote breakdown, agreement level, synthesized reasoning)
+       - Displays individual model decisions (all 8 models with reasoning, confidence, symbols)
+       - Matches Normal Consensus UX pattern (no tab switching needed)
+    2. **Debate Trade**: Agent debate system (Analyst → Critic → Synthesizer) for trades
+  - **Eliminated Individual Mode**: Merged into Consensus Trade for better UX (all info in one place)
   - **Paper Trading Only**: All trades are simulated ($100k paper balance)
   - **Database Tracking**: Full trade history with reasoning, confidence, outcomes
   - **Alpaca Integration**: Real market data, realistic paper trading environment

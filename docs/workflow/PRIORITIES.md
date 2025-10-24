@@ -40,6 +40,36 @@
 
 ## ✅ RECENTLY COMPLETED (October 24, 2025):
 
+**✅ TRADING MODES CONSOLIDATION - MERGED INDIVIDUAL INTO CONSENSUS (October 24, 2025)**
+
+**Goal:** Eliminate redundant Individual LLMs mode by incorporating individual model responses into Consensus Trade mode (matching Normal Consensus pattern)
+
+**What Changed:**
+- ✅ **Consensus Trade API** - Now returns both `decisions` (individual) and `consensus` (synthesis) in response
+- ✅ **Consensus Trade UI** - New "Individual Model Decisions" section displays all model responses with:
+  - Model names with tier badges (⚡ Pro, 🌟 Flagship, 🎁 Free)
+  - Action badges (BUY/SELL/HOLD)
+  - Symbol and quantity details
+  - Confidence levels with progress bars
+  - Reasoning previews with expandable "Show More" buttons
+- ✅ **Removed Individual Mode Tab** - Eliminated redundant mode (users only see Consensus + Debate now)
+- ✅ **Updated Mode Selector** - Changed from 3 modes to 2 modes with updated description
+- ✅ **Updated Trading Page** - Removed IndividualMode import and component, defaulting to Consensus mode
+- ✅ **TypeScript** - Zero errors after refactor
+- ✅ **Browser Testing** - Confirmed individual responses display correctly within Consensus mode
+
+**Files Modified:**
+- `components/trading/consensus-mode.tsx` - Added individual decisions display
+- `components/trading/mode-selector.tsx` - Removed Individual mode tab
+- `app/trading/page.tsx` - Removed Individual mode integration
+- `app/api/trading/consensus/route.ts` - Already returning decisions array (no changes needed)
+
+**Pattern Match:** Trading Consensus now matches Normal Consensus exactly (shows individual responses + synthesis)
+
+**User Benefit:** Single unified view showing both individual model opinions AND consensus synthesis - better UX than switching between modes
+
+---
+
 **✅ ARENA MODE - AUTONOMOUS AI TRADING COMPETITION (October 24, 2025)**
 
 **Part 1: Database Architecture & APIs** (commit: b4e6c38)

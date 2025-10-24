@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Brain, Users, TrendingUp } from 'lucide-react'
+import { Users, TrendingUp } from 'lucide-react'
 
-export type TradingMode = 'individual' | 'consensus' | 'debate'
+export type TradingMode = 'consensus' | 'debate'
 
 interface ModeSelectorProps {
   selectedMode: TradingMode
@@ -13,15 +13,9 @@ interface ModeSelectorProps {
 export function ModeSelector({ selectedMode, onModeChange }: ModeSelectorProps) {
   const modes = [
     {
-      id: 'individual' as TradingMode,
-      name: 'Individual LLMs',
-      description: 'Compare trading decisions from individual AI models',
-      icon: Brain,
-    },
-    {
       id: 'consensus' as TradingMode,
       name: 'Consensus Trade',
-      description: 'Multi-model consensus for trading decisions',
+      description: 'Multi-model consensus for trading decisions (with individual model responses)',
       icon: TrendingUp,
     },
     {

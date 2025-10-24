@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
 import { TrendingUp, LineChart, Brain } from 'lucide-react'
 import { ModeSelector, TradingMode } from '@/components/trading/mode-selector'
-import { IndividualMode } from '@/components/trading/individual-mode'
 import { ConsensusMode } from '@/components/trading/consensus-mode'
 import { DebateMode } from '@/components/trading/debate-mode'
 import { TradeHistory } from '@/components/trading/trade-history'
@@ -16,7 +15,7 @@ function TradingPageContent() {
   const { user, userTier } = useAuth()
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
-  const [selectedMode, setSelectedMode] = useState<TradingMode>('individual')
+  const [selectedMode, setSelectedMode] = useState<TradingMode>('consensus')
 
   const effectiveUserTier = isGuestMode ? 'guest' : userTier
 
@@ -49,7 +48,7 @@ function TradingPageContent() {
               </div>
               <div className="flex items-center gap-1">
                 <Brain className="w-4 h-4" />
-                <span>3 Trading Modes</span>
+                <span>2 Trading Modes</span>
               </div>
             </div>
           </div>
@@ -66,8 +65,6 @@ function TradingPageContent() {
           />
 
           {/* Trading interface based on selected mode */}
-          {selectedMode === 'individual' && <IndividualMode />}
-
           {selectedMode === 'consensus' && <ConsensusMode />}
 
           {selectedMode === 'debate' && <DebateMode />}

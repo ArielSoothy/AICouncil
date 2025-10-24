@@ -587,12 +587,14 @@ Max: {
 
 **Next Session Priority**: Test preset buttons + new UI, verify all 46 models accessible, then begin Phase 2B (Trading Master Agent System) implementation
 
-### Phase 2A.9: Match Trading Consensus to Normal Consensus System
-**Status**: ✅ UI COMPLETED, 🔄 API IN PROGRESS
-**Goal**: Trading Consensus should use THE EXACT SAME infrastructure as Normal Consensus
+### Phase 2A.9: Match Trading Consensus to Normal Consensus System + Individual Mode Consolidation
+**Status**: ✅ FULLY COMPLETED (October 24, 2025)
+**Goal**: Trading Consensus should use THE EXACT SAME infrastructure as Normal Consensus, AND eliminate redundant Individual LLMs mode
 **Files Modified**:
-- `components/trading/consensus-mode.tsx` (UI updated)
-- `app/api/trading/consensus/route.ts` (API enhancement in progress)
+- `components/trading/consensus-mode.tsx` - Added individual decisions display
+- `components/trading/mode-selector.tsx` - Removed Individual mode tab (3 modes → 2 modes)
+- `app/trading/page.tsx` - Removed Individual mode integration, defaulting to Consensus
+- `app/api/trading/consensus/route.ts` - API already returning both decisions and consensus
 
 **Problem Identified**:
 Trading Consensus used a completely different system than Normal Consensus:
@@ -827,8 +829,94 @@ Tested with 6 free tier models (Gemini 2.5 Flash, Gemini 2.0 Flash, Gemini 1.5 F
 
 **Conclusion**: Judge system successfully integrated and provides significantly more valuable analysis than simple vote counting. Ready for production use.
 
-#### Subtask 3: Normalized Rankings (Planned)
+#### Subtask 3: Individual Mode Consolidation ✅ COMPLETED (October 24, 2025)
+
+**Goal:** Eliminate redundant Individual LLMs mode by merging individual model responses into Consensus Trade mode (matching Normal Consensus UX pattern)
+
+**Rationale:**
+- Individual mode was redundant - users needed to switch tabs to see individual responses
+- Normal Consensus mode already shows individual responses + synthesis in one unified view
+- Better UX to show everything in one place rather than forcing tab switching
+
+**Implementation:**
+
+1. **Added Individual Decisions Section to Consensus UI**:
+```typescript
+// New section in consensus-mode.tsx
+{decisions.length > 0 && (
+  <div className="bg-card rounded-lg border p-6">
+    <h3 className="text-xl font-semibold mb-4">Individual Model Decisions</h3>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {decisions.map((decision, index) => (
+        <TradingDecisionCard key={index} decision={decision} />
+      ))}
+    </div>
+  </div>
+)}
+```
+
+2. **Created TradingDecisionCard Component**:
+   - Model name with tier badge (⚡ Pro, 🌟 Flagship, 🎁 Free)
+   - Action badge (BUY/SELL/HOLD)
+   - Symbol and quantity details (for BUY/SELL actions)
+   - Confidence level with progress bar
+   - Reasoning preview with expandable "Show More" button
+   - Handles both string and structured reasoning formats
+
+3. **State Management Updates**:
+   - Added `decisions` state to store individual model responses
+   - Updated API call to extract `data.decisions` from response
+   - Added decisions to persistence (localStorage + database)
+   - Restored decisions on page reload/URL navigation
+
+4. **Removed Individual Mode**:
+   - Deleted `IndividualMode` import from `/trading` page
+   - Removed Individual mode tab from `ModeSelector` component
+   - Updated `TradingMode` type: `'individual' | 'consensus' | 'debate'` → `'consensus' | 'debate'`
+   - Changed default mode from 'individual' to 'consensus'
+   - Updated page description: "3 Trading Modes" → "2 Trading Modes"
+
+5. **TypeScript Safety**:
+   - Zero errors after refactor
+   - All types properly updated across components
+   - Proper handling of optional fields (symbol, quantity, model)
+
+**API Changes:**
+- **No API changes needed!** - `/api/trading/consensus` already returns `decisions` array (line 250)
+- Backend was ready, just needed frontend UI update
+
+**Testing Results:**
+- ✅ Browser tested with 8 models (Pro preset)
+- ✅ Individual decisions display correctly with all details
+- ✅ Expandable reasoning works (Show More/Show Less)
+- ✅ Consensus + individual responses shown in one unified view
+- ✅ Persistence working (localStorage + database)
+- ✅ TypeScript compilation: 0 errors
+
+**User Benefits:**
+- **Single Unified View**: See both individual opinions AND consensus in one place
+- **Better UX**: No more tab switching to compare individual vs consensus
+- **Consistent Pattern**: Matches Normal Consensus mode UX (familiar to users)
+- **All Information Visible**: Individual reasoning + vote breakdown + consensus summary
+- **Cleaner Navigation**: 2 modes instead of 3 (less cognitive load)
+
+**Before (3 modes):**
+```
+Tab 1: Individual LLMs → Shows 8 separate decisions only
+Tab 2: Consensus Trade → Shows consensus only (no individual responses)
+Tab 3: Debate Trade → Agent debate system
+```
+
+**After (2 modes):**
+```
+Tab 1: Consensus Trade → Shows individual responses + consensus (ALL IN ONE)
+Tab 2: Debate Trade → Agent debate system
+```
+
+**Pattern Match:** Trading Consensus now exactly matches Normal Consensus UX pattern
+
+#### Subtask 4: Normalized Rankings (Future Enhancement)
 Apply same normalization logic used in Normal Consensus to trading symbols
 
-#### Subtask 4: Model Expertise Weighting (Planned)
+#### Subtask 5: Model Expertise Weighting (Future Enhancement)
 Use MODEL_EXPERTISE scores to weight trading decisions

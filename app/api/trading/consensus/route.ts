@@ -242,8 +242,13 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('✅ Consensus result:', consensus);
+    console.log('📊 Returning individual decisions:', decisions.length);
 
-    return NextResponse.json({ consensus });
+    // Return both consensus and individual decisions for transparency
+    return NextResponse.json({
+      consensus,
+      decisions // Individual model decisions for transparency
+    });
 
   } catch (error) {
     console.error('❌ API Error:', error);
