@@ -53,9 +53,23 @@ export function useConversationPersistence(
   const hasAttemptedRestore = useRef(false)
 
   /**
-   * Fetch conversation from API
+   * Fetch conversation from API (or localStorage for local IDs)
    */
   const fetchConversation = useCallback(async (conversationId: string): Promise<SavedConversation | null> => {
+    // Handle local (guest) IDs - these are stored in localStorage only
+    if (conversationId.startsWith('local-')) {
+      return {
+        id: conversationId,
+        user_id: null,
+        query: 'Local Trading Analysis',
+        responses: {},
+        evaluation_data: {},
+        is_guest_mode: true,
+        created_at: new Date().toISOString()
+      }
+    }
+
+    // Fetch from database for real IDs
     try {
       const response = await fetch(`/api/conversations/${conversationId}`, {
         credentials: 'include',

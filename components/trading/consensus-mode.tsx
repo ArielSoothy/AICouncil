@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, TrendingUp, TrendingDown, Minus, Users } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { Loader2, TrendingUp, TrendingDown, Minus, Users, CheckCircle, AlertCircle, XCircle } from 'lucide-react'
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
 import { TradingModelSelector } from './trading-model-selector'
@@ -26,6 +27,10 @@ interface ConsensusResult {
   quantity?: number
   reasoning: string | ReasoningDetails
   confidence: number
+  agreement: number
+  agreementText: string
+  summary: string
+  disagreements: string[]
   votes: {
     BUY: number
     SELL: number
@@ -59,24 +64,48 @@ export function ConsensusMode() {
     storageKey: 'trading-consensus-mode',
     onRestored: (conversation) => {
       console.log('Restoring Consensus Mode analysis:', conversation)
-      const responses = conversation.responses as any
-      const evalData = conversation.evaluation_data as any
 
-      // Restore state
-      if (responses.consensus) {
-        setConsensus(responses.consensus)
-      }
-      if (evalData?.metadata) {
-        const meta = evalData.metadata
-        if (meta.timeframe) setTimeframe(meta.timeframe)
-        if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
-        if (meta.selectedModels) {
-          // Restore selected models
-          const restoredModels = DEFAULT_CONSENSUS_MODELS.map(m => ({
-            ...m,
-            enabled: meta.selectedModels.includes(m.model)
-          }))
-          setSelectedModels(restoredModels)
+      // Check if this is a local (guest) ID
+      if (conversation.id.startsWith('local-')) {
+        // Restore from localStorage for guest users
+        const localData = localStorage.getItem(`trading-consensus-${conversation.id}`)
+        if (localData) {
+          const parsed = JSON.parse(localData)
+          if (parsed.consensus) {
+            setConsensus(parsed.consensus)
+          }
+          if (parsed.metadata) {
+            const meta = parsed.metadata
+            if (meta.timeframe) setTimeframe(meta.timeframe)
+            if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
+            if (meta.selectedModels) {
+              const restoredModels = DEFAULT_CONSENSUS_MODELS.map(m => ({
+                ...m,
+                enabled: meta.selectedModels.includes(m.model)
+              }))
+              setSelectedModels(restoredModels)
+            }
+          }
+        }
+      } else {
+        // Restore from database for authenticated users
+        const responses = conversation.responses as any
+        const evalData = conversation.evaluation_data as any
+
+        if (responses.consensus) {
+          setConsensus(responses.consensus)
+        }
+        if (evalData?.metadata) {
+          const meta = evalData.metadata
+          if (meta.timeframe) setTimeframe(meta.timeframe)
+          if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
+          if (meta.selectedModels) {
+            const restoredModels = DEFAULT_CONSENSUS_MODELS.map(m => ({
+              ...m,
+              enabled: meta.selectedModels.includes(m.model)
+            }))
+            setSelectedModels(restoredModels)
+          }
         }
       }
     }
@@ -164,10 +193,44 @@ export function ConsensusMode() {
           const savedConversation = await saveResponse.json()
           saveConversation(savedConversation.id)
           console.log('Consensus Mode analysis saved:', savedConversation.id)
+        } else {
+          // Guest mode: save failed but still persist locally with client ID
+          const clientId = `local-${Date.now()}`
+          console.log('Guest mode: persisting locally with ID:', clientId)
+
+          // Store data in localStorage for guest users
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
+              consensus: data.consensus,
+              metadata: {
+                timeframe,
+                targetSymbol: targetSymbol.trim() || null,
+                selectedModels: modelIds,
+                modelCount: modelIds.length
+              },
+              timestamp: new Date().toISOString()
+            }))
+          }
+
+          saveConversation(clientId)
         }
       } catch (saveError) {
         console.error('Failed to save analysis:', saveError)
-        // Don't block user experience if save fails
+        // Even on error, persist locally for guest users
+        const clientId = `local-${Date.now()}`
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
+            consensus: data.consensus,
+            metadata: {
+              timeframe,
+              targetSymbol: targetSymbol.trim() || null,
+              selectedModels: modelIds,
+              modelCount: modelIds.length
+            },
+            timestamp: new Date().toISOString()
+          }))
+        }
+        saveConversation(clientId)
       }
     } catch (error) {
       console.error('Failed to get consensus decision:', error)
@@ -185,7 +248,7 @@ export function ConsensusMode() {
           mode="trading-consensus"
           onSelect={(conversation) => {
             // Trigger restoration
-            window.location.href = `${window.location.pathname}?t=${conversation.id}`
+            window.location.href = `${window.location.pathname}?c=${conversation.id}`
           }}
         />
       </div>
@@ -264,6 +327,58 @@ export function ConsensusMode() {
             <ActionBadge action={consensus.action} />
           </div>
 
+          {/* Agreement Level */}
+          <div className="space-y-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AgreementIcon agreement={consensus.agreement} />
+                <span className="font-medium">{consensus.agreementText}</span>
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {Math.round(consensus.agreement * 100)}% agreement
+              </span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Agreement Level</span>
+                <span>{Math.round(consensus.agreement * 100)}%</span>
+              </div>
+              <Progress value={consensus.agreement * 100} className="h-2" />
+            </div>
+          </div>
+
+          {/* Overall Confidence */}
+          <div className="space-y-2 mb-6">
+            <div className="flex justify-between text-sm">
+              <span>Overall Confidence</span>
+              <span>{Math.round(consensus.confidence * 100)}%</span>
+            </div>
+            <Progress value={consensus.confidence * 100} className="h-2" />
+          </div>
+
+          {/* Consensus Summary */}
+          {consensus.summary && (
+            <div className="mb-6">
+              <h4 className="font-medium mb-2">Consensus Summary</h4>
+              <p className="text-sm text-muted-foreground">{consensus.summary}</p>
+            </div>
+          )}
+
+          {/* Key Disagreements */}
+          {consensus.disagreements && consensus.disagreements.length > 0 && (
+            <div className="mb-6">
+              <h4 className="font-medium mb-2">Key Disagreements</h4>
+              <ul className="space-y-1">
+                {consensus.disagreements.map((disagreement, index) => (
+                  <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                    <span className="text-destructive">•</span>
+                    {disagreement}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Vote Breakdown */}
           <div className="mb-6 p-4 bg-muted/50 rounded-lg">
             <h4 className="text-sm font-semibold mb-3">Vote Breakdown:</h4>
@@ -335,23 +450,6 @@ export function ConsensusMode() {
             )}
           </div>
 
-          {/* Confidence */}
-          <div className="pt-4 border-t">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Overall Confidence:</span>
-              <div className="flex items-center gap-2">
-                <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary"
-                    style={{ width: `${consensus.confidence * 100}%` }}
-                  />
-                </div>
-                <span className="text-sm font-medium">
-                  {(consensus.confidence * 100).toFixed(0)}%
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
@@ -391,4 +489,14 @@ function VoteCard({ label, count, total }: { label: string; count: number; total
       <div className="text-xs mt-1">{percentage.toFixed(0)}%</div>
     </div>
   )
+}
+
+function AgreementIcon({ agreement }: { agreement: number }) {
+  if (agreement >= 0.75) {
+    return <CheckCircle className="w-5 h-5 text-green-600" />
+  } else if (agreement >= 0.5) {
+    return <AlertCircle className="w-5 h-5 text-yellow-600" />
+  } else {
+    return <XCircle className="w-5 h-5 text-red-600" />
+  }
 }

@@ -45,4 +45,5 @@ export interface TradeDecision {
   quantity: number;
   reasoning: string;
   confidence: number;
+  model?: string; // Optional model ID for judge weighting
 }

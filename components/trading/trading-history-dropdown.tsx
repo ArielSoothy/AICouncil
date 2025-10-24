@@ -90,7 +90,7 @@ export function TradingHistoryDropdown({
     } else {
       // Default behavior: update URL with conversation ID
       const currentPath = window.location.pathname
-      router.push(`${currentPath}?t=${analysis.id}`)
+      router.push(`${currentPath}?c=${analysis.id}`)
     }
     setIsOpen(false)
   }

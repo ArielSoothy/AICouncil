@@ -289,7 +289,7 @@ export function DebateMode() {
           mode="trading-debate"
           onSelect={(conversation) => {
             // Trigger restoration
-            window.location.href = `${window.location.pathname}?t=${conversation.id}`
+            window.location.href = `${window.location.pathname}?c=${conversation.id}`
           }}
         />
       </div>

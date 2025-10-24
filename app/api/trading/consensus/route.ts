@@ -12,6 +12,7 @@ import { CohereProvider } from '@/lib/ai-providers/cohere';
 import { XAIProvider } from '@/lib/ai-providers/xai';
 import { getModelDisplayName, getProviderForModel as getProviderType } from '@/lib/trading/models-config';
 import type { TradeDecision } from '@/lib/alpaca/types';
+import { analyzeTradingConsensus } from '@/lib/trading/judge-helper';
 
 // Initialize all providers
 const PROVIDERS = {
@@ -87,6 +88,9 @@ export async function POST(request: NextRequest) {
         const cleanedResponse = stripMarkdownCodeBlocks(result.response);
         const decision: TradeDecision = JSON.parse(cleanedResponse);
 
+        // Add model ID for judge weighting
+        decision.model = modelId;
+
         return decision;
       } catch (error) {
         const modelName = getModelDisplayName(modelId);
@@ -127,11 +131,13 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Consensus action:', consensusAction);
 
-    // Step 5: Calculate aggregate values for BUY/SELL
+    // Step 5: Run Judge Analysis (uses model weighting and intelligent synthesis)
+    console.log('🧑‍⚖️  Running judge analysis with model weighting...');
+    const judgeResult = analyzeTradingConsensus(decisions, votes, consensusAction);
+
+    // Step 6: Calculate aggregate values for BUY/SELL
     let consensusSymbol: string | undefined;
     let consensusQuantity: number | undefined;
-    let consensusReasoning = '';
-    let consensusConfidence = 0;
 
     if (consensusAction === 'BUY' || consensusAction === 'SELL') {
       const relevantDecisions = decisions.filter(d => d.action === consensusAction);
@@ -150,26 +156,38 @@ export async function POST(request: NextRequest) {
       if (quantities.length > 0) {
         consensusQuantity = Math.round(quantities.reduce((a, b) => a + b, 0) / quantities.length);
       }
-
-      // Average confidence
-      const confidences = relevantDecisions.map(d => d.confidence || 0);
-      consensusConfidence = confidences.reduce((a, b) => a + b, 0) / confidences.length;
-
-      // Combine reasoning
-      const reasonings = relevantDecisions.map(d => d.reasoning).filter(Boolean);
-      consensusReasoning = `Consensus: ${votes[consensusAction]}/${decisions.length} models recommend ${consensusAction} ${consensusSymbol}. ${reasonings[0] || 'No reasoning provided.'}`;
-    } else {
-      // HOLD consensus
-      consensusReasoning = `No clear consensus reached. Vote breakdown: BUY (${votes.BUY}), SELL (${votes.SELL}), HOLD (${votes.HOLD}). Recommend holding current positions.`;
-      consensusConfidence = 0.5;
     }
 
+    // Step 6: Calculate agreement level (like normal consensus mode)
+    const agreementPercentage = maxVotes / decisions.length
+    let agreementLevel: number
+    let agreementText: string
+
+    if (agreementPercentage >= 0.75) {
+      agreementLevel = 0.9
+      agreementText = 'High Consensus'
+    } else if (agreementPercentage >= 0.5) {
+      agreementLevel = 0.7
+      agreementText = 'Moderate Consensus'
+    } else {
+      agreementLevel = 0.4
+      agreementText = 'Low Consensus'
+    }
+
+    // Step 7: Generate summary text
+    const summary = `${maxVotes} out of ${decisions.length} models (${(agreementPercentage * 100).toFixed(0)}%) recommend ${consensusAction}${consensusSymbol ? ' ' + consensusSymbol : ''}. ${agreementText} achieved.`
+
+    // Step 8: Build consensus with judge results
     const consensus = {
       action: consensusAction,
       symbol: consensusSymbol,
       quantity: consensusQuantity,
-      reasoning: consensusReasoning,
-      confidence: consensusConfidence,
+      reasoning: judgeResult.unifiedReasoning, // From judge (weighted synthesis)
+      confidence: judgeResult.confidence, // From judge (MODEL_POWER weighted)
+      agreement: agreementLevel,
+      agreementText,
+      summary,
+      disagreements: judgeResult.disagreements, // From judge (intelligent detection)
       votes,
       modelCount: decisions.length,
     };
