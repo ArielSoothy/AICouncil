@@ -31,7 +31,7 @@
 ```
 Every new conversation MUST include:
 - git log --oneline -5  # Recent changes
-- List of protected features from FEATURES.md
+- List of protected features from docs/workflow/FEATURES.md
 - Any current errors/warnings
 - Explicit "DO NOT MODIFY: [list]"
 ```
@@ -40,7 +40,7 @@ Every new conversation MUST include:
 - One feature = One commit
 - One file change at a time when possible
 - Test after EACH change
-- Document in FEATURES.md IMMEDIATELY
+- Document in docs/workflow/FEATURES.md IMMEDIATELY
 
 #### 5. **Rollback Strategy**:
 ```bash
@@ -51,9 +51,9 @@ git reset --hard HEAD  # Nuclear option
 ```
 
 ## 🤖 SUB-AGENT SYSTEM:
-**For complex features, use the orchestrated sub-agent system defined in SUB_AGENTS.md:**
+**For complex features, use the orchestrated sub-agent system defined in docs/guides/SUB_AGENTS.md:**
 - **Orchestration Agent**: Coordinates all other agents
-- **Research Agent**: Analyzes codebase structure  
+- **Research Agent**: Analyzes codebase structure
 - **Dependency Agent**: Maps dependencies to prevent breakage
 - **Implementation Agent**: Executes code changes
 - **Testing Agent**: Verifies all protected features
@@ -66,14 +66,14 @@ git reset --hard HEAD  # Nuclear option
 
 1. **Read CLAUDE.md** (this file - master index & session context)
 2. **Read DOCUMENTATION_MAP.md** (find which docs are relevant to your task)
-3. **Read WORKFLOW.md** (step-by-step work method)
-4. **Read PRIORITIES.md** (current TODO list)
-5. **Read FEATURES.md** (protected features)
+3. **Read docs/workflow/WORKFLOW.md** (step-by-step work method)
+4. **Read docs/workflow/PRIORITIES.md** (current TODO list)
+5. **Read docs/workflow/FEATURES.md** (protected features)
 6. **Read relevant feature docs** (from DOCUMENTATION_MAP.md based on task)
-7. **Optional: Read BEST_PRACTICES.md** (debugging patterns)
-8. **Optional: Read SUB_AGENTS.md** (when using autonomous agents)
+7. **Optional: Read docs/guides/BEST_PRACTICES.md** (debugging patterns)
+8. **Optional: Read docs/guides/SUB_AGENTS.md** (when using autonomous agents)
 
-**Quick Reading Order**: `CLAUDE.md → DOCUMENTATION_MAP.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md`
+**Quick Reading Order**: `CLAUDE.md → DOCUMENTATION_MAP.md → docs/workflow/WORKFLOW.md → docs/workflow/PRIORITIES.md → docs/workflow/FEATURES.md`
 
 ## 📂 DOCUMENTATION STRUCTURE:
 
@@ -83,13 +83,13 @@ git reset --hard HEAD  # Nuclear option
 
 | File | Purpose | When to Read |
 |------|---------|--------------|
-| **WORKFLOW.md** | Step-by-step session method | Every session start |
-| **PRIORITIES.md** | Current TODOs + progress | Every session start |
-| **FEATURES.md** | Protected features | Before any changes |
-| **PROJECT_OVERVIEW.md** | Architecture + vision + status | For context |
-| **BEST_PRACTICES.md** | Debugging patterns | When issues arise |
-| **SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
-| **TRADING_ENHANCEMENTS.md** | Paper trading system (Phase 2) | Trading feature work |
+| **docs/workflow/WORKFLOW.md** | Step-by-step session method | Every session start |
+| **docs/workflow/PRIORITIES.md** | Current TODOs + progress | Every session start |
+| **docs/workflow/FEATURES.md** | Protected features | Before any changes |
+| **docs/architecture/PROJECT_OVERVIEW.md** | Architecture + vision + status | For context |
+| **docs/guides/BEST_PRACTICES.md** | Debugging patterns | When issues arise |
+| **docs/guides/SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
+| **docs/features/TRADING_ENHANCEMENTS.md** | Paper trading system (Phase 2) | Trading feature work |
 | **DOCUMENTATION_MAP.md** | Complete documentation index | Finding specific docs |
 
 
@@ -103,7 +103,7 @@ Continue Verdict AI development work.
 Previous session: ✅ Fixed ESLint warnings & completed project rebrand to "Verdict AI" with centralized branding system
 Next priority: Chain-of-Debate Display Enhancement (Phase 1) - Build UI to show WHY agents disagree
 
-MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
+MANDATORY START: Read CLAUDE.md → DOCUMENTATION_MAP.md → docs/workflow/WORKFLOW.md → docs/workflow/PRIORITIES.md → docs/workflow/FEATURES.md
 Launch orchestration-master agent to coordinate the next task that is approved by user on the todo list/priorities
 TodoWrite: Research debate data structure + Design disagreement components + Implement visualization + Test all features + Update docs
 Follow structured workflow: Work → Test → Document → Ask approval → Push → New prompt
@@ -111,7 +111,7 @@ Follow structured workflow: Work → Test → Document → Ask approval → Push
 
 **Template Variables:**
 - `[Brief summary of what was completed]` - 1-2 key achievements from the session
-- `[Next high priority task from PRIORITIES.md]` - Top item from PRIORITIES.md high priority section
+- `[Next high priority task from docs/workflow/PRIORITIES.md]` - Top item from PRIORITIES.md high priority section
 
 ## 🚀 NEXT SESSION PROMPT (Ready to Use):
 
@@ -121,7 +121,7 @@ Continue Verdict AI development work.
 Previous session: ✅ COMPLETED - Ranking Deduplication & Deterministic Format Fix
 Next priority: 🚀 LAUNCH TO AI COURSE COLLEAGUES - Begin user acquisition and real feedback collection
 
-MANDATORY START: Read CLAUDE.md → WORKFLOW.md → PRIORITIES.md → FEATURES.md
+MANDATORY START: Read CLAUDE.md → DOCUMENTATION_MAP.md → docs/workflow/WORKFLOW.md → docs/workflow/PRIORITIES.md → docs/workflow/FEATURES.md
 
 RANKING DEDUPLICATION & DETERMINISTIC FORMAT FIX - COMPLETED (commit: eb002ae):
 ✅ Short Format Restored: Judge synthesis shows "Top 3: 1. X (2/4 models, 90% confidence)"
@@ -183,8 +183,8 @@ If "browser already in use" error occurs:
 
 ## 🎯 SESSION COMPLETION CHECKLIST:
 - [ ] Work tasks completed
-- [ ] PRIORITIES.md updated with progress
-- [ ] ⚠️ FEATURES.md updated if new feature added (add to protected list)
+- [ ] docs/workflow/PRIORITIES.md updated with progress
+- [ ] ⚠️ docs/workflow/FEATURES.md updated if new feature added (add to protected list)
 - [ ] ⚠️ DOCUMENTATION_MAP.md updated if new docs created
 - [ ] Next conversation prompt updated
 - [ ] User asked: "Any final observations?"
@@ -238,12 +238,15 @@ If "browser already in use" error occurs:
 
 | Type of Documentation | Location | Example |
 |----------------------|----------|---------|
-| Core workflow/process | Root level | `WORKFLOW.md`, `PRIORITIES.md` |
-| Feature architecture | Root level | `TRADING_ENHANCEMENTS.md` |
+| Core workflow/process | `/docs/workflow/` | `WORKFLOW.md`, `PRIORITIES.md`, `FEATURES.md` |
+| System architecture | `/docs/architecture/` | `PROJECT_OVERVIEW.md`, `SUPABASE_SETUP.md` |
+| Feature documentation | `/docs/features/` | `TRADING_ENHANCEMENTS.md` |
+| Planning/roadmaps | `/docs/planning/` | `PHASE_3_PROGRESS.md`, `MVP.md` |
+| Guides & best practices | `/docs/guides/` | `BEST_PRACTICES.md`, `SUB_AGENTS.md` |
+| Session history/logs | `/docs/history/` | `SESSION_SUMMARY_*.md`, `AUTONOMOUS_WORK_LOG.md` |
 | Sub-agent specs | `/.claude/agents/` | `orchestration-master.md` |
-| Planning/roadmaps | Root level | `PHASE_3_PROGRESS.md` |
-| Research | Root level or archive if old | `MARKET_RESEARCH.md` |
-| Historical/completed | `/_archive/` | Old research, superseded docs |
+| Historical/archived | `/_archive/` | Old research, superseded docs |
 | Test documentation | `/tests/` | `tests/README.md` |
+| Master index files | Root level only | `README.md`, `CLAUDE.md`, `DOCUMENTATION_MAP.md` |
 
 **This ensures every new conversation can quickly find the right documentation.** 📚
