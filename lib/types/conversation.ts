@@ -13,6 +13,7 @@ export interface SavedConversation {
   user_id: string | null
   query: string
   responses: EnhancedConsensusResponse | unknown // Can be consensus or debate response
+  evaluation_data?: any // JSONB field for metadata (mode, timeframe, etc.)
   is_guest_mode: boolean
   created_at: string
   updated_at?: string

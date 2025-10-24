@@ -15,27 +15,27 @@ export async function GET(request: NextRequest) {
       cookie: request.headers.get('cookie')?.substring(0, 100) + '...',
       userAgent: request.headers.get('user-agent')
     })
-    
+
     const supabase = await createClient()
-    
-    // Get the authenticated user  
+
+    // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    console.log('Conversations API - Auth check:', { 
-      userId: user?.id, 
+
+    console.log('Conversations API - Auth check:', {
+      userId: user?.id,
       userEmail: user?.email,
       authError: authError?.message,
-      hasUser: !!user 
+      hasUser: !!user
     })
-    
+
     if (authError) {
       console.log('Conversations API - Auth error:', authError)
-      return NextResponse.json({ 
-        error: 'Authentication error', 
-        details: authError.message 
+      return NextResponse.json({
+        error: 'Authentication error',
+        details: authError.message
       }, { status: 401 })
     }
-    
+
     if (!user) {
       console.log('Conversations API - No user found (guest mode), returning empty array')
       // Guests use localStorage only, no cloud history
@@ -49,12 +49,12 @@ export async function GET(request: NextRequest) {
       .select('id')
       .eq('id', user.id)
       .single()
-    
-    console.log('Conversations API - User profile check:', { 
-      userProfile: userProfile?.id, 
-      profileError: profileError?.message 
+
+    console.log('Conversations API - User profile check:', {
+      userProfile: userProfile?.id,
+      profileError: profileError?.message
     })
-    
+
     if (profileError && profileError.code === 'PGRST116') {
       // User doesn't exist in public.users, create them
       console.log('Conversations API - Creating user in public.users table')
@@ -64,23 +64,34 @@ export async function GET(request: NextRequest) {
           id: user.id,
           email: user.email || ''
         })
-      
+
       if (insertError) {
         console.error('Conversations API - Failed to create user:', insertError)
-        return NextResponse.json({ 
-          error: 'Failed to create user profile', 
-          details: insertError.message 
+        return NextResponse.json({
+          error: 'Failed to create user profile',
+          details: insertError.message
         }, { status: 500 })
       }
     }
 
+    // Get mode filter from query params (e.g., ?mode=trading-individual)
+    const { searchParams } = new URL(request.url)
+    const modeFilter = searchParams.get('mode')
+
     // Get conversations for the user
-    console.log('Conversations API - Querying conversations for user:', user.id)
-    
-    const { data: conversations, error } = await supabase
+    console.log('Conversations API - Querying conversations for user:', user.id, 'with mode filter:', modeFilter)
+
+    let query = supabase
       .from('conversations')
       .select('*')
       .eq('user_id', user.id)
+
+    // Filter by mode if provided (mode is stored in evaluation_data->mode)
+    if (modeFilter) {
+      query = query.contains('evaluation_data', { mode: modeFilter })
+    }
+
+    const { data: conversations, error } = await query
       .order('created_at', { ascending: false })
 
     console.log('Conversations API - Query result:', { 
@@ -112,7 +123,7 @@ export async function POST(request: NextRequest) {
   try {
     // Parse request body first to check for guest mode
     const body = await request.json()
-    const { query, responses, isGuestMode = false } = body
+    const { query, responses, isGuestMode = false, mode, metadata } = body
 
     const supabase = await createClient()
 
@@ -138,14 +149,31 @@ export async function POST(request: NextRequest) {
       console.log('📊 Guest mode: Saving anonymously for analytics (user_id = NULL)')
     }
 
-    // Create evaluation data structure for consensus results
+    // Create evaluation data structure
     let evaluationData = null
 
-    // Check if this is a consensus result (vs debate result which has its own logic)
-    if (responses && !responses.rounds) { // Consensus doesn't have rounds, debates do
+    // Trading conversations (mode starts with 'trading-')
+    if (mode && mode.startsWith('trading-')) {
+      evaluationData = {
+        query_type: 'trading',
+        mode: mode, // 'trading-individual', 'trading-consensus', 'trading-debate'
+        timeframe: metadata?.timeframe || 'swing',
+        target_symbol: metadata?.targetSymbol || null,
+        selected_models: metadata?.selectedModels || [],
+        metadata: {
+          timestamp: new Date().toISOString(),
+          is_guest_session: isGuestMode,
+          ...metadata
+        },
+        ground_truth: null,
+        training_ready: true
+      }
+    }
+    // Regular consensus results (vs debate result which has its own logic)
+    else if (responses && !responses.rounds) { // Consensus doesn't have rounds, debates do
       evaluationData = {
         query_type: 'consensus', // Could be enhanced with auto-classification
-        mode: 'consensus',
+        mode: mode || 'consensus',
         model_verdicts: responses.models?.map((model: any) => ({
           model: model.model || 'unknown',
           verdict: model.response || '',

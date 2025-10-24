@@ -7,6 +7,8 @@ import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reas
 import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
 import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
+import { TradingHistoryDropdown } from './trading-history-dropdown'
+import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { ModelConfig } from '@/types/consensus'
 
 interface ReasoningDetails {
@@ -51,6 +53,34 @@ export function ConsensusMode() {
   const [loading, setLoading] = useState(false)
   const [consensus, setConsensus] = useState<ConsensusResult | null>(null)
   const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
+
+  // Persistence for saving/restoring trading analyses
+  const { saveConversation, isRestoring } = useConversationPersistence({
+    storageKey: 'trading-consensus-mode',
+    onRestored: (conversation) => {
+      console.log('Restoring Consensus Mode analysis:', conversation)
+      const responses = conversation.responses as any
+      const evalData = conversation.evaluation_data as any
+
+      // Restore state
+      if (responses.consensus) {
+        setConsensus(responses.consensus)
+      }
+      if (evalData?.metadata) {
+        const meta = evalData.metadata
+        if (meta.timeframe) setTimeframe(meta.timeframe)
+        if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
+        if (meta.selectedModels) {
+          // Restore selected models
+          const restoredModels = DEFAULT_CONSENSUS_MODELS.map(m => ({
+            ...m,
+            enabled: meta.selectedModels.includes(m.model)
+          }))
+          setSelectedModels(restoredModels)
+        }
+      }
+    }
+  })
 
   const getConsensusDecision = async () => {
     setLoading(true)
@@ -109,6 +139,36 @@ export function ConsensusMode() {
       ])
 
       setConsensus(data.consensus)
+
+      // Save conversation for history and persistence
+      try {
+        const saveResponse = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: 'Consensus Trading Analysis',
+            responses: {
+              consensus: data.consensus
+            },
+            mode: 'trading-consensus',
+            metadata: {
+              timeframe,
+              targetSymbol: targetSymbol.trim() || null,
+              selectedModels: modelIds,
+              modelCount: modelIds.length
+            }
+          })
+        })
+
+        if (saveResponse.ok) {
+          const savedConversation = await saveResponse.json()
+          saveConversation(savedConversation.id)
+          console.log('Consensus Mode analysis saved:', savedConversation.id)
+        }
+      } catch (saveError) {
+        console.error('Failed to save analysis:', saveError)
+        // Don't block user experience if save fails
+      }
     } catch (error) {
       console.error('Failed to get consensus decision:', error)
       alert(error instanceof Error ? error.message : 'Failed to get consensus decision')
@@ -119,6 +179,17 @@ export function ConsensusMode() {
 
   return (
     <div className="space-y-6">
+      {/* Trading History */}
+      <div className="flex justify-end">
+        <TradingHistoryDropdown
+          mode="trading-consensus"
+          onSelect={(conversation) => {
+            // Trigger restoration
+            window.location.href = `${window.location.pathname}?t=${conversation.id}`
+          }}
+        />
+      </div>
+
       {/* Model Selector & Timeframe */}
       <div className="bg-card rounded-lg border p-6 space-y-6">
         <TradingModelSelector

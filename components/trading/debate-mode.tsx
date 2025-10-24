@@ -8,6 +8,8 @@ import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reas
 import { getModelDisplayName } from '@/lib/trading/models-config'
 import { SingleModelBadgeSelector } from './single-model-badge-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
+import { TradingHistoryDropdown } from './trading-history-dropdown'
+import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -94,6 +96,30 @@ export function DebateMode() {
   const [analystModel, setAnalystModel] = useState(DEBATE_PRESETS.pro.roles.analyst)
   const [criticModel, setCriticModel] = useState(DEBATE_PRESETS.pro.roles.critic)
   const [synthesizerModel, setSynthesizerModel] = useState(DEBATE_PRESETS.pro.roles.synthesizer)
+
+  // Persistence for saving/restoring trading analyses
+  const { saveConversation, isRestoring } = useConversationPersistence({
+    storageKey: 'trading-debate-mode',
+    onRestored: (conversation) => {
+      console.log('Restoring Debate Mode analysis:', conversation)
+      const responses = conversation.responses as any
+      const evalData = conversation.evaluation_data as any
+
+      // Restore state
+      if (responses.debate) {
+        setDebate(responses.debate)
+        setActiveRound(1) // Reset to round 1
+      }
+      if (evalData?.metadata) {
+        const meta = evalData.metadata
+        if (meta.timeframe) setTimeframe(meta.timeframe)
+        if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
+        if (meta.analystModel) setAnalystModel(meta.analystModel)
+        if (meta.criticModel) setCriticModel(meta.criticModel)
+        if (meta.synthesizerModel) setSynthesizerModel(meta.synthesizerModel)
+      }
+    }
+  })
 
   // Apply preset function
   const applyPreset = (presetKey: 'free' | 'pro' | 'max') => {
@@ -183,6 +209,37 @@ export function DebateMode() {
 
       setDebate(data.debate)
 
+      // Save conversation for history and persistence
+      try {
+        const saveResponse = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: 'Debate Trading Analysis',
+            responses: {
+              debate: data.debate
+            },
+            mode: 'trading-debate',
+            metadata: {
+              timeframe,
+              targetSymbol: targetSymbol.trim() || null,
+              analystModel,
+              criticModel,
+              synthesizerModel
+            }
+          })
+        })
+
+        if (saveResponse.ok) {
+          const savedConversation = await saveResponse.json()
+          saveConversation(savedConversation.id)
+          console.log('Debate Mode analysis saved:', savedConversation.id)
+        }
+      } catch (saveError) {
+        console.error('Failed to save analysis:', saveError)
+        // Don't block user experience if save fails
+      }
+
       // Build transcript from debate results
       if (data.debate) {
         const messages: DebateMessage[] = []
@@ -226,6 +283,17 @@ export function DebateMode() {
 
   return (
     <div className="space-y-6">
+      {/* Trading History */}
+      <div className="flex justify-end">
+        <TradingHistoryDropdown
+          mode="trading-debate"
+          onSelect={(conversation) => {
+            // Trigger restoration
+            window.location.href = `${window.location.pathname}?t=${conversation.id}`
+          }}
+        />
+      </div>
+
       {/* Model Selection for Debate Roles */}
       <div className="bg-card rounded-lg border p-6">
         <h3 className="font-semibold mb-4">Select AI Models for Each Role</h3>

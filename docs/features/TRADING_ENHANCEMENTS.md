@@ -281,6 +281,92 @@ After:
   📊 Processing results...
 ```
 
+### Phase 2A.8: Trading History & Persistence
+**Status**: ✅ COMPLETED
+**Files Modified**:
+- `app/api/conversations/route.ts` - Added mode filtering support
+- `components/trading/trading-history-dropdown.tsx` - New component
+- `components/trading/individual-mode.tsx` - Integrated persistence
+- `components/trading/consensus-mode.tsx` - Integrated persistence
+- `components/trading/debate-mode.tsx` - Integrated persistence
+- `lib/types/conversation.ts` - Added evaluation_data field
+
+**Implementation Summary**:
+All 3 trading modes now save analysis results to the database and restore them on page refresh or via shareable URLs. Users can view trading history and quickly restore previous analyses.
+
+**What Changed**:
+1. **API Enhancements**:
+   - Added `mode` query parameter to GET /api/conversations for filtering
+   - Added `mode` and `metadata` fields to POST /api/conversations
+   - Trading conversations stored with mode: 'trading-individual', 'trading-consensus', 'trading-debate'
+   - Metadata includes: timeframe, targetSymbol, selectedModels, model roles
+
+2. **TradingHistoryDropdown Component**:
+   - Shows recent analyses with symbol + timeframe + action
+   - Icons: 📈 BUY (green), 📉 SELL (red), ➖ HOLD (yellow)
+   - Timestamp with relative formatting (e.g., "2h ago")
+   - Mode-filtered: Each trading mode shows only its own history
+   - Click to restore: Loads full analysis state
+
+3. **Persistence Integration (All 3 Modes)**:
+   - `useConversationPersistence` hook with trading-specific storage keys
+   - Auto-restore on mount from URL param (?t=analysis-id) or localStorage
+   - Saves after successful analysis completion
+   - Restores full state: results, timeframe, symbol, selected models
+
+4. **State Restoration Details**:
+   - **Individual Mode**: Restores decisions, context, models, timeframe, symbol
+   - **Consensus Mode**: Restores consensus result, models, timeframe, symbol
+   - **Debate Mode**: Restores debate results, role models, timeframe, symbol
+
+**Technical Implementation**:
+- Reuses existing conversation persistence infrastructure
+- Mode-based filtering using JSONB containment queries
+- Guest mode supported (saves anonymously, localStorage only)
+- Type-safe with updated SavedConversation interface
+- Zero TypeScript errors
+
+**Key Benefits**:
+- **History**: Review past trading analyses
+- **Persistence**: Results survive page refreshes
+- **Shareability**: Send analysis URLs to colleagues
+- **Continuity**: Pick up where you left off
+- **Comparison**: Easily compare current vs past analyses
+- **Professional UX**: Matches Ultra Mode's history experience
+
+**User Experience**:
+```
+Before: Results disappear on refresh 😞
+
+After:
+1. Run "TSLA • swing" analysis with 8 models
+2. See comprehensive results
+3. Refresh page → Results automatically reload! ✅
+4. Click "📊 Trading History" → See all past analyses
+5. Share URL: https://app.com/trading?t=abc123
+6. Colleague clicks → Sees identical analysis
+```
+
+**Storage Structure**:
+```json
+{
+  "id": "uuid",
+  "query": "Individual Trading Analysis",
+  "responses": {
+    "decisions": [...],  // or "consensus" or "debate"
+    "context": {...}
+  },
+  "evaluation_data": {
+    "mode": "trading-individual",
+    "timeframe": "swing",
+    "target_symbol": "TSLA",
+    "selected_models": ["claude-3-5-sonnet-20241022", ...],
+    "metadata": {...}
+  },
+  "created_at": "2025-10-24T..."
+}
+```
+
 ### Phase 2B: Trading Master Agent System
 **Status**: 📋 PLANNED
 **Recommendation**: Multi-agent orchestration with specialized sub-agents

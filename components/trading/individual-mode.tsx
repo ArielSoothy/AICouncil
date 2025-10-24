@@ -7,6 +7,8 @@ import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reas
 import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
 import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
+import { TradingHistoryDropdown } from './trading-history-dropdown'
+import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { ModelConfig } from '@/types/consensus'
 
 interface ReasoningDetails {
@@ -57,6 +59,37 @@ export function IndividualMode() {
   const [showContext, setShowContext] = useState(false)
   const [contextSteps, setContextSteps] = useState<ReasoningStep[]>([])
   const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
+
+  // Persistence for saving/restoring trading analyses
+  const { saveConversation, isRestoring } = useConversationPersistence({
+    storageKey: 'trading-individual-mode',
+    onRestored: (conversation) => {
+      console.log('Restoring Individual Mode analysis:', conversation)
+      const responses = conversation.responses as any
+      const evalData = conversation.evaluation_data as any
+
+      // Restore state
+      if (responses.decisions) {
+        setDecisions(responses.decisions)
+      }
+      if (responses.context) {
+        setContext(responses.context)
+      }
+      if (evalData?.metadata) {
+        const meta = evalData.metadata
+        if (meta.timeframe) setTimeframe(meta.timeframe)
+        if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
+        if (meta.selectedModels) {
+          // Restore selected models
+          const restoredModels = DEFAULT_INDIVIDUAL_MODELS.map(m => ({
+            ...m,
+            enabled: meta.selectedModels.includes(m.model)
+          }))
+          setSelectedModels(restoredModels)
+        }
+      }
+    }
+  })
 
   const getTradingDecisions = async () => {
     setLoading(true)
@@ -134,6 +167,37 @@ export function IndividualMode() {
         setContextSteps(steps)
         setShowContext(true) // Auto-show context on first load
       }
+
+      // Save conversation for history and persistence
+      try {
+        const saveResponse = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: 'Individual Trading Analysis',
+            responses: {
+              decisions: data.decisions,
+              context: data.context
+            },
+            mode: 'trading-individual',
+            metadata: {
+              timeframe,
+              targetSymbol: targetSymbol.trim() || null,
+              selectedModels: modelIds,
+              modelCount: modelIds.length
+            }
+          })
+        })
+
+        if (saveResponse.ok) {
+          const savedConversation = await saveResponse.json()
+          saveConversation(savedConversation.id)
+          console.log('Individual Mode analysis saved:', savedConversation.id)
+        }
+      } catch (saveError) {
+        console.error('Failed to save analysis:', saveError)
+        // Don't block user experience if save fails
+      }
     } catch (error) {
       console.error('Failed to get trading decisions:', error)
       alert(error instanceof Error ? error.message : 'Failed to get trading decisions')
@@ -144,6 +208,17 @@ export function IndividualMode() {
 
   return (
     <div className="space-y-6">
+      {/* Trading History */}
+      <div className="flex justify-end">
+        <TradingHistoryDropdown
+          mode="trading-individual"
+          onSelect={(conversation) => {
+            // Trigger restoration
+            window.location.href = `${window.location.pathname}?t=${conversation.id}`
+          }}
+        />
+      </div>
+
       {/* Model Selector & Timeframe */}
       <div className="bg-card rounded-lg border p-6 space-y-6">
         <TradingModelSelector
