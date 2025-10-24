@@ -43,7 +43,7 @@ function stripMarkdownCodeBlocks(text: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { selectedModels, timeframe = 'swing' } = body;
+    const { selectedModels, timeframe = 'swing', targetSymbol } = body;
 
     if (!selectedModels || !Array.isArray(selectedModels) || selectedModels.length < 2) {
       return NextResponse.json(
@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🤖 Getting trading decisions from', selectedModels.length, 'models for', timeframe, 'trading...');
+    const symbolText = targetSymbol ? ` on ${targetSymbol.toUpperCase()}` : '';
+    console.log('🤖 Getting trading decisions from', selectedModels.length, 'models for', timeframe, 'trading' + symbolText + '...');
 
     // Step 1: Get Alpaca account info
     const account = await getAccount();
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Generate enhanced trading prompt with timeframe-specific analysis
     const date = new Date().toISOString().split('T')[0];
-    const prompt = generateEnhancedTradingPrompt(account, [], date, timeframe as TradingTimeframe);
+    const prompt = generateEnhancedTradingPrompt(account, [], date, timeframe as TradingTimeframe, targetSymbol);
 
     // Step 3: Call each AI model in parallel
     const decisionsPromises = selectedModels.map(async (modelId: string) => {

@@ -28,6 +28,7 @@ interface AnalysisContext {
 export function IndividualMode() {
   const [selectedModels, setSelectedModels] = useState<string[]>(getDefaultModelSelections())
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
+  const [targetSymbol, setTargetSymbol] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [decisions, setDecisions] = useState<TradingDecision[]>([])
   const [context, setContext] = useState<AnalysisContext | null>(null)
@@ -44,7 +45,7 @@ export function IndividualMode() {
       const response = await fetch('/api/trading/individual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedModels, timeframe }),
+        body: JSON.stringify({ selectedModels, timeframe, targetSymbol: targetSymbol.trim() || undefined }),
       })
 
       if (!response.ok) {
@@ -91,6 +92,23 @@ export function IndividualMode() {
           minSelections={2}
           maxSelections={10}
         />
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-muted-foreground">
+            📊 Analyze Specific Stock (Optional)
+          </label>
+          <input
+            type="text"
+            value={targetSymbol}
+            onChange={(e) => setTargetSymbol(e.target.value.toUpperCase())}
+            placeholder="Enter symbol (e.g., TSLA, AAPL) or leave empty"
+            disabled={loading}
+            className="w-full px-4 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+          />
+          <p className="text-xs text-muted-foreground">
+            💡 Leave empty for general market analysis
+          </p>
+        </div>
 
         <TimeframeSelector
           value={timeframe}
