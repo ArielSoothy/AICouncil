@@ -129,6 +129,18 @@ export function SingleModelBadgeSelector({ value, onChange, label, disabled }: S
   const colorClass = PROVIDER_COLORS[provider] || PROVIDER_COLORS.openai
   const displayName = modelDisplayNames[value] || value
 
+  // Provider order for display (matching Ultra Mode priority)
+  const providerOrder: (keyof typeof availableModels)[] = [
+    'anthropic',
+    'openai',
+    'google',
+    'xai',
+    'groq',
+    'perplexity',
+    'mistral',
+    'cohere'
+  ]
+
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium text-muted-foreground">
@@ -143,18 +155,22 @@ export function SingleModelBadgeSelector({ value, onChange, label, disabled }: S
             <ChevronDown className="h-4 w-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
-          <DropdownMenuLabel>{providerNames[provider]} Models</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {availableModels[provider]?.map((availableModel) => (
-            <DropdownMenuItem
-              key={availableModel}
-              onClick={() => onChange(availableModel)}
-              className={value === availableModel ? 'bg-accent' : ''}
-            >
-              {modelDisplayNames[availableModel] || availableModel}
-              {value === availableModel && ' ✓'}
-            </DropdownMenuItem>
+        <DropdownMenuContent align="start" className="w-56 max-h-[400px] overflow-y-auto">
+          {providerOrder.map((providerKey, providerIndex) => (
+            <div key={providerKey}>
+              {providerIndex > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel>{providerNames[providerKey]} Models</DropdownMenuLabel>
+              {availableModels[providerKey]?.map((modelId) => (
+                <DropdownMenuItem
+                  key={modelId}
+                  onClick={() => onChange(modelId)}
+                  className={value === modelId ? 'bg-accent' : ''}
+                >
+                  {modelDisplayNames[modelId] || modelId}
+                  {value === modelId && ' ✓'}
+                </DropdownMenuItem>
+              ))}
+            </div>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
