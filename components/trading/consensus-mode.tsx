@@ -3,14 +3,8 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, TrendingUp, TrendingDown, Minus, Users } from 'lucide-react'
-
-// Simple model list for trading
-const AVAILABLE_MODELS = [
-  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
-  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google' },
-  { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B', provider: 'groq' },
-]
+import { getModelDisplayName, getDefaultModelSelections } from '@/lib/trading/models-config'
+import { ProviderModelSelector } from './provider-model-selector'
 
 interface ConsensusResult {
   action: 'BUY' | 'SELL' | 'HOLD'
@@ -27,27 +21,9 @@ interface ConsensusResult {
 }
 
 export function ConsensusMode() {
-  const [selectedModels, setSelectedModels] = useState<string[]>([
-    'claude-3-5-sonnet-20241022',
-    'gpt-4o',
-    'gemini-2.0-flash-exp'
-  ])
+  const [selectedModels, setSelectedModels] = useState<string[]>(getDefaultModelSelections())
   const [loading, setLoading] = useState(false)
   const [consensus, setConsensus] = useState<ConsensusResult | null>(null)
-
-  const toggleModel = (modelId: string) => {
-    if (selectedModels.includes(modelId)) {
-      // Remove model (minimum 2)
-      if (selectedModels.length > 2) {
-        setSelectedModels(selectedModels.filter(id => id !== modelId))
-      }
-    } else {
-      // Add model (maximum 4)
-      if (selectedModels.length < 4) {
-        setSelectedModels([...selectedModels, modelId])
-      }
-    }
-  }
 
   const getConsensusDecision = async () => {
     setLoading(true)
@@ -79,28 +55,15 @@ export function ConsensusMode() {
     <div className="space-y-6">
       {/* Model Selector */}
       <div className="bg-card rounded-lg border p-6">
-        <h3 className="font-semibold mb-4">Select AI Models for Consensus (2-4)</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {AVAILABLE_MODELS.map(model => {
-            const isSelected = selectedModels.includes(model.id)
-            return (
-              <button
-                key={model.id}
-                onClick={() => toggleModel(model.id)}
-                className={`
-                  p-3 rounded-lg border-2 text-left transition-all
-                  ${isSelected
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50'
-                  }
-                `}
-              >
-                <div className="font-medium">{model.name}</div>
-                <div className="text-xs text-muted-foreground">{model.provider}</div>
-              </button>
-            )
-          })}
-        </div>
+        <ProviderModelSelector
+          value={selectedModels}
+          onChange={(value) => setSelectedModels(value as string[])}
+          mode="multiple"
+          label="Select AI Models for Consensus (2-10)"
+          disabled={loading}
+          minSelections={2}
+          maxSelections={10}
+        />
 
         <Button
           onClick={getConsensusDecision}

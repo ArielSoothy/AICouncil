@@ -5,21 +5,23 @@ import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
 import { GoogleProvider } from '@/lib/ai-providers/google';
 import { GroqProvider } from '@/lib/ai-providers/groq';
+import { MistralProvider } from '@/lib/ai-providers/mistral';
+import { PerplexityProvider } from '@/lib/ai-providers/perplexity';
+import { CohereProvider } from '@/lib/ai-providers/cohere';
+import { XAIProvider } from '@/lib/ai-providers/xai';
+import { getModelDisplayName, getProviderForModel as getProviderType } from '@/lib/trading/models-config';
 import type { TradeDecision } from '@/lib/alpaca/types';
 
-// Map model IDs to providers
-const PROVIDER_MAP: Record<string, any> = {
-  'claude-3-5-sonnet-20241022': { provider: new AnthropicProvider(), model: 'claude-3-5-sonnet-20241022' },
-  'gpt-4o': { provider: new OpenAIProvider(), model: 'gpt-4o' },
-  'gemini-2.0-flash-exp': { provider: new GoogleProvider(), model: 'gemini-2.0-flash-exp' },
-  'llama-3.1-70b-versatile': { provider: new GroqProvider(), model: 'llama-3.1-70b-versatile' },
-};
-
-const MODEL_NAMES: Record<string, string> = {
-  'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
-  'gpt-4o': 'GPT-4o',
-  'gemini-2.0-flash-exp': 'Gemini 2.0 Flash',
-  'llama-3.1-70b-versatile': 'Llama 3.1 70B',
+// Initialize all providers
+const PROVIDERS = {
+  anthropic: new AnthropicProvider(),
+  openai: new OpenAIProvider(),
+  google: new GoogleProvider(),
+  groq: new GroqProvider(),
+  mistral: new MistralProvider(),
+  perplexity: new PerplexityProvider(),
+  cohere: new CohereProvider(),
+  xai: new XAIProvider(),
 };
 
 // Helper function to strip markdown code blocks from JSON responses
@@ -61,16 +63,19 @@ export async function POST(request: NextRequest) {
     // Step 3: Call each AI model in parallel
     const decisionsPromises = selectedModels.map(async (modelId: string) => {
       try {
-        const config = PROVIDER_MAP[modelId];
-        if (!config) {
-          throw new Error(`Unknown model: ${modelId}`);
+        const providerType = getProviderType(modelId);
+        if (!providerType || !PROVIDERS[providerType]) {
+          throw new Error(`Unknown model or provider: ${modelId}`);
         }
 
-        console.log(`📊 Asking ${MODEL_NAMES[modelId]} for trading decision...`);
+        const provider = PROVIDERS[providerType];
+        const modelName = getModelDisplayName(modelId);
 
-        const result = await config.provider.query(prompt, {
-          model: config.model,
-          provider: getProviderName(modelId),
+        console.log(`📊 Asking ${modelName} for trading decision...`);
+
+        const result = await provider.query(prompt, {
+          model: modelId,
+          provider: providerType,
           temperature: 0.7,
           maxTokens: 200,
           enabled: true,
@@ -82,7 +87,8 @@ export async function POST(request: NextRequest) {
 
         return decision;
       } catch (error) {
-        console.error(`❌ Error getting decision from ${MODEL_NAMES[modelId]}:`, error);
+        const modelName = getModelDisplayName(modelId);
+        console.error(`❌ Error getting decision from ${modelName}:`, error);
         // Return HOLD on error
         return {
           action: 'HOLD' as const,

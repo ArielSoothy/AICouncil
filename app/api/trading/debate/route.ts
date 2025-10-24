@@ -5,6 +5,11 @@ import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
 import { GoogleProvider } from '@/lib/ai-providers/google';
 import { GroqProvider } from '@/lib/ai-providers/groq';
+import { MistralProvider } from '@/lib/ai-providers/mistral';
+import { PerplexityProvider } from '@/lib/ai-providers/perplexity';
+import { CohereProvider } from '@/lib/ai-providers/cohere';
+import { XAIProvider } from '@/lib/ai-providers/xai';
+import { getModelDisplayName as getModelName, getProviderForModel as getProviderFromConfig } from '@/lib/trading/models-config';
 import type { TradeDecision } from '@/lib/alpaca/types';
 
 // Helper function to strip markdown code blocks from JSON responses
@@ -27,36 +32,30 @@ function getProviderForModel(modelId: string, providers: {
   openai: OpenAIProvider;
   google: GoogleProvider;
   groq: GroqProvider;
+  mistral: MistralProvider;
+  perplexity: PerplexityProvider;
+  cohere: CohereProvider;
+  xai: XAIProvider;
 }) {
-  if (modelId.includes('claude')) return providers.anthropic;
-  if (modelId.includes('gpt')) return providers.openai;
-  if (modelId.includes('gemini')) return providers.google;
-  if (modelId.includes('llama')) return providers.groq;
+  const providerType = getProviderFromConfig(modelId);
+
+  if (providerType === 'anthropic') return providers.anthropic;
+  if (providerType === 'openai') return providers.openai;
+  if (providerType === 'google') return providers.google;
+  if (providerType === 'groq') return providers.groq;
+  if (providerType === 'mistral') return providers.mistral;
+  if (providerType === 'perplexity') return providers.perplexity;
+  if (providerType === 'cohere') return providers.cohere;
+  if (providerType === 'xai') return providers.xai;
 
   // Default to anthropic if unknown
   return providers.anthropic;
 }
 
 // Helper function to get provider name from model ID
-function getProviderName(modelId: string): 'anthropic' | 'openai' | 'google' | 'groq' {
-  if (modelId.includes('claude')) return 'anthropic';
-  if (modelId.includes('gpt')) return 'openai';
-  if (modelId.includes('gemini')) return 'google';
-  if (modelId.includes('llama')) return 'groq';
-
-  return 'anthropic';
-}
-
-// Helper function to get model display name
-function getModelDisplayName(modelId: string): string {
-  const modelNames: { [key: string]: string } = {
-    'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
-    'gpt-4o': 'GPT-4o',
-    'gemini-2.0-flash-exp': 'Gemini 2.0 Flash',
-    'llama-3.1-70b-versatile': 'Llama 3.1 70B',
-  };
-
-  return modelNames[modelId] || modelId;
+function getProviderName(modelId: string): 'anthropic' | 'openai' | 'google' | 'groq' | 'mistral' | 'perplexity' | 'cohere' | 'xai' {
+  const providerType = getProviderFromConfig(modelId);
+  return providerType || 'anthropic';
 }
 
 // Agent personas for trading debate
@@ -130,7 +129,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const analystModel = body.analystModel || 'claude-3-5-sonnet-20241022';
     const criticModel = body.criticModel || 'gpt-4o';
-    const synthesizerModel = body.synthesizerModel || 'gemini-2.0-flash-exp';
+    const synthesizerModel = body.synthesizerModel || 'gemini-2.5-flash';
 
     console.log('📋 Selected models:', { analystModel, criticModel, synthesizerModel });
 
@@ -148,13 +147,17 @@ export async function POST(request: NextRequest) {
       openai: new OpenAIProvider(),
       google: new GoogleProvider(),
       groq: new GroqProvider(),
+      mistral: new MistralProvider(),
+      perplexity: new PerplexityProvider(),
+      cohere: new CohereProvider(),
+      xai: new XAIProvider(),
     };
 
     // Round 1: Initial positions
     console.log('🔄 Round 1: Initial agent positions...');
 
     // Analyst (Dynamic model)
-    console.log(`📊 Analyst (${getModelDisplayName(analystModel)}) analyzing market...`);
+    console.log(`📊 Analyst (${getModelName(analystModel)}) analyzing market...`);
     const analystPrompt = `${basePrompt}\n\n${ANALYST_PROMPT}`;
     const analystProvider = getProviderForModel(analystModel, providers);
     const analystResult = await analystProvider.query(analystPrompt, {
@@ -167,7 +170,7 @@ export async function POST(request: NextRequest) {
     const analystDecision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(analystResult.response));
 
     // Critic (Dynamic model)
-    console.log(`🔍 Critic (${getModelDisplayName(criticModel)}) evaluating recommendation...`);
+    console.log(`🔍 Critic (${getModelName(criticModel)}) evaluating recommendation...`);
     const criticPrompt = `${basePrompt}\n\n${CRITIC_PROMPT.replace('{analystDecision}', JSON.stringify(analystDecision))}`;
     const criticProvider = getProviderForModel(criticModel, providers);
     const criticResult = await criticProvider.query(criticPrompt, {
@@ -180,7 +183,7 @@ export async function POST(request: NextRequest) {
     const criticDecision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(criticResult.response));
 
     // Synthesizer (Dynamic model)
-    console.log(`⚖️  Synthesizer (${getModelDisplayName(synthesizerModel)}) balancing perspectives...`);
+    console.log(`⚖️  Synthesizer (${getModelName(synthesizerModel)}) balancing perspectives...`);
     const synthesizerPrompt = `${basePrompt}\n\n${SYNTHESIZER_PROMPT
       .replace('{analystDecision}', JSON.stringify(analystDecision))
       .replace('{criticDecision}', JSON.stringify(criticDecision))}`;
@@ -195,9 +198,9 @@ export async function POST(request: NextRequest) {
     const synthesizerDecision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(synthesizerResult.response));
 
     const round1 = [
-      { role: 'analyst' as const, name: getModelDisplayName(analystModel), decision: analystDecision },
-      { role: 'critic' as const, name: getModelDisplayName(criticModel), decision: criticDecision },
-      { role: 'synthesizer' as const, name: getModelDisplayName(synthesizerModel), decision: synthesizerDecision },
+      { role: 'analyst' as const, name: getModelName(analystModel), decision: analystDecision },
+      { role: 'critic' as const, name: getModelName(criticModel), decision: criticDecision },
+      { role: 'synthesizer' as const, name: getModelName(synthesizerModel), decision: synthesizerDecision },
     ];
 
     console.log('✅ Round 1 complete');
@@ -212,7 +215,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Round 2 Analyst refinement
-    console.log(`📊 Analyst (${getModelDisplayName(analystModel)}) refining position...`);
+    console.log(`📊 Analyst (${getModelName(analystModel)}) refining position...`);
     const analystR2Prompt = `${basePrompt}\n\n${ROUND2_REFINEMENT_PROMPT
       .replace('{role}', 'ANALYST')
       .replace('{analystDecision}', round1Summary.analystDecision)
@@ -228,7 +231,7 @@ export async function POST(request: NextRequest) {
     const analystR2Decision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(analystR2Result.response));
 
     // Round 2 Critic refinement
-    console.log(`🔍 Critic (${getModelDisplayName(criticModel)}) refining evaluation...`);
+    console.log(`🔍 Critic (${getModelName(criticModel)}) refining evaluation...`);
     const criticR2Prompt = `${basePrompt}\n\n${ROUND2_REFINEMENT_PROMPT
       .replace('{role}', 'CRITIC')
       .replace('{analystDecision}', round1Summary.analystDecision)
@@ -244,7 +247,7 @@ export async function POST(request: NextRequest) {
     const criticR2Decision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(criticR2Result.response));
 
     // Round 2 Synthesizer final decision
-    console.log(`⚖️  Synthesizer (${getModelDisplayName(synthesizerModel)}) making final decision...`);
+    console.log(`⚖️  Synthesizer (${getModelName(synthesizerModel)}) making final decision...`);
     const synthesizerR2Prompt = `${basePrompt}\n\n${ROUND2_REFINEMENT_PROMPT
       .replace('{role}', 'SYNTHESIZER')
       .replace('{analystDecision}', round1Summary.analystDecision)
@@ -260,9 +263,9 @@ export async function POST(request: NextRequest) {
     const synthesizerR2Decision: TradeDecision = JSON.parse(stripMarkdownCodeBlocks(synthesizerR2Result.response));
 
     const round2 = [
-      { role: 'analyst' as const, name: getModelDisplayName(analystModel), decision: analystR2Decision },
-      { role: 'critic' as const, name: getModelDisplayName(criticModel), decision: criticR2Decision },
-      { role: 'synthesizer' as const, name: getModelDisplayName(synthesizerModel), decision: synthesizerR2Decision },
+      { role: 'analyst' as const, name: getModelName(analystModel), decision: analystR2Decision },
+      { role: 'critic' as const, name: getModelName(criticModel), decision: criticR2Decision },
+      { role: 'synthesizer' as const, name: getModelName(synthesizerModel), decision: synthesizerR2Decision },
     ];
 
     console.log('✅ Round 2 complete');

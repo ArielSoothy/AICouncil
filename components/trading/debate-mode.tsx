@@ -4,14 +4,8 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react'
 import { DebateTranscript, createDebateMessage, type DebateMessage } from './debate-transcript'
-
-// Available models for debate roles
-const AVAILABLE_MODELS = [
-  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
-  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', provider: 'google' },
-  { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B', provider: 'groq' },
-]
+import { getModelDisplayName, getDefaultModelForProvider } from '@/lib/trading/models-config'
+import { ProviderModelSelector } from './provider-model-selector'
 
 interface DebateAgent {
   role: 'analyst' | 'critic' | 'synthesizer'
@@ -45,10 +39,10 @@ export function DebateMode() {
   const [showTranscript, setShowTranscript] = useState(false)
   const [transcriptMessages, setTranscriptMessages] = useState<DebateMessage[]>([])
 
-  // Model selection for each debate role
-  const [analystModel, setAnalystModel] = useState('claude-3-5-sonnet-20241022')
-  const [criticModel, setCriticModel] = useState('gpt-4o')
-  const [synthesizerModel, setSynthesizerModel] = useState('gemini-2.0-flash-exp')
+  // Model selection for each debate role (best model from each provider)
+  const [analystModel, setAnalystModel] = useState(getDefaultModelForProvider('anthropic') || 'claude-3-5-sonnet-20241022')
+  const [criticModel, setCriticModel] = useState(getDefaultModelForProvider('openai') || 'gpt-4o')
+  const [synthesizerModel, setSynthesizerModel] = useState(getDefaultModelForProvider('groq') || 'llama-3.3-70b-versatile')
 
   const startDebate = async () => {
     setLoading(true)
@@ -122,63 +116,33 @@ export function DebateMode() {
       <div className="bg-card rounded-lg border p-6">
         <h3 className="font-semibold mb-4">Select AI Models for Each Role</h3>
 
-        <div className="space-y-4">
-          {/* Analyst Model */}
-          <div>
-            <label className="text-sm text-muted-foreground mb-2 block">
-              📊 Analyst (Proposes trades)
-            </label>
-            <select
-              value={analystModel}
-              onChange={(e) => setAnalystModel(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border bg-background"
-              disabled={loading}
-            >
-              {AVAILABLE_MODELS.map(model => (
-                <option key={model.id} value={model.id}>
-                  {model.name} ({model.provider})
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="space-y-6">
+          {/* Analyst Model Selection */}
+          <ProviderModelSelector
+            value={analystModel}
+            onChange={(value) => setAnalystModel(value as string)}
+            mode="single"
+            label="📊 Analyst (Proposes trades)"
+            disabled={loading}
+          />
 
-          {/* Critic Model */}
-          <div>
-            <label className="text-sm text-muted-foreground mb-2 block">
-              🔍 Critic (Challenges recommendations)
-            </label>
-            <select
-              value={criticModel}
-              onChange={(e) => setCriticModel(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border bg-background"
-              disabled={loading}
-            >
-              {AVAILABLE_MODELS.map(model => (
-                <option key={model.id} value={model.id}>
-                  {model.name} ({model.provider})
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Critic Model Selection */}
+          <ProviderModelSelector
+            value={criticModel}
+            onChange={(value) => setCriticModel(value as string)}
+            mode="single"
+            label="🔍 Critic (Challenges recommendations)"
+            disabled={loading}
+          />
 
-          {/* Synthesizer Model */}
-          <div>
-            <label className="text-sm text-muted-foreground mb-2 block">
-              ⚖️ Synthesizer (Makes final decision)
-            </label>
-            <select
-              value={synthesizerModel}
-              onChange={(e) => setSynthesizerModel(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border bg-background"
-              disabled={loading}
-            >
-              {AVAILABLE_MODELS.map(model => (
-                <option key={model.id} value={model.id}>
-                  {model.name} ({model.provider})
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Synthesizer Model Selection */}
+          <ProviderModelSelector
+            value={synthesizerModel}
+            onChange={(value) => setSynthesizerModel(value as string)}
+            mode="single"
+            label="⚖️ Synthesizer (Makes final decision)"
+            disabled={loading}
+          />
         </div>
 
         <Button
