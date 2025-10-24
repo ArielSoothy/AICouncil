@@ -707,6 +707,14 @@
     * All commits pushed to feature branch
     * Screenshots captured for all features
     * Production-ready system
+  - ✅ **Step 13**: Start New Analysis button (October 24, 2025)
+    * Reset button added to all 3 trading modes
+    * Clears current results and allows starting fresh analysis
+    * Removes `?c=` URL parameter to clear cache reference
+    * Consistent `handleStartNew()` implementation across modes
+    * RotateCcw icon with professional outline button styling
+    * **Tested**: Individual Mode reset working correctly
+    * **Commit**: 7d373ff
 - **Key Features**:
   - **3 Trading Modes**:
     1. Individual LLMs: Compare decisions from multiple AI models side-by-side
