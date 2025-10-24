@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, TrendingUp, TrendingDown, Minus, Users } from 'lucide-react'
+import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
 import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
@@ -49,13 +50,42 @@ export function ConsensusMode() {
   const [targetSymbol, setTargetSymbol] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [consensus, setConsensus] = useState<ConsensusResult | null>(null)
+  const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
 
   const getConsensusDecision = async () => {
     setLoading(true)
     setConsensus(null)
+    setProgressSteps([])
 
     // Extract enabled model IDs for API
     const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
+    const enabledModels = selectedModels.filter(m => m.enabled)
+
+    // Show initial progress
+    const initialSteps: ReasoningStep[] = [
+      createReasoningStep('thinking', '🔄 Starting consensus analysis...'),
+    ]
+    setProgressSteps(initialSteps)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    // Add models being queried
+    const modelSteps = [
+      ...initialSteps,
+      createReasoningStep('analysis', `💰 Fetching account data...`),
+      createReasoningStep('thinking', `🤖 Querying ${modelIds.length} AI models for consensus:`),
+    ]
+    enabledModels.forEach(m => {
+      modelSteps.push(createReasoningStep('analysis', `   • ${getModelDisplayName(m.model)}`))
+    })
+    setProgressSteps(modelSteps)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    setProgressSteps([
+      ...modelSteps,
+      createReasoningStep('thinking', '⏳ Building consensus from all models...')
+    ])
 
     try {
       const response = await fetch('/api/trading/consensus', {
@@ -70,6 +100,14 @@ export function ConsensusMode() {
       }
 
       const data = await response.json()
+
+      // Show completion
+      setProgressSteps(prev => [
+        ...prev,
+        createReasoningStep('decision', `✅ Consensus reached!`),
+        createReasoningStep('analysis', '📊 Processing final decision...')
+      ])
+
       setConsensus(data.consensus)
     } catch (error) {
       console.error('Failed to get consensus decision:', error)
@@ -131,6 +169,16 @@ export function ConsensusMode() {
           )}
         </Button>
       </div>
+
+      {/* Real-time Progress */}
+      {loading && progressSteps.length > 0 && (
+        <ReasoningStream
+          steps={progressSteps}
+          isStreaming={true}
+          title="Consensus Progress"
+          modelName="Trading System"
+        />
+      )}
 
       {/* Consensus Results */}
       {consensus && (

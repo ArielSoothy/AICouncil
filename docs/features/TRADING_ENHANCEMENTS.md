@@ -211,6 +211,76 @@ All 3 trading modes now support optional stock symbol input for targeted analysi
 5. User sees side-by-side Tesla analysis from Claude, GPT, Gemini, etc.
 ```
 
+### Phase 2A.7: Real-Time Progress Indicators
+**Status**: ✅ COMPLETED
+**Files Modified**:
+- `components/trading/individual-mode.tsx`
+- `components/trading/consensus-mode.tsx`
+- `components/trading/debate-mode.tsx`
+
+**Implementation Summary**:
+All 3 trading modes now display real-time visual progress logs showing what's happening behind the scenes during analysis. Users no longer see just a "thinking" spinner - they see the actual system operations step-by-step.
+
+**What Changed**:
+1. **Individual Mode Progress**:
+   - 🔄 Starting analysis
+   - 💰 Fetching account data
+   - 🤖 Querying X AI models in parallel (lists each model)
+   - ⏳ Waiting for model responses
+   - ✅ Received X trading recommendations
+   - 📊 Processing results
+
+2. **Consensus Mode Progress**:
+   - 🔄 Starting consensus analysis
+   - 💰 Fetching account data
+   - 🤖 Querying X AI models for consensus (lists each model)
+   - ⏳ Building consensus from all models
+   - ✅ Consensus reached
+   - 📊 Processing final decision
+
+3. **Debate Mode Progress**:
+   - 🔄 Starting agent debate
+   - 💰 Fetching account data
+   - 🤖 Debate participants (lists Analyst/Critic/Synthesizer with their models)
+   - 🎭 Round 1: Initial positions
+   - 🎭 Round 2: Refined analysis
+   - ⚖️ Synthesizing final decision
+   - ✅ Debate complete
+   - 📊 Processing results
+
+**Technical Implementation**:
+- Uses existing `ReasoningStream` component for consistent visual styling
+- Added `progressSteps` state to all 3 mode components
+- Progress updates use `createReasoningStep()` helper function
+- 150ms delays between steps for smooth visual progression
+- Steps categorized as: `thinking`, `analysis`, `decision`
+- Progress automatically clears when starting new analysis
+
+**Key Benefits**:
+- **User Transparency**: Users see exactly what the system is doing
+- **Better UX**: No more wondering if the system is stuck or working
+- **Educational Value**: Users learn about the multi-agent workflow
+- **Professional Feel**: Shows the sophistication of the analysis process
+- **Real-Time Feedback**: Users can track progress of long-running analyses
+- **Consistent Design**: Uses same component across all 3 modes
+
+**User Experience**:
+```
+Before: "Getting Trading Decisions..." (spinner only)
+
+After:
+  🔄 Starting analysis...
+  💰 Fetching account data...
+  🤖 Querying 8 AI models in parallel:
+     • Claude 3.5 Sonnet
+     • GPT-4o
+     • Gemini 2.5 Pro
+     • (etc...)
+  ⏳ Waiting for model responses...
+  ✅ Received 8 trading recommendations!
+  📊 Processing results...
+```
+
 ### Phase 2B: Trading Master Agent System
 **Status**: 📋 PLANNED
 **Recommendation**: Multi-agent orchestration with specialized sub-agents

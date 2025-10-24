@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp, Sparkles, Zap, Gift } from 'lucide-react'
 import { DebateTranscript, createDebateMessage, type DebateMessage } from './debate-transcript'
+import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName } from '@/lib/trading/models-config'
 import { SingleModelBadgeSelector } from './single-model-badge-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
@@ -85,6 +86,7 @@ export function DebateMode() {
   const [activeRound, setActiveRound] = useState<1 | 2>(1)
   const [showTranscript, setShowTranscript] = useState(false)
   const [transcriptMessages, setTranscriptMessages] = useState<DebateMessage[]>([])
+  const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [targetSymbol, setTargetSymbol] = useState<string>('')
 
@@ -106,6 +108,35 @@ export function DebateMode() {
     setDebate(null)
     setActiveRound(1)
     setTranscriptMessages([])
+    setProgressSteps([])
+
+    // Show initial progress
+    const initialSteps: ReasoningStep[] = [
+      createReasoningStep('thinking', '🔄 Starting agent debate...'),
+    ]
+    setProgressSteps(initialSteps)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    // Add debate roles being used
+    const roleSteps = [
+      ...initialSteps,
+      createReasoningStep('analysis', `💰 Fetching account data...`),
+      createReasoningStep('thinking', `🤖 Debate participants:`),
+      createReasoningStep('analysis', `   • 📊 Analyst: ${getModelDisplayName(analystModel)}`),
+      createReasoningStep('analysis', `   • 🔍 Critic: ${getModelDisplayName(criticModel)}`),
+      createReasoningStep('analysis', `   • ⚖️ Synthesizer: ${getModelDisplayName(synthesizerModel)}`),
+    ]
+    setProgressSteps(roleSteps)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    setProgressSteps([
+      ...roleSteps,
+      createReasoningStep('thinking', '🎭 Round 1: Initial positions...')
+    ])
+
+    await new Promise(resolve => setTimeout(resolve, 150))
 
     try {
       const response = await fetch('/api/trading/debate', {
@@ -126,6 +157,30 @@ export function DebateMode() {
       }
 
       const data = await response.json()
+
+      // Show Round 2 progress
+      setProgressSteps(prev => [
+        ...prev,
+        createReasoningStep('thinking', '🎭 Round 2: Refined analysis...')
+      ])
+
+      await new Promise(resolve => setTimeout(resolve, 150))
+
+      // Show synthesis progress
+      setProgressSteps(prev => [
+        ...prev,
+        createReasoningStep('decision', '⚖️ Synthesizing final decision...')
+      ])
+
+      await new Promise(resolve => setTimeout(resolve, 150))
+
+      // Show completion
+      setProgressSteps(prev => [
+        ...prev,
+        createReasoningStep('decision', `✅ Debate complete!`),
+        createReasoningStep('analysis', '📊 Processing results...')
+      ])
+
       setDebate(data.debate)
 
       // Build transcript from debate results
@@ -274,6 +329,16 @@ export function DebateMode() {
           )}
         </Button>
       </div>
+
+      {/* Real-time Progress */}
+      {loading && progressSteps.length > 0 && (
+        <ReasoningStream
+          steps={progressSteps}
+          isStreaming={true}
+          title="Debate Progress"
+          modelName="Trading System"
+        />
+      )}
 
       {/* Debate Transcript */}
       {transcriptMessages.length > 0 && (

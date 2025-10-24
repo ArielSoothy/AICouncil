@@ -56,15 +56,45 @@ export function IndividualMode() {
   const [context, setContext] = useState<AnalysisContext | null>(null)
   const [showContext, setShowContext] = useState(false)
   const [contextSteps, setContextSteps] = useState<ReasoningStep[]>([])
+  const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
 
   const getTradingDecisions = async () => {
     setLoading(true)
     setDecisions([])
     setContext(null)
     setContextSteps([])
+    setProgressSteps([])
 
     // Extract enabled model IDs for API
     const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
+    const enabledModels = selectedModels.filter(m => m.enabled)
+
+    // Show initial progress
+    const initialSteps: ReasoningStep[] = [
+      createReasoningStep('thinking', '🔄 Starting analysis...'),
+    ]
+    setProgressSteps(initialSteps)
+
+    // Small delay to show first step
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    // Add models being queried
+    const modelSteps = [
+      ...initialSteps,
+      createReasoningStep('analysis', `💰 Fetching account data...`),
+      createReasoningStep('thinking', `🤖 Querying ${modelIds.length} AI models in parallel:`),
+    ]
+    enabledModels.forEach(m => {
+      modelSteps.push(createReasoningStep('analysis', `   • ${getModelDisplayName(m.model)}`))
+    })
+    setProgressSteps(modelSteps)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    setProgressSteps([
+      ...modelSteps,
+      createReasoningStep('thinking', '⏳ Waiting for model responses...')
+    ])
 
     try {
       const response = await fetch('/api/trading/individual', {
@@ -79,6 +109,14 @@ export function IndividualMode() {
       }
 
       const data = await response.json()
+
+      // Show completion
+      setProgressSteps(prev => [
+        ...prev,
+        createReasoningStep('decision', `✅ Received ${data.decisions.length} trading recommendations!`),
+        createReasoningStep('analysis', '📊 Processing results...')
+      ])
+
       setDecisions(data.decisions)
 
       // Set context and create reasoning steps for transparency
@@ -153,6 +191,16 @@ export function IndividualMode() {
           )}
         </Button>
       </div>
+
+      {/* Real-time Progress */}
+      {loading && progressSteps.length > 0 && (
+        <ReasoningStream
+          steps={progressSteps}
+          isStreaming={true}
+          title="Analysis Progress"
+          modelName="Trading System"
+        />
+      )}
 
       {/* AI Analysis Context - Transparency */}
       {context && contextSteps.length > 0 && (
