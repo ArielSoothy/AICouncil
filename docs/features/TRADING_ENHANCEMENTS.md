@@ -254,7 +254,8 @@ Trading Master (Orchestrator)
 ## 📈 Model Count Summary
 
 **Before**: 4 models (Claude 3.5 Sonnet, GPT-4o, Gemini 2.0 Flash, Llama 3.1 70B)
-**After**: 43 models across 8 providers
+**After Phase 2A**: 43 models across 8 providers
+**After Phase 2A.6**: 46 models across 8 providers (added 3 more xAI models)
 
 **Provider Breakdown**:
 - Anthropic: 10 models (Claude 4.5, 4, 3.7, 3.5 series)
@@ -264,17 +265,18 @@ Trading Master (Orchestrator)
 - Mistral: 2 models (Large, Small)
 - Perplexity: 2 models (Llama Sonar Large/Small)
 - Cohere: 2 models (Command R+, Command R)
-- xAI: 3 models (Grok 2 Latest, Grok 2 Dec, Grok Beta)
+- xAI: 6 models (Grok 4 Fast Reasoning, Grok 4 Fast, Grok 4 0709, Grok 3, Grok 3 Mini, Grok Code Fast)
 
 ## 🎯 Success Metrics
 
-1. **Model Availability**: ✅ 43 models (975% increase from 4)
+1. **Model Availability**: ✅ 46 models (1,050% increase from 4)
 2. **Provider Coverage**: ✅ 8 providers (100% increase from 4)
-3. **UI Consistency**: ✅ Unified dropdown design across all modes
-4. **Default Intelligence**: ✅ Smart auto-selection of best models
+3. **UI Consistency**: ✅ Badge-based selection matching Ultra Mode across all trading modes
+4. **Default Intelligence**: ✅ Smart presets (Free/Pro/Max) + auto-selection of best models
 5. **Professional Standards**: ✅ Timeframe-aware prompts with risk management
 6. **Type Safety**: ✅ Zero TypeScript errors
 7. **Research-Based**: ✅ Built on institutional trading best practices
+8. **UX Enhancement**: ✅ Free/Pro/Max preset buttons for instant testing
 
 ## 🔒 Protected Features
 
@@ -319,4 +321,71 @@ Trading Master (Orchestrator)
 
 **Phase 2A Status**: ✅ COMPLETED - All 3 trading modes now support professional timeframe-specific analysis
 **Phase 2A.5 Status**: ✅ COMPLETED - Optional stock symbol analysis across all 3 modes
-**Next Session Priority**: Test stock symbol feature + timeframes, then begin Phase 2B (Trading Master Agent System) implementation
+
+### Phase 2A.6: TradingModelSelector with Presets & xAI Model Fix
+**Status**: ✅ COMPLETED
+**Commits**: `dc323b9`
+
+**Implementation Summary:**
+Replaced dropdown-based model selection with Ultra Mode's badge-based selector and added Free/Pro/Max preset buttons for easier testing.
+
+**What Changed:**
+1. **Fixed xAI Models** (`lib/trading/models-config.ts`):
+   - **Removed (WRONG):** `grok-2-latest`, `grok-2-1212`, `grok-beta`
+   - **Added (CORRECT):** `grok-4-fast-reasoning`, `grok-4-fast-non-reasoning`, `grok-4-0709`, `grok-3`, `grok-3-mini`, `grok-code-fast-1`
+   - Models now match Ultra Mode's correct xAI lineup
+
+2. **Created TradingModelSelector Component** (`components/trading/trading-model-selector.tsx`):
+   - Wraps `UltraModelBadgeSelector` for consistent UI across app
+   - Adds 3 preset buttons above selector:
+     - 🎁 **Free Preset** (6 models): All free tier models (Groq + Google free)
+     - ⚡ **Pro Preset** (8 models): Balanced/Budget tier (good value, moderate cost)
+     - 🌟 **Max Preset** (8 models): Best flagship models (highest quality)
+   - Badge-based visual selection with provider dropdowns
+   - Full TypeScript type safety with `ModelConfig[]` interface
+
+3. **Updated Individual Mode** (`components/trading/individual-mode.tsx`):
+   - Replaced `ProviderModelSelector` with `TradingModelSelector`
+   - Changed state from `string[]` to `ModelConfig[]`
+   - Extract enabled model IDs when calling API
+   - Default: Pro preset (8 balanced models)
+
+4. **Updated Consensus Mode** (`components/trading/consensus-mode.tsx`):
+   - Replaced `ProviderModelSelector` with `TradingModelSelector`
+   - Changed state from `string[]` to `ModelConfig[]`
+   - Extract enabled model IDs when calling API
+   - Default: Pro preset (8 balanced models)
+
+5. **Debate Mode Automatically Fixed**:
+   - Uses single model selection (no UI changes needed)
+   - Automatically benefits from fixed xAI models in `models-config.ts`
+   - Analyst/Critic/Synthesizer roles now have access to correct Grok models
+
+**Key Benefits:**
+- **Consistent UX**: All trading modes now use same visual selector as Ultra Mode
+- **Quick Testing**: Free/Pro/Max presets allow instant model tier selection
+- **Correct Models**: xAI Grok lineup now matches production Ultra Mode
+- **Professional UI**: Badge-based selection more visual and intuitive than dropdowns
+- **Type Safety**: Full ModelConfig[] support maintains TypeScript safety
+
+**Preset Configurations:**
+```typescript
+Free: [
+  'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash',
+  'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'gemma2-9b-it'
+]
+
+Pro: [
+  'claude-3-5-sonnet-20241022', 'gpt-4o', 'gpt-5-mini',
+  'gemini-2.5-pro', 'llama-3.3-70b-versatile', 'grok-3',
+  'mistral-large-latest', 'sonar-pro'
+]
+
+Max: [
+  'claude-sonnet-4-5-20250929', 'gpt-5-chat-latest', 'gemini-2.5-pro',
+  'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning', 'grok-4-0709',
+  'llama-3.3-70b-versatile', 'sonar-pro'
+]
+```
+
+**Next Session Priority**: Test preset buttons + new UI, verify all 46 models accessible, then begin Phase 2B (Trading Master Agent System) implementation
