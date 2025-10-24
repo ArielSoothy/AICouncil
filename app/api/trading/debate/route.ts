@@ -124,14 +124,16 @@ Return your response in JSON format:
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse request body for model selections and timeframe
+    // Parse request body for model selections, timeframe, and target symbol
     const body = await request.json();
     const analystModel = body.analystModel || 'claude-3-5-sonnet-20241022';
     const criticModel = body.criticModel || 'gpt-4o';
     const synthesizerModel = body.synthesizerModel || 'gemini-2.5-flash';
     const timeframe = body.timeframe || 'swing';
+    const targetSymbol = body.targetSymbol;
 
-    console.log('🎭 Starting agent debate for', timeframe, 'trading decision...');
+    const symbolText = targetSymbol ? ` on ${targetSymbol.toUpperCase()}` : '';
+    console.log('🎭 Starting agent debate for', timeframe, 'trading decision' + symbolText + '...');
     console.log('📋 Selected models:', { analystModel, criticModel, synthesizerModel });
 
     // Step 1: Get Alpaca account info
@@ -140,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Generate enhanced trading prompt with timeframe-specific analysis
     const date = new Date().toISOString().split('T')[0];
-    const basePrompt = generateEnhancedTradingPrompt(account, [], date, timeframe as TradingTimeframe);
+    const basePrompt = generateEnhancedTradingPrompt(account, [], date, timeframe as TradingTimeframe, targetSymbol);
 
     // Initialize all AI providers
     const providers = {

@@ -40,6 +40,7 @@ export function DebateMode() {
   const [showTranscript, setShowTranscript] = useState(false)
   const [transcriptMessages, setTranscriptMessages] = useState<DebateMessage[]>([])
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
+  const [targetSymbol, setTargetSymbol] = useState<string>('')
 
   // Model selection for each debate role (best model from each provider)
   const [analystModel, setAnalystModel] = useState(getDefaultModelForProvider('anthropic') || 'claude-3-5-sonnet-20241022')
@@ -61,6 +62,7 @@ export function DebateMode() {
           criticModel,
           synthesizerModel,
           timeframe,
+          targetSymbol: targetSymbol.trim() || undefined,
         }),
       })
 
@@ -146,6 +148,24 @@ export function DebateMode() {
             label="⚖️ Synthesizer (Makes final decision)"
             disabled={loading}
           />
+
+          {/* Stock Symbol Input */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">
+              📊 Analyze Specific Stock (Optional)
+            </label>
+            <input
+              type="text"
+              value={targetSymbol}
+              onChange={(e) => setTargetSymbol(e.target.value.toUpperCase())}
+              placeholder="Enter symbol (e.g., TSLA, AAPL) or leave empty"
+              disabled={loading}
+              className="w-full px-4 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            />
+            <p className="text-xs text-muted-foreground">
+              💡 Leave empty for general market analysis
+            </p>
+          </div>
 
           {/* Timeframe Selection */}
           <TimeframeSelector
