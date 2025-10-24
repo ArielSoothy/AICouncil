@@ -74,7 +74,8 @@ export function generateEnhancedTradingPrompt(
   account: AlpacaAccount,
   positions: AlpacaPosition[],
   date: string,
-  timeframe: TradingTimeframe
+  timeframe: TradingTimeframe,
+  targetSymbol?: string
 ): string {
   const config = TIMEFRAME_CONFIGS[timeframe];
   const positionsText = positions.length > 0
@@ -83,6 +84,7 @@ export function generateEnhancedTradingPrompt(
 
   const maxPositionSize = parseFloat(account.portfolio_value) * 0.3;
   const minRiskReward = config.riskRewardMin;
+  const normalizedSymbol = targetSymbol?.toUpperCase().trim();
 
   return `You are a PROFESSIONAL AI TRADER with expertise in ${config.analysisDepth}.
 
@@ -100,7 +102,11 @@ ${positionsText}
 TRADING CONSTRAINTS:
 - Max 3 positions at once
 - Max 30% of portfolio per position ($${maxPositionSize.toFixed(2)})
-- Only trade well-known stocks (AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META, NFLX, AMD, INTC)
+${normalizedSymbol
+  ? `- 🎯 TARGET STOCK: ${normalizedSymbol} - YOU MUST ANALYZE THIS STOCK ONLY
+- Provide BUY/SELL/HOLD recommendation specifically for ${normalizedSymbol}
+- Do NOT recommend any other stock besides ${normalizedSymbol}`
+  : '- Only trade well-known stocks (AAPL, MSFT, GOOGL, AMZN, TSLA, NVDA, META, NFLX, AMD, INTC)'}
 - Market is CLOSED on weekends and holidays
 
 PROFESSIONAL ANALYSIS REQUIRED:
@@ -113,7 +119,7 @@ RISK MANAGEMENT RULES:
 - ${config.entryExitFocus}
 - Never risk more than 2% of portfolio on a single trade
 
-YOUR TASK: Provide a COMPREHENSIVE trade recommendation for ${timeframe} trading.
+YOUR TASK: Provide a COMPREHENSIVE trade recommendation for ${timeframe} trading${normalizedSymbol ? ` on ${normalizedSymbol}` : ''}.
 
 RESPOND IN VALID JSON FORMAT:
 {
