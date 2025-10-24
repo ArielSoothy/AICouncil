@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccount } from '@/lib/alpaca/client';
-import { generateTradingPrompt } from '@/lib/alpaca/prompts';
+import { generateEnhancedTradingPrompt } from '@/lib/alpaca/enhanced-prompts';
+import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
 import { GoogleProvider } from '@/lib/ai-providers/google';
@@ -41,7 +42,7 @@ function stripMarkdownCodeBlocks(text: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { selectedModels } = body;
+    const { selectedModels, timeframe = 'swing' } = body;
 
     if (!selectedModels || !Array.isArray(selectedModels) || selectedModels.length < 2) {
       return NextResponse.json(
@@ -50,15 +51,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🤝 Getting consensus from', selectedModels.length, 'models...');
+    console.log('🤝 Getting consensus from', selectedModels.length, 'models for', timeframe, 'trading...');
 
     // Step 1: Get Alpaca account info
     const account = await getAccount();
     console.log('💰 Account balance:', account.portfolio_value);
 
-    // Step 2: Generate trading prompt (same for all models)
+    // Step 2: Generate enhanced trading prompt with timeframe-specific analysis
     const date = new Date().toISOString().split('T')[0];
-    const prompt = generateTradingPrompt(account, [], date);
+    const prompt = generateEnhancedTradingPrompt(account, [], date, timeframe as TradingTimeframe);
 
     // Step 3: Call each AI model in parallel
     const decisionsPromises = selectedModels.map(async (modelId: string) => {
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
           model: modelId,
           provider: providerType,
           temperature: 0.7,
-          maxTokens: 200,
+          maxTokens: 500, // Increased for comprehensive analysis with stop-loss, take-profit, etc.
           enabled: true,
         });
 

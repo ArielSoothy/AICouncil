@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, TrendingUp, TrendingDown, Minus, Users } from 'lucide-react'
 import { getModelDisplayName, getDefaultModelSelections } from '@/lib/trading/models-config'
 import { ProviderModelSelector } from './provider-model-selector'
+import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 
 interface ConsensusResult {
   action: 'BUY' | 'SELL' | 'HOLD'
@@ -22,6 +23,7 @@ interface ConsensusResult {
 
 export function ConsensusMode() {
   const [selectedModels, setSelectedModels] = useState<string[]>(getDefaultModelSelections())
+  const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [loading, setLoading] = useState(false)
   const [consensus, setConsensus] = useState<ConsensusResult | null>(null)
 
@@ -33,7 +35,7 @@ export function ConsensusMode() {
       const response = await fetch('/api/trading/consensus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedModels }),
+        body: JSON.stringify({ selectedModels, timeframe }),
       })
 
       if (!response.ok) {
@@ -53,8 +55,8 @@ export function ConsensusMode() {
 
   return (
     <div className="space-y-6">
-      {/* Model Selector */}
-      <div className="bg-card rounded-lg border p-6">
+      {/* Model Selector & Timeframe */}
+      <div className="bg-card rounded-lg border p-6 space-y-6">
         <ProviderModelSelector
           value={selectedModels}
           onChange={(value) => setSelectedModels(value as string[])}
@@ -65,10 +67,16 @@ export function ConsensusMode() {
           maxSelections={10}
         />
 
+        <TimeframeSelector
+          value={timeframe}
+          onChange={setTimeframe}
+          disabled={loading}
+        />
+
         <Button
           onClick={getConsensusDecision}
           disabled={loading || selectedModels.length < 2}
-          className="w-full mt-4"
+          className="w-full"
           size="lg"
         >
           {loading ? (
