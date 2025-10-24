@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp, Sparkles, Zap, Gift } from 'lucide-react'
 import { DebateTranscript, createDebateMessage, type DebateMessage } from './debate-transcript'
 import { getModelDisplayName, getDefaultModelForProvider } from '@/lib/trading/models-config'
 import { ProviderModelSelector } from './provider-model-selector'
@@ -33,6 +33,43 @@ interface DebateResult {
   }
 }
 
+// Debate Mode Presets - Pre-selected models for each role
+const DEBATE_PRESETS = {
+  free: {
+    label: 'Free',
+    icon: Gift,
+    description: 'All free models',
+    color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300',
+    roles: {
+      analyst: 'gemini-2.0-flash',      // Google free (good reasoning)
+      critic: 'llama-3.3-70b-versatile', // Groq free (best free model)
+      synthesizer: 'gemini-1.5-flash',   // Google free (fast synthesis)
+    }
+  },
+  pro: {
+    label: 'Pro',
+    icon: Zap,
+    description: 'Balanced tier models',
+    color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300',
+    roles: {
+      analyst: 'claude-3-5-sonnet-20241022',  // Anthropic balanced (strong analysis)
+      critic: 'gpt-4o',                        // OpenAI balanced (critical thinking)
+      synthesizer: 'llama-3.3-70b-versatile', // Groq free (good synthesis)
+    }
+  },
+  max: {
+    label: 'Max',
+    icon: Sparkles,
+    description: 'Best flagship models',
+    color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
+    roles: {
+      analyst: 'claude-sonnet-4-5-20250929', // Anthropic flagship (best analysis)
+      critic: 'gpt-5-chat-latest',            // OpenAI flagship (best reasoning)
+      synthesizer: 'gemini-2.5-pro',          // Google flagship (comprehensive synthesis)
+    }
+  }
+}
+
 export function DebateMode() {
   const [loading, setLoading] = useState(false)
   const [debate, setDebate] = useState<DebateResult | null>(null)
@@ -42,10 +79,18 @@ export function DebateMode() {
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [targetSymbol, setTargetSymbol] = useState<string>('')
 
-  // Model selection for each debate role (best model from each provider)
-  const [analystModel, setAnalystModel] = useState(getDefaultModelForProvider('anthropic') || 'claude-3-5-sonnet-20241022')
-  const [criticModel, setCriticModel] = useState(getDefaultModelForProvider('openai') || 'gpt-4o')
-  const [synthesizerModel, setSynthesizerModel] = useState(getDefaultModelForProvider('groq') || 'llama-3.3-70b-versatile')
+  // Model selection for each debate role (default to Pro preset)
+  const [analystModel, setAnalystModel] = useState(DEBATE_PRESETS.pro.roles.analyst)
+  const [criticModel, setCriticModel] = useState(DEBATE_PRESETS.pro.roles.critic)
+  const [synthesizerModel, setSynthesizerModel] = useState(DEBATE_PRESETS.pro.roles.synthesizer)
+
+  // Apply preset function
+  const applyPreset = (presetKey: 'free' | 'pro' | 'max') => {
+    const preset = DEBATE_PRESETS[presetKey]
+    setAnalystModel(preset.roles.analyst)
+    setCriticModel(preset.roles.critic)
+    setSynthesizerModel(preset.roles.synthesizer)
+  }
 
   const startDebate = async () => {
     setLoading(true)
@@ -120,6 +165,35 @@ export function DebateMode() {
       {/* Model Selection for Debate Roles */}
       <div className="bg-card rounded-lg border p-6">
         <h3 className="font-semibold mb-4">Select AI Models for Each Role</h3>
+
+        {/* Preset Buttons */}
+        <div className="mb-6">
+          <label className="text-sm font-medium text-muted-foreground block mb-3">
+            Quick Presets
+          </label>
+          <div className="grid grid-cols-3 gap-3">
+            {(Object.keys(DEBATE_PRESETS) as Array<keyof typeof DEBATE_PRESETS>).map((key) => {
+              const preset = DEBATE_PRESETS[key]
+              const Icon = preset.icon
+
+              return (
+                <Button
+                  key={key}
+                  onClick={() => applyPreset(key)}
+                  disabled={loading}
+                  variant="outline"
+                  className={`flex flex-col items-center gap-2 h-auto py-4 border-2 ${preset.color} transition-all`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <div className="text-center">
+                    <div className="font-semibold">{preset.label}</div>
+                    <div className="text-xs opacity-80 mt-1">{preset.description}</div>
+                  </div>
+                </Button>
+              )
+            })}
+          </div>
+        </div>
 
         <div className="space-y-6">
           {/* Analyst Model Selection */}
