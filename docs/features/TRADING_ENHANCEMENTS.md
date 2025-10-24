@@ -368,12 +368,23 @@ Replaced dropdown-based model selection with Ultra Mode's badge-based selector a
    - Users can still manually adjust each role after applying preset
    - All 6 correct xAI models accessible via dropdowns
 
+6. **Cross-Provider Model Selection** (`components/trading/single-model-badge-selector.tsx`) - **Commit:** `dc1433a`:
+   - Enhanced dropdown to show ALL 46 models from ALL 8 providers
+   - Provider-grouped sections with clear labels (Anthropic, OpenAI, Google, etc.)
+   - Provider separators for visual clarity
+   - Max-height with scrolling for better UX
+   - Badge color automatically updates when selecting from different provider
+   - Matches flexibility of Individual/Consensus modes (any model from any provider)
+   - **Example**: Can now select Grok for Analyst, Claude for Critic, Gemini for Synthesizer
+
 **Key Benefits:**
 - **Consistent UX**: All trading modes now use same visual selector as Ultra Mode
 - **Quick Testing**: Free/Pro/Max presets allow instant model tier selection
 - **Correct Models**: xAI Grok lineup now matches production Ultra Mode
 - **Professional UI**: Badge-based selection more visual and intuitive than dropdowns
 - **Type Safety**: Full ModelConfig[] support maintains TypeScript safety
+- **Full Provider Flexibility**: Debate Mode now supports selecting ANY model from ANY provider per role
+- **Apples-to-Apples Comparison**: Test any model combination (e.g., Claude vs GPT vs Gemini as critics)
 
 **Preset Configurations:**
 
