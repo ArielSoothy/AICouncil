@@ -43,6 +43,7 @@ These files MUST be read at the start of every development session:
 │   │
 │   ├── features/                       # Feature-specific documentation
 │   │   ├── TRADING_ENHANCEMENTS.md     # Paper trading system (Phase 2)
+│   │   ├── TRADING_DECISION_PROCESS.md # How AI models make trading decisions
 │   │   ├── ULTRA_MODE_REDESIGN_PLAN.md # Ultra Mode architecture
 │   │   ├── PRO_MODE_FIX_ANALYSIS.md    # Pro Mode auth fix analysis
 │   │   ├── MEMORY_IMPLEMENTATION_PLAN.md # Memory system plan
@@ -148,6 +149,7 @@ Detailed documentation for major features:
 | File | Purpose | When to Read |
 |------|---------|--------------|
 | **TRADING_ENHANCEMENTS.md** | Complete trading system documentation (Phase 2) | Trading feature work |
+| **TRADING_DECISION_PROCESS.md** | How AI models make trading decisions (prompts, research process, limitations) | Understanding trading logic |
 | **ULTRA_MODE_REDESIGN_PLAN.md** | Ultra Mode architecture redesign | Ultra Mode changes |
 | **PRO_MODE_FIX_ANALYSIS.md** | Pro Mode authentication fix analysis | Pro Mode work |
 | **MEMORY_IMPLEMENTATION_PLAN.md** | Memory system implementation plan | Memory feature work |
@@ -272,9 +274,10 @@ Historical documentation and research (reference only):
 6. Check docs/architecture/PROJECT_OVERVIEW.md for context
 
 ### Working on Trading Features
-1. Read docs/features/TRADING_ENHANCEMENTS.md
-2. Read docs/architecture/AI_MODELS_SETUP.md
-3. Check docs/workflow/FEATURES.md (protected features)
+1. Read docs/features/TRADING_ENHANCEMENTS.md (system architecture)
+2. Read docs/features/TRADING_DECISION_PROCESS.md (how AI models research & decide)
+3. Read docs/architecture/AI_MODELS_SETUP.md (model configuration)
+4. Check docs/workflow/FEATURES.md (protected features)
 
 ### Using Sub-Agents
 1. Read docs/guides/SUB_AGENTS.md (orchestration overview)
