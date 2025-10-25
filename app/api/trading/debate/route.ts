@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAccount } from '@/lib/alpaca/client';
+import { getAccount, getPositions } from '@/lib/alpaca/client';
 import { generateEnhancedTradingPrompt } from '@/lib/alpaca/enhanced-prompts';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
@@ -170,13 +170,15 @@ export async function POST(request: NextRequest) {
     console.log('🎭 Starting agent debate for', timeframe, 'trading decision' + symbolText + '...');
     console.log('📋 Selected models:', { analystModel, criticModel, synthesizerModel });
 
-    // Step 1: Get Alpaca account info
+    // Step 1: Get Alpaca account info and positions
     const account = await getAccount();
+    const positions = await getPositions();
     console.log('💰 Account balance:', account.portfolio_value);
+    console.log('📊 Current positions:', positions.length);
 
     // Step 2: Generate enhanced trading prompt with timeframe-specific analysis
     const date = new Date().toISOString().split('T')[0];
-    const basePrompt = generateEnhancedTradingPrompt(account, [], date, timeframe as TradingTimeframe, targetSymbol);
+    const basePrompt = generateEnhancedTradingPrompt(account, positions, date, timeframe as TradingTimeframe, targetSymbol);
 
     // Initialize all AI providers
     const providers = {

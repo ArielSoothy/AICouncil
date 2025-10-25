@@ -25,13 +25,23 @@
    - Fundamental analysis principles (P/E ratios, revenue growth)
    - Risk management best practices
 
-3. **Prompt Context** (Real-time data from YOUR account):
+3. **Prompt Context** (Real-time data from YOUR Alpaca account):
    - Your current cash balance: `$44,547.77`
    - Your portfolio value: `$100,528.74`
-   - Your current positions: `AAPL (1 share), NVDA (300 shares)`
    - Current date: `2025-10-24`
    - Selected timeframe: `swing` (or day/position/longterm)
    - Target symbol (if specified): `TSLA`
+
+4. **Real-time Position Data from Alpaca** ✅ **FIXED October 24, 2025**:
+   - ✅ Real-time prices for stocks YOU OWN (from Alpaca API)
+   - ✅ Your entry prices and P&L for each position
+   - ✅ Current holdings (e.g., AAPL 1 share @ $261.01, current $263.47, P&L +$2.46)
+
+   **Bug History** (Fixed in all 3 trading modes):
+   - **Original Issue**: Empty array `[]` was passed instead of fetching positions
+   - **Fixed in**: `consensus/route.ts`, `debate/route.ts`, `individual/route.ts`
+   - **Fix Applied**: Added `const positions = await getPositions()` and passed to prompt generator
+   - **Impact**: Models NOW receive real-time prices for your owned stocks via Alpaca!
 
 ## 📝 The Trading Prompt - What Models Receive
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAccount } from '@/lib/alpaca/client';
+import { getAccount, getPositions } from '@/lib/alpaca/client';
 import { generateEnhancedTradingPrompt } from '@/lib/alpaca/enhanced-prompts';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
@@ -88,13 +88,15 @@ export async function POST(request: NextRequest) {
     const symbolText = targetSymbol ? ` on ${targetSymbol.toUpperCase()}` : '';
     console.log('🤖 Getting trading decisions from', selectedModels.length, 'models for', timeframe, 'trading' + symbolText + '...');
 
-    // Step 1: Get Alpaca account info
+    // Step 1: Get Alpaca account info and positions
     const account = await getAccount();
+    const positions = await getPositions();
     console.log('💰 Account balance:', account.portfolio_value);
+    console.log('📊 Current positions:', positions.length);
 
     // Step 2: Generate enhanced trading prompt with timeframe-specific analysis
     const date = new Date().toISOString().split('T')[0];
-    const prompt = generateEnhancedTradingPrompt(account, [], date, timeframe as TradingTimeframe, targetSymbol);
+    const prompt = generateEnhancedTradingPrompt(account, positions, date, timeframe as TradingTimeframe, targetSymbol);
 
     // Step 3: Call each AI model in parallel
     const decisionsPromises = selectedModels.map(async (modelId: string) => {
