@@ -455,27 +455,30 @@ const consensus = await synthesizeDecisions(decisions, researchReport);
 
 ## 📋 IMPLEMENTATION CHECKLIST
 
-### Phase 1: Agentic Prompts ✅
-- [ ] Modify `data-coordinator.ts` → minimal data only
-- [ ] Create `generateResearchAgentPrompt()` in `enhanced-prompts.ts`
-- [ ] Add ReAct pattern instructions
-- [ ] Add project context and mission
-- [ ] Add evaluation criteria
+### Phase 1: Agentic Prompts ✅ **COMPLETE - October 29, 2025**
+- [x] Modify `data-coordinator.ts` → minimal data only (`formatMinimalDataForPrompt()`)
+- [x] Create `generateResearchAgentPrompt()` in `enhanced-prompts.ts` (470+ lines)
+- [x] Add ReAct pattern instructions (THINK → ACT → OBSERVE → REASON → REPEAT)
+- [x] Add project context and mission (real money decisions mandate)
+- [x] Add evaluation criteria (tool usage depth: 0-2 insufficient, 5-8 good, 9+ excellent)
+- [x] TypeScript validation: 0 errors
 
-### Phase 2: Research Agents ✅
-- [ ] Create `lib/agents/research-agents.ts`
-- [ ] Implement `runTechnicalResearch()` (Llama 3.3 70B)
-- [ ] Implement `runFundamentalResearch()` (GPT-4o)
-- [ ] Implement `runSentimentResearch()` (Gemini Flash)
-- [ ] Implement `runRiskAnalysis()` (Claude 4.5)
-- [ ] Implement `runResearchAgents()` orchestrator
+### Phase 2: Research Agents ✅ **COMPLETE - October 29, 2025**
+- [x] Create `lib/agents/research-agents.ts` (460 lines)
+- [x] Implement `runTechnicalResearch()` (Llama 3.3 70B, 5-8 tools)
+- [x] Implement `runFundamentalResearch()` (GPT-4o, 4-6 tools)
+- [x] Implement `runSentimentResearch()` (Gemini Flash, 3-5 tools)
+- [x] Implement `runRiskAnalysis()` (Claude 4.5, 6-10 tools)
+- [x] Implement `runResearchAgents()` orchestrator with parallel execution
+- [x] TypeScript validation: 0 errors
 
-### Phase 3: Update Trading Modes ✅
-- [ ] Update `consensus/route.ts` with research pipeline
-- [ ] Update `debate/route.ts` with research pipeline
-- [ ] Update `individual/route.ts` with research pipeline
-- [ ] Add research report to decision prompts
-- [ ] Track tool usage per agent
+### Phase 3: Update Trading Modes ✅ **COMPLETE - October 29, 2025**
+- [x] Update `consensus/route.ts` with research pipeline (commit 776a4d4)
+- [x] Update `individual/route.ts` with research pipeline (commit 710f61e)
+- [x] Update `debate/route.ts` with research pipeline (commit b9ca816)
+- [x] Add `formatResearchReportForPrompt()` to all 3 modes
+- [x] Return research metadata in API responses for UI transparency
+- [x] TypeScript validation: 0 errors across all routes
 
 ### Phase 4: UI Enhancements ✅
 - [ ] Create Research Progress panel component
