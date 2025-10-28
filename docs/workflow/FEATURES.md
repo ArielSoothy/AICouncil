@@ -764,5 +764,168 @@
   - Branch: `feature/paper-trading-phase2` (100% complete - PRODUCTION READY)
 - **DO NOT**: Delete paper trading feature, remove Alpaca integration, modify database schema without migration, skip test validation steps
 
+### 20. AI Tool Use - Real-Time Market Research
+- **Status**: ✅ ACTIVE & PHASE 2 COMPLETE (October 25, 2025)
+- **Location**: `lib/alpaca/market-data-tools.ts` + `lib/ai-providers/*.ts` (5 providers)
+- **Purpose**: Enable AI models to research stocks via function calling instead of relying on training data
+- **Key Features**:
+  - ✅ **8 Trading Research Tools**:
+    1. `get_stock_quote` - Real-time price, bid/ask, volume
+    2. `get_price_bars` - Historical candlestick data (1Min, 5Min, 1Hour, 1Day)
+    3. `get_stock_news` - Latest news articles for symbol
+    4. `calculate_rsi` - Relative Strength Index (14-period)
+    5. `calculate_macd` - MACD indicator (12, 26, 9)
+    6. `get_volume_profile` - Trading volume analysis
+    7. `get_support_resistance` - Key price levels from bars
+    8. `check_earnings_date` - Upcoming earnings (placeholder)
+  - ✅ **Tool Call Tracking**: `toolTracker.logCall()` monitors rate limits (200/min Alpaca limit)
+  - ✅ **5 Providers Integrated** (Phase 2 Complete):
+    * Anthropic (Claude) - All models support tools
+    * OpenAI (GPT) - All models support tools
+    * Google (Gemini) - All models support tools (switched to Vercel AI SDK)
+    * xAI (Grok) - All models support tools
+    * Groq (Llama) - Includes `llama-3-groq-70b-tool-use` (#1 Berkeley leaderboard)
+  - ✅ **TypeScript Safety**: `ModelResponse.toolCalls` array tracks all tool usage
+  - ✅ **Maximum Capability Mode**: 15 max tool calls per model, any stock research
+- **Implementation Details**:
+  - Framework: Vercel AI SDK `tool()` wrapper with Zod schema validation
+  - Pattern: `config.useTools ? alpacaTools : undefined` in all providers
+  - Callback: `onStepFinish` logs tool calls to console and tracker
+  - API Integration: Uses existing `getAlpacaClient()` from `lib/alpaca/client.ts`
+- **Dependencies**:
+  - `@ai-sdk/*` packages (Vercel AI SDK)
+  - Alpaca Paper Trading API v3 (async generators)
+  - `types/consensus.ts` (ModelResponse with toolCalls)
+- **Remaining Phases** (Pending):
+  - Phase 3: Rate limiting (queue requests at 150 calls/min threshold)
+  - Phase 4: Prompt updates (add research tools documentation)
+  - Phase 5: Enable in Consensus Mode (`app/api/trading/consensus/route.ts`)
+  - Phase 6: Enable in Debate Mode (all 3 agents)
+  - Phase 7: UI for research activity logs
+  - Phase 8: Documentation updates
+- **Files Created**:
+  - `lib/alpaca/market-data-tools.ts` (600+ lines, 8 tools + tracker)
+- **Files Modified** (Phase 2):
+  - `lib/ai-providers/anthropic.ts` ✅
+  - `lib/ai-providers/openai.ts` ✅
+  - `lib/ai-providers/google.ts` ✅ (SDK switched)
+  - `lib/ai-providers/xai.ts` ✅
+  - `lib/ai-providers/groq.ts` ✅
+  - `types/consensus.ts` (added toolCalls to ModelResponse)
+- **Testing Status**: Phase 2 complete, TypeScript 0 errors, ready for Phase 5 testing
+- **DO NOT**: Remove tool use capability, delete market-data-tools.ts, revert provider changes without testing
+
+### 21. Modular Data Provider Architecture
+- **Status**: ✅ ACTIVE & PRODUCTION READY (October 26, 2025)
+- **Location**: `lib/data-providers/` directory + `lib/alpaca/data-coordinator.ts`
+- **Purpose**: Modular, extensible architecture for fetching market data from multiple sources (Yahoo Finance, Alpaca, IBKR)
+- **Problem Solved**:
+  - ❌ **Before**: Alpaca free tier blocking real-time data with 403 "subscription does not permit querying recent SIP data" errors
+  - ✅ **After**: Yahoo Finance provides FREE real-time market data without restrictions
+- **Key Benefits**:
+  - 8-10x faster (1 API call vs 64 individual fetches)
+  - 90% API call reduction
+  - FREE data (no API keys required with Yahoo Finance)
+  - All models analyze SAME data (fairest comparison)
+  - Easy to switch providers via environment variable
+- **Architecture** (SOLID Principles):
+  - **Interface Segregation**: All providers implement `IDataProvider` interface
+  - **Template Method Pattern**: Base class provides shared TA calculations
+  - **Factory Pattern**: Easy provider switching via `getDataProvider()`
+  - **Provider Registry**: Custom provider registration support
+- **Files Created**:
+  - `lib/data-providers/types.ts` (~170 lines) - Interface definitions, type safety
+  - `lib/data-providers/base-provider.ts` (~290 lines) - Abstract base class with RSI, MACD, EMA, SMA, Bollinger Bands
+  - `lib/data-providers/yahoo-finance-provider.ts` (~280 lines) - FREE Yahoo Finance integration
+  - `lib/data-providers/provider-factory.ts` (~120 lines) - Factory pattern implementation
+  - `lib/data-providers/index.ts` (~90 lines) - Clean exports with documentation
+- **Files Modified**:
+  - `lib/alpaca/data-coordinator.ts` (Simplified from ~450 to ~250 lines) - Now thin wrapper around provider factory
+- **Data Provided**:
+  - Real-time quote (price, volume, bid, ask, spread)
+  - Historical bars (last 30-90 days)
+  - Technical indicators (RSI, MACD, EMAs, SMAs, Bollinger Bands)
+  - Support/resistance levels
+  - Recent news (5 articles)
+  - Trend analysis (direction, strength, analysis)
+- **How to Switch Providers**:
+  ```typescript
+  // Option 1: Environment variable (recommended)
+  DATA_PROVIDER=yahoo  # Default, FREE
+  DATA_PROVIDER=alpaca # When Alpaca provider is implemented
+  DATA_PROVIDER=ibkr   # When IBKR provider is implemented
+
+  // Option 2: Programmatically
+  const provider = getDataProvider('yahoo');
+  const data = await provider.fetchMarketData('TSLA');
+
+  // Option 3: Auto-fallback
+  const provider = await getWorkingProvider(); // Tries all providers until one works
+  ```
+- **Browser Test Results** (Verified October 26, 2025):
+  - ✅ Yahoo Finance fetching TSLA data successfully
+  - ✅ All 7 models citing specific Yahoo Finance data (RSI 43.25, EMA $432.85, etc.)
+  - ✅ NO more Alpaca 403 errors
+  - ✅ TypeScript compilation: 0 errors
+- **Dependencies**:
+  - Native `fetch()` API (no external dependencies for Yahoo Finance)
+  - Existing Alpaca client (for future Alpaca provider)
+- **Future Extensibility**:
+  - Easy to add IBKR provider
+  - Easy to add Polygon.io provider
+  - Easy to add Alpha Vantage provider
+  - Provider registry supports custom implementations
+- **Last Modified**: October 26, 2025 (Initial implementation + browser validation)
+- **DO NOT**: Delete data-providers directory, remove Yahoo Finance provider, modify IDataProvider interface without updating all providers, bypass factory pattern
+
+### 32. Model Testing & Status Tracking System
+- **Status**: ✅ ACTIVE & PRODUCTION-READY
+- **Location**: `lib/models/model-registry.ts`, `scripts/test-all-models.ts`, `lib/models/model-tester.ts`
+- **Purpose**: Comprehensive testing infrastructure to validate all AI models and track their availability status
+- **Key Features**:
+  - Automated testing of all 53 models across 8 providers
+  - Status metadata: working, unreleased, no_api_key, parameter_error, service_error
+  - Test timestamp tracking (lastTested field)
+  - Response time monitoring
+  - Detailed error categorization with human-readable notes
+  - UI components automatically filter to show only working models
+  - Helper functions: `getWorkingModels()`, `isModelWorking()`, `getWorkingModelsByProvider()`
+- **Test Results** (October 28, 2025):
+  - 26 working models (49.1%): OpenAI 80%, Anthropic 58%, xAI 44%, Groq 40%
+  - 27 failed models (50.9%): Unreleased, API key issues, deprecated
+  - Average response time: 2.45 seconds
+  - Fastest provider: Groq (0.3s average)
+- **UI Components Updated**:
+  - `components/trading/single-model-badge-selector.tsx` - Direct filtering for working models
+  - `components/consensus/ultra-model-badge-selector.tsx` - Direct filtering for working models
+  - `lib/user-tiers.ts` - Central model provider (FREE_MODELS, ALL_MODELS filtered)
+  - `lib/trading/models-config.ts` - Trading models (TRADING_MODELS filtered)
+  - All other components use filtered models via user-tiers.ts or trading/models-config.ts
+  - Filter logic: `!m.isLegacy && m.status === 'working'`
+- **Testing Commands**:
+  ```bash
+  npm run test-models               # Test all 53 models
+  npm run test-models:dry-run       # Preview without API calls
+  npm run test-models:provider openai  # Test specific provider
+  npm run test-models:retest        # Retest failed models only
+  ```
+- **Key Findings**:
+  - ✅ GPT-5, GPT-5 Mini, GPT-5 Nano confirmed working
+  - ✅ Claude 4.5 Sonnet, Claude 4 Sonnet confirmed working
+  - ✅ Grok 4 series (all 3 models) confirmed working
+  - ⚠️ Perplexity, Mistral, Cohere API keys need verification
+  - ⚠️ Most Gemini models failing (only 2.0 Flash works)
+  - ⚠️ Grok 2 series deprecated (superseded by Grok 4)
+- **Documentation**:
+  - Full details: `docs/features/MODEL_STATUS.md`
+  - Test results: `docs/MODEL_TEST_RESULTS.md`
+  - Status data: `scripts/update-model-status.ts`
+- **Dependencies**:
+  - All AI provider modules (`lib/ai-providers/*.ts`)
+  - Model registry (`lib/models/model-registry.ts`)
+  - TypeScript test runner (tsx/npx)
+- **Last Modified**: October 28, 2025 (Initial comprehensive testing)
+- **DO NOT**: Remove status metadata from model registry, disable model filtering in UI components, delete test infrastructure
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

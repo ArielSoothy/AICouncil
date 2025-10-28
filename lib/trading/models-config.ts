@@ -1,17 +1,33 @@
 /**
  * Centralized Trading Models Configuration
- * Single source of truth for all available AI models in trading modes
+ * Uses the model registry as the single source of truth
  */
+
+import { MODEL_REGISTRY, Provider, ModelTier } from '../models/model-registry'
 
 export interface TradingModel {
   id: string
   name: string
-  provider: 'anthropic' | 'openai' | 'google' | 'groq' | 'mistral' | 'perplexity' | 'cohere' | 'xai'
-  tier: 'flagship' | 'balanced' | 'budget' | 'free'
+  provider: Provider
+  tier: ModelTier
   badge?: string
 }
 
-export const TRADING_MODELS: TradingModel[] = [
+// Generate trading models from the registry (only working models, excluding legacy)
+export const TRADING_MODELS: TradingModel[] = Object.values(MODEL_REGISTRY)
+  .flat()
+  .filter(m => !m.isLegacy && m.status === 'working')
+  .map(model => ({
+    id: model.id,
+    name: model.name,
+    provider: model.provider,
+    tier: model.tier,
+    badge: model.badge
+  }))
+
+// LEGACY: Old hardcoded list kept for reference (to be removed)
+/*
+export const TRADING_MODELS_OLD: TradingModel[] = [
   // ===== ANTHROPIC =====
   // Claude 4.5 & 4 Series (Flagship)
   {
@@ -22,7 +38,7 @@ export const TRADING_MODELS: TradingModel[] = [
     badge: '🌟'
   },
   {
-    id: 'claude-opus-4-20250514',
+    id: 'claude-opus-4-1-20250514',
     name: 'Claude 4 Opus',
     provider: 'anthropic',
     tier: 'flagship',
@@ -341,6 +357,7 @@ export const TRADING_MODELS: TradingModel[] = [
     badge: '⚡'
   }
 ]
+*/
 
 // Grouped by provider for dropdown optgroups
 export const MODELS_BY_PROVIDER = {

@@ -1,3 +1,5 @@
+import { MODEL_REGISTRY, Provider, type UserAccessTier as RegistryUserAccessTier } from './models/model-registry'
+
 export type UserTier = 'guest' | 'free' | 'pro' | 'enterprise'
 
 export interface TierConfig {
@@ -5,7 +7,7 @@ export interface TierConfig {
   price: string
   queryLimit: number
   premiumCredits?: number // For free tier premium sampling
-  availableProviders: ('openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'perplexity' | 'mistral' | 'cohere')[]
+  availableProviders: Provider[]
   judgeModel: string
   features: string[]
 }
@@ -44,7 +46,7 @@ export const TIER_CONFIGS: Record<UserTier, TierConfig> = {
     price: '$9/month',
     queryLimit: 100, // queries per day
     availableProviders: ['openai', 'anthropic', 'google', 'groq', 'xai'], // All models
-    judgeModel: 'claude-opus-4-20250514', // Premium judge
+    judgeModel: 'claude-opus-4-1-20250514', // Premium judge
     features: [
       'All AI models (25+ models)',
       '100 queries per day',
@@ -74,61 +76,32 @@ export const TIER_CONFIGS: Record<UserTier, TierConfig> = {
   }
 }
 
-// Guest tier model whitelist (same as free tier for impressive demo)
-export const GUEST_TIER_MODELS = {
-  google: [
-    'llama-3.3-70b-versatile',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite'
-  ],
-  groq: [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'gemma2-9b-it',
-    'llama-3-groq-70b-tool-use',
-    'llama-3-groq-8b-tool-use'
-  ]
-}
+// Guest/Free tier models: Only free working models from registry
+const FREE_MODELS_FROM_REGISTRY = Object.entries(MODEL_REGISTRY)
+  .filter(([provider]) => provider === 'google' || provider === 'groq')
+  .reduce((acc, [provider, models]) => {
+    acc[provider as Provider] = models
+      .filter(m => m.tier === 'free' && m.status === 'working')
+      .map(m => m.id)
+    return acc
+  }, {} as Record<Provider, string[]>)
+
+// Guest tier model whitelist (same as free tier)
+export const GUEST_TIER_MODELS = FREE_MODELS_FROM_REGISTRY
 
 // Free tier model whitelist
-export const FREE_TIER_MODELS = {
-  google: [
-    'llama-3.3-70b-versatile',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite'
-  ],
-  groq: [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'gemma2-9b-it',
-    'llama-3-groq-70b-tool-use',
-    'llama-3-groq-8b-tool-use'
-  ]
-}
+export const FREE_TIER_MODELS = FREE_MODELS_FROM_REGISTRY
 
-// All available models (for display purposes)
-export const ALL_MODELS = {
-  openai: ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'o3', 'o4-mini', 'gpt-4o', 'gpt-4o-realtime-preview', 'gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'],
-  anthropic: [
-    'claude-sonnet-4-5-20250929',
-    'claude-opus-4-20250514',
-    'claude-sonnet-4-20250514',
-    'claude-3-7-sonnet-20250219',
-    'claude-3-5-sonnet-20241022',
-    'claude-3-5-haiku-20241022',
-    'claude-3-opus-20240229',
-    'claude-3-sonnet-20240229',
-    'claude-3-haiku-20240307',
-    'claude-2.1',
-    'claude-2.0'
-  ],
-  google: FREE_TIER_MODELS.google,
-  groq: FREE_TIER_MODELS.groq,
-  xai: ['grok-4-0709', 'grok-3', 'grok-3-mini', 'grok-2-latest', 'grok-2-mini'],
-  perplexity: ['sonar-pro', 'sonar-small'],
-  mistral: ['mistral-large-latest', 'mistral-small-latest'],
-  cohere: ['command-r-plus', 'command-r']
-}
+// All available working models (from registry)
+export const ALL_MODELS: Record<Provider, string[]> = Object.entries(MODEL_REGISTRY).reduce(
+  (acc, [provider, models]) => {
+    acc[provider as Provider] = models
+      .filter(m => m.status === 'working')
+      .map(m => m.id)
+    return acc
+  },
+  {} as Record<Provider, string[]>
+)
 
 export function getAvailableModels(userTier: UserTier | null): { provider: string; models: string[] }[] {
   // Default to free tier if no tier specified
@@ -209,14 +182,11 @@ export function getTierFeatures(userTier: UserTier | null): string[] {
   return TIER_CONFIGS[tier].features
 }
 
-// Models with internet access capabilities
-export const MODELS_WITH_INTERNET = [
-  'gpt-4o',
-  'gpt-4-turbo-preview',
-  'claude-3-5-sonnet-20241022',
-  'gemini-2.5-pro',
-  'llama-3.3-70b-versatile'
-]
+// Models with internet access capabilities (from registry)
+export const MODELS_WITH_INTERNET = Object.values(MODEL_REGISTRY)
+  .flat()
+  .filter(m => m.hasInternet)
+  .map(m => m.id)
 
 export function hasInternetAccess(model: string): boolean {
   return MODELS_WITH_INTERNET.includes(model)
