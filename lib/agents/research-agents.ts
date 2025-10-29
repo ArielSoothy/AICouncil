@@ -215,9 +215,12 @@ export async function runFundamentalResearch(
 /**
  * Sentiment Analyst Research Agent
  *
- * Model: Gemini 2.0 Flash (fast NLP, FREE)
+ * Model: Llama 3.3 70B (Berkeley #1 tool-use model, FREE)
  * Tools: 3-5 expected (news primary, quote, bars for context)
  * Focus: News sentiment, market psychology, social signals
+ *
+ * NOTE: Switched from Gemini 2.0 Flash due to tool argument validation errors.
+ * Llama 3.3 70B proven to work perfectly with our tool schema.
  */
 export async function runSentimentResearch(
   symbol: string,
@@ -238,16 +241,16 @@ export async function runSentimentResearch(
       minimalData
     );
 
-    const provider = new GoogleProvider();
+    const provider = new GroqProvider();
 
-    // Use Gemini 2.0 Flash - fast, good NLP, FREE
+    // Use Llama 3.3 70B - best free tool-use model, proven compatibility
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'llama-3.3-70b-versatile',
+      provider: 'groq',
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
-      useTools: true,
+      useTools: true, // ✅ Proven to work with our tool schema
       maxSteps: 10,
     });
 
@@ -260,8 +263,8 @@ export async function runSentimentResearch(
 
     return {
       agent: 'sentiment',
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'llama-3.3-70b-versatile',
+      provider: 'groq',
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -273,8 +276,8 @@ export async function runSentimentResearch(
     console.error('❌ Sentiment Analyst error:', error);
     return {
       agent: 'sentiment',
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'llama-3.3-70b-versatile',
+      provider: 'groq',
       toolsUsed: false,
       toolCallCount: 0,
       toolNames: [],
