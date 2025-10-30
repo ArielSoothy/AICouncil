@@ -186,78 +186,112 @@ export async function POST(request: NextRequest) {
             const modelName = getModelDisplayName(modelId);
             const providerType = getProviderType(modelId);
 
-            if (!providerType || !PROVIDERS[providerType as keyof typeof PROVIDERS]) {
-              throw new Error(`Unknown model or provider: ${modelId}`);
+            try {
+              if (!providerType || !PROVIDERS[providerType as keyof typeof PROVIDERS]) {
+                throw new Error(`Unknown model or provider: ${modelId}`);
+              }
+
+              // Send decision start event
+              sendEvent({
+                type: 'decision_start',
+                modelName,
+                modelId,
+                timestamp: Date.now()
+              });
+
+              const decisionStartTime = Date.now();
+              const provider = PROVIDERS[providerType as keyof typeof PROVIDERS];
+
+              // Generate prompt with research data
+              const prompt = generateEnhancedTradingPrompt(
+                account,
+                positions,
+                new Date().toLocaleDateString(),
+                timeframe,
+                normalizedSymbol || undefined
+              );
+
+              // Add research context
+              const enhancedPrompt = `${prompt}\n\n=== RESEARCH FINDINGS ===\n\nTechnical Analysis:\n${researchReport.technical.findings}\n\nFundamental Analysis:\n${researchReport.fundamental.findings}\n\nSentiment Analysis:\n${researchReport.sentiment.findings}\n\nRisk Assessment:\n${researchReport.risk.findings}`;
+
+              const result = await provider.query(enhancedPrompt, {
+                model: modelId,
+                provider: providerType,
+                temperature: 0.7,
+                maxTokens: 2000,
+                enabled: true,
+                useTools: false,
+                maxSteps: 1,
+              });
+
+              const cleanedResponse = extractJSON(result.response);
+              let decision: TradeDecision = JSON.parse(cleanedResponse);
+
+              // Handle malformed responses
+              if (!decision.action && (decision as any).bullishCase) {
+                decision = {
+                  action: 'HOLD' as const,
+                  symbol: undefined,
+                  quantity: undefined,
+                  reasoning: decision as any,
+                  confidence: 0.5,
+                } as TradeDecision;
+              }
+
+              decision.model = modelId;
+              decision.toolsUsed = false;
+              decision.toolCallCount = 0;
+
+              const decisionDuration = Date.now() - decisionStartTime;
+
+              // Send decision complete event
+              sendEvent({
+                type: 'decision_complete',
+                modelName,
+                modelId,
+                action: decision.action,
+                confidence: decision.confidence || 0.5,
+                duration: decisionDuration,
+                timestamp: Date.now()
+              });
+
+              return decision;
+            } catch (error) {
+              // Handle errors per-model (don't crash entire stream)
+              console.error(`Model ${modelName} failed:`, error);
+
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+              // Send error event
+              sendEvent({
+                type: 'error',
+                phase: 2,
+                model: modelName,
+                message: `${modelName}: ${errorMessage}`,
+                timestamp: Date.now()
+              });
+
+              // Return null for failed models
+              return null;
             }
-
-            // Send decision start event
-            sendEvent({
-              type: 'decision_start',
-              modelName,
-              modelId,
-              timestamp: Date.now()
-            });
-
-            const decisionStartTime = Date.now();
-            const provider = PROVIDERS[providerType as keyof typeof PROVIDERS];
-
-            // Generate prompt with research data
-            const prompt = generateEnhancedTradingPrompt(
-              account,
-              positions,
-              new Date().toLocaleDateString(),
-              timeframe,
-              normalizedSymbol || undefined
-            );
-
-            // Add research context
-            const enhancedPrompt = `${prompt}\n\n=== RESEARCH FINDINGS ===\n\nTechnical Analysis:\n${researchReport.technical.findings}\n\nFundamental Analysis:\n${researchReport.fundamental.findings}\n\nSentiment Analysis:\n${researchReport.sentiment.findings}\n\nRisk Assessment:\n${researchReport.risk.findings}`;
-
-            const result = await provider.query(enhancedPrompt, {
-              model: modelId,
-              provider: providerType,
-              temperature: 0.7,
-              maxTokens: 2000,
-              enabled: true,
-              useTools: false,
-              maxSteps: 1,
-            });
-
-            const cleanedResponse = extractJSON(result.response);
-            let decision: TradeDecision = JSON.parse(cleanedResponse);
-
-            // Handle malformed responses
-            if (!decision.action && (decision as any).bullishCase) {
-              decision = {
-                action: 'HOLD' as const,
-                symbol: undefined,
-                quantity: undefined,
-                reasoning: decision as any,
-                confidence: 0.5,
-              } as TradeDecision;
-            }
-
-            decision.model = modelId;
-            decision.toolsUsed = false;
-            decision.toolCallCount = 0;
-
-            const decisionDuration = Date.now() - decisionStartTime;
-
-            // Send decision complete event
-            sendEvent({
-              type: 'decision_complete',
-              modelName,
-              modelId,
-              action: decision.action,
-              confidence: decision.confidence || 0.5,
-              duration: decisionDuration,
-              timestamp: Date.now()
-            });
-
-            return decision;
           });
 
-          const decisions = await Promise.all(decisionsPromises);
+          const decisionsOrNulls = await Promise.all(decisionsPromises);
+          const decisions = decisionsOrNulls.filter((d): d is TradeDecision => d !== null);
+
+          // Check if we have any successful decisions
+          if (decisions.length === 0) {
+            sendEvent({
+              type: 'error',
+              phase: 2,
+              message: 'All decision models failed. Please try again or select different models.',
+              timestamp: Date.now()
+            });
+            controller.close();
+            return;
+          }
+
+          console.log(`✅ ${decisions.length}/${selectedModels.length} models succeeded`);
 
           // Calculate votes
           const votes = { BUY: 0, SELL: 0, HOLD: 0 };
