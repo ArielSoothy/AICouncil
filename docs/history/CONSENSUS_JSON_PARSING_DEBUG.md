@@ -60,13 +60,37 @@ import { extractJSON } from '@/lib/utils/json-repair'  // Complex external versi
 - Judge system: Analyzing and producing consensus
 - Final results: System continues even if 1 model fails
 
-### Remaining Issue ⚠️
-**Llama 3.3 70B:** "Unexpected end of JSON input"
-- Error suggests JSON response is truncated mid-stream
-- Possible causes:
-  1. maxTokens too low (currently 4000)
-  2. Model streaming cutting off response
-  3. Network/buffer issue in SSE
+### Llama 3.3 70B Issue - SOLVED ✅
+**Error:** "Unexpected end of JSON input"
+
+**Root Cause (commit 95a15c0 debug logs):**
+```
+Groq: Rate limit hit for llama-3.3-70b-versatile, attempting fallback to gemma2-9b-it
+Groq: Attempting query with model: gemma2-9b-it
+📥 [🎁 Llama 3.3 70B] Raw response length: 0 chars  ← EMPTY!
+```
+
+**What happened:**
+1. Llama 3.3 70B hit Groq rate limit
+2. Groq provider fell back to Gemma 2 9B
+3. **Gemma 2 9B ALSO hit rate limit** (both models exhausted)
+4. Groq provider returned error response with `response: ''` (empty string)
+5. Consensus stream tried `JSON.parse('')` → "Unexpected end of JSON input"
+
+**Fix (commit XXXXXX):**
+Added early validation before JSON parsing:
+```typescript
+// Check for provider errors or empty responses BEFORE parsing
+if (result.error) {
+  throw new Error(`Provider error: ${result.error}`);
+}
+
+if (!result.response || result.response.trim().length === 0) {
+  throw new Error(`Empty response from provider (possible rate limit exhaustion)`);
+}
+```
+
+Now shows clear error: "Empty response from provider (possible rate limit exhaustion)"
 
 ---
 

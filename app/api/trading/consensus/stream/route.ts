@@ -209,6 +209,15 @@ export async function POST(request: NextRequest) {
                 maxSteps: 1,
               });
 
+              // Check for provider errors or empty responses BEFORE parsing
+              if (result.error) {
+                throw new Error(`Provider error: ${result.error}`);
+              }
+
+              if (!result.response || result.response.trim().length === 0) {
+                throw new Error(`Empty response from provider (possible rate limit exhaustion)`);
+              }
+
               // ORIGINAL WORKING CODE: Simple extraction and parse
               console.log(`\n📥 [${modelName}] Raw response length: ${result.response.length} chars`);
               console.log(`📥 [${modelName}] First 200 chars:`, result.response.substring(0, 200));
