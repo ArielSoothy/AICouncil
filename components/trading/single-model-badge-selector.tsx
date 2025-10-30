@@ -11,6 +11,7 @@ import {
 import { ChevronDown } from 'lucide-react'
 import { PROVIDER_COLORS } from '@/lib/brand-colors'
 import { MODEL_REGISTRY, Provider } from '@/lib/models/model-registry'
+import { IS_PRODUCTION } from '@/lib/utils/environment'
 
 interface SingleModelBadgeSelectorProps {
   value: string // Model ID
@@ -19,10 +20,18 @@ interface SingleModelBadgeSelectorProps {
   disabled?: boolean
 }
 
+// 🔒 PRODUCTION LOCK: Only free models in production
 // Generate available models from registry (only working models, excluding legacy)
 const availableModels = Object.entries(MODEL_REGISTRY).reduce((acc, [provider, models]) => {
   acc[provider as Provider] = models
     .filter(m => !m.isLegacy && m.status === 'working')
+    .filter(m => {
+      // In production, only allow free tier models
+      if (IS_PRODUCTION) {
+        return m.tier === 'free' && (provider === 'google' || provider === 'groq')
+      }
+      return true
+    })
     .map(m => m.id)
   return acc
 }, {} as Record<Provider, string[]>)

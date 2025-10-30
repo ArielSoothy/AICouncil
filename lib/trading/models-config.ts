@@ -1,9 +1,12 @@
 /**
  * Centralized Trading Models Configuration
  * Uses the model registry as the single source of truth
+ *
+ * 🔒 PRODUCTION LOCK: Only free models in production environment
  */
 
 import { MODEL_REGISTRY, Provider, ModelTier } from '../models/model-registry'
+import { IS_PRODUCTION } from '../utils/environment'
 
 export interface TradingModel {
   id: string
@@ -14,9 +17,17 @@ export interface TradingModel {
 }
 
 // Generate trading models from the registry (only working models, excluding legacy)
+// 🔒 PRODUCTION LOCK: Filter to free models only in production
 export const TRADING_MODELS: TradingModel[] = Object.values(MODEL_REGISTRY)
   .flat()
   .filter(m => !m.isLegacy && m.status === 'working')
+  .filter(m => {
+    // In production, only allow free tier models from google/groq providers
+    if (IS_PRODUCTION) {
+      return m.tier === 'free' && (m.provider === 'google' || m.provider === 'groq')
+    }
+    return true
+  })
   .map(model => ({
     id: model.id,
     name: model.name,
