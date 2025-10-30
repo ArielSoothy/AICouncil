@@ -29,10 +29,56 @@ import { MistralProvider } from '@/lib/ai-providers/mistral';
 import { PerplexityProvider } from '@/lib/ai-providers/perplexity';
 import { CohereProvider } from '@/lib/ai-providers/cohere';
 import { XAIProvider } from '@/lib/ai-providers/xai';
-import { extractJSON } from '@/lib/utils/json-repair';
-
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+/**
+ * LOCAL extractJSON - matches Individual Mode's working implementation
+ * SIMPLE: indexOf + lastIndexOf (no brace counting!)
+ */
+function extractJSON(text: string): string {
+  let cleaned = text.trim();
+
+  // Pattern 1: Remove markdown code blocks
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.slice(3);
+  }
+  if (cleaned.endsWith('```')) {
+    cleaned = cleaned.slice(0, -3);
+  }
+  cleaned = cleaned.trim();
+
+  // Pattern 2: Extract JSON object from surrounding text
+  // SIMPLE: Find first { and last } (works for nested objects!)
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+
+  // Pattern 3: Try to fix common JSON issues
+  cleaned = cleaned
+    .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+    .replace(/'/g, '"') // Replace single quotes with double quotes
+    .trim();
+
+  // Pattern 4: If still not valid, try to find complete JSON
+  try {
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch (e) {
+    // Try to extract just the JSON object more aggressively
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      return match[0];
+    }
+    // If all else fails, return what we have
+    return cleaned;
+  }
+}
 
 // Initialize all providers
 const PROVIDERS = {
@@ -163,31 +209,9 @@ export async function POST(request: NextRequest) {
                 maxSteps: 1,
               });
 
-              // Extract JSON using simple, forgiving approach (like old route)
-              const cleanedResponse = extractJSON(result.response, {
-                modelName,
-                logVerbose: false, // Reduce noise
-              });
-
-              // Simple parse with fallback (no complex repair strategies)
-              let decision: TradeDecision;
-              try {
-                decision = JSON.parse(cleanedResponse);
-                console.log(`✅ [${modelName}] Parsed successfully`);
-              } catch (parseError) {
-                // Fallback: Try regex extraction as last resort
-                const match = result.response.match(/\{[^{}]*"action"[^{}]*\}/);
-                if (match) {
-                  try {
-                    decision = JSON.parse(match[0]);
-                    console.log(`✅ [${modelName}] Parsed with regex fallback`);
-                  } catch {
-                    throw new Error(`Failed to parse JSON response`);
-                  }
-                } else {
-                  throw new Error(`No valid JSON found in response`);
-                }
-              }
+              // ORIGINAL WORKING CODE: Simple extraction and parse
+              const cleanedResponse = extractJSON(result.response);
+              let decision: TradeDecision = JSON.parse(cleanedResponse);
 
               // Handle malformed responses
               if (!decision.action && (decision as any).bullishCase) {
