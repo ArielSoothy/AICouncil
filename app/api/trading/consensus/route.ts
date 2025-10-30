@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccount, getPositions } from '@/lib/alpaca/client';
-import { generateEnhancedTradingPromptWithData } from '@/lib/alpaca/enhanced-prompts';
-import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
+import { generateEnhancedTradingPrompt } from '@/lib/alpaca/enhanced-prompts';
 import { runResearchAgents, type ResearchReport } from '@/lib/agents/research-agents';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
@@ -188,12 +187,15 @@ export async function POST(request: NextRequest) {
     console.log('🔬 PHASE 2: Decision models analyzing research findings...');
     const date = new Date().toISOString().split('T')[0];
     const researchSection = formatResearchReportForPrompt(researchReport);
-    const basePrompt = generateEnhancedTradingPromptWithData(
+
+    // Use generateEnhancedTradingPrompt WITHOUT shared data
+    // (research report already contains all market data)
+    const basePrompt = generateEnhancedTradingPrompt(
       account,
       positions,
-      { symbol: targetSymbol, quote: { price: 0 } } as any, // Minimal data, research has real data
       date,
-      timeframe as TradingTimeframe
+      timeframe as TradingTimeframe,
+      targetSymbol
     );
 
     // Insert research findings into prompt (BEFORE the JSON format instruction)
@@ -321,23 +323,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 6: Calculate agreement level (like normal consensus mode)
-    const agreementPercentage = maxVotes / decisions.length
-    let agreementLevel: number
-    let agreementText: string
+    const agreementPercentage = decisions.length > 0 ? maxVotes / decisions.length : 0;
+    let agreementLevel: number;
+    let agreementText: string;
 
     if (agreementPercentage >= 0.75) {
-      agreementLevel = 0.9
-      agreementText = 'High Consensus'
+      agreementLevel = 0.9;
+      agreementText = 'High Consensus';
     } else if (agreementPercentage >= 0.5) {
-      agreementLevel = 0.7
-      agreementText = 'Moderate Consensus'
+      agreementLevel = 0.7;
+      agreementText = 'Moderate Consensus';
     } else {
-      agreementLevel = 0.4
-      agreementText = 'Low Consensus'
+      agreementLevel = 0.4;
+      agreementText = 'Low Consensus';
     }
 
-    // Step 7: Generate summary text
-    const summary = `${maxVotes} out of ${decisions.length} models (${(agreementPercentage * 100).toFixed(0)}%) recommend ${consensusAction}${consensusSymbol ? ' ' + consensusSymbol : ''}. ${agreementText} achieved.`
+    // Step 7: Generate summary text (with defensive null check)
+    const percentageText = (agreementPercentage * 100).toFixed(0);
+    const summary = `${maxVotes} out of ${decisions.length} models (${percentageText}%) recommend ${consensusAction}${consensusSymbol ? ' ' + consensusSymbol : ''}. ${agreementText} achieved.`;
 
     // Step 8: Build consensus with LLM judge results
     const consensus = {
