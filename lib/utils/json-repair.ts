@@ -322,8 +322,10 @@ export function extractJSON(text: string, options: RepairOptions = {}): string {
 
   // Fix common JSON issues (conservative)
   cleaned = cleaned
-    .replace(/,(\s*[}\]])/g, '$1')  // Remove trailing commas
-    .replace(/'/g, '"')              // Single to double quotes
+    .replace(/[""]/g, '"')           // ⭐ Smart quotes → straight quotes
+    .replace(/['']/g, "'")           // Smart apostrophes → straight
+    .replace(/,(\s*[}\]])/g, '$1')   // Remove trailing commas
+    .replace(/'/g, '"')               // Single to double quotes
     .trim()
 
   if (logVerbose) {

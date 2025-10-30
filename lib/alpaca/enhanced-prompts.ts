@@ -220,6 +220,7 @@ RESPOND IN VALID JSON FORMAT:
 CRITICAL REQUIREMENTS:
 - ⚠️ RETURN ONLY VALID JSON - START YOUR RESPONSE WITH "{" AND END WITH "}"
 - ⚠️ NO CONVERSATIONAL TEXT BEFORE OR AFTER THE JSON - JUST THE JSON OBJECT!
+- ⚠️ USE ONLY STRAIGHT QUOTES (") NOT CURLY QUOTES (" or ") - CRITICAL FOR JSON PARSING!
 - Return ONLY valid JSON, nothing else
 - Use "HOLD" if no favorable ${minRiskReward} risk:reward setup exists
 - Ensure riskRewardRatio meets minimum ${minRiskReward}
