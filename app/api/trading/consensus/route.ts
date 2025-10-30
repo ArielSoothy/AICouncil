@@ -34,16 +34,11 @@ const researchCache = new ResearchCache();
 
 /**
  * Robust JSON extraction from model responses
- * Handles multiple formats: markdown blocks, plain text, truncated responses, tool call artifacts
+ * Handles multiple formats: markdown blocks, plain text, truncated responses
+ * SIMPLIFIED: Uses same working approach as Individual/Debate modes
  */
 function extractJSON(text: string): string {
   let cleaned = text.trim();
-
-  // Pattern 0: Remove tool call XML artifacts (Claude sometimes includes these despite tools disabled)
-  // Remove <tool_name>...</tool_name> blocks
-  cleaned = cleaned.replace(/<[^>]+>\s*\{[^}]*\}?\s*<\/[^>]+>/g, '');
-  // Remove orphaned opening tags like <get_price_bars>
-  cleaned = cleaned.replace(/<[^>]+>/g, '');
 
   // Pattern 1: Remove markdown code blocks
   if (cleaned.startsWith('```json')) {
@@ -56,44 +51,13 @@ function extractJSON(text: string): string {
   }
   cleaned = cleaned.trim();
 
-  // Pattern 2: Extract FIRST complete JSON object only
-  // This prevents matching across multiple JSON objects (decision + tool calls)
+  // Pattern 2: Extract JSON object from surrounding text
+  // SIMPLE: Find first { and last } (works for nested objects!)
   const firstBrace = cleaned.indexOf('{');
-  if (firstBrace !== -1) {
-    let braceCount = 0;
-    let inString = false;
-    let escapeNext = false;
+  const lastBrace = cleaned.lastIndexOf('}');
 
-    for (let i = firstBrace; i < cleaned.length; i++) {
-      const char = cleaned[i];
-
-      if (escapeNext) {
-        escapeNext = false;
-        continue;
-      }
-
-      if (char === '\\') {
-        escapeNext = true;
-        continue;
-      }
-
-      if (char === '"') {
-        inString = !inString;
-        continue;
-      }
-
-      if (!inString) {
-        if (char === '{') braceCount++;
-        if (char === '}') {
-          braceCount--;
-          if (braceCount === 0) {
-            // Found complete JSON object
-            cleaned = cleaned.substring(firstBrace, i + 1);
-            break;
-          }
-        }
-      }
-    }
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
   }
 
   // Pattern 3: Try to fix common JSON issues
@@ -102,13 +66,13 @@ function extractJSON(text: string): string {
     .replace(/'/g, '"') // Replace single quotes with double quotes
     .trim();
 
-  // Pattern 4: Validate and return
+  // Pattern 4: If still not valid, try to find complete JSON
   try {
     JSON.parse(cleaned);
     return cleaned;
   } catch (e) {
-    // Last resort: try regex extraction
-    const match = text.match(/\{[^{}]*\}/);
+    // Try to extract just the JSON object more aggressively
+    const match = text.match(/\{[\s\S]*\}/);
     if (match) {
       return match[0];
     }

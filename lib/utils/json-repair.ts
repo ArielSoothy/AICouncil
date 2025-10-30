@@ -239,6 +239,7 @@ export function repairJSON(
 
 /**
  * Extract JSON from text (removes markdown, XML, etc.)
+ * SIMPLIFIED: Uses same working approach as Individual/Debate modes
  */
 export function extractJSON(text: string, options: RepairOptions = {}): string {
   const { modelName = 'unknown', logVerbose = false } = options
@@ -259,10 +260,6 @@ export function extractJSON(text: string, options: RepairOptions = {}): string {
     return ''
   }
 
-  // Remove tool call XML artifacts
-  cleaned = cleaned.replace(/<[^>]+>\s*\{[^}]*\}?\s*<\/[^>]+>/g, '')
-  cleaned = cleaned.replace(/<[^>]+>/g, '')
-
   // Remove markdown code blocks
   if (cleaned.startsWith('```json')) {
     cleaned = cleaned.slice(7)
@@ -274,50 +271,13 @@ export function extractJSON(text: string, options: RepairOptions = {}): string {
   }
   cleaned = cleaned.trim()
 
-  // Extract first complete JSON object (with proper string handling)
+  // SIMPLE: Extract JSON object from surrounding text
+  // Find first { and last } (works for nested objects!)
   const firstBrace = cleaned.indexOf('{')
-  if (firstBrace !== -1) {
-    let braceCount = 0
-    let inString = false
-    let escapeNext = false
+  const lastBrace = cleaned.lastIndexOf('}')
 
-    for (let i = firstBrace; i < cleaned.length; i++) {
-      const char = cleaned[i]
-
-      if (escapeNext) {
-        escapeNext = false
-        continue
-      }
-
-      if (char === '\\') {
-        escapeNext = true
-        continue
-      }
-
-      if (char === '"') {
-        inString = !inString
-        continue
-      }
-
-      if (!inString) {
-        if (char === '{') braceCount++
-        if (char === '}') {
-          braceCount--
-          if (braceCount === 0) {
-            cleaned = cleaned.substring(firstBrace, i + 1)
-            break
-          }
-        }
-      }
-    }
-
-    // If we never found closing brace, take everything from first brace
-    if (braceCount > 0) {
-      cleaned = cleaned.substring(firstBrace)
-      if (logVerbose) {
-        console.log(`⚠️  [${modelName}] Incomplete JSON detected (unclosed braces)`)
-      }
-    }
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1)
   }
 
   // Fix common JSON issues (conservative)
