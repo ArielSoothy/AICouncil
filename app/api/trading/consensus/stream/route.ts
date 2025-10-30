@@ -46,9 +46,13 @@ const PROVIDERS = {
 };
 
 /**
- * Robust JSON extraction from model responses
+ * Robust JSON extraction from model responses with detailed logging
  */
-function extractJSON(text: string): string {
+function extractJSON(text: string, modelName: string = 'unknown'): string {
+  console.log(`\n🔍 [${modelName}] Starting JSON extraction...`);
+  console.log(`📄 Raw response length: ${text.length} chars`);
+  console.log(`📄 First 300 chars:`, text.substring(0, 300));
+
   let cleaned = text.trim();
 
   // Remove tool call XML artifacts
@@ -100,11 +104,14 @@ function extractJSON(text: string): string {
     }
   }
 
-  // Fix common JSON issues
+  // Fix common JSON issues (conservative)
   cleaned = cleaned
-    .replace(/,(\s*[}\]])/g, '$1')
-    .replace(/'/g, '"')
+    .replace(/,(\s*[}\]])/g, '$1')  // Remove trailing commas
+    .replace(/'/g, '"')              // Single to double quotes
     .trim();
+
+  console.log(`✂️ [${modelName}] After cleaning: ${cleaned.length} chars`);
+  console.log(`✂️ [${modelName}] Cleaned JSON:`, cleaned.substring(0, 200));
 
   return cleaned;
 }
@@ -224,8 +231,58 @@ export async function POST(request: NextRequest) {
                 maxSteps: 1,
               });
 
-              const cleanedResponse = extractJSON(result.response);
-              let decision: TradeDecision = JSON.parse(cleanedResponse);
+              // Extract and parse JSON with multiple repair strategies
+              const cleanedResponse = extractJSON(result.response, modelName);
+              let decision: TradeDecision;
+
+              // Strategy 1: Try parsing as-is
+              try {
+                decision = JSON.parse(cleanedResponse);
+                console.log(`✅ [${modelName}] Strategy 1 success: Direct parse`);
+              } catch (e1) {
+                console.log(`❌ [${modelName}] Strategy 1 failed:`, (e1 as Error).message);
+
+                // Strategy 2: Try fixing missing commas between properties
+                try {
+                  // Fix pattern: "value"\n"key" -> "value",\n"key"
+                  const withCommas = cleanedResponse.replace(/("\s*)\n(\s*")/g, '$1,\n$2');
+                  decision = JSON.parse(withCommas);
+                  console.log(`✅ [${modelName}] Strategy 2 success: Added missing commas`);
+                } catch (e2) {
+                  console.log(`❌ [${modelName}] Strategy 2 failed:`, (e2 as Error).message);
+
+                  // Strategy 3: Try auto-closing incomplete JSON
+                  try {
+                    let autoClose = cleanedResponse;
+                    const openBraces = (autoClose.match(/\{/g) || []).length;
+                    const closeBraces = (autoClose.match(/\}/g) || []).length;
+                    if (openBraces > closeBraces) {
+                      autoClose += '}'.repeat(openBraces - closeBraces);
+                      console.log(`🔧 [${modelName}] Added ${openBraces - closeBraces} closing braces`);
+                    }
+                    decision = JSON.parse(autoClose);
+                    console.log(`✅ [${modelName}] Strategy 3 success: Auto-closed JSON`);
+                  } catch (e3) {
+                    console.log(`❌ [${modelName}] Strategy 3 failed:`, (e3 as Error).message);
+
+                    // Strategy 4: Try both fixes combined
+                    try {
+                      let combined = cleanedResponse.replace(/("\s*)\n(\s*")/g, '$1,\n$2');
+                      const openBraces = (combined.match(/\{/g) || []).length;
+                      const closeBraces = (combined.match(/\}/g) || []).length;
+                      if (openBraces > closeBraces) {
+                        combined += '}'.repeat(openBraces - closeBraces);
+                      }
+                      decision = JSON.parse(combined);
+                      console.log(`✅ [${modelName}] Strategy 4 success: Combined repairs`);
+                    } catch (e4) {
+                      console.log(`❌ [${modelName}] Strategy 4 failed - All strategies exhausted`);
+                      console.log(`📋 [${modelName}] Final cleaned response:`, cleanedResponse);
+                      throw new Error(`JSON parse failed after 4 strategies: ${(e1 as Error).message}`);
+                    }
+                  }
+                }
+              }
 
               // Handle malformed responses
               if (!decision.action && (decision as any).bullishCase) {
