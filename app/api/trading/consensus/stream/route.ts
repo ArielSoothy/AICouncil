@@ -210,8 +210,24 @@ export async function POST(request: NextRequest) {
               });
 
               // ORIGINAL WORKING CODE: Simple extraction and parse
+              console.log(`\n📥 [${modelName}] Raw response length: ${result.response.length} chars`);
+              console.log(`📥 [${modelName}] First 200 chars:`, result.response.substring(0, 200));
+              console.log(`📥 [${modelName}] Last 200 chars:`, result.response.substring(Math.max(0, result.response.length - 200)));
+
               const cleanedResponse = extractJSON(result.response);
-              let decision: TradeDecision = JSON.parse(cleanedResponse);
+              console.log(`✂️  [${modelName}] Cleaned response length: ${cleanedResponse.length} chars`);
+              console.log(`✂️  [${modelName}] Cleaned first 200:`, cleanedResponse.substring(0, 200));
+              console.log(`✂️  [${modelName}] Cleaned last 200:`, cleanedResponse.substring(Math.max(0, cleanedResponse.length - 200)));
+
+              let decision: TradeDecision;
+              try {
+                decision = JSON.parse(cleanedResponse);
+                console.log(`✅ [${modelName}] JSON parsed successfully`);
+              } catch (parseError) {
+                console.error(`❌ [${modelName}] JSON parse error:`, parseError instanceof Error ? parseError.message : 'Unknown');
+                console.error(`❌ [${modelName}] Failed JSON:`, cleanedResponse);
+                throw parseError; // Let outer catch handle it
+              }
 
               // Handle malformed responses
               if (!decision.action && (decision as any).bullishCase) {
