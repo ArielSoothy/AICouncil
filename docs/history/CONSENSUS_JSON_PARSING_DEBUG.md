@@ -63,34 +63,46 @@ import { extractJSON } from '@/lib/utils/json-repair'  // Complex external versi
 ### Llama 3.3 70B Issue - SOLVED ✅
 **Error:** "Unexpected end of JSON input"
 
-**Root Cause (commit 95a15c0 debug logs):**
+**Root Cause Discovery (commit 95a15c0 debug logs):**
 ```
 Groq: Rate limit hit for llama-3.3-70b-versatile, attempting fallback to gemma2-9b-it
 Groq: Attempting query with model: gemma2-9b-it
 📥 [🎁 Llama 3.3 70B] Raw response length: 0 chars  ← EMPTY!
 ```
 
-**What happened:**
-1. Llama 3.3 70B hit Groq rate limit
-2. Groq provider fell back to Gemma 2 9B
-3. **Gemma 2 9B ALSO hit rate limit** (both models exhausted)
-4. Groq provider returned error response with `response: ''` (empty string)
-5. Consensus stream tried `JSON.parse('')` → "Unexpected end of JSON input"
+**ACTUAL Root Cause (commit e16ff81 validation revealed):**
+```
+Error: The model `gemma2-9b-it` has been decommissioned and is no longer supported.
+Please refer to https://console.groq.com/docs/deprecations
+```
 
-**Fix (commit XXXXXX):**
-Added early validation before JSON parsing:
+**What ACTUALLY happened:**
+1. Llama 3.3 70B hit Groq rate limit ✅
+2. Groq provider fell back to Gemma 2 9B (`gemma2-9b-it`) ✅
+3. **Gemma 2 9B was DECOMMISSIONED by Groq** (not rate limited!) ❌
+4. Groq API returned error with empty response ❌
+5. Empty response → `JSON.parse('')` → "Unexpected end of JSON input" ❌
+
+**Fix Part 1 (commit e16ff81):**
+Added validation to catch empty responses:
 ```typescript
-// Check for provider errors or empty responses BEFORE parsing
 if (result.error) {
   throw new Error(`Provider error: ${result.error}`);
 }
+```
+This revealed the REAL error: "model has been decommissioned"
 
-if (!result.response || result.response.trim().length === 0) {
-  throw new Error(`Empty response from provider (possible rate limit exhaustion)`);
-}
+**Fix Part 2 (commit XXXXXX):**
+Updated Groq fallback models list:
+```typescript
+// BEFORE:
+'llama-3.3-70b-versatile': ['gemma2-9b-it', 'llama-3.1-8b-instant']
+
+// AFTER:
+'llama-3.3-70b-versatile': ['llama-3.1-8b-instant']  // gemma2-9b-it decommissioned
 ```
 
-Now shows clear error: "Empty response from provider (possible rate limit exhaustion)"
+**Result:** Now falls back to working model (Llama 3.1 8B)
 
 ---
 
@@ -111,6 +123,18 @@ Now shows clear error: "Empty response from provider (possible rate limit exhaus
 4. **Test Locally Before Pushing**
    - Should verify fixes on localhost:3002 first
    - Verify with multiple models (not just one)
+
+5. **Proper Error Propagation is CRITICAL** ⭐ NEW
+   - Cryptic error: "Unexpected end of JSON input"
+   - Real error: "model has been decommissioned"
+   - **Adding validation revealed the actual issue**
+   - Always check for `result.error` before processing
+   - Never swallow errors silently (empty responses)
+
+6. **Keep Fallback Models Updated**
+   - Models get decommissioned over time
+   - Check provider deprecation docs regularly
+   - https://console.groq.com/docs/deprecations
 
 ---
 
