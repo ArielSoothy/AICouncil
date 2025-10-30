@@ -204,9 +204,16 @@ export const ResearchProgressPanel = forwardRef<ResearchProgressPanelHandle, Res
       {/* Header with Phase Indicator */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-semibold">Research Progress</h3>
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            Research Progress
+            {state.isCached && (
+              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-950 text-green-600 border border-green-200 dark:border-green-800">
+                ⚡ Cached
+              </span>
+            )}
+          </h3>
           <p className="text-sm text-muted-foreground">
-            {state.isCached ? '⚡ Cache Hit - Instant Results' : 'Live analysis in progress'}
+            {state.isCached ? 'Using cached research data - instant results' : `Phase ${state.phase}/3: ${state.phase === 1 ? 'Research Agents Gathering Data' : state.phase === 2 ? 'Decision Models Analyzing' : 'Judge Synthesizing Consensus'}`}
           </p>
         </div>
         <PhaseIndicator phase={state.phase} />
@@ -332,6 +339,32 @@ function AgentCard({ agent }: { agent: AgentProgress }) {
             <span className="text-muted-foreground">Tool Calls:</span>
             <span className="font-medium">{agent.toolCount}</span>
           </div>
+
+          {/* Individual tool call details */}
+          {agent.toolCalls.length > 0 && (
+            <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+              <div className="font-medium text-xs text-muted-foreground mb-1">Recent Tools:</div>
+              {agent.toolCalls.slice(-5).reverse().map((tool, idx) => (
+                <div key={idx} className="text-xs p-1.5 bg-muted/50 rounded border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">🔧 {tool.toolName}</span>
+                    {tool.duration && <span className="text-muted-foreground">{formatDuration(tool.duration)}</span>}
+                  </div>
+                  {tool.args && Object.keys(tool.args).length > 0 && (
+                    <div className="mt-0.5 text-muted-foreground truncate">
+                      {tool.toolName === 'get_market_data' && tool.args.symbol && `📊 ${tool.args.symbol}`}
+                      {tool.toolName === 'get_stock_news' && tool.args.symbol && `📰 ${tool.args.symbol}`}
+                      {tool.toolName === 'get_company_info' && tool.args.symbol && `🏢 ${tool.args.symbol}`}
+                      {tool.toolName === 'search_web' && tool.args.query && `🔍 "${tool.args.query?.substring(0, 30)}..."`}
+                      {!['get_market_data', 'get_stock_news', 'get_company_info', 'search_web'].includes(tool.toolName) &&
+                        `Args: ${JSON.stringify(tool.args).substring(0, 40)}...`}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {agent.status === 'complete' && (
             <>
               <div className="flex justify-between">

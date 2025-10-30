@@ -165,6 +165,10 @@ export function ConsensusMode() {
     // Extract enabled model IDs for API
     const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
 
+    // Store final results in local variables to avoid React state timing issues
+    let finalConsensus: any = null
+    let finalDecisions: any[] = []
+
     try {
       // Use fetch with streaming instead of EventSource (which doesn't support POST)
       const response = await fetch('/api/trading/consensus/stream', {
@@ -223,9 +227,20 @@ export function ConsensusMode() {
                   consensusAction: event.consensus?.action
                 })
 
+                // Store in local variables FIRST (for conversation save logic)
+                finalConsensus = event.consensus
+                finalDecisions = event.decisions
+
+                // Then update React state (async)
                 setConsensus(event.consensus)
                 setDecisions(event.decisions)
                 setShowProgressPanel(false)
+              }
+
+              // Handle error events gracefully
+              if (event.type === 'error') {
+                console.error('❌ SSE Error Event:', event.message, event)
+                // Don't throw - let the stream complete and show what we have
               }
             } catch (e) {
               console.error('Failed to parse SSE event:', e)
@@ -240,7 +255,19 @@ export function ConsensusMode() {
         createReasoningStep('analysis', '📊 Processing final decision...')
       ])
 
+      // Verify we received final results
+      if (!finalConsensus || !finalDecisions.length) {
+        console.warn('⚠️ Stream completed but no final results received')
+        throw new Error('No consensus data received from analysis')
+      }
+
+      console.log('✅ Final results stored:', {
+        consensus: finalConsensus.action,
+        decisionsCount: finalDecisions.length
+      })
+
       // Save conversation for history and persistence (non-blocking, silent fail)
+      // Use finalConsensus/finalDecisions (local variables) instead of React state
       // Fire-and-forget: 401 errors are expected for non-authenticated users
       fetch('/api/conversations', {
         method: 'POST',
@@ -248,8 +275,8 @@ export function ConsensusMode() {
         body: JSON.stringify({
           query: 'Consensus Trading Analysis',
           responses: {
-            consensus,
-            decisions
+            consensus: finalConsensus,
+            decisions: finalDecisions
           },
           mode: 'trading-consensus',
           metadata: {
@@ -268,12 +295,12 @@ export function ConsensusMode() {
         } else {
           // Guest mode: persist locally only
           const clientId = `local-${Date.now()}`
-          console.log('👤 Guest mode: persisting locally with ID:', clientId)
+          console.log('👤 Guest mode: persisting locally with ID:', clientId, '(using free mode models)')
 
           if (typeof window !== 'undefined') {
             localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
-              consensus,
-              decisions,
+              consensus: finalConsensus,
+              decisions: finalDecisions,
               metadata: {
                 timeframe,
                 targetSymbol: targetSymbol.trim() || null,
