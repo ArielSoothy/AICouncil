@@ -29,7 +29,7 @@ import { MistralProvider } from '@/lib/ai-providers/mistral';
 import { PerplexityProvider } from '@/lib/ai-providers/perplexity';
 import { CohereProvider } from '@/lib/ai-providers/cohere';
 import { XAIProvider } from '@/lib/ai-providers/xai';
-import { extractJSON, repairJSON } from '@/lib/utils/json-repair';
+import { extractJSON } from '@/lib/utils/json-repair';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -163,25 +163,31 @@ export async function POST(request: NextRequest) {
                 maxSteps: 1,
               });
 
-              // Extract and repair JSON using modular system
+              // Extract JSON using simple, forgiving approach (like old route)
               const cleanedResponse = extractJSON(result.response, {
                 modelName,
-                logVerbose: true,
+                logVerbose: false, // Reduce noise
               });
 
-              const repairResult = repairJSON(cleanedResponse, {
-                modelName,
-                logVerbose: true,
-              });
-
-              if (!repairResult.success || !repairResult.data) {
-                throw new Error(
-                  `JSON repair failed: ${repairResult.error || 'Unknown error'}`
-                );
+              // Simple parse with fallback (no complex repair strategies)
+              let decision: TradeDecision;
+              try {
+                decision = JSON.parse(cleanedResponse);
+                console.log(`✅ [${modelName}] Parsed successfully`);
+              } catch (parseError) {
+                // Fallback: Try regex extraction as last resort
+                const match = result.response.match(/\{[^{}]*"action"[^{}]*\}/);
+                if (match) {
+                  try {
+                    decision = JSON.parse(match[0]);
+                    console.log(`✅ [${modelName}] Parsed with regex fallback`);
+                  } catch {
+                    throw new Error(`Failed to parse JSON response`);
+                  }
+                } else {
+                  throw new Error(`No valid JSON found in response`);
+                }
               }
-
-              let decision: TradeDecision = repairResult.data;
-              console.log(`✅ [${modelName}] Parsed successfully with strategy: ${repairResult.strategy}`);
 
               // Handle malformed responses
               if (!decision.action && (decision as any).bullishCase) {
