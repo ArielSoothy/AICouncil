@@ -29,6 +29,7 @@ import { MistralProvider } from '@/lib/ai-providers/mistral';
 import { PerplexityProvider } from '@/lib/ai-providers/perplexity';
 import { CohereProvider } from '@/lib/ai-providers/cohere';
 import { XAIProvider } from '@/lib/ai-providers/xai';
+import { extractJSON, repairJSON } from '@/lib/utils/json-repair';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -45,76 +46,7 @@ const PROVIDERS = {
   xai: new XAIProvider(),
 };
 
-/**
- * Robust JSON extraction from model responses with detailed logging
- */
-function extractJSON(text: string, modelName: string = 'unknown'): string {
-  console.log(`\n🔍 [${modelName}] Starting JSON extraction...`);
-  console.log(`📄 Raw response length: ${text.length} chars`);
-  console.log(`📄 First 300 chars:`, text.substring(0, 300));
-
-  let cleaned = text.trim();
-
-  // Remove tool call XML artifacts
-  cleaned = cleaned.replace(/<[^>]+>\s*\{[^}]*\}?\s*<\/[^>]+>/g, '');
-  cleaned = cleaned.replace(/<[^>]+>/g, '');
-
-  // Remove markdown code blocks
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.slice(3);
-  }
-  if (cleaned.endsWith('```')) {
-    cleaned = cleaned.slice(0, -3);
-  }
-  cleaned = cleaned.trim();
-
-  // Extract first complete JSON object
-  const firstBrace = cleaned.indexOf('{');
-  if (firstBrace !== -1) {
-    let braceCount = 0;
-    let inString = false;
-    let escapeNext = false;
-
-    for (let i = firstBrace; i < cleaned.length; i++) {
-      const char = cleaned[i];
-      if (escapeNext) {
-        escapeNext = false;
-        continue;
-      }
-      if (char === '\\') {
-        escapeNext = true;
-        continue;
-      }
-      if (char === '"') {
-        inString = !inString;
-        continue;
-      }
-      if (!inString) {
-        if (char === '{') braceCount++;
-        if (char === '}') {
-          braceCount--;
-          if (braceCount === 0) {
-            cleaned = cleaned.substring(firstBrace, i + 1);
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  // Fix common JSON issues (conservative)
-  cleaned = cleaned
-    .replace(/,(\s*[}\]])/g, '$1')  // Remove trailing commas
-    .replace(/'/g, '"')              // Single to double quotes
-    .trim();
-
-  console.log(`✂️ [${modelName}] After cleaning: ${cleaned.length} chars`);
-  console.log(`✂️ [${modelName}] Cleaned JSON:`, cleaned.substring(0, 200));
-
-  return cleaned;
-}
+// extractJSON and repairJSON functions now imported from @/lib/utils/json-repair
 
 /**
  * POST /api/trading/consensus/stream
@@ -225,64 +157,31 @@ export async function POST(request: NextRequest) {
                 model: modelId,
                 provider: providerType,
                 temperature: 0.7,
-                maxTokens: 2000,
+                maxTokens: 4000,  // ⬆️ Increased from 2000 to prevent truncation
                 enabled: true,
                 useTools: false,
                 maxSteps: 1,
               });
 
-              // Extract and parse JSON with multiple repair strategies
-              const cleanedResponse = extractJSON(result.response, modelName);
-              let decision: TradeDecision;
+              // Extract and repair JSON using modular system
+              const cleanedResponse = extractJSON(result.response, {
+                modelName,
+                logVerbose: true,
+              });
 
-              // Strategy 1: Try parsing as-is
-              try {
-                decision = JSON.parse(cleanedResponse);
-                console.log(`✅ [${modelName}] Strategy 1 success: Direct parse`);
-              } catch (e1) {
-                console.log(`❌ [${modelName}] Strategy 1 failed:`, (e1 as Error).message);
+              const repairResult = repairJSON(cleanedResponse, {
+                modelName,
+                logVerbose: true,
+              });
 
-                // Strategy 2: Try fixing missing commas between properties
-                try {
-                  // Fix pattern: "value"\n"key" -> "value",\n"key"
-                  const withCommas = cleanedResponse.replace(/("\s*)\n(\s*")/g, '$1,\n$2');
-                  decision = JSON.parse(withCommas);
-                  console.log(`✅ [${modelName}] Strategy 2 success: Added missing commas`);
-                } catch (e2) {
-                  console.log(`❌ [${modelName}] Strategy 2 failed:`, (e2 as Error).message);
-
-                  // Strategy 3: Try auto-closing incomplete JSON
-                  try {
-                    let autoClose = cleanedResponse;
-                    const openBraces = (autoClose.match(/\{/g) || []).length;
-                    const closeBraces = (autoClose.match(/\}/g) || []).length;
-                    if (openBraces > closeBraces) {
-                      autoClose += '}'.repeat(openBraces - closeBraces);
-                      console.log(`🔧 [${modelName}] Added ${openBraces - closeBraces} closing braces`);
-                    }
-                    decision = JSON.parse(autoClose);
-                    console.log(`✅ [${modelName}] Strategy 3 success: Auto-closed JSON`);
-                  } catch (e3) {
-                    console.log(`❌ [${modelName}] Strategy 3 failed:`, (e3 as Error).message);
-
-                    // Strategy 4: Try both fixes combined
-                    try {
-                      let combined = cleanedResponse.replace(/("\s*)\n(\s*")/g, '$1,\n$2');
-                      const openBraces = (combined.match(/\{/g) || []).length;
-                      const closeBraces = (combined.match(/\}/g) || []).length;
-                      if (openBraces > closeBraces) {
-                        combined += '}'.repeat(openBraces - closeBraces);
-                      }
-                      decision = JSON.parse(combined);
-                      console.log(`✅ [${modelName}] Strategy 4 success: Combined repairs`);
-                    } catch (e4) {
-                      console.log(`❌ [${modelName}] Strategy 4 failed - All strategies exhausted`);
-                      console.log(`📋 [${modelName}] Final cleaned response:`, cleanedResponse);
-                      throw new Error(`JSON parse failed after 4 strategies: ${(e1 as Error).message}`);
-                    }
-                  }
-                }
+              if (!repairResult.success || !repairResult.data) {
+                throw new Error(
+                  `JSON repair failed: ${repairResult.error || 'Unknown error'}`
+                );
               }
+
+              let decision: TradeDecision = repairResult.data;
+              console.log(`✅ [${modelName}] Parsed successfully with strategy: ${repairResult.strategy}`);
 
               // Handle malformed responses
               if (!decision.action && (decision as any).bullishCase) {
