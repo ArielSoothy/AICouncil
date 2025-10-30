@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp, Sparkles, Zap, Gift, RotateCcw } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
 import { DebateTranscript, createDebateMessage, type DebateMessage } from './debate-transcript'
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName } from '@/lib/trading/models-config'
@@ -10,6 +10,8 @@ import { SingleModelBadgeSelector } from './single-model-badge-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { TradingHistoryDropdown } from './trading-history-dropdown'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
+import { useTradingPreset } from '@/contexts/trading-preset-context'
+import { getDebateRolesForPreset, DEBATE_PRESETS, getDebatePresetConfig } from '@/lib/config/model-presets'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -45,44 +47,8 @@ interface DebateResult {
   }
 }
 
-// Debate Mode Presets - Pre-selected models for each role
-const DEBATE_PRESETS = {
-  free: {
-    label: 'Free',
-    icon: Gift,
-    description: 'All free models',
-    color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300',
-    roles: {
-      analyst: 'gemini-2.0-flash',      // Google free (good reasoning)
-      critic: 'llama-3.3-70b-versatile', // Groq free (best free model)
-      synthesizer: 'gemini-1.5-flash',   // Google free (fast synthesis)
-    }
-  },
-  pro: {
-    label: 'Pro',
-    icon: Zap,
-    description: 'Balanced tier models',
-    color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300',
-    roles: {
-      analyst: 'claude-3-5-sonnet-20241022',  // Anthropic balanced (strong analysis)
-      critic: 'gpt-4o',                        // OpenAI balanced (critical thinking)
-      synthesizer: 'llama-3.3-70b-versatile', // Groq free (good synthesis)
-    }
-  },
-  max: {
-    label: 'Max',
-    icon: Sparkles,
-    description: 'Best flagship models',
-    color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
-    roles: {
-      analyst: 'claude-sonnet-4-5-20250929', // Anthropic flagship (best analysis)
-      critic: 'gpt-5-chat-latest',            // OpenAI flagship (best reasoning)
-      synthesizer: 'gemini-2.5-pro',          // Google flagship (comprehensive synthesis)
-    }
-  }
-}
-
 export function DebateMode() {
+  const { globalTier } = useTradingPreset()
   const [loading, setLoading] = useState(false)
   const [debate, setDebate] = useState<DebateResult | null>(null)
   const [activeRound, setActiveRound] = useState<1 | 2>(1)
@@ -92,10 +58,10 @@ export function DebateMode() {
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [targetSymbol, setTargetSymbol] = useState<string>('')
 
-  // Model selection for each debate role (default to Pro preset)
-  const [analystModel, setAnalystModel] = useState(DEBATE_PRESETS.pro.roles.analyst)
-  const [criticModel, setCriticModel] = useState(DEBATE_PRESETS.pro.roles.critic)
-  const [synthesizerModel, setSynthesizerModel] = useState(DEBATE_PRESETS.pro.roles.synthesizer)
+  // Model selection for each debate role (initialized with Pro preset)
+  const [analystModel, setAnalystModel] = useState(() => getDebateRolesForPreset('pro').analyst)
+  const [criticModel, setCriticModel] = useState(() => getDebateRolesForPreset('pro').critic)
+  const [synthesizerModel, setSynthesizerModel] = useState(() => getDebateRolesForPreset('pro').synthesizer)
 
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -121,13 +87,13 @@ export function DebateMode() {
     }
   })
 
-  // Apply preset function
-  const applyPreset = (presetKey: 'free' | 'pro' | 'max') => {
-    const preset = DEBATE_PRESETS[presetKey]
-    setAnalystModel(preset.roles.analyst)
-    setCriticModel(preset.roles.critic)
-    setSynthesizerModel(preset.roles.synthesizer)
-  }
+  // Auto-apply global preset when it changes
+  useEffect(() => {
+    const roles = getDebateRolesForPreset(globalTier)
+    setAnalystModel(roles.analyst)
+    setCriticModel(roles.critic)
+    setSynthesizerModel(roles.synthesizer)
+  }, [globalTier])
 
   // Reset/clear results and start new analysis
   const handleStartNew = () => {
@@ -310,34 +276,22 @@ export function DebateMode() {
 
       {/* Model Selection for Debate Roles */}
       <div className="bg-card rounded-lg border p-6">
-        <h3 className="font-semibold mb-4">Select AI Models for Each Role</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">Select AI Models for Each Role</h3>
 
-        {/* Preset Buttons */}
-        <div className="mb-6">
-          <label className="text-sm font-medium text-muted-foreground block mb-3">
-            Quick Presets
-          </label>
-          <div className="grid grid-cols-3 gap-3">
-            {(Object.keys(DEBATE_PRESETS) as Array<keyof typeof DEBATE_PRESETS>).map((key) => {
-              const preset = DEBATE_PRESETS[key]
+          {/* Global Preset Indicator */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Using:</span>
+            {(() => {
+              const preset = getDebatePresetConfig(globalTier)
               const Icon = preset.icon
-
               return (
-                <Button
-                  key={key}
-                  onClick={() => applyPreset(key)}
-                  disabled={loading}
-                  variant="outline"
-                  className={`flex flex-col items-center gap-2 h-auto py-4 border-2 ${preset.color} transition-all`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <div className="text-center">
-                    <div className="font-semibold">{preset.label}</div>
-                    <div className="text-xs opacity-80 mt-1">{preset.description}</div>
-                  </div>
-                </Button>
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 ${preset.color}`}>
+                  <Icon className="w-4 h-4" />
+                  <span className="font-semibold">{preset.label}</span>
+                </div>
               )
-            })}
+            })()}
           </div>
         </div>
 

@@ -1,0 +1,1 @@
+ read claude md and all the relevant md files to understand what were doing and whats next. 

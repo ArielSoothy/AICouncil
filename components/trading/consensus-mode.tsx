@@ -203,37 +203,36 @@ export function ConsensusMode() {
       setConsensus(data.consensus)
       setDecisions(data.decisions || [])
 
-      // Save conversation for history and persistence
-      try {
-        const saveResponse = await fetch('/api/conversations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: 'Consensus Trading Analysis',
-            responses: {
-              consensus: data.consensus,
-              decisions: data.decisions
-            },
-            mode: 'trading-consensus',
-            metadata: {
-              timeframe,
-              targetSymbol: targetSymbol.trim() || null,
-              selectedModels: modelIds,
-              modelCount: modelIds.length
-            }
-          })
+      // Save conversation for history and persistence (non-blocking, silent fail)
+      // Fire-and-forget: 401 errors are expected for non-authenticated users
+      fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: 'Consensus Trading Analysis',
+          responses: {
+            consensus: data.consensus,
+            decisions: data.decisions
+          },
+          mode: 'trading-consensus',
+          metadata: {
+            timeframe,
+            targetSymbol: targetSymbol.trim() || null,
+            selectedModels: modelIds,
+            modelCount: modelIds.length
+          }
         })
-
-        if (saveResponse.ok) {
-          const savedConversation = await saveResponse.json()
-          saveConversation(savedConversation.id)
-          console.log('Consensus Mode analysis saved:', savedConversation.id)
+      }).then(res => {
+        if (res.ok) {
+          return res.json().then(saved => {
+            saveConversation(saved.id)
+            console.log('✅ Consensus analysis saved:', saved.id)
+          })
         } else {
-          // Guest mode: save failed but still persist locally with client ID
+          // Guest mode: persist locally only
           const clientId = `local-${Date.now()}`
-          console.log('Guest mode: persisting locally with ID:', clientId)
+          console.log('👤 Guest mode: persisting locally with ID:', clientId)
 
-          // Store data in localStorage for guest users
           if (typeof window !== 'undefined') {
             localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
               consensus: data.consensus,
@@ -247,28 +246,12 @@ export function ConsensusMode() {
               timestamp: new Date().toISOString()
             }))
           }
-
           saveConversation(clientId)
         }
-      } catch (saveError) {
-        console.error('Failed to save analysis:', saveError)
-        // Even on error, persist locally for guest users
-        const clientId = `local-${Date.now()}`
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
-            consensus: data.consensus,
-            decisions: data.decisions,
-            metadata: {
-              timeframe,
-              targetSymbol: targetSymbol.trim() || null,
-              selectedModels: modelIds,
-              modelCount: modelIds.length
-            },
-            timestamp: new Date().toISOString()
-          }))
-        }
-        saveConversation(clientId)
-      }
+      }).catch(() => {
+        // Silent fail - expected for unauthenticated users
+        console.log('💾 Local-only mode (save failed)')
+      })
     } catch (error) {
       console.error('Failed to get consensus decision:', error)
       alert(error instanceof Error ? error.message : 'Failed to get consensus decision')
@@ -664,7 +647,9 @@ function TradingDecisionCard({ decision }: { decision: TradingDecision }) {
         <div className="text-muted-foreground mb-1">Reasoning:</div>
         <div className="text-xs leading-relaxed">
           {isExpanded ? (
-            typeof decision.reasoning === 'string' ? (
+            !decision.reasoning ? (
+              <div className="text-muted-foreground italic">No reasoning provided</div>
+            ) : typeof decision.reasoning === 'string' ? (
               <div className="whitespace-pre-wrap">{decision.reasoning}</div>
             ) : (
               <div className="space-y-2">

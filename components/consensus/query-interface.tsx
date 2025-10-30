@@ -16,6 +16,8 @@ import { SavedConversation } from '@/lib/types/conversation'
 import { Send, Loader2, GitCompare, Search, Sparkles, Info } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { useGlobalModelTier } from '@/contexts/trading-preset-context'
+import { getModelsForPreset, getPresetConfig } from '@/lib/config/model-presets'
 import {
   Select,
   SelectContent,
@@ -43,10 +45,11 @@ interface QueryInterfaceContentProps {
 
 function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDefaults }: QueryInterfaceContentProps) {
   const { userTier } = useAuth()
+  const { globalTier } = useGlobalModelTier()
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
   const { toast } = useToast()
-  
+
   // Override userTier for guest mode or testing
   const baseUserTier = isGuestMode ? 'guest' : userTier
   const effectiveUserTier = testingTierOverride || baseUserTier
@@ -131,6 +134,14 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
   }
 
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(defaultModels || getDefaultModels())
+
+  // Auto-apply global tier changes
+  useEffect(() => {
+    if (!defaultModels) {  // Only apply if not using prop-based defaults
+      const presetModels = getModelsForPreset(globalTier)
+      setSelectedModels(presetModels)
+    }
+  }, [globalTier, defaultModels])
 
   const handleGenerateQuestion = async () => {
     if (isGeneratingQuestion) return
@@ -258,7 +269,27 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
     <div className="space-y-6">
       <div className="model-card">
         <h2 className="text-lg font-semibold mb-4">Query Configuration</h2>
-        
+
+        {/* Global Tier Indicator */}
+        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border mb-4">
+          <div>
+            <div className="text-sm font-medium">Global Model Tier</div>
+            <div className="text-xs text-muted-foreground">
+              Change tier using the selector in the header to update all modes
+            </div>
+          </div>
+          {(() => {
+            const preset = getPresetConfig(globalTier)
+            const Icon = preset.icon
+            return (
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 ${preset.color}`}>
+                <Icon className="w-4 h-4" />
+                <span className="font-semibold">{preset.label}</span>
+              </div>
+            )
+          })()}
+        </div>
+
         <ModelSelector
           models={selectedModels}
           onChange={setSelectedModels}

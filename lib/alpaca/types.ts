@@ -46,4 +46,15 @@ export interface TradeDecision {
   reasoning: string;
   confidence: number;
   model?: string; // Optional model ID for judge weighting
+
+  // Tool usage tracking (Hybrid Research Mode)
+  toolsUsed?: boolean; // Whether this decision used AI research tools
+  toolCallCount?: number; // Number of tool calls made
+  toolNames?: string[]; // Names of tools used (e.g., ['get_stock_quote', 'calculate_rsi'])
+  researchTrail?: Array<{ // Detailed research steps (optional, for UI display)
+    tool: string;
+    args: Record<string, any>;
+    result: string;
+    timestamp: number;
+  }>;
 }

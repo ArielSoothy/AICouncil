@@ -16,6 +16,11 @@ export interface ModelResponse {
   timestamp: Date;
   error?: string;
   tokensUsed?: number; // For new enhanced response
+  toolCalls?: Array<{ // Tool use for trading research
+    toolName: string;
+    args: Record<string, any>;
+    result?: any;
+  }>;
 }
 
 export interface ConsensusResult {

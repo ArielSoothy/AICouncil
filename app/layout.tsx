@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/contexts/auth-context'
+import { GlobalModelTierProvider } from '@/contexts/trading-preset-context'
 import { Toaster } from '@/components/ui/toaster'
 import { PROJECT_TITLE, BRANDING } from '@/lib/config/branding'
 import './globals.css'
@@ -28,10 +29,12 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={inter.className}>
         <AuthProvider>
-          <div className="min-h-screen bg-background font-sans antialiased">
-            {children}
-            <Toaster />
-          </div>
+          <GlobalModelTierProvider>
+            <div className="min-h-screen bg-background font-sans antialiased">
+              {children}
+              <Toaster />
+            </div>
+          </GlobalModelTierProvider>
         </AuthProvider>
       </body>
     </html>

@@ -2,13 +2,11 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
+import { getModelsByProvider } from '../models/model-registry';
 
 export class MistralProvider implements AIProvider {
   name = 'Mistral';
-  models = [
-    'mistral-large-latest',
-    'mistral-small-latest'
-  ];
+  models = getModelsByProvider('mistral').map(m => m.id);
 
   isConfigured(): boolean {
     return !!(
@@ -39,6 +37,12 @@ export class MistralProvider implements AIProvider {
       });
 
       const responseTime = Date.now() - startTime;
+
+      // Check for empty response
+      if (!result.text || result.text.trim().length === 0) {
+        console.error('Mistral: Returned empty response');
+        throw new Error('Mistral returned empty response');
+      }
 
       return {
         id: `mistral-${Date.now()}`,
@@ -72,6 +76,9 @@ export class MistralProvider implements AIProvider {
   }
 
   private calculateConfidence(result: any): number {
+    // Safety check for empty responses
+    if (!result.text) return 0.5;
+
     const responseLength = result.text.length;
     const hasGoodLength = responseLength > 50 && responseLength < 2500;
     return hasGoodLength ? 0.8 : 0.62;

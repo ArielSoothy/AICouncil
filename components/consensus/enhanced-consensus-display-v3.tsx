@@ -31,7 +31,7 @@ const modelCosts = {
   'gpt-4-turbo-preview': { input: 0.01, output: 0.03, tier: 'premium' },
   
   // Claude 4 Series (2025) - Flagship
-  'claude-opus-4-20250514': { input: 0.015, output: 0.075, tier: 'flagship' },
+  'claude-opus-4-1-20250514': { input: 0.015, output: 0.075, tier: 'flagship' },
   'claude-sonnet-4-20250514': { input: 0.003, output: 0.015, tier: 'balanced' },
   
   // Claude 3.7 Series (2025)

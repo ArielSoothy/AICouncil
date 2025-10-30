@@ -102,7 +102,7 @@ export function estimateDebateCost(
   }
   
   // Assume Claude Opus or GPT-4o for synthesis
-  const synthesisCosts = MODEL_COSTS_PER_1K['claude-opus-4-20250514'] || 
+  const synthesisCosts = MODEL_COSTS_PER_1K['claude-opus-4-1-20250514'] || 
                          MODEL_COSTS_PER_1K['gpt-4o'] || 
                          { input: 0.01, output: 0.03 }
   

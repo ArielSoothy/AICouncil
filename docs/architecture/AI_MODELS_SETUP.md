@@ -88,7 +88,7 @@ models: [
 provider: 'anthropic'
 models: [
   // Claude 4 (Latest)
-  'claude-opus-4-20250514',
+  'claude-opus-4-1-20250514',
   'claude-sonnet-4-20250514',
   // Claude 3.7
   'claude-3-7-sonnet-20250219',

@@ -14,7 +14,11 @@
     "test:response-format": "node tests/run-tests.js response-format",
     "test:round-tabs": "node tests/run-tests.js round-tabs",
     "test:behavioral": "node tests/behavioral/response-format.behavioral.test.js",
-    "test:behavioral-format": "node tests/run-tests.js behavioral"
+    "test:behavioral-format": "node tests/run-tests.js behavioral",
+    "test-models": "npx tsx scripts/test-all-models.ts",
+    "test-models:provider": "npx tsx scripts/test-all-models.ts --provider",
+    "test-models:dry-run": "npx tsx scripts/test-all-models.ts --dry-run",
+    "test-models:retest": "npx tsx scripts/test-all-models.ts --retest-failed"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
@@ -70,6 +74,7 @@
     "playwright": "^1.55.0",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
+    "tsx": "^4.7.0",
     "typescript": "^5"
   }
 }

@@ -2,23 +2,12 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
+import { alpacaTools, toolTracker } from '../alpaca/market-data-tools';
+import { getModelsByProvider } from '../models/model-registry';
 
 export class XAIProvider implements AIProvider {
   name = 'xAI';
-  models = [
-    // Grok 4 Series (2025)
-    'grok-code-fast-1',
-    'grok-4-fast-reasoning',
-    'grok-4-fast-non-reasoning',
-    'grok-4-0709',
-    // Grok 3 Series
-    'grok-3',
-    'grok-3-mini',
-    // Grok 2 Series
-    'grok-2-vision-1212',
-    'grok-2-1212',
-    'grok-2-latest'
-  ];
+  models = getModelsByProvider('xai').map(m => m.id);
 
   isConfigured(): boolean {
     return !!(
@@ -28,7 +17,7 @@ export class XAIProvider implements AIProvider {
     );
   }
 
-  async query(prompt: string, config: ModelConfig): Promise<ModelResponse> {
+  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number }): Promise<ModelResponse> {
     const startTime = Date.now();
 
     try {
@@ -47,6 +36,18 @@ export class XAIProvider implements AIProvider {
         temperature: config.temperature || 0.7,
         maxTokens: config.maxTokens || 1000,
         topP: config.topP || 1,
+
+        // ✅ Tool use integration
+        tools: config.useTools ? alpacaTools : undefined,
+        maxSteps: config.useTools ? (config.maxSteps || 15) : 1,
+        onStepFinish: config.useTools ? (step) => {
+          if (step.toolCalls && step.toolCalls.length > 0) {
+            step.toolCalls.forEach((call: any) => {
+              console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
+              toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
+            });
+          }
+        } : undefined,
       });
 
       const responseTime = Date.now() - startTime;
@@ -64,6 +65,7 @@ export class XAIProvider implements AIProvider {
           total: result.usage?.totalTokens || 0,
         },
         timestamp: new Date(),
+        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : undefined,
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;

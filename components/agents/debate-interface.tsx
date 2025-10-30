@@ -22,7 +22,8 @@ import { useConversationPersistence } from '@/hooks/use-conversation-persistence
 import { ConversationHistoryDropdown } from '@/components/conversation/conversation-history-dropdown'
 import { ShareButtons } from '@/components/conversation/share-buttons'
 import { SavedConversation } from '@/lib/types/conversation'
-import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles } from 'lucide-react'
+import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles, Gift } from 'lucide-react'
+import { useGlobalModelTier } from '@/contexts/trading-preset-context'
 import {
   Select,
   SelectContent,
@@ -35,8 +36,46 @@ interface AgentDebateInterfaceProps {
   userTier: 'guest' | 'free' | 'pro' | 'enterprise'
 }
 
+// Agent Debate Presets - Pre-selected models for each role
+const AGENT_PRESETS = {
+  free: {
+    label: 'Free',
+    icon: Gift,
+    description: 'All free models',
+    color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 dark:border-green-700',
+    roles: {
+      'analyst-001': { provider: 'groq', model: 'llama-3.1-8b-instant' },       // Fast analyst
+      'critic-001': { provider: 'google', model: 'gemini-2.0-flash-lite' },      // Different provider
+      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }  // Best free model
+    }
+  },
+  pro: {
+    label: 'Pro',
+    icon: Zap,
+    description: 'Balanced tier models',
+    color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
+    roles: {
+      'analyst-001': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },  // Strong analysis
+      'critic-001': { provider: 'openai', model: 'gpt-4o' },                           // Critical thinking
+      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }       // Good synthesis
+    }
+  },
+  max: {
+    label: 'Max',
+    icon: Sparkles,
+    description: 'Best flagship models',
+    color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700',
+    roles: {
+      'analyst-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },  // Flagship analysis
+      'critic-001': { provider: 'openai', model: 'gpt-5-chat-latest' },               // Flagship reasoning
+      'synthesizer-001': { provider: 'google', model: 'gemini-2.5-pro' }              // Comprehensive synthesis
+    }
+  }
+} as const
+
 export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const { toast } = useToast()
+  const { globalTier } = useGlobalModelTier()
   const [query, setQuery] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [selectedAgents, setSelectedAgents] = useState<AgentConfig[]>([])
@@ -160,7 +199,21 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     endTime?: number;
     description: string;
   }>>([])
-  
+
+  // Auto-apply global tier changes to agent roles
+  useEffect(() => {
+    const preset = AGENT_PRESETS[globalTier]
+    if (preset) {
+      const roles = preset.roles
+      // Update model configs to match preset roles
+      setModelConfigs([
+        { provider: roles['analyst-001'].provider as any, model: roles['analyst-001'].model, enabled: true },
+        { provider: roles['critic-001'].provider as any, model: roles['critic-001'].model, enabled: true },
+        { provider: roles['synthesizer-001'].provider as any, model: roles['synthesizer-001'].model, enabled: true }
+      ])
+    }
+  }, [globalTier])
+
   // Initialize post-agent steps when agents complete
   const initializePostAgentSteps = () => {
     const steps = [
@@ -1096,6 +1149,26 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
         </TabsList>
 
         <TabsContent value="setup" className="space-y-6">
+          {/* Global Tier Indicator */}
+          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
+            <div>
+              <div className="text-sm font-medium">Global Model Tier</div>
+              <div className="text-xs text-muted-foreground">
+                Change tier using the selector in the header to update agent models
+              </div>
+            </div>
+            {(() => {
+              const preset = AGENT_PRESETS[globalTier]
+              const Icon = preset.icon
+              return (
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 ${preset.color}`}>
+                  <Icon className="w-4 h-4" />
+                  <span className="font-semibold">{preset.label}</span>
+                </div>
+              )
+            })()}
+          </div>
+
           <Card className="p-6">
             <div className="space-y-4">
               <div className="space-y-3">

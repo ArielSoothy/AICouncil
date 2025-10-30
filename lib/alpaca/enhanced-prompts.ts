@@ -188,6 +188,10 @@ RISK MANAGEMENT RULES:
 
 YOUR TASK: Provide a COMPREHENSIVE trade recommendation for ${timeframe} trading${normalizedSymbol ? ` on ${normalizedSymbol}` : ''}.
 
+⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️
+YOU MUST RESPOND WITH **ONLY** VALID JSON - NO EXPLANATORY TEXT, NO PREAMBLE, NO COMMENTARY!
+DO NOT SAY "I'll analyze..." or "Let me research..." - JUST RETURN THE JSON OBJECT IMMEDIATELY!
+
 RESPOND IN VALID JSON FORMAT:
 {
   "action": "BUY" | "SELL" | "HOLD",
@@ -214,6 +218,8 @@ RESPOND IN VALID JSON FORMAT:
 }
 
 CRITICAL REQUIREMENTS:
+- ⚠️ RETURN ONLY VALID JSON - START YOUR RESPONSE WITH "{" AND END WITH "}"
+- ⚠️ NO CONVERSATIONAL TEXT BEFORE OR AFTER THE JSON - JUST THE JSON OBJECT!
 - Return ONLY valid JSON, nothing else
 - Use "HOLD" if no favorable ${minRiskReward} risk:reward setup exists
 - Ensure riskRewardRatio meets minimum ${minRiskReward}

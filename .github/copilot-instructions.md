@@ -55,7 +55,7 @@ Located in `/lib/judge-system.ts`, uses domain-specific prompts to:
 Models are defined with tier classification and expertise scores:
 ```typescript
 const MODEL_EXPERTISE = {
-  'claude-opus-4-20250514': { reasoning: 0.95, factual: 0.9, creative: 0.9, speed: 0.3 }
+  'claude-opus-4-1-20250514': { reasoning: 0.95, factual: 0.9, creative: 0.9, speed: 0.3 }
 }
 ```
 

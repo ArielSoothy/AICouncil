@@ -2,16 +2,12 @@ import { groq } from '@ai-sdk/groq';
 import { generateText } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
+import { alpacaTools, toolTracker } from '../alpaca/market-data-tools';
+import { getModelsByProvider } from '../models/model-registry';
 
 export class GroqProvider implements AIProvider {
   name = 'Groq';
-  models = [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'gemma2-9b-it',
-    'llama-3-groq-70b-tool-use',  // #1 on Berkeley Function Calling Leaderboard
-    'llama-3-groq-8b-tool-use'    // #3 on Berkeley Function Calling Leaderboard
-  ];
+  models = getModelsByProvider('groq').map(m => m.id);
 
   isConfigured(): boolean {
     return !!(process.env.GROQ_API_KEY && 
@@ -19,7 +15,7 @@ export class GroqProvider implements AIProvider {
              process.env.GROQ_API_KEY.startsWith('gsk_'));
   }
 
-  async query(prompt: string, config: ModelConfig): Promise<ModelResponse> {
+  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number }): Promise<ModelResponse> {
     const startTime = Date.now();
     
     // Define fallback models for rate-limited models
@@ -52,6 +48,18 @@ export class GroqProvider implements AIProvider {
           temperature: config.temperature || 0.7,
           maxTokens: config.maxTokens || 1000,
           topP: config.topP || 1,
+
+          // ✅ Tool use integration
+          tools: config.useTools ? alpacaTools : undefined,
+          maxSteps: config.useTools ? (config.maxSteps || 15) : 1,
+          onStepFinish: config.useTools ? (step) => {
+            if (step.toolCalls && step.toolCalls.length > 0) {
+              step.toolCalls.forEach((call: any) => {
+                console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
+                toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
+              });
+            }
+          } : undefined,
         });
 
         const responseTime = Date.now() - startTime;
@@ -86,6 +94,7 @@ export class GroqProvider implements AIProvider {
             total: result.usage?.totalTokens || 0,
           },
           timestamp: new Date(),
+          toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : undefined,
         };
       } catch (error) {
         // Check if it's a rate limit error and we have a fallback

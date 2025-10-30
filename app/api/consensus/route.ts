@@ -26,7 +26,7 @@ const TOKEN_COSTS = {
   'gpt-4o': { input: 0.01, output: 0.03 },
   
   // Claude 4 Series (2025) - Official Pricing
-  'claude-opus-4-20250514': { input: 0.015, output: 0.075 }, // $15/MTok → $75/MTok
+  'claude-opus-4-1-20250514': { input: 0.015, output: 0.075 }, // $15/MTok → $75/MTok
   'claude-sonnet-4-20250514': { input: 0.003, output: 0.015 }, // $3/MTok → $15/MTok
   
   // Claude 3.7 Series (2025)
@@ -62,7 +62,7 @@ const MODEL_EXPERTISE = {
   'gpt-4': { reasoning: 0.9, factual: 0.85, creative: 0.85, speed: 0.4 },
   'gpt-4o': { reasoning: 0.9, factual: 0.85, creative: 0.9, speed: 0.6 },
   // Claude 4 models (highest scores)
-  'claude-opus-4-20250514': { reasoning: 0.98, factual: 0.95, creative: 0.95, speed: 0.2 },
+  'claude-opus-4-1-20250514': { reasoning: 0.98, factual: 0.95, creative: 0.95, speed: 0.2 },
   'claude-sonnet-4-20250514': { reasoning: 0.95, factual: 0.92, creative: 0.9, speed: 0.4 },
   // Claude 3.7 models
   'claude-3-7-sonnet-20250219': { reasoning: 0.92, factual: 0.9, creative: 0.88, speed: 0.5 },
@@ -159,7 +159,7 @@ async function runJudgeAnalysis(query: string, responses: StructuredModelRespons
           // If Groq not configured, skip to heuristic
         }
       }
-    } else if (judgeModel === 'claude-opus-4-20250514') {
+    } else if (judgeModel === 'claude-opus-4-1-20250514') {
       // Pro/Enterprise: Use Claude Opus 4 if available
       if (process.env.ANTHROPIC_API_KEY && 
           process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here' &&
@@ -185,7 +185,7 @@ async function runEnhancedClaudeJudge(query: string, responses: StructuredModelR
   const promptContent = generateJudgePrompt(responses, query, mode)
   
   const result = await generateText({
-    model: anthropic('claude-opus-4-20250514'),
+    model: anthropic('claude-opus-4-1-20250514'),
     messages: [
       {
         role: 'system',

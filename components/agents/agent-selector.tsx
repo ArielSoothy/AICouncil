@@ -5,11 +5,20 @@ import { AGENT_PERSONAS, AgentPersona, AgentConfig } from '@/lib/agents/types'
 import { ModelConfig } from '@/types/consensus'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Brain, Target, Shield, Users } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Brain, Target, Shield, Users, ChevronDown, Gift, Zap, Sparkles } from 'lucide-react'
 import { canUseModel } from '@/lib/user-tiers'
 import { AgentAvatar } from '@/components/shared'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel
+} from '@/components/ui/dropdown-menu'
+import { PROVIDER_COLORS } from '@/lib/brand-colors'
 
 interface AgentSelectorProps {
   selectedAgents: AgentConfig[]
@@ -18,6 +27,92 @@ interface AgentSelectorProps {
   userTier: 'guest' | 'free' | 'pro' | 'enterprise'
 }
 
+// Model display names for professional badges (same as Ultra Mode)
+const modelDisplayNames: Record<string, string> = {
+  'gpt-5-chat-latest': 'GPT-5 Chat',
+  'gpt-5': 'GPT-5',
+  'gpt-5-mini': 'GPT-5 Mini',
+  'gpt-5-nano': 'GPT-5 Nano',
+  'gpt-4-turbo-preview': 'GPT-4 Turbo',
+  'gpt-4': 'GPT-4',
+  'gpt-4o': 'GPT-4o',
+  'gpt-3.5-turbo': 'GPT-3.5 Turbo',
+  'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5',
+  'claude-haiku-4-5-20250715': 'Claude Haiku 4.5',
+  'claude-opus-4-1-20250514': 'Claude Opus 4.1',
+  'claude-sonnet-4-20250514': 'Claude Sonnet 4',
+  'claude-3-7-sonnet-20250219': 'Claude 3.7 Sonnet',
+  'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
+  'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku',
+  'gemini-2.5-pro': 'Gemini 2.5 Pro',
+  'gemini-2.5-flash': 'Gemini 2.5 Flash',
+  'gemini-2.0-flash': 'Gemini 2.0 Flash',
+  'gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
+  'gemini-1.5-flash': 'Gemini 1.5 Flash',
+  'llama-3.3-70b-versatile': 'Llama 3.3 70B',
+  'llama-3.1-8b-instant': 'Llama 3.1 8B',
+  'gemma2-9b-it': 'Gemma 2 9B',
+  'grok-code-fast-1': 'Grok Code Fast',
+  'grok-4-fast-reasoning': 'Grok 4 Fast Reasoning',
+  'grok-4-fast-non-reasoning': 'Grok 4 Fast',
+  'grok-4-0709': 'Grok 4',
+  'grok-3': 'Grok 3',
+  'grok-3-mini': 'Grok 3 Mini',
+  'sonar-pro': 'Perplexity Sonar Pro',
+  'sonar-small': 'Perplexity Sonar Small',
+  'mistral-large-latest': 'Mistral Large',
+  'mistral-small-latest': 'Mistral Small',
+  'command-r-plus': 'Cohere Command R+',
+  'command-r': 'Cohere Command R'
+}
+
+const providerNames = {
+  openai: 'OpenAI',
+  anthropic: 'Anthropic',
+  google: 'Google',
+  groq: 'Groq',
+  xai: 'xAI',
+  perplexity: 'Perplexity',
+  mistral: 'Mistral',
+  cohere: 'Cohere'
+} as const
+
+// Agent Presets - Pre-selected models for each role
+const AGENT_PRESETS = {
+  free: {
+    label: 'Free',
+    icon: Gift,
+    description: 'All free models',
+    color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 dark:border-green-700',
+    roles: {
+      'analyst-001': { provider: 'groq', model: 'llama-3.1-8b-instant' },       // Fast analyst
+      'critic-001': { provider: 'google', model: 'gemini-2.0-flash-lite' },      // Different provider
+      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }  // Best free model
+    }
+  },
+  pro: {
+    label: 'Pro',
+    icon: Zap,
+    description: 'Balanced tier models',
+    color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
+    roles: {
+      'analyst-001': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },  // Strong analysis
+      'critic-001': { provider: 'openai', model: 'gpt-4o' },                           // Critical thinking
+      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }       // Good synthesis
+    }
+  },
+  max: {
+    label: 'Max',
+    icon: Sparkles,
+    description: 'Best flagship models',
+    color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700',
+    roles: {
+      'analyst-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },  // Flagship analysis
+      'critic-001': { provider: 'openai', model: 'gpt-5-chat-latest' },               // Flagship reasoning
+      'synthesizer-001': { provider: 'google', model: 'gemini-2.5-pro' }              // Comprehensive synthesis
+    }
+  }
+} as const
 
 export function AgentSelector({ 
   selectedAgents, 
@@ -129,10 +224,20 @@ export function AgentSelector({
     }))
   }
 
-  const getModelLabel = (provider: string, model: string) => {
-    const isFree = ['groq', 'google'].includes(provider.toLowerCase()) ||
-                   model.includes('gemini') || model.includes('llama') || model.includes('gemma')
-    return `${provider}/${model}${isFree ? ' (Free)' : ''}`
+  // Apply preset function
+  const applyPreset = (presetKey: 'free' | 'pro' | 'max') => {
+    const preset = AGENT_PRESETS[presetKey]
+    const newStates = { ...agentStates }
+
+    Object.entries(preset.roles).forEach(([agentId, config]) => {
+      newStates[agentId] = {
+        enabled: true,
+        provider: config.provider,
+        model: config.model
+      }
+    })
+
+    setAgentStates(newStates)
   }
 
   return (
@@ -143,7 +248,35 @@ export function AgentSelector({
           {Object.values(agentStates).filter(s => s.enabled).length} agents selected
         </Badge>
       </div>
-      
+
+      {/* Preset Buttons */}
+      <div className="mb-4">
+        <label className="text-sm font-medium text-muted-foreground block mb-3">
+          Quick Presets
+        </label>
+        <div className="grid grid-cols-3 gap-3">
+          {(Object.keys(AGENT_PRESETS) as Array<keyof typeof AGENT_PRESETS>).map((key) => {
+            const preset = AGENT_PRESETS[key]
+            const Icon = preset.icon
+
+            return (
+              <Button
+                key={key}
+                onClick={() => applyPreset(key)}
+                variant="outline"
+                className={`flex flex-col items-center gap-2 h-auto py-4 border-2 ${preset.color} transition-all`}
+              >
+                <Icon className="w-5 h-5" />
+                <div className="text-center">
+                  <div className="font-semibold">{preset.label}</div>
+                  <div className="text-xs opacity-80 mt-1">{preset.description}</div>
+                </div>
+              </Button>
+            )
+          })}
+        </div>
+      </div>
+
       <div className="grid gap-4">
         {Object.values(AGENT_PERSONAS).map(persona => {
           const state = agentStates[persona.id] || { enabled: false, model: '', provider: '' }
@@ -189,36 +322,53 @@ export function AgentSelector({
                     {state.enabled && (
                       <div className="space-y-2">
                         <label className="text-xs font-medium text-muted-foreground">
-                          Model for this agent:
+                          Model:
                         </label>
-                        <Select
-                          value={`${state.provider}/${state.model}`}
-                          onValueChange={(value) => {
-                            const [provider, ...modelParts] = value.split('/')
-                            const model = modelParts.join('/')
-                            updateAgentModel(persona.id, provider, model)
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a model" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableModels.map(providerInfo => (
-                              <div key={providerInfo.provider}>
-                                {providerInfo.models.filter(model => 
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {/* Current Model Badge with Dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                className={`${PROVIDER_COLORS[state.provider as keyof typeof PROVIDER_COLORS] || PROVIDER_COLORS.openai} transition-colors cursor-pointer px-3 py-1.5 h-auto text-sm font-medium rounded-full flex items-center gap-1.5 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
+                              >
+                                {modelDisplayNames[state.model] || state.model}
+                                <ChevronDown className="h-3 w-3" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="max-h-96 overflow-y-auto">
+                              <DropdownMenuLabel>Select Provider & Model</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {availableModels.map(providerInfo => {
+                                const availableProviderModels = providerInfo.models.filter(model =>
                                   canUseModel(userTier, providerInfo.provider, model)
-                                ).map(model => (
-                                  <SelectItem 
-                                    key={`${providerInfo.provider}/${model}`}
-                                    value={`${providerInfo.provider}/${model}`}
-                                  >
-                                    {getModelLabel(providerInfo.provider, model)}
-                                  </SelectItem>
-                                ))}
-                              </div>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                                )
+
+                                if (availableProviderModels.length === 0) return null
+
+                                return (
+                                  <div key={providerInfo.provider}>
+                                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                      {providerNames[providerInfo.provider as keyof typeof providerNames] || providerInfo.provider}
+                                    </DropdownMenuLabel>
+                                    {availableProviderModels.map(model => (
+                                      <DropdownMenuItem
+                                        key={`${providerInfo.provider}/${model}`}
+                                        onClick={() => updateAgentModel(persona.id, providerInfo.provider, model)}
+                                        className={state.provider === providerInfo.provider && state.model === model ? 'bg-accent' : ''}
+                                      >
+                                        <span className="flex items-center gap-2">
+                                          {modelDisplayNames[model] || model}
+                                          {state.provider === providerInfo.provider && state.model === model && ' ✓'}
+                                        </span>
+                                      </DropdownMenuItem>
+                                    ))}
+                                    <DropdownMenuSeparator />
+                                  </div>
+                                )
+                              })}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                     )}
                   </div>

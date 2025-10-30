@@ -741,7 +741,7 @@ CONFIDENCE: [0-100]`
       'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
       'gpt-4': { input: 0.03, output: 0.06 },
       'gpt-4o': { input: 0.01, output: 0.03 },
-      'claude-opus-4-20250514': { input: 0.015, output: 0.075 },
+      'claude-opus-4-1-20250514': { input: 0.015, output: 0.075 },
       'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },
       // Add more models as needed
     }

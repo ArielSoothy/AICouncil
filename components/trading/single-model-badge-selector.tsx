@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ChevronDown } from 'lucide-react'
 import { PROVIDER_COLORS } from '@/lib/brand-colors'
+import { MODEL_REGISTRY, Provider } from '@/lib/models/model-registry'
 
 interface SingleModelBadgeSelectorProps {
   value: string // Model ID
@@ -18,87 +19,21 @@ interface SingleModelBadgeSelectorProps {
   disabled?: boolean
 }
 
-// Available models per provider (matching Ultra Mode)
-const availableModels = {
-  openai: [
-    'gpt-5-chat-latest',
-    'gpt-5',
-    'gpt-5-mini',
-    'gpt-5-nano',
-    'gpt-4-turbo-preview',
-    'gpt-4',
-    'gpt-4o',
-    'gpt-3.5-turbo'
-  ],
-  anthropic: [
-    'claude-sonnet-4-5-20250929',
-    'claude-opus-4-20250514',
-    'claude-sonnet-4-20250514',
-    'claude-3-7-sonnet-20250219',
-    'claude-3-5-sonnet-20241022',
-    'claude-3-5-haiku-20241022'
-  ],
-  google: [
-    'gemini-2.5-pro',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-flash'
-  ],
-  groq: [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'gemma2-9b-it'
-  ],
-  xai: [
-    'grok-code-fast-1',
-    'grok-4-fast-reasoning',
-    'grok-4-fast-non-reasoning',
-    'grok-4-0709',
-    'grok-3',
-    'grok-3-mini'
-  ],
-  perplexity: ['sonar-pro', 'sonar-small'],
-  mistral: ['mistral-large-latest', 'mistral-small-latest'],
-  cohere: ['command-r-plus', 'command-r']
-} as const
+// Generate available models from registry (only working models, excluding legacy)
+const availableModels = Object.entries(MODEL_REGISTRY).reduce((acc, [provider, models]) => {
+  acc[provider as Provider] = models
+    .filter(m => !m.isLegacy && m.status === 'working')
+    .map(m => m.id)
+  return acc
+}, {} as Record<Provider, string[]>)
 
-const modelDisplayNames: Record<string, string> = {
-  'gpt-5-chat-latest': 'GPT-5 Chat',
-  'gpt-5': 'GPT-5',
-  'gpt-5-mini': 'GPT-5 Mini',
-  'gpt-5-nano': 'GPT-5 Nano',
-  'gpt-4-turbo-preview': 'GPT-4 Turbo',
-  'gpt-4': 'GPT-4',
-  'gpt-4o': 'GPT-4o',
-  'gpt-3.5-turbo': 'GPT-3.5 Turbo',
-  'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5',
-  'claude-opus-4-20250514': 'Claude Opus 4',
-  'claude-sonnet-4-20250514': 'Claude Sonnet 4',
-  'claude-3-7-sonnet-20250219': 'Claude 3.7 Sonnet',
-  'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
-  'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku',
-  'gemini-2.5-pro': 'Gemini 2.5 Pro',
-  'gemini-2.5-flash': 'Gemini 2.5 Flash',
-  'gemini-2.0-flash': 'Gemini 2.0 Flash',
-  'gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
-  'gemini-1.5-flash': 'Gemini 1.5 Flash',
-  'llama-3.3-70b-versatile': 'Llama 3.3 70B',
-  'llama-3.1-8b-instant': 'Llama 3.1 8B',
-  'gemma2-9b-it': 'Gemma 2 9B',
-  'grok-code-fast-1': 'Grok Code Fast',
-  'grok-4-fast-reasoning': 'Grok 4 Fast Reasoning',
-  'grok-4-fast-non-reasoning': 'Grok 4 Fast',
-  'grok-4-0709': 'Grok 4',
-  'grok-3': 'Grok 3',
-  'grok-3-mini': 'Grok 3 Mini',
-  'sonar-pro': 'Perplexity Sonar Pro',
-  'sonar-small': 'Perplexity Sonar Small',
-  'mistral-large-latest': 'Mistral Large',
-  'mistral-small-latest': 'Mistral Small',
-  'command-r-plus': 'Cohere Command R+',
-  'command-r': 'Cohere Command R'
-}
+// Generate model display names from registry
+const modelDisplayNames: Record<string, string> = Object.values(MODEL_REGISTRY)
+  .flat()
+  .reduce((acc, model) => {
+    acc[model.id] = model.name
+    return acc
+  }, {} as Record<string, string>)
 
 const providerNames = {
   openai: 'OpenAI',

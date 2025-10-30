@@ -673,14 +673,14 @@ export async function POST(request: NextRequest) {
           timestamp: Date.now()
         })}\n\n`))
         
-        // Create synthesis using Gemini
+        // Create synthesis using Gemini with fallback to Groq
         try {
-          const concisenessInstruction = responseMode === 'concise' 
+          const concisenessInstruction = responseMode === 'concise'
             ? '\n\nIMPORTANT: For CONCLUSION, provide EXACTLY this format (extract 3 specific recommendations from the debate):\n\n1. [Specific product/option name only]\n2. [Specific product/option name only]\n3. [Specific product/option name only]\n\n[One short sentence about why #1 is recommended].\n\nIf fewer than 3 options were discussed, intelligently suggest additional relevant options based on the debate context.'
             : responseMode === 'detailed'
             ? '\n\nProvide comprehensive analysis with detailed explanations and thorough reasoning.'
             : '\n\nProvide balanced analysis incorporating the full debate discussion.'
-            
+
           const synthesisPrompt = `You are the Chief Judge synthesizing an expert multi-agent debate. These agents engaged in substantive discussion with longer, more detailed arguments.
 
 Query: ${query}
@@ -697,7 +697,7 @@ ${r.content || r.response || 'No content'}
 As Chief Judge, synthesize this rich debate into a comprehensive analysis:
 
 1. AGREEMENTS: What key points did multiple agents converge on? (bullet points)
-2. DISAGREEMENTS: Where did agents clash and why? What were the core tensions? (bullet points) 
+2. DISAGREEMENTS: Where did agents clash and why? What were the core tensions? (bullet points)
 3. CONCLUSION: Your expert synthesis drawing from the best arguments across all agents${concisenessInstruction}
 4. FOLLOW-UP QUESTIONS (optional): If more context would strengthen the recommendation, what specific questions should the user answer?
 
@@ -705,10 +705,10 @@ The agents provided substantial analysis - your synthesis should reflect that de
 
 Format your response with clear sections using markdown headers (###).`
 
-          // Try Gemini first, fallback to Groq if overloaded
+          // Try Gemini first, fallback to Groq if it fails or returns empty
           let synthesisResult = null
           let usedProvider = 'google'
-          
+
           const googleProvider = providerRegistry.getProvider('google')
           if (googleProvider) {
             try {
@@ -718,37 +718,71 @@ Format your response with clear sections using markdown headers (###).`
                 enabled: true,
                 maxTokens: responseMode === 'detailed' ? 1200 : 800
               })
+
+              // CRITICAL: Check if Gemini returned empty response
+              if (!synthesisResult || !synthesisResult.response || synthesisResult.response.trim().length < 50) {
+                console.warn('⚠️  Gemini returned empty or too short synthesis response:', {
+                  hasResult: !!synthesisResult,
+                  responseLength: synthesisResult?.response?.length || 0,
+                  response: synthesisResult?.response || 'null'
+                })
+                synthesisResult = null // Force fallback to Groq
+              }
             } catch (googleError: any) {
               console.log('Google AI failed, trying Groq fallback:', googleError.message)
-              
-              // Fallback to Groq Llama 3.3 70B
-              const groqProvider = providerRegistry.getProvider('groq')
-              if (groqProvider) {
-                usedProvider = 'groq'
+              synthesisResult = null
+            }
+          }
+
+          // Fallback to Groq if Gemini failed or returned empty
+          if (!synthesisResult) {
+            const groqProvider = providerRegistry.getProvider('groq')
+            if (groqProvider) {
+              console.log('📝 Using Groq Llama 3.3 70B for synthesis (Gemini fallback)')
+              usedProvider = 'groq'
+              try {
                 synthesisResult = await groqProvider.query(synthesisPrompt, {
                   provider: 'groq',
                   model: 'llama-3.3-70b-versatile',
                   enabled: true,
                   maxTokens: responseMode === 'detailed' ? 1200 : 800
                 })
+
+                // Check if Groq also returned empty
+                if (!synthesisResult || !synthesisResult.response || synthesisResult.response.trim().length < 50) {
+                  console.warn('⚠️  Groq also returned empty synthesis response')
+                  synthesisResult = null
+                }
+              } catch (groqError: any) {
+                console.error('❌ Groq also failed for synthesis:', groqError.message)
+                synthesisResult = null
               }
             }
           }
-          
-          // If no Google provider, try Groq directly
-          if (!synthesisResult) {
-            const groqProvider = providerRegistry.getProvider('groq')
-            if (groqProvider) {
-              usedProvider = 'groq'
-              synthesisResult = await groqProvider.query(synthesisPrompt, {
-                provider: 'groq',
-                model: 'llama-3.3-70b-versatile',
-                enabled: true,
-                maxTokens: responseMode === 'detailed' ? 1200 : 800
-              })
+
+          // Final fallback: Create basic synthesis from agent responses if all LLMs failed
+          if (!synthesisResult || !synthesisResult.response) {
+            console.warn('⚠️  All synthesis providers failed, creating fallback synthesis')
+            usedProvider = 'fallback'
+
+            // Create a simple summary from the last round responses
+            const lastRoundResponses = allRoundResponses.filter(r => r.round === rounds)
+            const summaryPoints = lastRoundResponses.map((r, i) =>
+              `${i + 1}. ${r.agentConfig?.persona?.name || 'Agent'}: ${(r.content || r.response || '').substring(0, 200)}...`
+            ).join('\n\n')
+
+            synthesisResult = {
+              id: 'fallback-synthesis',
+              provider: 'fallback',
+              model: 'fallback',
+              response: `### AGREEMENTS\n\n- All agents provided substantive analysis on the query\n- Multiple perspectives were considered\n\n### DISAGREEMENTS\n\n- Agents had different approaches and focus areas\n- Various recommendations emerged from the debate\n\n### CONCLUSION\n\nBased on the agent debate:\n\n${summaryPoints}\n\nThe agents provided diverse insights. Review the individual agent responses above for detailed analysis.`,
+              confidence: 0.6,
+              responseTime: 0,
+              tokens: { prompt: 0, completion: 0, total: 0 },
+              timestamp: new Date().toISOString()
             }
           }
-          
+
           if (synthesisResult) {
             
             // Parse synthesis content with better extraction
@@ -841,7 +875,11 @@ Format your response with clear sections using markdown headers (###).`
             })
             
             const synthesis = {
-              content: `${content}\n\n[Synthesized by: ${usedProvider === 'groq' ? 'Llama 3.3 70B (Groq)' : 'Gemini 2.5 Flash (Google)'}]`,
+              content: `${content}\n\n[Synthesized by: ${
+                usedProvider === 'groq' ? 'Llama 3.3 70B (Groq)' :
+                usedProvider === 'fallback' ? 'Fallback Synthesis' :
+                'Gemini 2.5 Flash (Google)'
+              }]`,
               conclusion,
               agreements,
               disagreements,

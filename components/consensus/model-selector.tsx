@@ -3,10 +3,11 @@
 import { ModelConfig } from '@/types/consensus'
 import { Button } from '@/components/ui/button'
 import { Plus, Trash2, Globe } from 'lucide-react'
-import { getAvailableModels, getAllModelsWithTierInfo, canUseModel, hasInternetAccess, UserTier } from '@/lib/user-tiers'
+import { getAllModelsWithTierInfo, canUseModel, UserTier } from '@/lib/user-tiers'
 import { MODEL_COSTS_PER_1K, MODEL_POWER } from '@/lib/model-metadata'
 import { useAuth } from '@/contexts/auth-context'
 import { CostDisplay, TierBadge, EfficiencyBadge } from '@/components/shared'
+import { PROVIDER_NAMES, hasInternetAccess as registryHasInternetAccess } from '@/lib/models/model-registry'
 
 interface ModelSelectorProps {
   models: ModelConfig[]
@@ -14,74 +15,6 @@ interface ModelSelectorProps {
   usePremiumQuery?: boolean
   maxModels?: number
   userTier?: string
-}
-
-const availableModels = {
-  openai: [
-    // GPT-5 Series (2025 Flagship)
-    'gpt-5-chat-latest',
-    'gpt-5',
-    'gpt-5-mini',
-    'gpt-5-nano',
-    // GPT-4 Series
-    'gpt-4-turbo-preview',
-    'gpt-4',
-    'gpt-4o',
-    'gpt-3.5-turbo',
-    'gpt-3.5-turbo-16k'
-  ],
-  anthropic: [
-    // Claude 4.5 Series (2025 Flagship)
-    'claude-sonnet-4-5-20250929',
-    // Claude 4 Series (2025)
-    'claude-opus-4-20250514',
-    'claude-sonnet-4-20250514',
-    // Claude 3.7 Series (2025)
-    'claude-3-7-sonnet-20250219',
-    // Claude 3.5 Series (2024)
-    'claude-3-5-sonnet-20241022',
-    'claude-3-5-haiku-20241022',
-    // Claude 3 Series (Legacy)
-    'claude-3-opus-20240229',
-    'claude-3-sonnet-20240229',
-    'claude-3-haiku-20240307',
-    // Claude 2 Series
-    'claude-2.1',
-    'claude-2.0'
-  ],
-  google: [
-    // Current Generation (Free)
-    'gemini-2.5-pro',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    // Deprecated but still working
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-8b'
-  ],
-  groq: [
-    // Tier 1 Models
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'gemma2-9b-it'
-  ],
-  xai: [
-    // Grok 4 Series (2025 Flagship)
-    'grok-code-fast-1',
-    'grok-4-fast-reasoning',
-    'grok-4-fast-non-reasoning',
-    'grok-4-0709',
-    // Grok 3 Series
-    'grok-3',
-    'grok-3-mini',
-    // Grok 2 Series
-    'grok-2-vision-1212',
-    'grok-2-1212',
-    'grok-2-latest'
-  ],
-  perplexity: ['sonar-pro', 'sonar-small'],
-  mistral: ['mistral-large-latest', 'mistral-small-latest'],
-  cohere: ['command-r-plus', 'command-r']
 }
 
 // Derive model pricing and tier from centralized metadata
@@ -103,28 +36,18 @@ Object.entries(MODEL_COSTS_PER_1K).forEach(([model, cost]) => {
   modelCosts[model] = { input, output, tier }
 })
 
-// Tier colors and labels now handled by TierBadge component
-
-const providerNames = {
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  google: 'Google AI',
-  groq: 'Groq',
-  xai: 'xAI (Grok)',
-  perplexity: 'Perplexity',
-  mistral: 'Mistral',
-  cohere: 'Cohere'
-}
-
 // Cost efficiency calculation and badge now handled by EfficiencyBadge component
 
 export function ModelSelector({ models, onChange, usePremiumQuery = false, maxModels, userTier: propUserTier }: ModelSelectorProps) {
   const { userTier, loading } = useAuth()
-  
+
   // Show ALL models with tier info, using effective tier for premium queries
   const currentTier = loading ? 'free' : (userTier || 'free')
   // Use propUserTier if provided (for testing override), otherwise use auth tier
   const effectiveTier = (propUserTier || currentTier) as UserTier
+
+  // Debug logging
+  console.log('📊 ModelSelector - loading:', loading, 'userTier:', userTier, 'effectiveTier:', effectiveTier)
   const allModelsWithTierInfo = getAllModelsWithTierInfo(effectiveTier)
   
   // For provider dropdown, show all providers
@@ -210,7 +133,7 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false, maxMo
                   <option value="">Choose Provider</option>
                    {availableProviders.map((provider) => (
                     <option key={provider} value={provider}>
-                      {providerNames[provider as keyof typeof providerNames]}
+                      {PROVIDER_NAMES[provider as keyof typeof PROVIDER_NAMES]}
                     </option>
                   ))}
                 </select>
@@ -227,11 +150,11 @@ export function ModelSelector({ models, onChange, usePremiumQuery = false, maxMo
                   <option value="">Choose Model</option>
                   {allModelsWithTierInfo.find(p => p.provider === config.provider)?.models?.map((modelInfo) => {
                     const cost = modelCosts[modelInfo.name as keyof typeof modelCosts]
-                    const costDisplay = cost ? 
-                      (cost.input === 0 && cost.output === 0 ? 'FREE' : 
+                    const costDisplay = cost ?
+                      (cost.input === 0 && cost.output === 0 ? 'FREE' :
                        `$${cost.input.toFixed(4)}/$${cost.output.toFixed(4)} per 1K`) : ''
-                    
-                    const internetIcon = hasInternetAccess(modelInfo.name) ? ' 🌐' : ''
+
+                    const internetIcon = registryHasInternetAccess(modelInfo.name) ? ' 🌐' : ''
                     const weight = MODEL_POWER[modelInfo.name as keyof typeof MODEL_POWER]
                     const weightTag = weight ? ` W:${weight.toFixed(2)}` : ''
                     const label = modelInfo.available 

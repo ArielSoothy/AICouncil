@@ -10,7 +10,7 @@ const MODEL_COSTS_PER_1K = {
   'gpt-3.5-turbo-16k': { input: 0.003, output: 0.004 },
   
   // Anthropic Models
-  'claude-opus-4-20250514': { input: 0.015, output: 0.075 },
+  'claude-opus-4-1-20250514': { input: 0.015, output: 0.075 },
   'claude-sonnet-4-20250514': { input: 0.003, output: 0.015 },
   'claude-3-7-sonnet-20250219': { input: 0.003, output: 0.015 },
   'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },

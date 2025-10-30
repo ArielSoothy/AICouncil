@@ -3,6 +3,7 @@ import { getAccount, getPositions } from '@/lib/alpaca/client';
 import { generateEnhancedTradingPrompt } from '@/lib/alpaca/enhanced-prompts';
 import { runResearchAgents, type ResearchReport } from '@/lib/agents/research-agents';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
+import { ResearchCache } from '@/lib/trading/research-cache';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
 import { GoogleProvider } from '@/lib/ai-providers/google';
@@ -27,6 +28,9 @@ const PROVIDERS = {
   cohere: new CohereProvider(),
   xai: new XAIProvider(),
 };
+
+// Initialize research cache
+const researchCache = new ResearchCache();
 
 /**
  * Robust JSON extraction from model responses
@@ -212,13 +216,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 3: RUN EXHAUSTIVE RESEARCH PIPELINE (4 specialized agents)
-    console.log(`\n🔬 PHASE 1: Running exhaustive research pipeline for ${targetSymbol.toUpperCase()}...`);
-    const researchReport = await runResearchAgents(
-      targetSymbol,
-      timeframe as TradingTimeframe,
-      account
-    );
-    console.log(`✅ Research complete: ${researchReport.totalToolCalls} tools used, ${(researchReport.researchDuration / 1000).toFixed(1)}s duration\n`);
+    // With caching: Check cache first, run fresh research if cache miss/expired
+    console.log(`\n🔬 PHASE 1: Fetching research for ${targetSymbol.toUpperCase()}...`);
+
+    let researchReport: ResearchReport;
+    const cached = await researchCache.get(targetSymbol, timeframe as TradingTimeframe);
+
+    if (cached) {
+      // Cache hit! Reuse existing research
+      console.log(`✅ Using cached research (saved 30-40 API calls!)`);
+      researchReport = cached;
+      console.log(`📊 Cached research stats: ${researchReport.totalToolCalls} tools used, ${(researchReport.researchDuration / 1000).toFixed(1)}s original duration\n`);
+    } else {
+      // Cache miss - run fresh research
+      console.log(`💨 Cache miss - running fresh research pipeline...`);
+      researchReport = await runResearchAgents(
+        targetSymbol,
+        timeframe as TradingTimeframe,
+        account
+      );
+      console.log(`✅ Research complete: ${researchReport.totalToolCalls} tools used, ${(researchReport.researchDuration / 1000).toFixed(1)}s duration`);
+
+      // Cache the results for next time
+      await researchCache.set(targetSymbol, timeframe as TradingTimeframe, researchReport);
+      console.log(`💾 Research cached for future queries\n`);
+    }
 
     // Step 4: Generate trading prompt WITH research findings (no tools needed)
     console.log('🔬 PHASE 2: Decision models analyzing research findings...');
@@ -266,7 +288,22 @@ export async function POST(request: NextRequest) {
 
         // Parse JSON response with robust extraction
         const cleanedResponse = extractJSON(result.response);
-        const decision: TradeDecision = JSON.parse(cleanedResponse);
+        console.log(`📝 ${modelName} cleaned response (first 500 chars):`, cleanedResponse.substring(0, 500));
+
+        let decision: TradeDecision = JSON.parse(cleanedResponse);
+        console.log(`📊 ${modelName} parsed decision:`, JSON.stringify(decision, null, 2).substring(0, 500));
+
+        // Handle malformed responses (some models return just the reasoning object)
+        if (!decision.action && (decision as any).bullishCase) {
+          console.log(`⚠️ ${modelName} returned malformed response (reasoning only), wrapping it...`);
+          decision = {
+            action: 'HOLD' as const,
+            symbol: undefined,
+            quantity: undefined,
+            reasoning: decision as any, // The entire response is the reasoning object
+            confidence: 0.5, // Medium confidence since it's a fallback
+          } as TradeDecision;
+        }
 
         // Add model ID for judge weighting
         decision.model = modelId;

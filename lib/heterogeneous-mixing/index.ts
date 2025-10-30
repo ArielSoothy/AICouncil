@@ -214,7 +214,7 @@ function optimizeForPerformanceTarget(
           google: 'gemini-2.5-pro',
           groq: 'llama-3.3-70b-versatile',
           openai: 'gpt-5',
-          anthropic: 'claude-opus-4-20250514'
+          anthropic: 'claude-opus-4-1-20250514'
         }
       }
       

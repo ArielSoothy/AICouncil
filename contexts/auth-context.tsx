@@ -67,18 +67,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    console.log('🔄 AUTH CONTEXT: useEffect triggered')
     // Get initial session
     const getInitialSession = async () => {
+      console.log('🔄 AUTH CONTEXT: Getting initial session...')
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('🔄 AUTH CONTEXT: Session:', session ? 'exists' : 'null')
       setUser(session?.user ?? null)
-      
+
       if (session?.user?.id) {
+        console.log('🔄 AUTH CONTEXT: User logged in, fetching profile...')
         await fetchUserProfile(session.user.id)
       } else {
+        console.log('🔄 AUTH CONTEXT: No session, setting tier to null')
         setUserTier(null)
         setPremiumCredits(0)
       }
-      
+
+      console.log('🔄 AUTH CONTEXT: Setting loading to false')
       setLoading(false)
     }
 
@@ -89,14 +95,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.id)
         setUser(session?.user ?? null)
-        
+
         if (session?.user?.id) {
           await fetchUserProfile(session.user.id)
         } else {
           setUserTier(null)
           setPremiumCredits(0)
         }
-        
+
         setLoading(false)
       }
     )

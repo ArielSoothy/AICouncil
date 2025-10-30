@@ -2,13 +2,11 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
+import { getModelsByProvider } from '../models/model-registry';
 
 export class PerplexityProvider implements AIProvider {
   name = 'Perplexity';
-  models = [
-    'sonar-pro',
-    'sonar-small'
-  ];
+  models = getModelsByProvider('perplexity').map(m => m.id);
 
   isConfigured(): boolean {
     return !!(

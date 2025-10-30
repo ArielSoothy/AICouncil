@@ -14,6 +14,8 @@ import { ConversationHistoryDropdown } from '@/components/conversation/conversat
 import { useToast } from '@/hooks/use-toast'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { SavedConversation } from '@/lib/types/conversation'
+import { useGlobalModelTier } from '@/contexts/trading-preset-context'
+import { getModelsForPreset, getPresetConfig } from '@/lib/config/model-presets'
 
 // Ultra Mode: Best FLAGSHIP models (2025 releases) - ENABLED BY DEFAULT
 // Users can modify the selection via the UI
@@ -32,6 +34,7 @@ const DEFAULT_ULTRA_MODELS: ModelConfig[] = [
 
 function UltraPageContent() {
   const { toast } = useToast()
+  const { globalTier } = useGlobalModelTier()
   const [prompt, setPrompt] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, including mp3 500, that can drive from tlv to jerusalem but can get to eilat comfortably? im 43 male from tel aviv, 1.75 cm, 70kilo, with a wife and a 1 year old baby, we also have car')
   const [isLoading, setIsLoading] = useState(false)
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
@@ -41,6 +44,12 @@ function UltraPageContent() {
 
   // Ref for auto-scroll to results
   const resultsRef = useRef<HTMLDivElement>(null)
+
+  // Auto-apply global tier changes
+  useEffect(() => {
+    const presetModels = getModelsForPreset(globalTier)
+    setSelectedModels(presetModels)
+  }, [globalTier])
 
   // Auto-scroll to results when they're loaded
   useEffect(() => {
@@ -245,6 +254,26 @@ function UltraPageContent() {
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Best answer, right now. No configuration needed.
             </p>
+          </div>
+
+          {/* Global Tier Indicator */}
+          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border mb-6">
+            <div>
+              <div className="text-sm font-medium">Global Model Tier</div>
+              <div className="text-xs text-muted-foreground">
+                Change tier using the selector in the header to update models
+              </div>
+            </div>
+            {(() => {
+              const preset = getPresetConfig(globalTier)
+              const Icon = preset.icon
+              return (
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 ${preset.color}`}>
+                  <Icon className="w-4 h-4" />
+                  <span className="font-semibold">{preset.label}</span>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Unified Ultra Mode Interface */}

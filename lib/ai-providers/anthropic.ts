@@ -2,28 +2,12 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
+import { alpacaTools, toolTracker } from '../alpaca/market-data-tools';
+import { getModelsByProvider } from '../models/model-registry';
 
 export class AnthropicProvider implements AIProvider {
   name = 'Anthropic';
-  models = [
-    // Claude 4.5 Series (2025)
-    'claude-sonnet-4-5-20250929',
-    // Claude 4 Series
-    'claude-opus-4-20250514',
-    'claude-sonnet-4-20250514',
-    // Claude 3.7 models
-    'claude-3-7-sonnet-20250219',
-    // Claude 3.5 models
-    'claude-3-5-sonnet-20241022',
-    'claude-3-5-haiku-20241022',
-    // Legacy Claude 3 models
-    'claude-3-opus-20240229',
-    'claude-3-sonnet-20240229',
-    'claude-3-haiku-20240307',
-    // Legacy Claude 2 models
-    'claude-2.1',
-    'claude-2.0'
-  ];
+  models = getModelsByProvider('anthropic').map(m => m.id);
 
   isConfigured(): boolean {
     return !!(process.env.ANTHROPIC_API_KEY && 
@@ -31,13 +15,22 @@ export class AnthropicProvider implements AIProvider {
              process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-'));
   }
 
-  async query(prompt: string, config: ModelConfig): Promise<ModelResponse> {
+  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number }): Promise<ModelResponse> {
     const startTime = Date.now();
-    
+
     try {
       if (!this.isConfigured()) {
         throw new Error('Anthropic API key not configured');
       }
+
+      // 🔍 DEBUG: Log tool configuration
+      console.log('=== ANTHROPIC DEBUG ===');
+      console.log('Model:', config.model);
+      console.log('useTools:', config.useTools);
+      console.log('maxSteps:', config.maxSteps);
+      console.log('Tools passed:', config.useTools ? Object.keys(alpacaTools) : 'none');
+      console.log('Prompt includes tools section:', prompt.includes('AVAILABLE RESEARCH TOOLS'));
+      console.log('=======================');
 
       const result = await generateText({
         model: anthropic(config.model),
@@ -46,14 +39,41 @@ export class AnthropicProvider implements AIProvider {
         maxTokens: config.maxTokens || 1000,
         // Claude Sonnet 4.5 doesn't allow both temperature and topP
         // topP: config.topP || 1,
+
+        // ✅ Tool use integration
+        tools: config.useTools ? alpacaTools : undefined,
+        maxSteps: config.useTools ? (config.maxSteps || 15) : 1,
+        onStepFinish: config.useTools ? (step) => {
+          console.log('🔍 Step finished:', {
+            stepType: step.stepType,
+            text: step.text?.substring(0, 100),
+            toolCalls: step.toolCalls?.length || 0,
+            toolResults: step.toolResults?.length || 0
+          });
+          if (step.toolCalls && step.toolCalls.length > 0) {
+            step.toolCalls.forEach((call: any) => {
+              console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
+              toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
+            });
+          }
+        } : undefined,
       });
 
       const responseTime = Date.now() - startTime;
-      
+
       console.log('=== ANTHROPIC SUCCESS ===');
       console.log('Response length:', result.text?.length || 0);
       console.log('Has text:', !!result.text);
       console.log('First 200 chars:', result.text ? result.text.substring(0, 200) : 'NO TEXT');
+      if (config.useTools) {
+        console.log('Total steps:', result.steps?.length || 0);
+        console.log('Steps with toolCalls:', result.steps?.filter(s => s.toolCalls && s.toolCalls.length > 0).length || 0);
+        console.log('Steps detail:', result.steps?.map(s => ({
+          stepType: s.stepType,
+          toolCallsCount: s.toolCalls?.length || 0,
+          toolResultsCount: s.toolResults?.length || 0
+        })));
+      }
       console.log('=========================');
 
       return {
@@ -69,6 +89,7 @@ export class AnthropicProvider implements AIProvider {
           total: result.usage?.totalTokens || 0,
         },
         timestamp: new Date(),
+        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : undefined,
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;

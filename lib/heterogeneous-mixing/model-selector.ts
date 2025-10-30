@@ -357,11 +357,11 @@ export function getOptimalModelCombination(
       technical: { analyst: 'gpt-4.1', critic: 'claude-3-7-sonnet-20250219', synthesizer: 'mistral-large-latest' },
     },
     enterprise: {
-      mathematical: { analyst: 'claude-opus-4-20250514', critic: 'gpt-5', synthesizer: 'claude-sonnet-4-20250514' },
-      creative: { analyst: 'gpt-5', critic: 'claude-opus-4-20250514', synthesizer: 'grok-4-0709' },
-      analytical: { analyst: 'claude-opus-4-20250514', critic: 'gpt-5', synthesizer: 'command-r-plus' },
-      factual: { analyst: 'gemini-2.5-pro', critic: 'claude-opus-4-20250514', synthesizer: 'gpt-5' },
-      technical: { analyst: 'gpt-5', critic: 'claude-opus-4-20250514', synthesizer: 'mistral-large-latest' },
+      mathematical: { analyst: 'claude-opus-4-1-20250514', critic: 'gpt-5', synthesizer: 'claude-sonnet-4-20250514' },
+      creative: { analyst: 'gpt-5', critic: 'claude-opus-4-1-20250514', synthesizer: 'grok-4-0709' },
+      analytical: { analyst: 'claude-opus-4-1-20250514', critic: 'gpt-5', synthesizer: 'command-r-plus' },
+      factual: { analyst: 'gemini-2.5-pro', critic: 'claude-opus-4-1-20250514', synthesizer: 'gpt-5' },
+      technical: { analyst: 'gpt-5', critic: 'claude-opus-4-1-20250514', synthesizer: 'mistral-large-latest' },
     }
   }
   
@@ -376,7 +376,7 @@ export function getOptimalModelCombination(
       'llama-3.3-70b-versatile': 'claude-3-7-sonnet-20250219',
       'claude-3-5-haiku-20241022': 'claude-3-7-sonnet-20250219',
       'gpt-4.1': 'gpt-5',
-      'claude-3-7-sonnet-20250219': 'claude-opus-4-20250514'
+      'claude-3-7-sonnet-20250219': 'claude-opus-4-1-20250514'
     }
     
     return {

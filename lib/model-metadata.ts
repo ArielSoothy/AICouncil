@@ -33,7 +33,8 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
 
   // Anthropic
   'claude-sonnet-4-5-20250929': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-09-29' },
-  'claude-opus-4-20250514': { input: 0.015, output: 0.075, source: 'Anthropic pricing per 1M ($15 in / $75 out)', lastUpdated: '2025-05-14' },
+  'claude-haiku-4-5-20250715': { input: 0.001, output: 0.005, source: 'Anthropic pricing per 1M ($1 in / $5 out)', lastUpdated: '2025-07-15' },
+  'claude-opus-4-1-20250514': { input: 0.015, output: 0.075, source: 'Anthropic pricing per 1M ($15 in / $75 out)', lastUpdated: '2025-05-14' },
   'claude-sonnet-4-20250514': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-05-14' },
   'claude-3-7-sonnet-20250219': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-02-19' },
   'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2024-10-22' },
@@ -108,7 +109,8 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
 
   // Anthropic
   'claude-sonnet-4-5-20250929': { arenaTier: 'S', aaii: 1215, mmlu: 85, source: 'Anthropic/AA (latest flagship)', lastUpdated: '2025-09-29' },
-  'claude-opus-4-20250514': { arenaTier: 'S', aaii: 1212, mmlu: 87, source: 'Anthropic/AA', lastUpdated: '2025-05-14' },
+  'claude-haiku-4-5-20250715': { arenaTier: 'A', aaii: 1180, mmlu: 78, source: 'Anthropic/AA (fastest model)', lastUpdated: '2025-07-15' },
+  'claude-opus-4-1-20250514': { arenaTier: 'S', aaii: 1212, mmlu: 87, source: 'Anthropic/AA', lastUpdated: '2025-05-14' },
   'claude-sonnet-4-20250514': { arenaTier: 'S', aaii: 1212, mmlu: 84, source: 'Anthropic/AA', lastUpdated: '2025-05-14' },
   'claude-3-7-sonnet-20250219': { arenaTier: 'A', aaii: 1205, mmlu: 83, source: 'Anthropic/AA', lastUpdated: '2025-02-19' },
   'claude-3-5-sonnet-20241022': { arenaTier: 'A', aaii: 1200, mmlu: 82, source: 'AA', lastUpdated: '2024-10-22' },

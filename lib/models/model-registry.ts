@@ -114,9 +114,9 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'claude-sonnet-4-20250514', name: 'Claude 4 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     // Claude 3.7 Series
     { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
-    // Claude 3.5 Series
-    { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'anthropic', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
+    // Claude 3.5 Series (Haiku only - Sonnet was replaced by 3.7)
     { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', provider: 'anthropic', tier: 'balanced', badge: '⚡', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
+    { id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet (DEPRECATED)', provider: 'anthropic', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'service_error', isLegacy: true, lastTested: '2025-01-30T00:00:00.000Z', notes: 'Claude 3.5 Sonnet does not exist - replaced by Claude 3.7 Sonnet. Use claude-3-7-sonnet-20250219 instead.' },
     // Claude 3 Series (Budget)
     { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', provider: 'anthropic', tier: 'budget', badge: '💰', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', provider: 'anthropic', tier: 'budget', badge: '💰', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Superseded by Claude 3.5 Sonnet - model may have been deprecated', isLegacy: true },

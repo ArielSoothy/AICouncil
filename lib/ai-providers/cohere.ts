@@ -2,13 +2,11 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
+import { getModelsByProvider } from '../models/model-registry';
 
 export class CohereProvider implements AIProvider {
   name = 'Cohere';
-  models = [
-    'command-r-plus',
-    'command-r'
-  ];
+  models = getModelsByProvider('cohere').map(m => m.id);
 
   isConfigured(): boolean {
     return !!(

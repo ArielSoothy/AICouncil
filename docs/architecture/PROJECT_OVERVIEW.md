@@ -97,7 +97,10 @@ AICouncil/
 │   └── debate/          # Debate feature module
 ├── lib/                  # Core business logic
 │   ├── agents/          # Agent system logic
-│   ├── ai-providers/    # AI provider integrations
+│   ├── ai-providers/    # AI provider integrations (8 providers)
+│   ├── models/          # 🎯 MODEL REGISTRY - Single source of truth
+│   │   └── model-registry.ts  # All 46+ models defined here ONLY
+│   ├── trading/         # Paper trading system
 │   ├── memory/          # Memory system (future)
 │   └── supabase/        # Database client
 └── types/               # TypeScript definitions

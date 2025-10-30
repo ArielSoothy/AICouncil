@@ -1,19 +1,13 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { google } from '@ai-sdk/google';
+import { generateText } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
+import { alpacaTools, toolTracker } from '../alpaca/market-data-tools';
+import { getModelsByProvider } from '../models/model-registry';
 
 export class GoogleProvider implements AIProvider {
   name = 'Google';
-  models = [
-    // Current Generation (Free)
-    'gemini-2.5-pro',
-    'gemini-2.5-flash', 
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    // Deprecated but still working
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-8b'
-  ];
+  models = getModelsByProvider('google').map(m => m.id);
 
   isConfigured(): boolean {
     return !!(process.env.GOOGLE_GENERATIVE_AI_API_KEY && 
@@ -21,9 +15,9 @@ export class GoogleProvider implements AIProvider {
              process.env.GOOGLE_GENERATIVE_AI_API_KEY.length > 10);
   }
 
-  async query(prompt: string, config: ModelConfig): Promise<ModelResponse> {
+  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number }): Promise<ModelResponse> {
     const startTime = Date.now();
-    
+
     try {
       if (!this.isConfigured()) {
         throw new Error('Google AI API key not configured');
@@ -32,31 +26,49 @@ export class GoogleProvider implements AIProvider {
       console.log('Google AI: Attempting query with model:', config.model);
       console.log('Google AI: API key configured:', !!process.env.GOOGLE_GENERATIVE_AI_API_KEY);
 
-      // Initialize the Google AI client
-      const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
-      const model = genAI.getGenerativeModel({ model: config.model });
-      
-      // Generate content
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      const result = await generateText({
+        model: google(config.model),
+        prompt,
+        temperature: config.temperature || 0.7,
+        maxTokens: config.maxTokens || 1000,
+
+        // ✅ Tool use integration
+        tools: config.useTools ? alpacaTools : undefined,
+        maxSteps: config.useTools ? (config.maxSteps || 15) : 1,
+        onStepFinish: config.useTools ? (step) => {
+          if (step.toolCalls && step.toolCalls.length > 0) {
+            step.toolCalls.forEach((call: any) => {
+              console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
+              toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
+            });
+          }
+        } : undefined,
+      });
 
       const responseTime = Date.now() - startTime;
-      console.log('Google AI: Success! Response length:', text.length);
+
+      // Check for empty response
+      if (!result.text || result.text.trim().length === 0) {
+        console.error('Google AI: Returned empty response');
+        throw new Error('Google AI returned empty response');
+      }
+
+      console.log('Google AI: Success! Response length:', result.text.length);
 
       return {
         id: `google-${Date.now()}`,
         provider: 'google',
         model: config.model,
-        response: text,
-        confidence: this.calculateConfidence(text),
+        response: result.text,
+        confidence: this.calculateConfidence(result.text),
         responseTime,
         tokens: {
-          prompt: 0, // Google AI doesn't provide token usage in free tier
-          completion: 0,
-          total: 0,
+          prompt: result.usage?.promptTokens || 0,
+          completion: result.usage?.completionTokens || 0,
+          total: result.usage?.totalTokens || 0,
         },
         timestamp: new Date(),
+        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : undefined,
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;

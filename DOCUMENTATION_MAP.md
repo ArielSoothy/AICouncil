@@ -1,7 +1,7 @@
 # 📚 DOCUMENTATION MAP - AI Council Project
 
 **Complete reference of all documentation files and their organized structure**
-**Last Updated**: October 24, 2025
+**Last Updated**: October 30, 2025
 
 ---
 
@@ -38,10 +38,12 @@ These files MUST be read at the start of every development session:
 │   │
 │   ├── architecture/                   # System design & configuration
 │   │   ├── PROJECT_OVERVIEW.md         # Complete system architecture
+│   │   ├── PROJECT_STRUCTURE.md        # Codebase structure & navigation
 │   │   ├── SUPABASE_SETUP.md           # Database setup & schemas
 │   │   └── AI_MODELS_SETUP.md          # AI provider configuration
 │   │
 │   ├── features/                       # Feature-specific documentation
+│   │   ├── GLOBAL_TIER_SELECTOR.md     # App-wide Free/Pro/Max tier system (NEW)
 │   │   ├── TRADING_ENHANCEMENTS.md     # Paper trading system (Phase 2)
 │   │   ├── TRADING_DECISION_PROCESS.md # How AI models make trading decisions
 │   │   ├── ULTRA_MODE_REDESIGN_PLAN.md # Ultra Mode architecture
@@ -58,6 +60,7 @@ These files MUST be read at the start of every development session:
 │   │   ├── BEST_PRACTICES.md           # Debugging patterns & successful methods
 │   │   ├── SUB_AGENTS.md               # Sub-agent specifications & orchestration
 │   │   ├── MANUAL_STEPS.md             # Manual steps for deployment
+│   │   ├── RESEARCH_CACHE_TESTING.md   # Research caching system testing guide (NEW)
 │   │   └── evals.md                    # Evaluation metrics & testing
 │   │
 │   ├── history/                        # Session logs & work summaries
@@ -109,6 +112,7 @@ These files MUST be read at the start of every development session:
 | **README.md** | Project introduction, quick start | GitHub standard, first file visitors see |
 | **CLAUDE.md** | Master index, session context | Must be easily findable every session |
 | **DOCUMENTATION_MAP.md** | Complete documentation reference | Navigation hub for all other docs |
+| **RESEARCH_CACHE_IMPLEMENTATION_SUMMARY.md** | Research caching complete summary (NEW) | Quick reference for Phase 2C implementation |
 
 **NEVER move these files** - they are entry points for all documentation.
 
@@ -135,6 +139,7 @@ System design, tech stack, and configuration:
 | File | Purpose | When to Read |
 |------|---------|--------------|
 | **PROJECT_OVERVIEW.md** | Complete system architecture, tech stack, feature map | For context, when planning changes |
+| **PROJECT_STRUCTURE.md** | Complete codebase structure, directory tree, navigation guide | When navigating codebase or adding new files |
 | **SUPABASE_SETUP.md** | Database setup, schemas, RLS policies | Database changes, auth work |
 | **AI_MODELS_SETUP.md** | AI provider configuration (8 providers, 43 models) | AI integration changes |
 
@@ -190,9 +195,26 @@ Development guidelines, debugging patterns, and orchestration:
 | **BEST_PRACTICES.md** | Debugging patterns, successful fix methods | When encountering issues |
 | **SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
 | **MANUAL_STEPS.md** | Manual steps required for deployment | Before deployment |
+| **RESEARCH_CACHE_TESTING.md** | Research caching system testing guide (NEW) | Testing Phase 2C caching |
 | **evals.md** | Evaluation metrics and testing guidelines | Quality assurance |
 
 **Path**: `/docs/guides/`
+
+---
+
+## 🔧 SCRIPTS & DATABASE (scripts/)
+
+Database schemas, migration scripts, and automation:
+
+| File | Purpose | When to Use |
+|------|---------|------------|
+| **create-research-cache-table.sql** | Research caching database schema (NEW) | Setting up Phase 2C caching |
+| **test-alpaca.ts** | Alpaca API testing script | Testing trading integration |
+| **test-*.ts** | Various test scripts | Testing specific features |
+
+**Path**: `/scripts/`
+
+**IMPORTANT**: SQL scripts must be run in Supabase SQL Editor before using the corresponding features.
 
 ---
 
@@ -295,9 +317,10 @@ Historical documentation and research (reference only):
 3. Review README.md (deployment process)
 
 ### Researching Architecture
-1. Read docs/architecture/PROJECT_OVERVIEW.md
-2. Check relevant feature docs in docs/features/
-3. Review _archive/ for historical context if needed
+1. Read docs/architecture/PROJECT_OVERVIEW.md (system architecture & features)
+2. Read docs/architecture/PROJECT_STRUCTURE.md (codebase structure & file organization)
+3. Check relevant feature docs in docs/features/
+4. Review _archive/ for historical context if needed
 
 ---
 
