@@ -46,8 +46,7 @@ const PROVIDERS = {
 };
 
 /**
- * ULTRA-ROBUST JSON extraction from model responses
- * Handles malformed JSON from free/open-source models
+ * Robust JSON extraction from model responses
  */
 function extractJSON(text: string): string {
   let cleaned = text.trim();
@@ -101,43 +100,13 @@ function extractJSON(text: string): string {
     }
   }
 
-  // AGGRESSIVE JSON REPAIR STRATEGIES
+  // Fix common JSON issues
+  cleaned = cleaned
+    .replace(/,(\s*[}\]])/g, '$1')
+    .replace(/'/g, '"')
+    .trim();
 
-  // 1. Fix trailing commas before } and ]
-  cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
-
-  // 2. Replace single quotes with double quotes
-  cleaned = cleaned.replace(/'/g, '"');
-
-  // 3. Fix unquoted property names (common in malformed JSON)
-  cleaned = cleaned.replace(/(\{|,)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
-
-  // 4. Fix missing commas between properties
-  cleaned = cleaned.replace(/"\s*\n\s*"/g, '",\n"');
-  cleaned = cleaned.replace(/(\}|\])\s*\n\s*"/g, '$1,\n"');
-
-  // 5. Remove any non-JSON text after the closing brace
-  const lastBrace = cleaned.lastIndexOf('}');
-  if (lastBrace !== -1 && lastBrace < cleaned.length - 1) {
-    cleaned = cleaned.substring(0, lastBrace + 1);
-  }
-
-  // 6. Handle incomplete JSON (missing closing brace)
-  const openBraces = (cleaned.match(/\{/g) || []).length;
-  const closeBraces = (cleaned.match(/\}/g) || []).length;
-  if (openBraces > closeBraces) {
-    // Add missing closing braces
-    cleaned += '}'.repeat(openBraces - closeBraces);
-  }
-
-  // 7. Fix double-escaped quotes
-  cleaned = cleaned.replace(/\\\\"/g, '\\"');
-
-  // 8. Remove JavaScript comments (some models add these)
-  cleaned = cleaned.replace(/\/\/.*$/gm, '');
-  cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
-
-  return cleaned.trim();
+  return cleaned;
 }
 
 /**
@@ -256,20 +225,7 @@ export async function POST(request: NextRequest) {
               });
 
               const cleanedResponse = extractJSON(result.response);
-
-              // Try to parse JSON with detailed error logging
-              let decision: TradeDecision;
-              try {
-                decision = JSON.parse(cleanedResponse);
-              } catch (parseError) {
-                // Log the actual response for debugging
-                console.error(`\n❌ JSON Parse failed for ${modelName}:`);
-                console.error('Raw response length:', result.response.length);
-                console.error('First 200 chars:', result.response.substring(0, 200));
-                console.error('Cleaned JSON:', cleanedResponse);
-                console.error('Parse error:', parseError);
-                throw parseError; // Re-throw to be caught by outer try-catch
-              }
+              let decision: TradeDecision = JSON.parse(cleanedResponse);
 
               // Handle malformed responses
               if (!decision.action && (decision as any).bullishCase) {
