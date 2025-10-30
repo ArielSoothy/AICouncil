@@ -115,18 +115,26 @@
 
 ---
 
-## ⏳ What's Next (Your Action Required)
+## ✅ Database Schema Status
 
-### Step 1: Deploy Database Schema (**REQUIRED**)
-1. Go to Supabase Dashboard: https://supabase.com/dashboard
-2. Navigate to your project
-3. Click "SQL Editor" in left sidebar
-4. Open file: `scripts/create-research-cache-table.sql`
-5. Copy entire contents and paste into editor
-6. Click "Run" button
-7. Verify success message
+### ✅ ALREADY DEPLOYED (October 30, 2025)
+The `research_cache` table **already exists** in Supabase and is working in both local and production:
 
-**⚠️ System won't work until this is done!**
+**Status**:
+- ✅ SQL script was run in Supabase SQL Editor
+- ✅ Table created with all indexes and RLS policies
+- ✅ Tested locally with cache hits (AAPL-swing cached successfully)
+- ✅ Production deployment using same Supabase database
+- ✅ No separate table needed for production
+
+**Important**: Supabase is shared between local dev and production Vercel deployment. The same `research_cache` table serves both environments.
+
+### ⚠️ DO NOT RUN SQL SCRIPT AGAIN
+Running the script again will fail because the table already exists. If you need to reset the cache:
+```sql
+-- In Supabase SQL Editor (ONLY if you need to clear cache):
+TRUNCATE TABLE public.research_cache;
+```
 
 ### Step 2: Test the Caching System
 Follow the comprehensive testing guide: `docs/guides/RESEARCH_CACHE_TESTING.md`

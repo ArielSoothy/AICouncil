@@ -204,6 +204,10 @@ Follow structured workflow: Work → Test → Document → Ask approval → Push
 
 ### Implementation
 **Database**: `research_cache` table in Supabase (PostgreSQL + JSONB)
+- ✅ **Status**: DEPLOYED (October 30, 2025)
+- ✅ **Shared**: Same table for local dev & production Vercel
+- ⚠️ **DO NOT** run SQL script again - table exists
+
 **Service**: `lib/trading/research-cache.ts` - ResearchCache class
 **Integration**: Consensus Mode API (`/app/api/trading/consensus/route.ts`)
 
@@ -258,9 +262,10 @@ Next priority: 🎯 Monitor cache performance for 1 week, then decide Phase 2D o
 MANDATORY START: Read CLAUDE.md → DOCUMENTATION_MAP.md → docs/workflow/WORKFLOW.md → docs/workflow/PRIORITIES.md → docs/workflow/FEATURES.md
 
 RESEARCH CACHING SYSTEM - PHASE 2C COMPLETE (October 30, 2025):
-✅ Database schema deployed to Supabase
+✅ Database schema deployed to Supabase (SHARED: local dev + production)
 ✅ ResearchCache service class complete (380 lines)
 ✅ Integrated with Consensus Mode API
+⚠️ DO NOT RUN SQL SCRIPT AGAIN - table already exists in Supabase
 ✅ Browser validated: Cache hit working (AAPL-swing test)
 ✅ Performance verified: 96% faster (52.8s → 2s), 100% cost savings on hit
 ✅ TTL strategy working: 15min-24hr based on timeframe

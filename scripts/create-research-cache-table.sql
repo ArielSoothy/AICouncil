@@ -1,5 +1,13 @@
 -- Research Cache Table for AI Council Trading System
 -- Stores market research results to avoid redundant API calls
+--
+-- ✅ STATUS: ALREADY RUN (October 30, 2025)
+-- Table exists in Supabase and is working in both local dev and production
+-- DO NOT RUN AGAIN - will fail because table already exists
+--
+-- To clear cache (if needed): TRUNCATE TABLE public.research_cache;
+--
+-- Original instructions (for reference only):
 -- Run this in Supabase SQL Editor
 
 -- Create research_cache table
