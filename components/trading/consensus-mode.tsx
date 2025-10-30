@@ -255,10 +255,22 @@ export function ConsensusMode() {
         createReasoningStep('analysis', '📊 Processing final decision...')
       ])
 
-      // Verify we received final results
+      // Log what we received (for debugging)
+      console.log('📊 Stream completed. Results received:', {
+        hasFinalConsensus: !!finalConsensus,
+        hasFinalDecisions: !!finalDecisions,
+        finalConsensusAction: finalConsensus?.action,
+        finalDecisionsCount: finalDecisions?.length,
+        reactConsensus: consensus,
+        reactDecisions: decisions
+      })
+
+      // Verify we received final results (don't throw, just warn)
       if (!finalConsensus || !finalDecisions.length) {
-        console.warn('⚠️ Stream completed but no final results received')
-        throw new Error('No consensus data received from analysis')
+        console.warn('⚠️ Stream completed but no final results received. Check backend logs for errors.')
+        console.warn('This could mean Phase 1 (research) or Phase 2 (decisions) failed.')
+        // Don't throw - let the UI show what we have
+        return
       }
 
       console.log('✅ Final results stored:', {
