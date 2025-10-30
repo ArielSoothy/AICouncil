@@ -1,4 +1,5 @@
 import { MODEL_REGISTRY, Provider, type UserAccessTier as RegistryUserAccessTier } from './models/model-registry'
+import { IS_PRODUCTION, ALLOWED_TIERS } from './utils/environment'
 
 export type UserTier = 'guest' | 'free' | 'pro' | 'enterprise'
 
@@ -107,22 +108,30 @@ export function getAvailableModels(userTier: UserTier | null): { provider: strin
   // Default to free tier if no tier specified
   const tier = userTier || 'free'
   const config = TIER_CONFIGS[tier]
-  
+
+  // 🔒 PRODUCTION LOCK: Only free models in production (prevent API abuse)
+  if (IS_PRODUCTION) {
+    return Object.entries(FREE_TIER_MODELS).map(([provider, models]) => ({
+      provider,
+      models
+    }))
+  }
+
   if (tier === 'guest') {
     return Object.entries(GUEST_TIER_MODELS).map(([provider, models]) => ({
       provider,
       models
     }))
   }
-  
+
   if (tier === 'free') {
     return Object.entries(FREE_TIER_MODELS).map(([provider, models]) => ({
       provider,
       models
     }))
   }
-  
-  // Pro and Enterprise get all models
+
+  // Pro and Enterprise get all models (only in development/preview)
   return Object.entries(ALL_MODELS).map(([provider, models]) => ({
     provider,
     models
@@ -145,25 +154,31 @@ export function getAllModelsWithTierInfo(userTier: UserTier | null): { provider:
 export function canUseModel(userTier: UserTier | null, provider: string, model: string): boolean {
   const tier = userTier || 'free'
   const config = TIER_CONFIGS[tier]
-  
+
+  // 🔒 PRODUCTION LOCK: Only free models allowed in production
+  if (IS_PRODUCTION) {
+    const freeModels = FREE_TIER_MODELS[provider as keyof typeof FREE_TIER_MODELS]
+    return freeModels ? freeModels.includes(model) : false
+  }
+
   // Check if provider is allowed
   if (!config.availableProviders.includes(provider as any)) {
     return false
   }
-  
+
   // For guest tier, check guest model whitelist
   if (tier === 'guest') {
     const guestModels = GUEST_TIER_MODELS[provider as keyof typeof GUEST_TIER_MODELS]
     return guestModels ? guestModels.includes(model) : false
   }
-  
+
   // For free tier, check specific model whitelist
   if (tier === 'free') {
     const freeModels = FREE_TIER_MODELS[provider as keyof typeof FREE_TIER_MODELS]
     return freeModels ? freeModels.includes(model) : false
   }
-  
-  // Pro and Enterprise can use all models
+
+  // Pro and Enterprise can use all models (only in development/preview)
   return true
 }
 

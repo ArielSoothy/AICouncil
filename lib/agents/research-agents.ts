@@ -141,7 +141,7 @@ export async function runTechnicalResearch(
 /**
  * Fundamental Analyst Research Agent
  *
- * Model: GPT-4o (reliable, excellent reasoning)
+ * Model: Gemini 2.0 Flash (free, fast, good reasoning with tools)
  * Tools: 4-6 expected (earnings_date, news, quote, bars for context)
  * Focus: Company fundamentals, news catalysts, earnings
  */
@@ -164,12 +164,12 @@ export async function runFundamentalResearch(
       minimalData
     );
 
-    const provider = new OpenAIProvider();
+    const provider = new GoogleProvider();
 
-    // Use GPT-4o - excellent for fundamental analysis
+    // Use Gemini 2.0 Flash - free model with excellent tool use
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'gpt-4o',
-      provider: 'openai',
+      model: 'gemini-2.0-flash-exp',
+      provider: 'google',
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
@@ -186,8 +186,8 @@ export async function runFundamentalResearch(
 
     return {
       agent: 'fundamental',
-      model: 'gpt-4o',
-      provider: 'openai',
+      model: 'gemini-2.0-flash-exp',
+      provider: 'google',
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -199,8 +199,8 @@ export async function runFundamentalResearch(
     console.error('❌ Fundamental Analyst error:', error);
     return {
       agent: 'fundamental',
-      model: 'gpt-4o',
-      provider: 'openai',
+      model: 'gemini-2.0-flash-exp',
+      provider: 'google',
       toolsUsed: false,
       toolCallCount: 0,
       toolNames: [],
@@ -292,7 +292,7 @@ export async function runSentimentResearch(
 /**
  * Risk Manager Research Agent
  *
- * Model: Claude 4.5 Sonnet (excellent reasoning, safety-focused)
+ * Model: Gemini 2.0 Flash (free, good reasoning with safety focus)
  * Tools: 6-10 expected (most comprehensive: all technical + fundamentals)
  * Focus: Risk assessment, position sizing, stop-loss/take-profit levels
  */
@@ -315,12 +315,12 @@ export async function runRiskAnalysis(
       minimalData
     );
 
-    const provider = new AnthropicProvider();
+    const provider = new GoogleProvider();
 
-    // Use Claude 4.5 Sonnet - excellent reasoning, safety-focused
+    // Use Gemini 2.0 Flash - free model with good reasoning and safety focus
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'claude-sonnet-4-5-20250929',
-      provider: 'anthropic',
+      model: 'gemini-2.0-flash-exp',
+      provider: 'google',
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
@@ -337,8 +337,8 @@ export async function runRiskAnalysis(
 
     return {
       agent: 'risk',
-      model: 'claude-sonnet-4-5-20250929',
-      provider: 'anthropic',
+      model: 'gemini-2.0-flash-exp',
+      provider: 'google',
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -350,8 +350,8 @@ export async function runRiskAnalysis(
     console.error('❌ Risk Manager error:', error);
     return {
       agent: 'risk',
-      model: 'claude-sonnet-4-5-20250929',
-      provider: 'anthropic',
+      model: 'gemini-2.0-flash-exp',
+      provider: 'google',
       toolsUsed: false,
       toolCallCount: 0,
       toolNames: [],

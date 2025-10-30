@@ -6,13 +6,22 @@ import { Button } from './button'
 import { useAuth } from '@/contexts/auth-context'
 import { PROJECT_NAME } from '@/lib/config/branding'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { GlobalModelTierSelector } from '@/components/trading/global-preset-selector'
+import { IS_PRODUCTION } from '@/lib/utils/environment'
 
 export function Header() {
   const { user, signOut } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
+
+  // Pages that use AI models and should show the tier selector
+  const modelUsingPages = ['/', '/agents', '/trading', '/ultra', '/arena']
+  const showTierSelector = modelUsingPages.includes(pathname)
 
   return (
-    <header className="border-b">
+    <>
+      <header className="border-b">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <Brain className="h-8 w-8 text-primary" />
@@ -28,6 +37,13 @@ export function Header() {
             <Button variant="ghost" size="sm">
               <BarChart3 className="h-4 w-4 mr-2" />
               About
+            </Button>
+          </Link>
+
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 font-semibold">
+              <Brain className="h-4 w-4 mr-2" />
+              Consensus
             </Button>
           </Link>
 
@@ -52,10 +68,17 @@ export function Header() {
             </Button>
           </Link>
 
-          <Link href="/ultra">
-            <Button variant="ghost" size="sm" className="text-purple-600 hover:text-purple-700 font-semibold">
+          {/* Ultra Mode - Grayed out in production (premium feature) */}
+          <Link href={IS_PRODUCTION ? "#" : "/ultra"} className={IS_PRODUCTION ? "cursor-not-allowed" : ""}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`${IS_PRODUCTION ? 'text-gray-400 opacity-50 cursor-not-allowed' : 'text-purple-600 hover:text-purple-700'} font-semibold`}
+              disabled={IS_PRODUCTION}
+            >
               <Gem className="h-4 w-4 mr-2" />
               Ultra Mode
+              {IS_PRODUCTION && <span className="ml-1 text-xs">🔒</span>}
             </Button>
           </Link>
 
@@ -127,6 +150,13 @@ export function Header() {
               </Button>
             </Link>
 
+            <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="ghost" size="sm" className="w-full justify-start text-blue-600 hover:text-blue-700 font-semibold">
+                <Brain className="h-4 w-4 mr-2" />
+                Consensus
+              </Button>
+            </Link>
+
             <Link href="/agents" onClick={() => setIsMobileMenuOpen(false)}>
               <Button variant="ghost" size="sm" className="w-full justify-start">
                 <Users className="h-4 w-4 mr-2" />
@@ -148,10 +178,27 @@ export function Header() {
               </Button>
             </Link>
 
-            <Link href="/ultra" onClick={() => setIsMobileMenuOpen(false)}>
-              <Button variant="ghost" size="sm" className="w-full justify-start text-purple-600 hover:text-purple-700 font-semibold">
+            {/* Ultra Mode - Grayed out in production (premium feature) */}
+            <Link
+              href={IS_PRODUCTION ? "#" : "/ultra"}
+              onClick={(e) => {
+                if (IS_PRODUCTION) {
+                  e.preventDefault()
+                } else {
+                  setIsMobileMenuOpen(false)
+                }
+              }}
+              className={IS_PRODUCTION ? "cursor-not-allowed" : ""}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`w-full justify-start ${IS_PRODUCTION ? 'text-gray-400 opacity-50 cursor-not-allowed' : 'text-purple-600 hover:text-purple-700'} font-semibold`}
+                disabled={IS_PRODUCTION}
+              >
                 <Gem className="h-4 w-4 mr-2" />
                 Ultra Mode
+                {IS_PRODUCTION && <span className="ml-1 text-xs">🔒</span>}
               </Button>
             </Link>
 
@@ -204,6 +251,10 @@ export function Header() {
           </div>
         </div>
       )}
-    </header>
+      </header>
+
+      {/* Global Model Tier Selector - Shows only on pages that use AI models */}
+      {showTierSelector && <GlobalModelTierSelector />}
+    </>
   )
 }
