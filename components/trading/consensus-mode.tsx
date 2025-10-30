@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Loader2, TrendingUp, TrendingDown, Minus, Users, CheckCircle, AlertCircle, XCircle, RotateCcw } from 'lucide-react'
@@ -11,6 +11,8 @@ import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { TradingHistoryDropdown } from './trading-history-dropdown'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { ModelConfig } from '@/types/consensus'
+import { useTradingPreset } from '@/contexts/trading-preset-context'
+import { getModelsForPreset } from '@/lib/config/model-presets'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -28,6 +30,10 @@ interface TradingDecision {
   reasoning: string | ReasoningDetails
   confidence: number
   model?: string
+  // Tool usage tracking (Hybrid Research Mode)
+  toolsUsed?: boolean
+  toolCallCount?: number
+  toolNames?: string[]
 }
 
 interface ConsensusResult {
@@ -48,20 +54,9 @@ interface ConsensusResult {
   modelCount: number
 }
 
-// Default models for Consensus Mode (Pro preset - 8 balanced models)
-const DEFAULT_CONSENSUS_MODELS: ModelConfig[] = [
-  { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', enabled: true },
-  { provider: 'openai', model: 'gpt-4o', enabled: true },
-  { provider: 'openai', model: 'gpt-5-mini', enabled: true },
-  { provider: 'google', model: 'gemini-2.5-pro', enabled: true },
-  { provider: 'groq', model: 'llama-3.3-70b-versatile', enabled: true },
-  { provider: 'xai', model: 'grok-3', enabled: true },
-  { provider: 'mistral', model: 'mistral-large-latest', enabled: true },
-  { provider: 'perplexity', model: 'sonar-pro', enabled: true },
-]
-
 export function ConsensusMode() {
-  const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(DEFAULT_CONSENSUS_MODELS)
+  const { globalTier } = useTradingPreset()
+  const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(() => getModelsForPreset('pro'))
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [targetSymbol, setTargetSymbol] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -92,7 +87,8 @@ export function ConsensusMode() {
             if (meta.timeframe) setTimeframe(meta.timeframe)
             if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
             if (meta.selectedModels) {
-              const restoredModels = DEFAULT_CONSENSUS_MODELS.map(m => ({
+              const presetModels = getModelsForPreset(globalTier)
+              const restoredModels = presetModels.map(m => ({
                 ...m,
                 enabled: meta.selectedModels.includes(m.model)
               }))
@@ -116,7 +112,8 @@ export function ConsensusMode() {
           if (meta.timeframe) setTimeframe(meta.timeframe)
           if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
           if (meta.selectedModels) {
-            const restoredModels = DEFAULT_CONSENSUS_MODELS.map(m => ({
+            const presetModels = getModelsForPreset(globalTier)
+            const restoredModels = presetModels.map(m => ({
               ...m,
               enabled: meta.selectedModels.includes(m.model)
             }))
@@ -126,6 +123,12 @@ export function ConsensusMode() {
       }
     }
   })
+
+  // Auto-apply global preset when it changes
+  useEffect(() => {
+    const presetModels = getModelsForPreset(globalTier)
+    setSelectedModels(presetModels)
+  }, [globalTier])
 
   // Reset/clear results and start new analysis
   const handleStartNew = () => {
@@ -498,6 +501,46 @@ export function ConsensusMode() {
         </div>
       )}
 
+      {/* Research Activity Summary (Hybrid Research Mode) */}
+      {decisions.length > 0 && decisions.some(d => d.toolsUsed) && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-2xl">🔍</span>
+            <h3 className="text-lg font-semibold">AI Research Activity</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="bg-white/50 dark:bg-black/20 rounded-lg p-3">
+              <div className="text-muted-foreground text-xs mb-1">Models with Tools</div>
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {decisions.filter(d => d.toolsUsed).length}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                of {decisions.length} total
+              </div>
+            </div>
+            <div className="bg-white/50 dark:bg-black/20 rounded-lg p-3">
+              <div className="text-muted-foreground text-xs mb-1">Total Tool Calls</div>
+              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                {decisions.reduce((sum, d) => sum + (d.toolCallCount || 0), 0)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                research queries
+              </div>
+            </div>
+            <div className="col-span-2 bg-white/50 dark:bg-black/20 rounded-lg p-3">
+              <div className="text-muted-foreground text-xs mb-1">Tools Used</div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {Array.from(new Set(decisions.flatMap(d => d.toolNames || []))).map((tool, i) => (
+                  <span key={i} className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
+                    {tool.replace('_', ' ')}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Individual Model Decisions */}
       {decisions.length > 0 && (
         <div className="bg-card rounded-lg border p-6">
@@ -520,12 +563,14 @@ function ActionBadge({ action }: { action: 'BUY' | 'SELL' | 'HOLD' }) {
     HOLD: { icon: Minus, color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-950' },
   }
 
-  const { icon: Icon, color, bg } = config[action]
+  // Defensive: Default to HOLD if action is invalid
+  const safeAction = (action && config[action]) ? action : 'HOLD'
+  const { icon: Icon, color, bg } = config[safeAction]
 
   return (
     <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${bg}`}>
       <Icon className={`w-4 h-4 ${color}`} />
-      <span className={`text-sm font-semibold ${color}`}>{action}</span>
+      <span className={`text-sm font-semibold ${color}`}>{safeAction}</span>
     </div>
   )
 }
@@ -577,7 +622,15 @@ function TradingDecisionCard({ decision }: { decision: TradingDecision }) {
     <div className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-card">
       {/* Model Name & Action Badge */}
       <div className="flex items-center justify-between mb-3">
-        <h4 className="font-medium text-sm truncate flex-1">{modelName}</h4>
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+          <h4 className="font-medium text-sm truncate">{modelName}</h4>
+          {decision.toolsUsed && (
+            <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+              <span>🔍</span>
+              <span className="font-medium">{decision.toolCallCount} research {decision.toolCallCount === 1 ? 'call' : 'calls'}</span>
+            </div>
+          )}
+        </div>
         <ActionBadge action={decision.action} />
       </div>
 
