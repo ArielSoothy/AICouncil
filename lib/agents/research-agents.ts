@@ -31,6 +31,14 @@ import {
   fetchSharedTradingData,
   formatMinimalDataForPrompt,
 } from '@/lib/alpaca/data-coordinator';
+import type { ResearchProgressEvent } from '@/types/research-progress';
+
+/**
+ * OPTIONAL Progress Callback Type
+ * Pass this to research functions to receive real-time progress updates
+ * If not provided, functions work normally without streaming
+ */
+export type ProgressCallback = (event: ResearchProgressEvent) => void;
 
 /**
  * Individual research agent result
@@ -70,17 +78,29 @@ export interface ResearchReport {
  * Model: Llama 3.3 70B (Berkeley #1 tool-use model, FREE)
  * Tools: 5-8 expected (price_bars, RSI, MACD, support/resistance, volume)
  * Focus: Price action, momentum, trend analysis
+ *
+ * @param onProgress - OPTIONAL callback for real-time progress updates (SSE streaming)
  */
 export async function runTechnicalResearch(
   symbol: string,
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
-  minimalData: string
+  minimalData: string,
+  onProgress?: ProgressCallback
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
 
   try {
     console.log('🔍 Technical Analyst starting research...');
+
+    // Emit agent start event (OPTIONAL - only if callback provided)
+    onProgress?.({
+      type: 'agent_start',
+      agent: 'technical',
+      model: 'llama-3.3-70b-versatile',
+      provider: 'groq',
+      timestamp: Date.now()
+    });
 
     const prompt = generateResearchAgentPrompt(
       'technical',
@@ -109,6 +129,16 @@ export async function runTechnicalResearch(
     console.log(
       `✅ Technical Analyst complete: ${toolCalls.length} tools used in ${responseTime}ms`
     );
+
+    // Emit agent complete event (OPTIONAL)
+    onProgress?.({
+      type: 'agent_complete',
+      agent: 'technical',
+      toolCount: toolCalls.length,
+      duration: responseTime,
+      tokensUsed: result.tokens.total,
+      timestamp: Date.now()
+    });
 
     return {
       agent: 'technical',
@@ -149,12 +179,22 @@ export async function runFundamentalResearch(
   symbol: string,
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
-  minimalData: string
+  minimalData: string,
+  onProgress?: ProgressCallback
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
 
   try {
     console.log('🔍 Fundamental Analyst starting research...');
+
+    // Emit agent start event (OPTIONAL - only if callback provided)
+    onProgress?.({
+      type: 'agent_start',
+      agent: 'fundamental',
+      model: 'gemini-2.0-flash-exp',
+      provider: 'google',
+      timestamp: Date.now()
+    });
 
     const prompt = generateResearchAgentPrompt(
       'fundamental',
@@ -183,6 +223,16 @@ export async function runFundamentalResearch(
     console.log(
       `✅ Fundamental Analyst complete: ${toolCalls.length} tools used in ${responseTime}ms`
     );
+
+    // Emit agent complete event (OPTIONAL)
+    onProgress?.({
+      type: 'agent_complete',
+      agent: 'fundamental',
+      toolCount: toolCalls.length,
+      duration: responseTime,
+      tokensUsed: result.tokens.total,
+      timestamp: Date.now()
+    });
 
     return {
       agent: 'fundamental',
@@ -226,12 +276,22 @@ export async function runSentimentResearch(
   symbol: string,
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
-  minimalData: string
+  minimalData: string,
+  onProgress?: ProgressCallback
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
 
   try {
     console.log('🔍 Sentiment Analyst starting research...');
+
+    // Emit agent start event (OPTIONAL - only if callback provided)
+    onProgress?.({
+      type: 'agent_start',
+      agent: 'sentiment',
+      model: 'llama-3.3-70b-versatile',
+      provider: 'groq',
+      timestamp: Date.now()
+    });
 
     const prompt = generateResearchAgentPrompt(
       'sentiment',
@@ -260,6 +320,16 @@ export async function runSentimentResearch(
     console.log(
       `✅ Sentiment Analyst complete: ${toolCalls.length} tools used in ${responseTime}ms`
     );
+
+    // Emit agent complete event (OPTIONAL)
+    onProgress?.({
+      type: 'agent_complete',
+      agent: 'sentiment',
+      toolCount: toolCalls.length,
+      duration: responseTime,
+      tokensUsed: result.tokens.total,
+      timestamp: Date.now()
+    });
 
     return {
       agent: 'sentiment',
@@ -300,12 +370,22 @@ export async function runRiskAnalysis(
   symbol: string,
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
-  minimalData: string
+  minimalData: string,
+  onProgress?: ProgressCallback
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
 
   try {
     console.log('🔍 Risk Manager starting research...');
+
+    // Emit agent start event (OPTIONAL - only if callback provided)
+    onProgress?.({
+      type: 'agent_start',
+      agent: 'risk',
+      model: 'gemini-2.0-flash-exp',
+      provider: 'google',
+      timestamp: Date.now()
+    });
 
     const prompt = generateResearchAgentPrompt(
       'risk',
@@ -334,6 +414,16 @@ export async function runRiskAnalysis(
     console.log(
       `✅ Risk Manager complete: ${toolCalls.length} tools used in ${responseTime}ms`
     );
+
+    // Emit agent complete event (OPTIONAL)
+    onProgress?.({
+      type: 'agent_complete',
+      agent: 'risk',
+      toolCount: toolCalls.length,
+      duration: responseTime,
+      tokensUsed: result.tokens.total,
+      timestamp: Date.now()
+    });
 
     return {
       agent: 'risk',
@@ -380,12 +470,14 @@ export async function runRiskAnalysis(
  * @param symbol - Stock ticker (e.g., "TSLA", "AAPL")
  * @param timeframe - Trading timeframe (day, swing, position, longterm)
  * @param account - Alpaca account for context
+ * @param onProgress - OPTIONAL callback for real-time progress updates (SSE streaming)
  * @returns Complete research report from all agents
  */
 export async function runResearchAgents(
   symbol: string,
   timeframe: TradingTimeframe,
-  account: AlpacaAccount
+  account: AlpacaAccount,
+  onProgress?: ProgressCallback
 ): Promise<ResearchReport> {
   const startTime = Date.now();
 
@@ -410,10 +502,10 @@ export async function runResearchAgents(
     console.log('🚀 Step 2: Launching 4 specialized research agents in parallel...\n');
 
     const [technical, fundamental, sentiment, risk] = await Promise.all([
-      runTechnicalResearch(symbol, timeframe, account, minimalData),
-      runFundamentalResearch(symbol, timeframe, account, minimalData),
-      runSentimentResearch(symbol, timeframe, account, minimalData),
-      runRiskAnalysis(symbol, timeframe, account, minimalData),
+      runTechnicalResearch(symbol, timeframe, account, minimalData, onProgress),
+      runFundamentalResearch(symbol, timeframe, account, minimalData, onProgress),
+      runSentimentResearch(symbol, timeframe, account, minimalData, onProgress),
+      runRiskAnalysis(symbol, timeframe, account, minimalData, onProgress),
     ]);
 
     const researchDuration = Date.now() - startTime;
