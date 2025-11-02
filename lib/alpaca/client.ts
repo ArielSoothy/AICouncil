@@ -3,10 +3,36 @@ import type { AlpacaAccount, AlpacaOrder, OrderSide } from './types';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
+ * Validate that required Alpaca environment variables are set
+ * Throws descriptive error if any are missing
+ */
+function validateAlpacaEnv(): void {
+  const missingVars: string[] = [];
+
+  if (!process.env.ALPACA_API_KEY) {
+    missingVars.push('ALPACA_API_KEY');
+  }
+  if (!process.env.ALPACA_SECRET_KEY) {
+    missingVars.push('ALPACA_SECRET_KEY');
+  }
+
+  if (missingVars.length > 0) {
+    throw new Error(
+      `Missing required Alpaca environment variables: ${missingVars.join(', ')}. ` +
+      `Please add them to your .env.local file (development) or Vercel environment variables (production). ` +
+      `Get your keys from: https://alpaca.markets (Paper Trading section)`
+    );
+  }
+}
+
+/**
  * Get or create Alpaca client instance
  * Lazy initialization to ensure env vars are loaded first
  */
 function getAlpacaClient(): Alpaca {
+  // Validate environment variables before creating client
+  validateAlpacaEnv();
+
   return new Alpaca({
     keyId: process.env.ALPACA_API_KEY!,
     secretKey: process.env.ALPACA_SECRET_KEY!,

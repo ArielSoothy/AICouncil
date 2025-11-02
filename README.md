@@ -91,7 +91,88 @@ COHERE_API_KEY=...                 # Cohere models
 # Database (Optional)
 NEXT_PUBLIC_SUPABASE_URL=https://...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+
+# Paper Trading (Required for trading features)
+ALPACA_API_KEY=PKxxxxxxxxxxxxxxxxx
+ALPACA_SECRET_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ALPACA_BASE_URL=https://paper-api.alpaca.markets
 ```
+
+### Paper Trading Setup (Alpaca)
+
+The trading features require a **free Alpaca Paper Trading account**:
+
+1. **Sign up for Alpaca** (100% Free)
+   - Visit: https://alpaca.markets
+   - Click "Get Started" → "Paper Trading"
+   - No credit card required, instant approval
+
+2. **Get API Keys**
+   - Log into Alpaca dashboard
+   - Navigate to: Account → API Keys (Paper Trading)
+   - Click "Generate New Keys"
+   - **IMPORTANT**: Copy both keys immediately (secret shown only once)
+
+3. **Add to Environment Variables**
+
+   **Local Development** (.env.local):
+   ```env
+   ALPACA_API_KEY=PKxxxxxxxxxxxxxxxxx
+   ALPACA_SECRET_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   ```
+
+   **Production (Vercel)**:
+   - Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+   - Add `ALPACA_API_KEY` → Paste your key → Select "Production"
+   - Add `ALPACA_SECRET_KEY` → Paste your secret → Select "Production"
+   - Save and redeploy
+
+4. **Test Connection**
+
+   After adding credentials, test the connection:
+   ```bash
+   # Local
+   http://localhost:3000/api/health/alpaca
+
+   # Production
+   https://your-app.vercel.app/api/health/alpaca
+   ```
+
+   **Success Response**:
+   ```json
+   {
+     "status": "healthy",
+     "message": "Alpaca API connection successful",
+     "account": {
+       "portfolio_value": 100000,
+       "cash": 100000,
+       "buying_power": 200000
+     }
+   }
+   ```
+
+   **Error Response** (Missing credentials):
+   ```json
+   {
+     "status": "misconfigured",
+     "diagnosis": "Missing Alpaca API credentials. Add ALPACA_API_KEY and ALPACA_SECRET_KEY to environment variables."
+   }
+   ```
+
+5. **Troubleshooting**
+
+   | Error | Cause | Solution |
+   |-------|-------|----------|
+   | "Missing required Alpaca environment variables" | Credentials not set | Add `ALPACA_API_KEY` and `ALPACA_SECRET_KEY` to .env.local or Vercel |
+   | "Trading API authentication failed" | Invalid credentials | Verify keys at https://alpaca.markets, regenerate if needed |
+   | "Trading service temporarily unavailable" | Network/API issues | Check Alpaca status page, try again later |
+
+**Why Paper Trading?**
+- 100% risk-free (virtual $100,000 account)
+- Real-time market data
+- No money required
+- Perfect for learning and testing strategies
+- Unlimited transactions
 
 ## 💻 Usage
 
