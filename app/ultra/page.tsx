@@ -80,42 +80,8 @@ function UltraPageContent() {
     },
   })
 
-  // LOCALHOST-ONLY ACCESS: Ultra Mode is restricted to development environment
-  const isLocalhost = typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.hostname.includes('localhost')
-  )
-
-  if (typeof window !== 'undefined' && !isLocalhost) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <Header />
-        <main className="flex-1 container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 mb-4">
-              <h1 className="text-4xl font-bold tracking-tight consensus-gradient bg-clip-text text-transparent">
-                Ultra Mode - Coming Soon
-              </h1>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                💎 PREMIUM
-              </span>
-            </div>
-            <p className="text-xl text-muted-foreground mb-8">
-              Ultra Mode is currently in development and will be available soon for premium subscribers.
-            </p>
-            <Alert className="border-purple-200 bg-purple-50 max-w-2xl mx-auto">
-              <AlertCircle className="h-4 w-4 text-purple-600" />
-              <AlertTitle className="text-purple-900">Premium Feature</AlertTitle>
-              <AlertDescription className="text-purple-800">
-                This feature uses the most advanced AI models (GPT-5, Claude Sonnet 4.5, Grok 4) and requires a subscription to access.
-              </AlertDescription>
-            </Alert>
-          </div>
-        </main>
-      </div>
-    )
-  }
+  // TESTING MODE: Ultra Mode access restriction removed (see docs/guides/TESTING_MODE_UNLOCK.md)
+  // Ultra Mode is now accessible from all domains during testing phase
 
   const handleGenerateQuestion = async () => {
     if (isGeneratingQuestion) return

@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, TrendingUp } from 'lucide-react'
+import { Users, TrendingUp, BarChart3 } from 'lucide-react'
 
-export type TradingMode = 'consensus' | 'debate'
+export type TradingMode = 'consensus' | 'debate' | 'individual'
 
 interface ModeSelectorProps {
   selectedMode: TradingMode
@@ -23,6 +23,12 @@ export function ModeSelector({ selectedMode, onModeChange }: ModeSelectorProps) 
       name: 'Debate Trade',
       description: 'Agent debate system for trading strategy',
       icon: Users,
+    },
+    {
+      id: 'individual' as TradingMode,
+      name: 'Individual Analysis',
+      description: 'Multi-model parallel analysis with detailed Bull/Bear/Technical/Fundamental breakdown',
+      icon: BarChart3,
     },
   ]
 

@@ -8,6 +8,7 @@ import { TrendingUp, LineChart, Brain, Info } from 'lucide-react'
 import { ModeSelector, TradingMode } from '@/components/trading/mode-selector'
 import { ConsensusMode } from '@/components/trading/consensus-mode'
 import { DebateMode } from '@/components/trading/debate-mode'
+import { IndividualMode } from '@/components/trading/individual-mode'
 import { TradeHistory } from '@/components/trading/trade-history'
 import { PortfolioDisplay } from '@/components/trading/portfolio-display'
 import { IS_PRODUCTION } from '@/lib/utils/environment'
@@ -49,7 +50,7 @@ function TradingPageContent() {
               </div>
               <div className="flex items-center gap-1">
                 <Brain className="w-4 h-4" />
-                <span>2 Trading Modes</span>
+                <span>3 Trading Modes</span>
               </div>
             </div>
           </div>
@@ -90,6 +91,8 @@ function TradingPageContent() {
           {selectedMode === 'consensus' && <ConsensusMode />}
 
           {selectedMode === 'debate' && <DebateMode />}
+
+          {selectedMode === 'individual' && <IndividualMode />}
 
           {/* Trading History - Shows below all modes */}
           <div className="mt-12 pt-8 border-t">
