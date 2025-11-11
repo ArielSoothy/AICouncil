@@ -222,10 +222,17 @@ export async function POST(request: NextRequest) {
     );
 
     // Insert research findings into prompt (BEFORE the JSON format instruction)
+    console.log('🔍 DEBUG: Research section length:', researchSection.length, 'chars');
+    console.log('🔍 DEBUG: Base prompt length:', basePrompt.length, 'chars');
+
     const prompt = basePrompt.replace(
-      '⚠️ OUTPUT FORMAT (CRITICAL):',
-      `${researchSection}\n\n⚠️ OUTPUT FORMAT (CRITICAL):`
+      '⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️',
+      `${researchSection}\n\n⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️`
     );
+
+    console.log('🔍 DEBUG: Final prompt length:', prompt.length, 'chars');
+    console.log('🔍 DEBUG: Research injected?', prompt.length > basePrompt.length);
+    console.log('🔍 DEBUG: Prompt includes research report?', prompt.includes('EXHAUSTIVE RESEARCH REPORT'));
 
     // Step 5: Call each AI model in parallel (NO TOOLS - analyzing research)
     const decisionsPromises = selectedModels.map(async (modelId: string) => {

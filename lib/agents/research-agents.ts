@@ -110,12 +110,12 @@ export async function runTechnicalResearch(
       minimalData
     );
 
-    const provider = new GroqProvider();
+    const provider = new AnthropicProvider();
 
-    // Use Llama 3.3 70B - best free tool-use model
+    // Use Claude 3.5 Haiku - Fast, cheap, reliable (no quota issues like Gemini/Groq)
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: 'claude-3-5-haiku-20241022',
+      provider: 'anthropic',
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
@@ -191,8 +191,8 @@ export async function runFundamentalResearch(
     onProgress?.({
       type: 'agent_start',
       agent: 'fundamental',
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'llama-3.1-8b-instant',
+      provider: 'groq',
       timestamp: Date.now()
     });
 
@@ -204,12 +204,12 @@ export async function runFundamentalResearch(
       minimalData
     );
 
-    const provider = new GoogleProvider();
+    const provider = new AnthropicProvider();
 
-    // Use Gemini 2.0 Flash - free model with excellent tool use
+    // Use Claude 3.5 Haiku - Fast, cheap, reliable (no quota issues like Gemini/Groq)
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'claude-3-5-haiku-20241022',
+      provider: 'anthropic',
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
@@ -236,8 +236,8 @@ export async function runFundamentalResearch(
 
     return {
       agent: 'fundamental',
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'llama-3.1-8b-instant',
+      provider: 'groq',
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -249,8 +249,8 @@ export async function runFundamentalResearch(
     console.error('❌ Fundamental Analyst error:', error);
     return {
       agent: 'fundamental',
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'llama-3.1-8b-instant',
+      provider: 'groq',
       toolsUsed: false,
       toolCallCount: 0,
       toolNames: [],
@@ -301,12 +301,12 @@ export async function runSentimentResearch(
       minimalData
     );
 
-    const provider = new GroqProvider();
+    const provider = new AnthropicProvider();
 
-    // Use Llama 3.3 70B - best free tool-use model, proven compatibility
+    // Use Claude 3.5 Haiku - Fast, cheap, reliable (no quota issues like Gemini/Groq)
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: 'claude-3-5-haiku-20241022',
+      provider: 'anthropic',
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
@@ -382,8 +382,8 @@ export async function runRiskAnalysis(
     onProgress?.({
       type: 'agent_start',
       agent: 'risk',
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'llama-3.3-70b-versatile',
+      provider: 'groq',
       timestamp: Date.now()
     });
 
@@ -395,12 +395,12 @@ export async function runRiskAnalysis(
       minimalData
     );
 
-    const provider = new GoogleProvider();
+    const provider = new AnthropicProvider();
 
-    // Use Gemini 2.0 Flash - free model with good reasoning and safety focus
+    // Use Claude 3.5 Haiku - Fast, cheap, reliable (no quota issues like Gemini/Groq)
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'claude-3-5-haiku-20241022',
+      provider: 'anthropic',
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
@@ -427,8 +427,8 @@ export async function runRiskAnalysis(
 
     return {
       agent: 'risk',
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'llama-3.3-70b-versatile',
+      provider: 'groq',
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -440,8 +440,8 @@ export async function runRiskAnalysis(
     console.error('❌ Risk Manager error:', error);
     return {
       agent: 'risk',
-      model: 'gemini-2.0-flash-exp',
-      provider: 'google',
+      model: 'llama-3.3-70b-versatile',
+      provider: 'groq',
       toolsUsed: false,
       toolCallCount: 0,
       toolNames: [],

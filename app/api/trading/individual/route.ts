@@ -196,8 +196,8 @@ export async function POST(request: NextRequest) {
 
     // Insert research findings into prompt
     const prompt = basePrompt.replace(
-      '⚠️ OUTPUT FORMAT (CRITICAL):',
-      `${researchSection}\n\n⚠️ OUTPUT FORMAT (CRITICAL):`
+      '⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️',
+      `${researchSection}\n\n⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️`
     );
 
     // Step 5: Call each AI model in parallel (NO TOOLS - analyzing research)

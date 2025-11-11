@@ -285,8 +285,8 @@ export async function POST(request: NextRequest) {
 
     // Insert research findings into base prompt
     const basePrompt = baseTradingPrompt.replace(
-      '⚠️ OUTPUT FORMAT (CRITICAL):',
-      `${researchSection}\n\n⚠️ OUTPUT FORMAT (CRITICAL):`
+      '⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️',
+      `${researchSection}\n\n⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️`
     );
 
     // Initialize all AI providers

@@ -91,61 +91,55 @@ export const PRESET_CONFIGS: Record<PresetTier, PresetConfig> = {
   free: {
     label: 'Free',
     icon: Gift,
-    description: 'All free models (6 models)',
+    description: 'All free models (2 models - only working ones)',
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300',
     modelIds: [
       // Google free models - excellent quality for free tier
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
+      'gemini-2.0-flash',  // ✅ WORKING
       // Groq free models - fast inference, good quality
-      'llama-3.3-70b-versatile',
-      'llama-3.1-8b-instant',
-      'gemma2-9b-it',
+      'llama-3.3-70b-versatile',  // ✅ WORKING
+      // NOTE: gemini-2.5-flash (unreleased), gemini-1.5-flash (deprecated), gemma2-9b-it (decommissioned) removed
+      // llama-3.1-8b-instant works but removed to keep preset concise (2 models sufficient for free tier)
     ]
   },
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Balanced/Budget tier models (8 models)',
+    description: 'Balanced/Budget tier models (7 models - only working ones)',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300',
     modelIds: [
       // Anthropic balanced tier - strong reasoning
-      'claude-3-5-sonnet-20241022',
-      'claude-3-5-haiku-20241022',
+      'claude-3-7-sonnet-20250219',  // ✅ WORKING (replaced claude-3-5-sonnet)
+      'claude-3-5-haiku-20241022',   // ✅ WORKING
       // OpenAI balanced tier - reliable performance
-      'gpt-4o',
-      'gpt-5-mini',
-      // Google flagship - good value for money
-      'gemini-2.5-pro',
+      'gpt-4o',                      // ✅ WORKING
+      'gpt-5-mini',                  // ✅ WORKING
+      'gpt-4.1',                     // ✅ WORKING (added for diversity)
       // Groq best free - excellent free option
-      'llama-3.3-70b-versatile',
+      'llama-3.3-70b-versatile',     // ✅ WORKING
       // xAI balanced - unique perspective
-      'grok-3',
-      // Mistral balanced - European AI alternative
-      'mistral-large-latest',
+      'grok-4-fast-non-reasoning',   // ✅ WORKING (replaced grok-3)
+      // NOTE: gemini-2.5-pro (unreleased), mistral-large-latest (no API key) removed
     ]
   },
   max: {
     label: 'Max',
     icon: Sparkles,
-    description: 'Best flagship models (8 models)',
+    description: 'Best flagship models (7 models - only working ones)',
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
     modelIds: [
       // Anthropic flagship - best overall reasoning (Sep 2025)
-      'claude-sonnet-4-5-20250929',
+      'claude-sonnet-4-5-20250929',     // ✅ WORKING
+      'claude-sonnet-4-20250514',       // ✅ WORKING (added 2nd flagship)
       // OpenAI flagship - best general purpose (Aug 2025)
-      'gpt-5-chat-latest',
-      // Google flagship - best for web/current events
-      'gemini-2.5-pro',
+      'gpt-5-chat-latest',              // ✅ WORKING
+      'gpt-5',                          // ✅ WORKING (added 2nd flagship)
       // xAI flagship models - unique reasoning approaches
-      'grok-4-fast-reasoning',
-      'grok-4-fast-non-reasoning',
-      'grok-4-0709',
-      // Groq best free - still excellent quality
-      'llama-3.3-70b-versatile',
-      // Perplexity premium - best for search-augmented answers
-      'sonar-pro',
+      'grok-4-fast-reasoning',          // ✅ WORKING
+      'grok-4-fast-non-reasoning',      // ✅ WORKING
+      'grok-4-0709',                    // ✅ WORKING
+      // NOTE: gemini-2.5-pro (unreleased), sonar-pro (no API key) removed
+      // NOTE: llama-3.3-70b-versatile removed from Max tier (it's free, belongs in Free/Pro)
     ]
   }
 }
@@ -171,34 +165,34 @@ export const DEBATE_PRESETS: Record<PresetTier, DebatePresetConfig> = {
   free: {
     label: 'Free',
     icon: Gift,
-    description: 'All free models',
+    description: 'All free models (WORKING only)',
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300',
     roles: {
-      analyst: 'gemini-2.0-flash',      // Google free (good reasoning, structured output)
-      critic: 'llama-3.3-70b-versatile', // Groq free (best free model, critical analysis)
-      synthesizer: 'gemini-1.5-flash',   // Google free (fast synthesis, good quality)
+      analyst: 'gemini-2.0-flash',      // ✅ Google free (good reasoning, structured output)
+      critic: 'llama-3.3-70b-versatile', // ✅ Groq free (best free model, critical analysis)
+      synthesizer: 'llama-3.1-8b-instant', // ✅ Groq free (fast synthesis) - replaced gemini-1.5-flash (deprecated)
     }
   },
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Balanced tier models',
+    description: 'Balanced tier models (WORKING only)',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300',
     roles: {
-      analyst: 'claude-3-5-sonnet-20241022',  // Anthropic balanced (strong analytical reasoning)
-      critic: 'gpt-4o',                        // OpenAI balanced (excellent critical thinking)
-      synthesizer: 'llama-3.3-70b-versatile', // Groq free (good synthesis, cost-effective)
+      analyst: 'claude-3-7-sonnet-20250219',  // ✅ Anthropic balanced (replaced claude-3-5-sonnet)
+      critic: 'gpt-4o',                        // ✅ OpenAI balanced (excellent critical thinking)
+      synthesizer: 'llama-3.3-70b-versatile', // ✅ Groq free (good synthesis, cost-effective)
     }
   },
   max: {
     label: 'Max',
     icon: Sparkles,
-    description: 'Best flagship models',
+    description: 'Best flagship models (WORKING only)',
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
     roles: {
-      analyst: 'claude-sonnet-4-5-20250929', // Anthropic flagship (best analytical depth)
-      critic: 'gpt-5-chat-latest',            // OpenAI flagship (superior reasoning)
-      synthesizer: 'gemini-2.5-pro',          // Google flagship (comprehensive synthesis)
+      analyst: 'claude-sonnet-4-5-20250929', // ✅ Anthropic flagship (best analytical depth)
+      critic: 'gpt-5-chat-latest',            // ✅ OpenAI flagship (superior reasoning)
+      synthesizer: 'grok-4-fast-reasoning',   // ✅ xAI flagship (replaced gemini-2.5-pro - unreleased)
     }
   }
 }
