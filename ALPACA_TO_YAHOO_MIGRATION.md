@@ -263,6 +263,7 @@ The migration from Alpaca to Yahoo Finance for market data tools was a **complet
 
 **Next Steps:**
 1. ✅ Testing complete (TSLA analysis successful)
-2. ⏳ Commit changes to git
-3. ⏳ Monitor production usage
-4. ⏳ Consider adding research cache to reduce API calls (future enhancement)
+2. ✅ Changes committed to git and pushed to main
+3. ✅ Research caching added to streaming endpoint (Nov 11, 2025)
+4. ⏳ Monitor cache performance in production
+5. ⏳ Consider extending cache to Individual/Debate modes
