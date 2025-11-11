@@ -29,8 +29,12 @@ import { MistralProvider } from '@/lib/ai-providers/mistral';
 import { PerplexityProvider } from '@/lib/ai-providers/perplexity';
 import { CohereProvider } from '@/lib/ai-providers/cohere';
 import { XAIProvider } from '@/lib/ai-providers/xai';
+import { ResearchCache } from '@/lib/trading/research-cache';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Initialize research cache
+const researchCache = new ResearchCache();
 
 /**
  * LOCAL extractJSON - matches Individual Mode's working implementation
@@ -137,7 +141,7 @@ export async function POST(request: NextRequest) {
           const normalizedSymbol = targetSymbol?.trim().toUpperCase() || '';
           const symbol = normalizedSymbol || (positions.length > 0 ? positions[0].symbol : 'AAPL');
 
-          // PHASE 1: RESEARCH
+          // PHASE 1: RESEARCH (with caching)
           sendEvent({
             type: 'phase_start',
             phase: 1,
@@ -145,18 +149,78 @@ export async function POST(request: NextRequest) {
             timestamp: Date.now()
           });
 
-          // Create progress callback that streams events
-          const onProgress: ProgressCallback = (event) => {
-            sendEvent(event);
-          };
+          // Check cache first
+          let researchReport = await researchCache.get(symbol, timeframe);
 
-          // Run research with streaming progress
-          const researchReport = await runResearchAgents(
-            symbol,
-            timeframe,
-            account,
-            onProgress  // Pass callback to stream progress
-          );
+          if (researchReport) {
+            // Cache hit! Skip research and use cached data
+            console.log(`✅ Cache hit for ${symbol}-${timeframe}!`);
+            console.log(`📊 Age: ${Math.floor((Date.now() - new Date(researchReport.timestamp).getTime()) / 60000)}min`);
+            console.log(`💰 Saved 30-40 API calls!`);
+
+            // Send cache hit event
+            sendEvent({
+              type: 'phase_start',
+              phase: 1,
+              message: `Using cached research for ${symbol} (saved 30-40 API calls!)`,
+              timestamp: Date.now()
+            });
+
+            // Simulate agent completion events for cached research
+            // (so frontend shows proper "complete" state)
+            sendEvent({
+              type: 'agent_complete',
+              agent: 'technical',
+              toolCount: researchReport.technical.toolCallCount || 0,
+              duration: 0, // Cached - instant
+              tokensUsed: 0, // Cached - no API calls
+              timestamp: Date.now()
+            });
+            sendEvent({
+              type: 'agent_complete',
+              agent: 'fundamental',
+              toolCount: researchReport.fundamental.toolCallCount || 0,
+              duration: 0,
+              tokensUsed: 0,
+              timestamp: Date.now()
+            });
+            sendEvent({
+              type: 'agent_complete',
+              agent: 'sentiment',
+              toolCount: researchReport.sentiment.toolCallCount || 0,
+              duration: 0,
+              tokensUsed: 0,
+              timestamp: Date.now()
+            });
+            sendEvent({
+              type: 'agent_complete',
+              agent: 'risk',
+              toolCount: researchReport.risk.toolCallCount || 0,
+              duration: 0,
+              tokensUsed: 0,
+              timestamp: Date.now()
+            });
+          } else {
+            // Cache miss - run fresh research
+            console.log(`💨 Cache miss for ${symbol}-${timeframe} - running fresh research...`);
+
+            // Create progress callback that streams events
+            const onProgress: ProgressCallback = (event) => {
+              sendEvent(event);
+            };
+
+            // Run research with streaming progress
+            researchReport = await runResearchAgents(
+              symbol,
+              timeframe,
+              account,
+              onProgress  // Pass callback to stream progress
+            );
+
+            // Cache the results for next time
+            await researchCache.set(symbol, timeframe, researchReport);
+            console.log(`💾 Research cached for ${symbol}-${timeframe}`);
+          }
 
           // PHASE 2: DECISION MODELS
           sendEvent({
