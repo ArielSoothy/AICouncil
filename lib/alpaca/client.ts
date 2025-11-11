@@ -29,16 +29,26 @@ function validateAlpacaEnv(): void {
  * Get or create Alpaca client instance
  * Lazy initialization to ensure env vars are loaded first
  */
-function getAlpacaClient(): Alpaca {
+export function getAlpacaClient(): Alpaca {
+  console.log('🔍 [Alpaca Client] Initializing Alpaca client...');
+
   // Validate environment variables before creating client
   validateAlpacaEnv();
 
-  return new Alpaca({
+  console.log('✅ [Alpaca Client] Environment variables validated');
+  console.log('🔑 [Alpaca Client] API Key:', process.env.ALPACA_API_KEY ? `${process.env.ALPACA_API_KEY.substring(0, 8)}...` : 'MISSING');
+  console.log('🔐 [Alpaca Client] Secret Key:', process.env.ALPACA_SECRET_KEY ? `${process.env.ALPACA_SECRET_KEY.substring(0, 8)}...` : 'MISSING');
+  console.log('🌐 [Alpaca Client] Base URL:', process.env.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets');
+
+  const client = new Alpaca({
     keyId: process.env.ALPACA_API_KEY!,
     secretKey: process.env.ALPACA_SECRET_KEY!,
     paper: true, // ALWAYS paper trading
     baseUrl: process.env.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets',
   });
+
+  console.log('✅ [Alpaca Client] Client created successfully');
+  return client;
 }
 
 /**
