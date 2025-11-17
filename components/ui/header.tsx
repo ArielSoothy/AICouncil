@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Brain, User, LogOut, BarChart3, Users, Shield, Menu, X, Gem, TrendingUp, Trophy } from 'lucide-react'
+import { Brain, User, LogOut, BarChart3, Users, Shield, Menu, X, Gem, TrendingUp, Trophy, Lightbulb } from 'lucide-react'
 import { Button } from './button'
 import { useAuth } from '@/contexts/auth-context'
 import { PROJECT_NAME } from '@/lib/config/branding'
@@ -44,6 +44,13 @@ export function Header() {
             <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 font-semibold">
               <Brain className="h-4 w-4 mr-2" />
               Consensus
+            </Button>
+          </Link>
+
+          <Link href="/decision">
+            <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700 font-semibold">
+              <Lightbulb className="h-4 w-4 mr-2" />
+              Decision Help
             </Button>
           </Link>
 
@@ -154,6 +161,13 @@ export function Header() {
               <Button variant="ghost" size="sm" className="w-full justify-start text-blue-600 hover:text-blue-700 font-semibold">
                 <Brain className="h-4 w-4 mr-2" />
                 Consensus
+              </Button>
+            </Link>
+
+            <Link href="/decision" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="ghost" size="sm" className="w-full justify-start text-orange-600 hover:text-orange-700 font-semibold">
+                <Lightbulb className="h-4 w-4 mr-2" />
+                Decision Help
               </Button>
             </Link>
 
