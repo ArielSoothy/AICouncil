@@ -23,8 +23,12 @@ export default function DecisionPage() {
 
   const handleIntakeComplete = (answers: any, domain: DomainType, depth: ResearchDepth) => {
     console.log('Intake complete:', { answers, domain, depth })
-    // TODO: Navigate to results page with AI debate
-    alert('Intake complete! Next: AI debate system integration')
+
+    // Navigate to results page with answers
+    const answersJson = encodeURIComponent(JSON.stringify(answers))
+    const queryEncoded = encodeURIComponent(userQuery || `Help me make a ${domain} decision`)
+
+    window.location.href = `/decision/results?domain=${domain}&answers=${answersJson}&query=${queryEncoded}`
   }
 
   const handleBack = () => {
