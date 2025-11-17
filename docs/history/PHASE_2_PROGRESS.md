@@ -204,68 +204,199 @@ const progress = sequencer.getProgress(answers) // 0.46 (6/13 answered)
 
 ---
 
-## ⏳ Remaining Tasks (Phase 2)
+## ✅ Completed Tasks (Continued)
 
-### Phase 2.4: Create Intake Agent UI Components
-**Status**: PENDING
-**Estimated**: 4-6 hours
+### Phase 2.4: Create Intake Agent UI Components ✅
+**Status**: COMPLETE
+**Files Created**: 4
+**Lines Added**: ~650
 
-**Components to Build:**
-1. `IntakeAgent.tsx` - Main container component
-2. `QuestionCard.tsx` - Individual question display
-3. `ProgressIndicator.tsx` - Progress bar with step tracker
-4. `AnswerSummary.tsx` - Review all answers before submission
-5. `DomainSelector.tsx` - Manual domain override
-6. `DepthSelector.tsx` - Quick/Balanced/Thorough choice
+#### components/intake/QuestionCard.tsx (250 lines)
+**Purpose**: Universal question component supporting all 8 input types
 
-**Design Approach:**
-- Use existing UI patterns from Ultra Mode
-- Badge-based selectors (matching existing system)
-- Real-time validation feedback
-- Mobile-responsive (TailwindCSS)
+**Features:**
+- **Input Types Supported**:
+  - Text input (with placeholder)
+  - Number input (positive numbers only)
+  - Boolean (Yes/No buttons)
+  - Enum (dropdown select)
+  - Multi-select (checkboxes)
+  - Scale (1-10 slider with visual feedback)
+  - Date picker
+  - Date range (start/end dates)
 
-### Phase 2.5: Build Query Reformulation Engine
-**Status**: PENDING
-**Estimated**: 3-4 hours
+- **Validation**:
+  - Real-time validation as user types
+  - Type-specific rules (number > 0, scale 1-10, etc.)
+  - Required field checking
+  - Custom validation function support
+  - Error messages with red highlight
 
-**Features to Implement:**
-- `reformulateQuery(userQuery, domain, answers)` - Generate StructuredQuery
-- Entity extraction from answers (budget, location, dates)
-- Hard constraints identification (must-haves, dealbreakers)
-- Priority ranking from weight + answers
-- API requirements detection (Zillow, Google Maps, etc.)
-- Agent instructions generation (Analyst, Critic, Synthesizer)
+- **UI Elements**:
+  - Weight badge (Critical/Important/Moderate/Optional)
+  - Help text for guidance
+  - Required field indicator (red asterisk)
+  - Dark mode support
+  - Responsive design
 
-**Output Format:**
-- StructuredQuery with all context fields populated
-- Ready for multi-model debate system
-- Includes research method per domain (MAUT, Pareto, 50/30/20, Pugh)
+#### components/intake/ProgressIndicator.tsx (100 lines)
+**Purpose**: Visual progress tracking with question breakdown
+
+**Features:**
+- Animated progress bar (0-100%)
+- Question count (current / total)
+- Question breakdown by weight (color-coded dots)
+- Estimated time remaining
+- Dark mode support
+
+#### components/intake/DepthSelector.tsx (100 lines)
+**Purpose**: Research depth selection (Quick/Balanced/Thorough)
+
+**Features:**
+- 3 depth options in grid layout
+- Shows question count per depth
+- Shows estimated time per depth
+- Descriptions per depth
+- Selected state with checkmark icon
+- Responsive grid (1 col mobile, 3 col desktop)
+
+#### components/intake/IntakeAgent.tsx (200 lines)
+**Purpose**: Main container orchestrating full intake flow
+
+**Features:**
+- **4-Step Flow**:
+  1. Domain Classification (manual selection)
+  2. Depth Selection (Quick/Balanced/Thorough)
+  3. Questions (one at a time with navigation)
+  4. Review (all answers before submit)
+
+- **State Management**:
+  - Auto-classification on mount
+  - Question sequencer integration
+  - Answer persistence across questions
+  - Conditional question filtering
+  - Progress tracking
+
+- **Navigation**:
+  - Back/Next buttons
+  - Validation before advancing
+  - Jump to review step
+  - Edit answers from review
+  - Cancel option
+
+- **User Experience**:
+  - Visual step progression
+  - Progress indicator
+  - Real-time validation feedback
+  - Mobile-responsive layout
+  - Dark mode support
+
+### Phase 2.5: Build Query Reformulation Engine ✅
+**Status**: COMPLETE
+**Files Created**: 1
+**Lines Added**: ~400
+
+#### lib/intake/query-reformulator.ts (400 lines)
+**Purpose**: Transform user query + answers into StructuredQuery for multi-model analysis
+
+**Core Function:**
+```typescript
+reformulateQuery(userQuery, domain, answers) → StructuredQuery
+```
+
+**Features:**
+- **Hard Constraints Extraction**:
+  - Apartment: Affordability (30% rule), bedroom count, deal-breakers
+  - Trip: Budget, days, must-see attractions
+  - Budget: Income, existing debt
+  - Product: Maximum budget, must-have features
+
+- **Priorities Extraction**:
+  - Apartment: Amenities, commute, WFH needs
+  - Trip: Interests, style, pace
+  - Budget: Financial goals, emergency fund priority
+  - Product: Primary use case, brand vs value preference
+
+- **Tradeoffs Identification**:
+  - Apartment: Stairs vs elevator, shared laundry
+  - Trip: Layovers for cost savings, hostel vs hotel
+  - Budget: Risk tolerance adjustments
+  - Product: Refurbished/used for savings
+
+- **External API Detection**:
+  - Apartment: Zillow, Google Maps, Walk Score, Census, Crime Stats
+  - Trip: Google Flights, Booking.com, TripAdvisor, OpenWeather
+  - Budget: No APIs (user data only)
+  - Product: Amazon, CamelCamelCamel, Reddit, YouTube
+
+- **Research Query Generation**:
+  - Domain-specific web search queries
+  - Location-based searches (neighborhood reviews, crime stats)
+  - Product comparison searches
+  - Best practices searches (50/30/20 rule, debt payoff methods)
+
+- **Agent Instructions**:
+  - Analyst: Research focus + framework application
+  - Critic: Risk evaluation + alternative perspectives
+  - Synthesizer: Balance factors + actionable recommendation
+  - Domain-specific context added to each agent
+
+- **Enhanced Query Building**:
+  - Original query + domain + framework
+  - Full context (all answers in JSON)
+  - Hard constraints bulleted list
+  - Priorities bulleted list
+  - Acceptable tradeoffs bulleted list
+
+**Validation:**
+- `validateStructuredQuery()` - Checks for sufficient information
+- Warnings if no constraints or priorities identified
+- Warnings if APIs needed but no research queries
+
+**Output Format Per Domain:**
+- Apartment: Score matrix (0-100) + Recommendation (RENT/PASS/NEGOTIATE)
+- Trip: Itinerary breakdown + Budget allocation + Alternatives
+- Budget: 50/30/20 breakdown + Recommendations + Savings timeline
+- Product: Comparison table + Winner + Best value
+- Generic: Pros/cons + Recommendation + Confidence level
 
 ---
 
 ## 📊 Current Progress Summary
 
-### Files Created: 4
-- `lib/intake/types.ts` (200 lines)
-- `lib/intake/question-bank.ts` (900 lines)
-- `lib/intake/domain-classifier.ts` (400 lines)
-- `lib/intake/question-sequencer.ts` (350 lines)
+### Files Created: 9
+**Infrastructure (lib/intake/):**
+- `types.ts` (200 lines) - Complete type system
+- `question-bank.ts` (900 lines) - All 77 questions
+- `domain-classifier.ts` (400 lines) - Keyword-based classification
+- `question-sequencer.ts` (350 lines) - Smart ordering & filtering
+- `query-reformulator.ts` (400 lines) - StructuredQuery generation
 
-**Total Lines Added**: ~1,850
+**UI Components (components/intake/):**
+- `QuestionCard.tsx` (250 lines) - Universal question component
+- `ProgressIndicator.tsx` (100 lines) - Visual progress tracking
+- `DepthSelector.tsx` (100 lines) - Research depth selection
+- `IntakeAgent.tsx` (200 lines) - Main container orchestrator
 
-### Infrastructure Complete:
-- ✅ Type system (100% complete)
-- ✅ Question bank (77 questions, all 4 domains)
-- ✅ Domain classification (keyword-based, 90%+ accuracy target)
-- ✅ Question sequencing (smart ordering, conditional logic, validation)
+**Total Lines Added**: ~2,900
 
-### Remaining Work:
-- ⏳ UI Components (Phase 2.4)
-- ⏳ Query Reformulation (Phase 2.5)
-- ⏳ Testing & Validation
-- ⏳ Integration with existing system
+### Phase 2 Complete: ✅ 100%
+- ✅ **2.1** Type system (200 lines)
+- ✅ **2.2** Domain classification (400 lines)
+- ✅ **2.3** Question sequencing (350 lines)
+- ✅ **2.4** UI Components (650 lines)
+- ✅ **2.5** Query reformulation (400 lines)
+- ✅ TypeScript validation (0 errors)
+- ✅ Progress documentation updated
 
-**Estimated Completion**: 70% of Phase 2 infrastructure complete
+### Ready for Integration:
+- Full intake agent flow implemented
+- 77 questions across 4 domains
+- Auto domain classification
+- 3 research depth levels
+- All 8 input types supported
+- Query reformulation to StructuredQuery
+- Ready to connect to multi-model debate system
 
 ---
 

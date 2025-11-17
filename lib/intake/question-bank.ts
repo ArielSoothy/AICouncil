@@ -2,7 +2,7 @@
 // Phase 2: Intake Agent Foundation
 // Source: docs/research/INTAKE_AGENT_RESEARCH.md
 
-import { Question, DomainType } from './types'
+import { Question, DomainType, QuestionWeight } from './types'
 
 /**
  * APARTMENT RENT QUESTIONS (22 questions)
