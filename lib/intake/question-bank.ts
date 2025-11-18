@@ -249,7 +249,7 @@ export const TRIP_QUESTIONS: Question[] = [
     type: 'number',
     weight: 10,
     required: true,
-    placeholder: '$5,000',
+    placeholder: '5000',
     helpText: 'Breakdown: 40% flights, 30% hotels, 20% activities, 10% food'
   },
   {
@@ -259,7 +259,7 @@ export const TRIP_QUESTIONS: Question[] = [
     type: 'number',
     weight: 10,
     required: true,
-    placeholder: '7',
+    placeholder: '5',
     helpText: 'Activities per day = total_days × 2-3'
   },
   {
@@ -278,7 +278,7 @@ export const TRIP_QUESTIONS: Question[] = [
     type: 'text',
     weight: 10,
     required: true,
-    placeholder: 'SFO (San Francisco International Airport)',
+    placeholder: 'Ben Gurion Airport, Tel Aviv',
     helpText: 'Flight costs, travel time'
   },
   {
@@ -288,7 +288,7 @@ export const TRIP_QUESTIONS: Question[] = [
     type: 'text',
     weight: 10,
     required: true,
-    placeholder: 'Paris, France or open to Europe',
+    placeholder: 'Dubai, UAE',
     helpText: 'Primary decision or recommendation needed'
   },
 
