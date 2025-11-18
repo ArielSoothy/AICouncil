@@ -142,6 +142,7 @@ function ResultsContent() {
                     domain,
                     apartmentScore
                   )}
+                  domain={domain || undefined}
                 />
               </section>
             </div>
@@ -172,6 +173,7 @@ function ResultsContent() {
                     domain,
                     hotelScore
                   )}
+                  domain={domain || undefined}
                 />
               </section>
             </div>

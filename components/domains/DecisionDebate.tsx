@@ -31,6 +31,7 @@ interface Synthesis {
 
 interface DecisionDebateProps {
   query: string // Enhanced query with score context
+  domain?: string // Domain type for specialized agents
   onDebateComplete?: (synthesis: Synthesis) => void
 }
 
@@ -62,10 +63,31 @@ const DEFAULT_AGENTS: Omit<Agent, 'response' | 'status'>[] = [
   }
 ]
 
-export function DecisionDebate({ query, onDebateComplete }: DecisionDebateProps) {
-  const [agents, setAgents] = useState<Agent[]>(
-    DEFAULT_AGENTS.map(agent => ({ ...agent, status: 'waiting' as const }))
-  )
+export function DecisionDebate({ query, domain, onDebateComplete }: DecisionDebateProps) {
+  // Use specialized agents for hotel domain, otherwise use default
+  const getAgentsForDomain = () => {
+    if (domain === 'hotel') {
+      // Import hotel agents dynamically
+      try {
+        const { HOTEL_AGENTS } = require('@/lib/domains/hotel')
+        return HOTEL_AGENTS.map((agent: any) => ({
+          id: agent.id,
+          name: agent.name,
+          role: agent.role,
+          provider: agent.provider,
+          model: agent.model,
+          color: agent.color,
+          status: 'waiting' as const
+        }))
+      } catch (error) {
+        console.warn('Hotel agents not available, using defaults', error)
+        return DEFAULT_AGENTS.map(agent => ({ ...agent, status: 'waiting' as const }))
+      }
+    }
+    return DEFAULT_AGENTS.map(agent => ({ ...agent, status: 'waiting' as const }))
+  }
+
+  const [agents, setAgents] = useState<Agent[]>(getAgentsForDomain())
   const [synthesis, setSynthesis] = useState<Synthesis | null>(null)
   const [isDebating, setIsDebating] = useState(false)
   const [isSynthesizing, setIsSynthesizing] = useState(false)
@@ -81,8 +103,22 @@ export function DecisionDebate({ query, onDebateComplete }: DecisionDebateProps)
     setError(null)
 
     try {
+      // Get system prompts (hotel-specific if domain is hotel)
+      const getPromptForAgent = (agentId: string, role: string) => {
+        if (domain === 'hotel') {
+          try {
+            const { HOTEL_AGENTS } = require('@/lib/domains/hotel')
+            const hotelAgent = HOTEL_AGENTS.find((a: any) => a.id === agentId)
+            return hotelAgent?.systemPrompt || getSystemPrompt(role as any)
+          } catch (error) {
+            return getSystemPrompt(role as any)
+          }
+        }
+        return getSystemPrompt(role as any)
+      }
+
       // Prepare agent configurations for API
-      const agentConfigs = DEFAULT_AGENTS.map(agent => ({
+      const agentConfigs = agents.map(agent => ({
         agentId: agent.id,
         provider: agent.provider,
         model: agent.model,
@@ -94,7 +130,7 @@ export function DecisionDebate({ query, onDebateComplete }: DecisionDebateProps)
           description: `${agent.role.charAt(0).toUpperCase() + agent.role.slice(1)} role`,
           traits: [],
           focusAreas: [],
-          systemPrompt: getSystemPrompt(agent.role),
+          systemPrompt: getPromptForAgent(agent.id, agent.role),
           color: agent.color
         }
       }))

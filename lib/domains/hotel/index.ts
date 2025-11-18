@@ -23,3 +23,7 @@ export {
 
 // Export scoring function
 export { analyzeHotel } from './scoring'
+
+// Export hotel-specific agents
+export { HOTEL_AGENTS, getHotelSystemPrompt } from './agents'
+export type { HotelAgentConfig } from './agents'
