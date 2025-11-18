@@ -20,16 +20,18 @@ const DOMAIN_KEYWORDS: Record<DomainType, string[][]> = {
     ['month', 'monthly rent', 'per month', '/month']
   ],
 
-  trip: [
-    // Travel terms
-    ['trip', 'travel', 'vacation', 'holiday', 'getaway'],
-    ['flight', 'hotel', 'accommodation', 'booking'],
-    ['destination', 'visit', 'tour', 'sightseeing'],
-    ['itinerary', 'plan', 'schedule', 'activities'],
-    ['airport', 'airline', 'layover', 'direct flight'],
-    ['backpack', 'tourist', 'explore', 'adventure'],
-    // Location indicators
-    ['paris', 'london', 'tokyo', 'europe', 'asia', 'country']
+  hotel: [
+    // Hotel & accommodation terms
+    ['hotel', 'accommodation', 'stay', 'lodging', 'room'],
+    ['booking', 'reservation', 'check-in', 'check-out'],
+    ['guest', 'night', 'nights', 'per night', '/night'],
+    ['amenities', 'facilities', 'service', 'staff'],
+    ['review', 'rating', 'star', 'cleanliness'],
+    ['location', 'downtown', 'near', 'distance', 'walk'],
+    // Hotel types
+    ['resort', 'inn', 'motel', 'hostel', 'suite'],
+    // Specific hotel features
+    ['wifi', 'breakfast', 'parking', 'pool', 'gym']
   ],
 
   budget: [
@@ -77,14 +79,14 @@ const STRONG_INDICATORS: Record<DomainType, string[]> = {
     'move into',
     'sign the lease'
   ],
-  trip: [
-    'plan a trip',
-    'travel to',
-    'vacation in',
-    'book a flight',
-    'hotel reservation',
-    'itinerary for',
-    'days in'
+  hotel: [
+    'find a hotel',
+    'book a hotel',
+    'hotel in',
+    'accommodation in',
+    'stay in',
+    'check availability',
+    'hotel recommendation'
   ],
   budget: [
     'create a budget',
@@ -140,7 +142,7 @@ export function classifyQuery(query: string): DomainClassification {
   // Calculate scores for each domain
   const scores: Record<DomainType, number> = {
     apartment: calculateDomainScore(query, 'apartment'),
-    trip: calculateDomainScore(query, 'trip'),
+    hotel: calculateDomainScore(query, 'hotel'),
     budget: calculateDomainScore(query, 'budget'),
     product: calculateDomainScore(query, 'product'),
     generic: 0
@@ -248,7 +250,7 @@ export function isAmbiguousQuery(query: string): boolean {
   // Check if multiple domains have significant scores
   const scores = {
     apartment: calculateDomainScore(query, 'apartment'),
-    trip: calculateDomainScore(query, 'trip'),
+    hotel: calculateDomainScore(query, 'hotel'),
     budget: calculateDomainScore(query, 'budget'),
     product: calculateDomainScore(query, 'product')
   }
@@ -270,12 +272,12 @@ export const EXAMPLE_QUERIES: Record<DomainType, string[]> = {
     'Thinking about moving to this apartment near downtown',
     'Should I rent in San Francisco or Oakland?'
   ],
-  trip: [
-    'Help me plan a 7-day trip to Paris on a $5000 budget',
-    'Should I go to Japan or Thailand for my vacation?',
-    'What\'s the best itinerary for 2 weeks in Europe?',
-    'Planning a family trip to Hawaii, need help with activities',
-    'Book flights to London or wait for better prices?'
+  hotel: [
+    'Help me find a hotel in Dubai for 5 nights',
+    'Should I book this hotel for $150/night?',
+    'Find me a hotel near downtown with free parking',
+    'What\'s the best hotel in Tokyo for business travel?',
+    'Compare hotels in Miami Beach under $200/night'
   ],
   budget: [
     'Help me create a monthly budget with $6000 take-home income',
@@ -307,7 +309,7 @@ export const EXAMPLE_QUERIES: Record<DomainType, string[]> = {
 export function testClassifier(): Record<DomainType, number> {
   const results: Record<DomainType, number> = {
     apartment: 0,
-    trip: 0,
+    hotel: 0,
     budget: 0,
     product: 0,
     generic: 0
@@ -334,7 +336,7 @@ export function testClassifier(): Record<DomainType, number> {
 export function getDomainDisplayName(domain: DomainType): string {
   const names: Record<DomainType, string> = {
     apartment: 'Apartment Rent',
-    trip: 'Trip Planning',
+    hotel: 'Hotel Finder',
     budget: 'Budget Planning',
     product: 'Product Comparison',
     generic: 'General Query'
@@ -348,7 +350,7 @@ export function getDomainDisplayName(domain: DomainType): string {
 export function getDomainIcon(domain: DomainType): string {
   const icons: Record<DomainType, string> = {
     apartment: '🏠',
-    trip: '✈️',
+    hotel: '🏨',
     budget: '💰',
     product: '🛒',
     generic: '💬'
@@ -362,7 +364,7 @@ export function getDomainIcon(domain: DomainType): string {
 export function getDomainDescription(domain: DomainType): string {
   const descriptions: Record<DomainType, string> = {
     apartment: 'Housing rental decisions with location, budget, and lifestyle analysis',
-    trip: 'Travel planning with budget optimization and itinerary generation',
+    hotel: 'Hotel selection with multi-agent analysis and weighted decision criteria',
     budget: 'Personal finance planning with 50/30/20 rule and debt management',
     product: 'Product comparison with weighted decision matrix and review analysis',
     generic: 'General purpose multi-model analysis without domain-specific framework'

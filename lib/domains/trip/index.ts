@@ -44,7 +44,8 @@ export async function planTrip(
     const score = calculateTripScore(input)
 
     // Step 4: Reformulate query for multi-model debate
-    const structuredQuery = reformulateQuery(userQuery, 'trip', answers)
+    // NOTE: This file is deprecated - use hotel domain instead
+    const structuredQuery = reformulateQuery(userQuery, 'hotel', answers)
 
     // Step 5: Enhance query with Pareto insights
     const enhancedQuery = enhanceQueryWithScore(structuredQuery, score, itinerary)

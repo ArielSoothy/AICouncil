@@ -59,7 +59,7 @@ export function reformulateQuery(
 function getFrameworkForDomain(domain: DomainType): string {
   const frameworks: Record<DomainType, string> = {
     apartment: 'Multi-Attribute Utility Theory (MAUT)',
-    trip: 'Pareto Optimization (Multi-Objective)',
+    hotel: 'Weighted Decision Matrix (5-Criteria)',
     budget: '50/30/20 Rule + Zero-Based Budgeting',
     product: 'Pugh Matrix (Weighted Decision Matrix)',
     generic: 'Multi-Agent Debate (MADR)'
@@ -87,15 +87,15 @@ function extractHardConstraints(domain: DomainType, answers: Answers): string[] 
       }
       break
 
-    case 'trip':
-      if (answers.trip_budget) {
-        constraints.push(`Total budget: $${answers.trip_budget}`)
+    case 'hotel':
+      if (answers.hotel_budget) {
+        constraints.push(`Budget per night: $${answers.hotel_budget}`)
       }
-      if (answers.trip_days) {
-        constraints.push(`Trip duration: ${answers.trip_days} days`)
+      if (answers.hotel_nights) {
+        constraints.push(`Number of nights: ${answers.hotel_nights}`)
       }
-      if (answers.trip_must_see) {
-        constraints.push(`Must-see: ${answers.trip_must_see}`)
+      if (answers.hotel_location) {
+        constraints.push(`Location: ${answers.hotel_location}`)
       }
       break
 
@@ -140,16 +140,16 @@ function extractPriorities(domain: DomainType, answers: Answers): string[] {
       }
       break
 
-    case 'trip':
-      if (answers.trip_interests) {
-        priorities.push(`Interests: ${answers.trip_interests.join(', ')}`)
+    case 'hotel':
+      if (answers.hotel_amenities) {
+        priorities.push(`Required amenities: ${answers.hotel_amenities.join(', ')}`)
       }
-      if (answers.trip_style) {
-        priorities.push(`Travel style: ${answers.trip_style}`)
+      if (answers.hotel_purpose) {
+        priorities.push(`Stay purpose: ${answers.hotel_purpose}`)
       }
-      if (answers.trip_pace) {
-        const paceLabel = answers.trip_pace > 7 ? 'Fast-paced' : answers.trip_pace < 4 ? 'Relaxed' : 'Balanced'
-        priorities.push(`Itinerary pace: ${paceLabel} (${answers.trip_pace}/10)`)
+      if (answers.hotel_location_priority) {
+        const priorityLabel = answers.hotel_location_priority > 7 ? 'Location critical' : 'Location flexible'
+        priorities.push(`${priorityLabel} (${answers.hotel_location_priority}/10)`)
       }
       break
 
@@ -192,12 +192,12 @@ function extractTradeoffs(domain: DomainType, answers: Answers): string[] {
       }
       break
 
-    case 'trip':
-      if (answers.trip_layovers !== 'Direct flights only') {
-        tradeoffs.push('Accept layovers for cost savings (20-40% cheaper)')
+    case 'hotel':
+      if (answers.hotel_star_rating_min <= 3) {
+        tradeoffs.push('Willing to consider 3-star hotels for cost savings')
       }
-      if (answers.trip_accommodation === 'Hostel') {
-        tradeoffs.push('Prioritize budget over luxury accommodation')
+      if (answers.hotel_distance_flexibility === 'Flexible') {
+        tradeoffs.push('Can stay further from attractions for better value')
       }
       break
 
@@ -239,12 +239,12 @@ function determineRequiredAPIs(domain: DomainType, answers: Answers): string[] {
       }
       break
 
-    case 'trip':
-      apis.push('Google Flights API (flight prices)')
-      apis.push('Booking.com API (hotel prices)')
-      if (answers.trip_destination) {
-        apis.push('TripAdvisor API (activities & reviews)')
-        apis.push('OpenWeather API (weather forecasts)')
+    case 'hotel':
+      apis.push('TripAdvisor API (hotel reviews & ratings)')
+      apis.push('Google Places API (location & photos)')
+      if (answers.hotel_location) {
+        apis.push('Booking.com API (hotel prices & availability)')
+        apis.push('Walk Score API (walkability score)')
       }
       break
 
@@ -280,11 +280,11 @@ function generateResearchQueries(domain: DomainType, answers: Answers): string[]
       }
       break
 
-    case 'trip':
-      if (answers.trip_destination) {
-        queries.push(`Best things to do in ${answers.trip_destination}`)
-        queries.push(`${answers.trip_destination} travel budget ${answers.trip_days} days`)
-        queries.push(`${answers.trip_destination} hidden gems`)
+    case 'hotel':
+      if (answers.hotel_location) {
+        queries.push(`Best hotels in ${answers.hotel_location}`)
+        queries.push(`${answers.hotel_location} hotel reviews recent`)
+        queries.push(`${answers.hotel_location} hotel red flags warnings`)
       }
       break
 
@@ -329,10 +329,10 @@ function generateAgentInstructions(
       baseInstructions.synthesizer += `Balance: Financial prudence vs quality of life. Consider user priorities: ${extractPriorities(domain, answers).join(', ')}`
       break
 
-    case 'trip':
-      baseInstructions.analyst += `Optimize for budget allocation (40% flights, 30% hotels, 20% activities, 10% food). Plan ${answers.trip_days}-day itinerary. `
-      baseInstructions.critic += `Challenge: Is itinerary feasible? Any timing conflicts? Better value alternatives? `
-      baseInstructions.synthesizer += `Balance: Experiences vs budget. Match interests: ${answers.trip_interests?.join(', ') || 'general'}`
+    case 'hotel':
+      baseInstructions.analyst += `Score hotel using Weighted Decision Matrix: Location (35%), Reviews (30%), Cleanliness (25%), Value (20%), Amenities (15%). Detect red flags. `
+      baseInstructions.critic += `Challenge: Are reviews authentic? Hidden fees? Cleanliness violations? Noise complaints? Better value nearby? `
+      baseInstructions.synthesizer += `Balance: Location vs price vs quality. Purpose: ${answers.hotel_purpose || 'general stay'}`
       break
 
     case 'budget':
@@ -391,7 +391,7 @@ function buildEnhancedQuery(
 function getOutputFormat(domain: DomainType): string {
   const formats: Record<DomainType, string> = {
     apartment: 'Score matrix (0-100) + Recommendation (RENT/PASS/NEGOTIATE) + Reasoning',
-    trip: 'Itinerary breakdown + Budget allocation + Alternative options',
+    hotel: 'Weighted score breakdown (Location/Reviews/Cleanliness/Value/Amenities) + Recommendation (BOOK/CONSIDER/PASS) + Red flags',
     budget: '50/30/20 breakdown + Recommendations + Savings timeline',
     product: 'Comparison table + Winner + Best value + Reasoning',
     generic: 'Pros/cons + Recommendation + Confidence level'

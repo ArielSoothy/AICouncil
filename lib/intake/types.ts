@@ -4,7 +4,7 @@
 /**
  * Supported decision domains
  */
-export type DomainType = 'apartment' | 'trip' | 'budget' | 'product' | 'generic'
+export type DomainType = 'apartment' | 'hotel' | 'budget' | 'product' | 'generic'
 
 /**
  * Question data types

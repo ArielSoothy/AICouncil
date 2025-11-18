@@ -8,13 +8,13 @@ import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/ui/header'
 import { DomainType, Answers, ResearchDepth } from '@/lib/intake/types'
 import { ApartmentScorecard } from '@/components/domains/apartment'
-import { TripScorecard, ItineraryView } from '@/components/domains/trip'
+// import { HotelScorecard } from '@/components/domains/hotel' // TODO: Create component
 import { DecisionDebate } from '@/components/domains/DecisionDebate'
 import { analyzeApartment } from '@/lib/domains/apartment'
-import { planTrip } from '@/lib/domains/trip'
+import { analyzeHotel } from '@/lib/domains/hotel'
 import { enhanceQueryWithScore } from '@/lib/domains/debate-enhancer'
 import type { ApartmentScore } from '@/lib/domains/apartment/types'
-import type { TripScore, ItineraryDay } from '@/lib/domains/trip/types'
+import type { HotelScore } from '@/lib/domains/hotel/types'
 
 function ResultsContent() {
   const searchParams = useSearchParams()
@@ -23,8 +23,7 @@ function ResultsContent() {
 
   // Scoring state
   const [apartmentScore, setApartmentScore] = useState<ApartmentScore | null>(null)
-  const [tripScore, setTripScore] = useState<TripScore | null>(null)
-  const [itinerary, setItinerary] = useState<ItineraryDay[]>([])
+  const [hotelScore, setHotelScore] = useState<HotelScore | null>(null)
 
   // Domain and answers from URL params
   const domain = searchParams.get('domain') as DomainType | null
@@ -50,12 +49,11 @@ function ResultsContent() {
           const result = await analyzeApartment(userQuery, answers)
           console.log('Apartment analysis:', result)
           setApartmentScore(result.score)
-        } else if (domain === 'trip') {
-          // Calculate trip score
-          const result = await planTrip(userQuery, answers)
-          console.log('Trip planning:', result)
-          setTripScore(result.score)
-          setItinerary(result.itinerary)
+        } else if (domain === 'hotel') {
+          // Calculate hotel score
+          const result = await analyzeHotel(userQuery, answers)
+          console.log('Hotel analysis:', result)
+          setHotelScore(result.score)
         }
 
         setLoading(false)
@@ -149,25 +147,19 @@ function ResultsContent() {
             </div>
           )}
 
-          {/* Trip Results */}
-          {domain === 'trip' && tripScore && (
+          {/* Hotel Results */}
+          {domain === 'hotel' && hotelScore && (
             <div className="space-y-8">
               <section>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                  Pareto Optimization Analysis
+                  Weighted Decision Matrix
                 </h2>
-                <TripScorecard score={tripScore} showBreakdown={true} />
+                {/* TODO: Create HotelScorecard component */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                  <p className="text-gray-600 dark:text-gray-400">Hotel scorecard coming soon...</p>
+                  <pre className="mt-4 text-sm">{JSON.stringify(hotelScore, null, 2)}</pre>
+                </div>
               </section>
-
-              {/* Itinerary */}
-              {itinerary.length > 0 && (
-                <section>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                    Suggested Itinerary
-                  </h2>
-                  <ItineraryView itinerary={itinerary} showCosts={true} />
-                </section>
-              )}
 
               {/* AI Debate Section */}
               <section>
@@ -178,7 +170,7 @@ function ResultsContent() {
                   query={enhanceQueryWithScore(
                     queryParam ? decodeURIComponent(queryParam) : `Help me make a ${domain} decision`,
                     domain,
-                    tripScore
+                    hotelScore
                   )}
                 />
               </section>

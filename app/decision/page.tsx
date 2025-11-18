@@ -102,13 +102,13 @@ export default function DecisionPage() {
                 onClick={() => handleDomainSelect('apartment')}
               />
 
-              {/* Trip */}
+              {/* Hotel */}
               <DomainCard
-                domain="trip"
-                title="Trip Planning"
-                description="Pareto optimization: Budget, experiences, feasibility"
-                features={['Cost estimation', 'Itinerary generation', 'Interest matching', 'Pace optimization']}
-                onClick={() => handleDomainSelect('trip')}
+                domain="hotel"
+                title="Hotel Finder"
+                description="Weighted Decision Matrix: Location, reviews, cleanliness, value, amenities"
+                features={['Red flag detection', 'Review analysis', 'Price comparison', 'Location scoring']}
+                onClick={() => handleDomainSelect('hotel')}
               />
 
               {/* Budget (Coming Soon) */}

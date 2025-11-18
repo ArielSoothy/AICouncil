@@ -1,8 +1,8 @@
 // Debate Query Enhancer
-// Enhances user query with MAUT/Pareto score context for AI debate
+// Enhances user query with domain-specific score context for AI debate
 
 import type { ApartmentScore } from './apartment/types'
-import type { TripScore } from './trip/types'
+import type { HotelScore } from './hotel/types'
 import type { DomainType } from '@/lib/intake/types'
 
 /**
@@ -12,7 +12,7 @@ import type { DomainType } from '@/lib/intake/types'
 export function enhanceQueryWithScore(
   userQuery: string,
   domain: DomainType,
-  score: ApartmentScore | TripScore
+  score: ApartmentScore | HotelScore
 ): string {
   if (domain === 'apartment') {
     const apartmentScore = score as ApartmentScore
@@ -28,26 +28,27 @@ QUANTITATIVE ANALYSIS (MAUT Framework):
 ${apartmentScore.warnings.length > 0 ? `WARNINGS:\n${apartmentScore.warnings.map(w => `- ${w}`).join('\n')}` : ''}
 
 Please analyze this apartment decision considering the MAUT scores above. Discuss whether the user should rent, negotiate, or pass on this apartment.`
-  } else if (domain === 'trip') {
-    const tripScore = score as TripScore
+  } else if (domain === 'hotel') {
+    const hotelScore = score as HotelScore
     return `${userQuery}
 
-QUANTITATIVE ANALYSIS (Pareto Optimization):
-- Budget Efficiency: ${tripScore.budget.categoryScore}/100 ($${tripScore.budget.totalCost.toFixed(0)} total, Budget Fit: ${tripScore.budget.budgetFit}/100)
-- Experience Quality: ${tripScore.experiences.categoryScore}/100 (Interest Match: ${tripScore.experiences.interestMatch}/100, Must-Sees: ${tripScore.experiences.mustSeesCovered}/100)
-- Feasibility: ${tripScore.feasibility.categoryScore}/100 (Time Mgmt: ${tripScore.feasibility.timeManagement}/100, Pace: ${tripScore.feasibility.paceScore}/100)
-- Overall Score: ${tripScore.overallScore}/100
-${tripScore.paretoRank === 1 ? '- ✅ PARETO OPTIMAL: No objective can improve without hurting another' : `- ⚠️ PARETO RANK: ${tripScore.paretoRank} (some improvements possible)`}
+QUANTITATIVE ANALYSIS (Weighted Decision Matrix):
+- Location: ${hotelScore.location.categoryScore}/100 (Attractions: ${hotelScore.location.distanceToAttractions}/100, Transport: ${hotelScore.location.transportationAccess}/100, Safety: ${hotelScore.location.neighborhoodSafety}/100, Walkability: ${hotelScore.location.walkability}/100)
+- Reviews: ${hotelScore.reviews.categoryScore}/100 (Overall: ${hotelScore.reviews.overallRating}/100, Sentiment: ${hotelScore.reviews.sentimentScore}/100, Trend: ${hotelScore.reviews.trendAnalysis}/100)
+- Cleanliness: ${hotelScore.cleanliness.categoryScore}/100 (Rating: ${hotelScore.cleanliness.cleanlinessRating}/100, Pests: ${hotelScore.cleanliness.pestReports ? 'REPORTED' : 'None'}, Maintenance Issues: ${hotelScore.cleanliness.maintenanceIssues})
+- Value: ${hotelScore.value.categoryScore}/100 (Price: $${hotelScore.value.pricePerNight}/night, Market Comparison: ${hotelScore.value.marketComparison}/100, Hidden Fees: $${hotelScore.value.hiddenFees})
+- Amenities: ${hotelScore.amenities.categoryScore}/100 (Must-Have Match: ${hotelScore.amenities.mustHaveMatch}/100, Service: ${hotelScore.amenities.serviceQuality}/100)
+- Total Score: ${hotelScore.totalScore}/100 (Recommendation: ${hotelScore.recommendation})
 
-BUDGET BREAKDOWN:
-- Flights: $${tripScore.budget.breakdown.flights.toFixed(0)} (${((tripScore.budget.breakdown.flights / tripScore.budget.totalCost) * 100).toFixed(0)}%)
-- Hotels: $${tripScore.budget.breakdown.hotels.toFixed(0)} (${((tripScore.budget.breakdown.hotels / tripScore.budget.totalCost) * 100).toFixed(0)}%)
-- Activities: $${tripScore.budget.breakdown.activities.toFixed(0)} (${((tripScore.budget.breakdown.activities / tripScore.budget.totalCost) * 100).toFixed(0)}%)
-- Food: $${tripScore.budget.breakdown.food.toFixed(0)} (${((tripScore.budget.breakdown.food / tripScore.budget.totalCost) * 100).toFixed(0)}%)
+TOP PROS:
+${hotelScore.topPros.map((pro, i) => `${i + 1}. ${pro}`).join('\n')}
 
-${tripScore.warnings.length > 0 ? `WARNINGS:\n${tripScore.warnings.map(w => `- ${w}`).join('\n')}` : ''}
+TOP CONS:
+${hotelScore.topCons.map((con, i) => `${i + 1}. ${con}`).join('\n')}
 
-Please analyze this trip plan considering the Pareto optimization scores above. Discuss budget tradeoffs, experience quality, and whether the itinerary is feasible.`
+${hotelScore.warnings.length > 0 ? `RED FLAGS:\n${hotelScore.warnings.map(w => `- ⚠️ ${w}`).join('\n')}` : ''}
+
+Please analyze this hotel decision considering the Weighted Decision Matrix scores above. Discuss whether the user should BOOK, CONSIDER, or PASS on this hotel. Pay special attention to red flags.`
   }
 
   return userQuery
