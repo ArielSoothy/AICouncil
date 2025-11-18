@@ -122,7 +122,7 @@ export function IntakeAgent({ userQuery, onComplete, onCancel }: IntakeAgentProp
             What type of decision are you making?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(['apartment', 'trip', 'budget', 'product'] as DomainType[]).map((d) => (
+            {(['apartment', 'hotel', 'budget', 'product'] as DomainType[]).map((d) => (
               <button
                 key={d}
                 onClick={() => handleDomainSelect(d)}
