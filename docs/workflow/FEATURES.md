@@ -1063,33 +1063,44 @@
   - Rule-of-thumb fallbacks (no external APIs required)
   - Scorecard component with visual breakdown
   - Files: `lib/domains/apartment/*.ts` (4 files, 450+ lines)
-- ✅ **Trip Pareto Framework** (Phase 4):
-  - Multi-objective optimization: Budget, Experiences, Feasibility
-  - Rule-of-thumb cost estimation (flights, hotels, activities, food)
-  - Itinerary generation with day-by-day activities
-  - Paretooptimal ranking system
-  - Budget allocation: 40% flights, 30% hotels, 20% activities, 10% food
-  - Scorecard + Itinerary view components
-  - Files: `lib/domains/trip/*.ts` (4 files, 550+ lines)
+- ✅ **Hotel Finder with Weighted Decision Matrix** (Phase 4 - Refactored November 2025):
+  - **Framework**: Replaced Pareto Optimization with research-backed Weighted Decision Matrix
+  - **5 Evaluation Criteria** (academic hospitality research):
+    * Location (35% weight): Attractions, transportation, safety, walkability
+    * Reviews (30% weight): Overall rating, sentiment analysis, trend detection, red flags
+    * Cleanliness (25% weight): 84% of guests rate as "very important" per Cornell research
+    * Value (20% weight): Price vs features, hidden fees detection, market comparison
+    * Amenities (15% weight): Must-have matching, service quality assessment
+  - **Red Flag Detection**: Bed bugs (disqualify), major cleanliness issues, excessive noise (>30%), fake reviews
+  - **4 Specialized AI Agents**:
+    * Location Intelligence Agent (Claude Sonnet 4.5) - Geographic analysis
+    * Review Analysis Agent (GPT-4o) - Sentiment & red flag detection
+    * Value Optimization Agent (Llama 3.3 70B) - Price optimization
+    * Amenities & Experience Agent (Gemini 2.5 Flash) - Feature matching
+  - **API-Optional Design**: Works without external APIs using rule-of-thumb scoring
+  - **9 Targeted Questions** (reduced from 20 trip questions)
+  - Files: `lib/domains/hotel/*.ts` (4 files, 900+ lines)
 
 **Phase 5: AI Debate Integration** (November 18, 2025 - COMPLETE):
 - ✅ **Decision Debate Component**:
-  - Specialized 3-agent debate system for decision results
+  - **Domain-Specific Agents**: Uses specialized agents based on domain
+    * Hotel domain → 4 specialized hotel evaluation agents (Location, Review, Value, Amenities)
+    * Other domains → Default 3-agent configuration (Analyst, Critic, Synthesizer)
+  - **Dynamic Agent Loading**: Automatically loads domain-specific system prompts
   - Preset configuration: Analyst (Claude Sonnet 4.5), Critic (GPT-4o), Synthesizer (Llama 3.3 70B)
   - Auto-starts on results page load (no manual trigger)
-  - Query enhancement with MAUT/Pareto score context
+  - Query enhancement with MAUT/Weighted Matrix score context
   - Streaming agent responses with real-time updates
   - Synthesis with Agreements, Disagreements, Conclusion
-  - Files: `components/domains/DecisionDebate.tsx` (270+ lines), `lib/domains/debate-enhancer.ts` (55 lines)
+  - Files: `components/domains/DecisionDebate.tsx` (300+ lines), `lib/domains/debate-enhancer.ts` (80 lines)
 
 **User Flow**:
 1. **Entry Point**: Header → "Decision Help" link
-2. **Domain Selection**: Choose decision type (Apartment/Trip/Budget/Product)
-3. **Intake Questions**: Answer 5-20 questions (depth-based)
-4. **Results Page**: 
-   - Quantitative score (MAUT/Pareto) with visual breakdown
-   - Itinerary (for trips)
-   - Multi-model AI debate (3 agents discussing the decision)
+2. **Domain Selection**: Choose decision type (Apartment/Hotel/Budget/Product)
+3. **Intake Questions**: Answer 5-22 questions (domain-specific, depth-based)
+4. **Results Page**:
+   - Quantitative score (MAUT/Weighted Matrix) with visual breakdown
+   - Multi-model AI debate (3-4 specialized agents discussing the decision)
    - Final synthesis with recommendations
 
 **Key Features**:
@@ -1097,7 +1108,8 @@
 - **Rule-of-Thumb First**: Uses general rules, historical averages, user data
 - **Quantitative + Qualitative**: Combines scoring with AI analysis
 - **Real-Time Debate**: Streaming agent responses with visual feedback
-- **Context-Rich Prompts**: Agents receive full MAUT/Pareto scores + warnings
+- **Context-Rich Prompts**: Agents receive full MAUT/Weighted Matrix scores + warnings + red flags
+- **Domain-Specific Expertise**: Specialized agents for each decision type (4 agents for hotels, 3 for others)
 
 **Example Enhanced Query** (Apartment):
 ```
@@ -1116,18 +1128,16 @@ WARNINGS:
 Please analyze this apartment decision considering the MAUT scores above.
 ```
 
-**Files Created** (Total: 13 files, 2500+ lines):
+**Files Created** (Total: 14 files, 2800+ lines):
 - **Pages** (3): `app/decision/page.tsx`, `app/decision/results/page.tsx`
 - **Components** (7):
-  - `components/domains/DecisionDebate.tsx` - AI debate display
+  - `components/domains/DecisionDebate.tsx` - AI debate display with domain-specific agents
   - `components/domains/apartment/ApartmentScorecard.tsx` - MAUT visualization
-  - `components/domains/trip/TripScorecard.tsx` - Pareto visualization
-  - `components/domains/trip/ItineraryView.tsx` - Day-by-day itinerary
-  - `components/intake/IntakeAgent.tsx` - Question flow
-- **Libraries** (8):
-  - `lib/intake/*.ts` - Domain classification, question bank, query reformulation
-  - `lib/domains/apartment/*.ts` - MAUT scoring, types
-  - `lib/domains/trip/*.ts` - Pareto optimization, itinerary generation, types
+  - `components/intake/IntakeAgent.tsx` - Question flow with auto-fill
+- **Libraries** (9):
+  - `lib/intake/*.ts` - Domain classification, question bank (66 questions), query reformulation
+  - `lib/domains/apartment/*.ts` - MAUT scoring, types (4 files)
+  - `lib/domains/hotel/*.ts` - Weighted Decision Matrix, 4 specialized agents, types (4 files)
   - `lib/domains/debate-enhancer.ts` - Query enhancement with scores
 
 **Integration Points**:
@@ -1138,10 +1148,11 @@ Please analyze this apartment decision considering the MAUT scores above.
 - ✅ **TypeScript**: Full type safety across all domains
 
 **Testing**:
-- ✅ Apartment flow: Domain selection → Questions → MAUT score → AI debate
-- ✅ Trip flow: Domain selection → Questions → Pareto score + Itinerary → AI debate
-- ✅ Default values: Faster testing with pre-filled trip questions
+- ✅ Apartment flow: Domain selection → Questions → MAUT score → AI debate (3 default agents)
+- ✅ Hotel flow: Domain selection → Questions → Weighted Matrix score → AI debate (4 specialized agents)
+- ✅ Auto-fill values: Pre-filled placeholder values for faster testing
 - ✅ TypeScript: 0 compilation errors
+- ⏳ Hotel Scorecard Component: Planned visualization (placeholder JSON view currently)
 
 **Future Enhancements** (Phase 6+):
 - Budget Planning domain (50/30/20 rule)
