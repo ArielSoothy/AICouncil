@@ -9,6 +9,7 @@ import { PROJECT_NAME } from '@/lib/config/branding'
 import { DomainType } from '@/lib/intake/types'
 import { getDomainDisplayName, getDomainIcon } from '@/lib/intake/domain-classifier'
 import { IntakeAgent } from '@/components/intake/IntakeAgent'
+import { UniversalIntake } from '@/components/intake/UniversalIntake'
 import { ResearchDepth } from '@/lib/intake/types'
 
 export default function DecisionPage() {
@@ -16,8 +17,11 @@ export default function DecisionPage() {
   const [userQuery, setUserQuery] = useState('')
   const [showIntake, setShowIntake] = useState(false)
 
-  const handleDomainSelect = (domain: DomainType) => {
+  const handleDomainSelect = (domain: DomainType, userContext?: string) => {
     setSelectedDomain(domain)
+    if (userContext) {
+      setUserQuery(userContext)
+    }
     setShowIntake(true)
   }
 
@@ -70,68 +74,8 @@ export default function DecisionPage() {
             </p>
           </div>
 
-          {/* Query Input (Optional) */}
-          <div className="mb-8">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Describe your decision (optional):
-            </label>
-            <textarea
-              value={userQuery}
-              onChange={(e) => setUserQuery(e.target.value)}
-              placeholder="e.g., Should I rent this apartment for $2800/month?"
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-none"
-              rows={3}
-            />
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-500">
-              We'll ask clarifying questions to understand your specific situation
-            </p>
-          </div>
-
-          {/* Domain Selection */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-              Choose Your Decision Type
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Apartment */}
-              <DomainCard
-                domain="apartment"
-                title="Apartment Rent Decision"
-                description="MAUT scoring: Affordability, location, property quality, lifestyle fit"
-                features={['30% affordability rule', 'Commute analysis', 'Market comparison', 'Safety scoring']}
-                onClick={() => handleDomainSelect('apartment')}
-              />
-
-              {/* Hotel */}
-              <DomainCard
-                domain="hotel"
-                title="Hotel Finder"
-                description="Weighted Decision Matrix: Location, reviews, cleanliness, value, amenities"
-                features={['Red flag detection', 'Review analysis', 'Price comparison', 'Location scoring']}
-                onClick={() => handleDomainSelect('hotel')}
-              />
-
-              {/* Budget (Coming Soon) */}
-              <DomainCard
-                domain="budget"
-                title="Budget Planning"
-                description="50/30/20 rule: Needs, wants, savings allocation"
-                features={['Income allocation', 'Debt strategy', 'Emergency fund', 'Savings goals']}
-                onClick={() => handleDomainSelect('budget')}
-                comingSoon
-              />
-
-              {/* Product (Coming Soon) */}
-              <DomainCard
-                domain="product"
-                title="Product Comparison"
-                description="Pugh Matrix: Feature-weighted comparison"
-                features={['Feature scoring', 'Price/value analysis', 'Review aggregation', 'Use case matching']}
-                onClick={() => handleDomainSelect('product')}
-                comingSoon
-              />
-            </div>
-          </div>
+          {/* Universal Conversational Intake */}
+          <UniversalIntake onDomainSelect={handleDomainSelect} />
 
           {/* How It Works */}
           <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700">

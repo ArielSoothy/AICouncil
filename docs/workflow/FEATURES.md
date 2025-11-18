@@ -1089,6 +1089,31 @@
   - **API-Optional Design**: Works without external APIs using rule-of-thumb scoring
   - **Phase 2 Vision**: See `docs/features/HOTEL_FINDER_PHASE2_VISION.md` for roadmap to integrate real hotel data, multi-source reviews (Reddit, YouTube, TripAdvisor), and specific hotel recommendations
   - Files: `lib/domains/hotel/*.ts` (4 files, 900+ lines), `lib/intake/question-bank.ts` (enhanced)
+- ✅ **Hybrid Architecture - Conversational + Structured Entry** (Phase 1 - November 18, 2025):
+  - **Pattern**: "Guided Conversation" (Industry research-backed hybrid approach)
+  - **Problem Solved**: Previous rigid 4-card domain selection couldn't handle edge cases like "Compare Hotel A vs Hotel B" or users who already know exactly what they want
+  - **Phase 1 Implementation (COMPLETE)**:
+    * UniversalIntake component with conversational textarea + quick action buttons
+    * Keyword-based domain detection (hotel|apartment|budget|product)
+    * User context preservation for future adaptive questioning
+    * Fallback to existing structured flows (no breaking changes)
+    * Keyboard shortcut: ⌘/Ctrl + Enter to submit
+  - **Dual Interaction Paths**:
+    * Path 1: User types detailed message → System detects domain → Captures context → Routes to depth selection
+    * Path 2: User clicks quick action button (Hotel/Apartment/Budget/Product) → Routes directly to depth selection
+  - **Research Foundation**:
+    * 75% of users want progress indicators (structured element preserved)
+    * Pure chatbot = lower satisfaction + higher cognitive load (avoided)
+    * Pure structured = can't handle edge cases (solved)
+    * Hybrid = highest satisfaction + best edge case handling (research from ScienceDirect 2021, Medium/The Layer)
+  - **Future Phases (Planned)**:
+    * Phase 2: Smart context extraction with LLM parsing (skip already-answered questions)
+    * Phase 3: Adaptive question flow (3-13 questions based on extracted context)
+    * Phase 4: Hybrid UI for every question (buttons + text input)
+    * Phase 5: Conversational refinement after results (iterative adjustment)
+  - **Files**: `components/intake/UniversalIntake.tsx` (177 lines), `app/decision/page.tsx` (updated)
+  - **Documentation**: See `docs/architecture/HYBRID_ARCHITECTURE.md` for complete architecture design, research findings, and roadmap
+  - **DO NOT**: Remove conversational entry, force only structured paths, or break keyword detection fallback
 
 **Phase 5: AI Debate Integration** (November 18, 2025 - COMPLETE):
 - ✅ **Decision Debate Component**:
