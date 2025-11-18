@@ -1037,3 +1037,125 @@
 
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
+---
+
+## Domain-Specific Decision Frameworks
+
+### 33. Decision Help System - AI-Powered Decision Making with Domain Frameworks
+
+- **Status**: ✅ ACTIVE & CRITICAL (November 18, 2025)
+- **Purpose**: Complete end-to-end decision support system combining quantitative scoring frameworks with multi-model AI debate
+- **Location**: `/app/decision/` (3 pages), `/components/domains/` (7 components), `/lib/domains/` (8 modules)
+
+**Phase 1-3: Foundation & MAUT/Pareto Frameworks** (November 17-18, 2025 - COMPLETE):
+- ✅ **Intake Agent System** (Phase 2):
+  - Domain classifier with 4 domains (apartment, trip, budget, product)
+  - 77-question bank with conditional logic
+  - Progressive questioning with depth levels (quick/thorough/comprehensive)
+  - Query reformulation with domain context
+  - Files: `lib/intake/*.ts` (6 files, 800+ lines)
+- ✅ **Apartment MAUT Framework** (Phase 3):
+  - Multi-Attribute Utility Theory with 4 weighted categories
+  - Financial (40%): Affordability, market value, hidden costs
+  - Location (30%): Commute, safety, walkability
+  - Property (20%): Space, amenities, quality
+  - Lifestyle (10%): Neighborhood vibe, pets, WFH
+  - Rule-of-thumb fallbacks (no external APIs required)
+  - Scorecard component with visual breakdown
+  - Files: `lib/domains/apartment/*.ts` (4 files, 450+ lines)
+- ✅ **Trip Pareto Framework** (Phase 4):
+  - Multi-objective optimization: Budget, Experiences, Feasibility
+  - Rule-of-thumb cost estimation (flights, hotels, activities, food)
+  - Itinerary generation with day-by-day activities
+  - Paretooptimal ranking system
+  - Budget allocation: 40% flights, 30% hotels, 20% activities, 10% food
+  - Scorecard + Itinerary view components
+  - Files: `lib/domains/trip/*.ts` (4 files, 550+ lines)
+
+**Phase 5: AI Debate Integration** (November 18, 2025 - COMPLETE):
+- ✅ **Decision Debate Component**:
+  - Specialized 3-agent debate system for decision results
+  - Preset configuration: Analyst (Claude Sonnet 4.5), Critic (GPT-4o), Synthesizer (Llama 3.3 70B)
+  - Auto-starts on results page load (no manual trigger)
+  - Query enhancement with MAUT/Pareto score context
+  - Streaming agent responses with real-time updates
+  - Synthesis with Agreements, Disagreements, Conclusion
+  - Files: `components/domains/DecisionDebate.tsx` (270+ lines), `lib/domains/debate-enhancer.ts` (55 lines)
+
+**User Flow**:
+1. **Entry Point**: Header → "Decision Help" link
+2. **Domain Selection**: Choose decision type (Apartment/Trip/Budget/Product)
+3. **Intake Questions**: Answer 5-20 questions (depth-based)
+4. **Results Page**: 
+   - Quantitative score (MAUT/Pareto) with visual breakdown
+   - Itinerary (for trips)
+   - Multi-model AI debate (3 agents discussing the decision)
+   - Final synthesis with recommendations
+
+**Key Features**:
+- **API-Optional Design**: All frameworks work WITHOUT external APIs
+- **Rule-of-Thumb First**: Uses general rules, historical averages, user data
+- **Quantitative + Qualitative**: Combines scoring with AI analysis
+- **Real-Time Debate**: Streaming agent responses with visual feedback
+- **Context-Rich Prompts**: Agents receive full MAUT/Pareto scores + warnings
+
+**Example Enhanced Query** (Apartment):
+```
+User Query: Should I rent this apartment for $2800/month?
+
+QUANTITATIVE ANALYSIS (MAUT Framework):
+- Overall Score: 78/100 (RENT)
+- Financial: 85/100 (Affordability: 90/100, Market: 80/100, Hidden Costs: 85/100)
+- Location: 72/100 (Commute: 75/100, Safety: 80/100, Walkability: 60/100)
+- Property: 75/100 (Space: 80/100, Amenities: 70/100, Quality: 75/100)
+- Lifestyle: 65/100 (Vibe: 70/100, Pets: 60/100, WFH: 65/100)
+
+WARNINGS:
+- Commute time exceeds recommended maximum (45min+)
+
+Please analyze this apartment decision considering the MAUT scores above.
+```
+
+**Files Created** (Total: 13 files, 2500+ lines):
+- **Pages** (3): `app/decision/page.tsx`, `app/decision/results/page.tsx`
+- **Components** (7):
+  - `components/domains/DecisionDebate.tsx` - AI debate display
+  - `components/domains/apartment/ApartmentScorecard.tsx` - MAUT visualization
+  - `components/domains/trip/TripScorecard.tsx` - Pareto visualization
+  - `components/domains/trip/ItineraryView.tsx` - Day-by-day itinerary
+  - `components/intake/IntakeAgent.tsx` - Question flow
+- **Libraries** (8):
+  - `lib/intake/*.ts` - Domain classification, question bank, query reformulation
+  - `lib/domains/apartment/*.ts` - MAUT scoring, types
+  - `lib/domains/trip/*.ts` - Pareto optimization, itinerary generation, types
+  - `lib/domains/debate-enhancer.ts` - Query enhancement with scores
+
+**Integration Points**:
+- ✅ **Header Navigation**: Added "Decision Help" link
+- ✅ **Debate API**: Uses existing `/api/agents/debate-stream`
+- ✅ **Agent Personas**: Analyst, Critic, Synthesizer roles
+- ✅ **Model Registry**: All models from central registry
+- ✅ **TypeScript**: Full type safety across all domains
+
+**Testing**:
+- ✅ Apartment flow: Domain selection → Questions → MAUT score → AI debate
+- ✅ Trip flow: Domain selection → Questions → Pareto score + Itinerary → AI debate
+- ✅ Default values: Faster testing with pre-filled trip questions
+- ✅ TypeScript: 0 compilation errors
+
+**Future Enhancements** (Phase 6+):
+- Budget Planning domain (50/30/20 rule)
+- Product Comparison domain (Pugh Matrix)
+- Multi-option comparison (compare 3 apartments side-by-side)
+- Save/share decisions
+- Historical decision tracking
+
+**DO NOT**:
+- Remove decision help link from header
+- Disable auto-start debate on results page
+- Change preset agent models without testing
+- Remove rule-of-thumb fallbacks (API-optional design)
+- Delete default test values for trip questions
+
+**Last Modified**: November 18, 2025 (Phase 5 AI Debate Integration complete)
+**Branch**: `feature/domain-frameworks-phase2`
