@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Question } from '@/lib/intake/types'
 
 interface QuestionCardProps {
@@ -19,6 +19,13 @@ export function QuestionCard({
   showValidation = false
 }: QuestionCardProps) {
   const [error, setError] = useState<string>()
+
+  // Auto-fill placeholder value on mount if value is empty
+  useEffect(() => {
+    if (!value && question.placeholder && (question.type === 'text' || question.type === 'number')) {
+      onChange(question.placeholder)
+    }
+  }, []) // Only run on mount
 
   const handleChange = (newValue: any) => {
     onChange(newValue)
