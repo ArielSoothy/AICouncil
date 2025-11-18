@@ -9,8 +9,10 @@ import { Header } from '@/components/ui/header'
 import { DomainType, Answers, ResearchDepth } from '@/lib/intake/types'
 import { ApartmentScorecard } from '@/components/domains/apartment'
 import { TripScorecard, ItineraryView } from '@/components/domains/trip'
+import { DecisionDebate } from '@/components/domains/DecisionDebate'
 import { analyzeApartment } from '@/lib/domains/apartment'
 import { planTrip } from '@/lib/domains/trip'
+import { enhanceQueryWithScore } from '@/lib/domains/debate-enhancer'
 import type { ApartmentScore } from '@/lib/domains/apartment/types'
 import type { TripScore, ItineraryDay } from '@/lib/domains/trip/types'
 
@@ -131,20 +133,18 @@ function ResultsContent() {
                 <ApartmentScorecard score={apartmentScore} showBreakdown={true} />
               </section>
 
-              {/* TODO: AI Debate Section */}
+              {/* AI Debate Section */}
               <section>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                  Multi-Model AI Debate
+                  Multi-Model AI Analysis
                 </h2>
-                <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center">
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    AI debate integration coming next!
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500">
-                    This will show Analyst, Critic, and Synthesizer discussing your decision
-                    using the MAUT score as context.
-                  </p>
-                </div>
+                <DecisionDebate
+                  query={enhanceQueryWithScore(
+                    queryParam ? decodeURIComponent(queryParam) : `Help me make a ${domain} decision`,
+                    domain,
+                    apartmentScore
+                  )}
+                />
               </section>
             </div>
           )}
@@ -169,20 +169,18 @@ function ResultsContent() {
                 </section>
               )}
 
-              {/* TODO: AI Debate Section */}
+              {/* AI Debate Section */}
               <section>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                  Multi-Model AI Debate
+                  Multi-Model AI Analysis
                 </h2>
-                <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center">
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    AI debate integration coming next!
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500">
-                    This will show Analyst, Critic, and Synthesizer discussing your trip plan
-                    using the Pareto score as context.
-                  </p>
-                </div>
+                <DecisionDebate
+                  query={enhanceQueryWithScore(
+                    queryParam ? decodeURIComponent(queryParam) : `Help me make a ${domain} decision`,
+                    domain,
+                    tripScore
+                  )}
+                />
               </section>
             </div>
           )}
