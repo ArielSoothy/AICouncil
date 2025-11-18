@@ -236,9 +236,15 @@ export const APARTMENT_QUESTIONS: Question[] = [
 ]
 
 /**
- * HOTEL FINDER QUESTIONS (9 questions)
- * Framework: Weighted Decision Matrix (5-Criteria)
+ * HOTEL FINDER QUESTIONS (13 questions)
+ * Framework: Weighted Decision Matrix (5-Criteria) + Context-Aware Analysis
  * Criteria: Location (35%), Reviews (30%), Cleanliness (25%), Value (20%), Amenities (15%)
+ *
+ * Enhanced questions capture:
+ * - Travel party composition (babies, elderly, groups)
+ * - Special requirements (dietary, accessibility, medical)
+ * - Specific hotel shortlist (if user has candidates)
+ * - Open-ended context (first-timer tips, local knowledge, hidden concerns)
  */
 export const HOTEL_QUESTIONS: Question[] = [
   // Critical Questions (10 points) - Required for hotel analysis
@@ -291,6 +297,16 @@ export const HOTEL_QUESTIONS: Question[] = [
     required: true,
     helpText: 'Seasonal pricing: Peak season = 30-50% more expensive'
   },
+  {
+    id: 'hotel_party_composition',
+    domain: 'hotel',
+    text: 'Who is traveling with you? (Describe your group)',
+    type: 'text',
+    weight: 10,
+    required: true,
+    placeholder: 'e.g., 2 adults, 1 baby (14 months), 2 elderly (70s)',
+    helpText: 'Critical for room configuration, accessibility needs, and amenities (cribs, high chairs, wheelchair access)'
+  },
 
   // Important Questions (7 points) - Strongly influence decision
   {
@@ -311,6 +327,26 @@ export const HOTEL_QUESTIONS: Question[] = [
     weight: 7,
     required: false,
     helpText: '1 = Can be anywhere (save money), 10 = Must be downtown/central (convenience over cost)'
+  },
+  {
+    id: 'hotel_special_requirements',
+    domain: 'hotel',
+    text: 'Any special requirements or needs? (e.g., dietary, accessibility, medical)',
+    type: 'text',
+    weight: 7,
+    required: false,
+    placeholder: 'e.g., Kosher food nearby, wheelchair accessible, baby crib needed',
+    helpText: 'Include dietary restrictions (kosher, halal, vegan), mobility needs, or medical requirements'
+  },
+  {
+    id: 'hotel_specific_names',
+    domain: 'hotel',
+    text: 'Do you already have specific hotels in mind? (Optional - list names)',
+    type: 'text',
+    weight: 7,
+    required: false,
+    placeholder: 'e.g., Atlantis The Palm, Burj Al Arab, Address Downtown',
+    helpText: 'If you have a shortlist, AI will compare these specific options. Otherwise, it will recommend from all available hotels.'
   },
 
   // Moderate Questions (5 points) - Nice to have
@@ -333,6 +369,16 @@ export const HOTEL_QUESTIONS: Question[] = [
     required: false,
     options: ['City center only (0-1km)', 'Close to center (1-3km)', 'Moderate distance (3-5km)', 'Flexible/Anywhere (save money)'],
     helpText: 'Further hotels = 20-40% cheaper but require transportation'
+  },
+  {
+    id: 'hotel_additional_context',
+    domain: 'hotel',
+    text: 'Anything else we should know? (First-timer tips, local knowledge, hidden concerns)',
+    type: 'text',
+    weight: 5,
+    required: false,
+    placeholder: 'e.g., First time in Dubai, worried about heat in August, need easy mall access, traveling with elderly who tire easily',
+    helpText: 'Share context that helps us find hidden gems or avoid issues locals know about. Mention if you need insider tips, local transportation advice, or have concerns about the destination.'
   }
 ]
 
