@@ -1065,10 +1065,10 @@
   - Files: `lib/domains/apartment/*.ts` (4 files, 450+ lines)
 - ✅ **Hotel Finder with Weighted Decision Matrix** (Phase 4 - Refactored November 2025):
   - **Framework**: Replaced Pareto Optimization with research-backed Weighted Decision Matrix
-  - **5 Evaluation Criteria** (academic hospitality research):
+  - **5 Evaluation Criteria** (2024 academic hospitality research):
     * Location (35% weight): Attractions, transportation, safety, walkability
-    * Reviews (30% weight): Overall rating, sentiment analysis, trend detection, red flags
-    * Cleanliness (25% weight): 84% of guests rate as "very important" per Cornell research
+    * Reviews (30% weight): Overall rating, sentiment analysis, trend detection, red flags (96% of travelers consider reviews important)
+    * Cleanliness (25% weight): 84% of guests rate as "very important" per Cornell/Statista research
     * Value (20% weight): Price vs features, hidden fees detection, market comparison
     * Amenities (15% weight): Must-have matching, service quality assessment
   - **Red Flag Detection**: Bed bugs (disqualify), major cleanliness issues, excessive noise (>30%), fake reviews
@@ -1077,9 +1077,18 @@
     * Review Analysis Agent (GPT-4o) - Sentiment & red flag detection
     * Value Optimization Agent (Llama 3.3 70B) - Price optimization
     * Amenities & Experience Agent (Gemini 2.5 Flash) - Feature matching
+  - **Enhanced Questions** (13 total, up from 9):
+    * NEW: Travel party composition (babies, elderly, group size)
+    * NEW: Special requirements (dietary, accessibility, medical)
+    * NEW: Specific hotel shortlist (if user has candidates)
+    * NEW: Open-ended context (first-timer tips, local knowledge)
+  - **Research Depth Options**:
+    * Quick: 6 questions (critical only)
+    * Balanced: 10 questions (critical + important)
+    * Comprehensive: 13 questions (all questions)
   - **API-Optional Design**: Works without external APIs using rule-of-thumb scoring
-  - **9 Targeted Questions** (reduced from 20 trip questions)
-  - Files: `lib/domains/hotel/*.ts` (4 files, 900+ lines)
+  - **Phase 2 Vision**: See `docs/features/HOTEL_FINDER_PHASE2_VISION.md` for roadmap to integrate real hotel data, multi-source reviews (Reddit, YouTube, TripAdvisor), and specific hotel recommendations
+  - Files: `lib/domains/hotel/*.ts` (4 files, 900+ lines), `lib/intake/question-bank.ts` (enhanced)
 
 **Phase 5: AI Debate Integration** (November 18, 2025 - COMPLETE):
 - ✅ **Decision Debate Component**:
