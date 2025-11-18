@@ -236,207 +236,103 @@ export const APARTMENT_QUESTIONS: Question[] = [
 ]
 
 /**
- * TRIP PLANNER QUESTIONS (20 questions)
- * Framework: Pareto Optimization (Multi-Objective)
- * Objectives: Maximize experiences, minimize cost, optimize time, match preferences
+ * HOTEL FINDER QUESTIONS (9 questions)
+ * Framework: Weighted Decision Matrix (5-Criteria)
+ * Criteria: Location (35%), Reviews (30%), Cleanliness (25%), Value (20%), Amenities (15%)
  */
-export const TRIP_QUESTIONS: Question[] = [
-  // Critical Questions (10 points)
+export const HOTEL_QUESTIONS: Question[] = [
+  // Critical Questions (10 points) - Required for hotel analysis
   {
-    id: 'trip_budget',
-    domain: 'trip',
-    text: 'What is your total trip budget (all expenses)?',
-    type: 'number',
-    weight: 10,
-    required: true,
-    placeholder: '5000',
-    helpText: 'Breakdown: 40% flights, 30% hotels, 20% activities, 10% food'
-  },
-  {
-    id: 'trip_days',
-    domain: 'trip',
-    text: 'How many days do you have for this trip?',
-    type: 'number',
-    weight: 10,
-    required: true,
-    placeholder: '5',
-    helpText: 'Activities per day = total_days × 2-3'
-  },
-  {
-    id: 'trip_dates',
-    domain: 'trip',
-    text: 'What are your departure/return dates (or flexible date range)?',
-    type: 'date-range',
-    weight: 10,
-    required: true,
-    helpText: 'Price volatility, seasonal considerations'
-  },
-  {
-    id: 'trip_departure',
-    domain: 'trip',
-    text: 'Where are you departing from?',
-    type: 'text',
-    weight: 10,
-    required: true,
-    placeholder: 'Ben Gurion Airport, Tel Aviv',
-    helpText: 'Flight costs, travel time'
-  },
-  {
-    id: 'trip_destination',
-    domain: 'trip',
-    text: 'What destination(s) are you considering? (or open to suggestions)',
+    id: 'hotel_location',
+    domain: 'hotel',
+    text: 'What city/location are you looking for a hotel in?',
     type: 'text',
     weight: 10,
     required: true,
     placeholder: 'Dubai, UAE',
-    helpText: 'Primary decision or recommendation needed'
+    helpText: 'Location is 35% of decision score - most important factor'
+  },
+  {
+    id: 'hotel_budget',
+    domain: 'hotel',
+    text: 'What is your budget per night (USD)?',
+    type: 'number',
+    weight: 10,
+    required: true,
+    placeholder: '150',
+    helpText: 'Average hotel price varies: Budget ($50-100), Mid-range ($100-200), Luxury ($200+)'
+  },
+  {
+    id: 'hotel_nights',
+    domain: 'hotel',
+    text: 'How many nights will you be staying?',
+    type: 'number',
+    weight: 10,
+    required: true,
+    placeholder: '3',
+    helpText: 'Longer stays may qualify for discounts (7+ nights)'
+  },
+  {
+    id: 'hotel_purpose',
+    domain: 'hotel',
+    text: 'What is the purpose of your stay?',
+    type: 'enum',
+    weight: 10,
+    required: true,
+    options: ['Business', 'Leisure', 'Family Vacation', 'Romantic Getaway', 'Solo Travel'],
+    helpText: 'Purpose affects amenity priorities and location needs'
+  },
+  {
+    id: 'hotel_checkin',
+    domain: 'hotel',
+    text: 'What is your check-in date?',
+    type: 'date',
+    weight: 10,
+    required: true,
+    helpText: 'Seasonal pricing: Peak season = 30-50% more expensive'
   },
 
-  // Important Questions (7 points)
+  // Important Questions (7 points) - Strongly influence decision
   {
-    id: 'trip_travelers',
-    domain: 'trip',
-    text: 'How many travelers? (adults, children, infants)',
-    type: 'text',
-    weight: 7,
-    required: true,
-    placeholder: '2 adults, 1 child (age 8)',
-    helpText: 'Cost multiplier, accommodation needs'
-  },
-  {
-    id: 'trip_style',
-    domain: 'trip',
-    text: 'What is your travel style?',
-    type: 'enum',
-    weight: 7,
-    required: true,
-    options: ['Luxury', 'Mid-range', 'Budget', 'Backpacker'],
-    helpText: 'Hotel tier, restaurant choices, activity selection'
-  },
-  {
-    id: 'trip_interests',
-    domain: 'trip',
-    text: 'What interests you most? (Select all that apply)',
+    id: 'hotel_amenities',
+    domain: 'hotel',
+    text: 'What amenities are must-haves? (Select all that apply)',
     type: 'multi-select',
     weight: 7,
-    required: true,
-    options: ['Culture/Museums', 'Nature/Outdoors', 'Adventure/Sports', 'Relaxation/Beach', 'Food/Dining', 'Nightlife', 'Shopping']
+    required: false,
+    options: ['Free WiFi', 'Free Parking', 'Pool', 'Gym/Fitness Center', 'Breakfast Included', 'Air Conditioning', 'Pet Friendly', 'Airport Shuttle', '24-Hour Front Desk', 'Spa/Wellness'],
+    helpText: 'Amenity match is 15% of score - affects convenience and value'
   },
   {
-    id: 'trip_pace',
-    domain: 'trip',
-    text: 'Do you prefer a fast-paced or relaxed itinerary?',
+    id: 'hotel_location_priority',
+    domain: 'hotel',
+    text: 'How important is location proximity to attractions?',
     type: 'scale',
     weight: 7,
-    required: true,
-    helpText: '1 = Very relaxed (2-3 activities/day), 10 = Very fast-paced (5-7 activities/day)'
-  },
-  {
-    id: 'trip_must_see',
-    domain: 'trip',
-    text: 'Any must-see attractions or experiences?',
-    type: 'text',
-    weight: 7,
     required: false,
-    placeholder: 'Eiffel Tower, Louvre Museum',
-    helpText: 'Build itinerary around these'
+    helpText: '1 = Can be anywhere (save money), 10 = Must be downtown/central (convenience over cost)'
   },
 
-  // Moderate Questions (5 points)
+  // Moderate Questions (5 points) - Nice to have
   {
-    id: 'trip_accommodation',
-    domain: 'trip',
-    text: 'What is your preferred accommodation type?',
+    id: 'hotel_star_rating',
+    domain: 'hotel',
+    text: 'What is your minimum acceptable star rating?',
     type: 'enum',
     weight: 5,
-    required: true,
-    options: ['Hotel', 'Airbnb/Vacation Rental', 'Hostel', 'Resort']
+    required: false,
+    options: ['Any (Budget)', '2-Star', '3-Star', '4-Star', '5-Star (Luxury)'],
+    helpText: 'Star ratings indicate quality level and service standards'
   },
   {
-    id: 'trip_transportation',
-    domain: 'trip',
-    text: 'Do you need car rental or prefer public transit?',
+    id: 'hotel_distance_flexibility',
+    domain: 'hotel',
+    text: 'How far from city center are you willing to stay?',
     type: 'enum',
     weight: 5,
-    required: true,
-    options: ['Car rental', 'Public transit', 'Mix of both', 'Undecided']
-  },
-  {
-    id: 'trip_dietary',
-    domain: 'trip',
-    text: 'Any dietary restrictions or food preferences?',
-    type: 'multi-select',
-    weight: 5,
     required: false,
-    options: ['Vegetarian', 'Vegan', 'Gluten-free', 'Kosher', 'Halal', 'No restrictions']
-  },
-  {
-    id: 'trip_languages',
-    domain: 'trip',
-    text: 'What language(s) do you speak?',
-    type: 'text',
-    weight: 5,
-    required: false,
-    placeholder: 'English, Spanish',
-    helpText: 'Communication ease, guide needs'
-  },
-  {
-    id: 'trip_insurance',
-    domain: 'trip',
-    text: 'Do you need travel insurance?',
-    type: 'boolean',
-    weight: 5,
-    required: true,
-    helpText: 'Risk mitigation, trip cost protection (4-8% of total trip cost)'
-  },
-
-  // Nice-to-Have Questions (3 points)
-  {
-    id: 'trip_flight_class',
-    domain: 'trip',
-    text: 'Preferred flight class?',
-    type: 'enum',
-    weight: 3,
-    required: false,
-    options: ['Economy', 'Premium Economy', 'Business', 'First Class']
-  },
-  {
-    id: 'trip_seat_preference',
-    domain: 'trip',
-    text: 'Window or aisle seat preference?',
-    type: 'enum',
-    weight: 3,
-    required: false,
-    options: ['Window', 'Aisle', 'No preference']
-  },
-  {
-    id: 'trip_layovers',
-    domain: 'trip',
-    text: 'Do you want direct flights only or okay with layovers?',
-    type: 'enum',
-    weight: 3,
-    required: false,
-    options: ['Direct flights only', 'Okay with 1 layover', 'Okay with multiple layovers'],
-    helpText: 'Layovers save 20-40% typically'
-  },
-  {
-    id: 'trip_mobility',
-    domain: 'trip',
-    text: 'Any health concerns or mobility issues?',
-    type: 'text',
-    weight: 3,
-    required: false,
-    placeholder: 'Need elevator access',
-    helpText: 'Accessibility requirements'
-  },
-  {
-    id: 'trip_tours',
-    domain: 'trip',
-    text: 'Do you want travel guide recommendations or book tours?',
-    type: 'boolean',
-    weight: 3,
-    required: false,
-    helpText: 'Self-guided vs organized (tours = $50-150 per activity)'
+    options: ['City center only (0-1km)', 'Close to center (1-3km)', 'Moderate distance (3-5km)', 'Flexible/Anywhere (save money)'],
+    helpText: 'Further hotels = 20-40% cheaper but require transportation'
   }
 ]
 
@@ -819,8 +715,8 @@ export function getQuestionsByDomain(domain: DomainType): Question[] {
   switch (domain) {
     case 'apartment':
       return APARTMENT_QUESTIONS
-    case 'trip':
-      return TRIP_QUESTIONS
+    case 'hotel':
+      return HOTEL_QUESTIONS
     case 'budget':
       return BUDGET_QUESTIONS
     case 'product':
@@ -856,7 +752,7 @@ export function getQuestionCount(domain: DomainType): number {
 export function getQuestionById(questionId: string): Question | undefined {
   const allQuestions = [
     ...APARTMENT_QUESTIONS,
-    ...TRIP_QUESTIONS,
+    ...HOTEL_QUESTIONS,
     ...BUDGET_QUESTIONS,
     ...PRODUCT_QUESTIONS
   ]
@@ -864,12 +760,12 @@ export function getQuestionById(questionId: string): Question | undefined {
 }
 
 /**
- * Get all questions across all domains (77 total)
+ * Get all questions across all domains (66 total)
  */
 export function getAllQuestions(): Question[] {
   return [
     ...APARTMENT_QUESTIONS,
-    ...TRIP_QUESTIONS,
+    ...HOTEL_QUESTIONS,
     ...BUDGET_QUESTIONS,
     ...PRODUCT_QUESTIONS
   ]
@@ -880,8 +776,8 @@ export function getAllQuestions(): Question[] {
  */
 export const QUESTION_STATS = {
   apartment: APARTMENT_QUESTIONS.length, // 22
-  trip: TRIP_QUESTIONS.length,           // 20
+  hotel: HOTEL_QUESTIONS.length,         // 9
   budget: BUDGET_QUESTIONS.length,       // 18
   product: PRODUCT_QUESTIONS.length,     // 17
-  total: 77
+  total: 66 // 22 + 9 + 18 + 17
 }
