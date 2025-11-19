@@ -128,11 +128,14 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
 
   // ===== GOOGLE =====
   google: [
-    // Gemini 2.5 Series
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Gemini 2.5 Pro not yet released via API' },
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', tier: 'free', badge: '🎁', status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Gemini 2.5 Flash not yet released via API' },
+    // Gemini 3 Series (NEW - Nov 2025)
+    { id: 'gemini-3-pro-preview-11-2025', name: 'Gemini 3 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'untested', lastTested: '2025-11-19T00:00:00.000Z', notes: 'Released Nov 18-19, 2025. #1 on LMArena (1501 Elo). Paid tier: $2/M input, $12/M output tokens' },
+    { id: 'gemini-3-deep-think', name: 'Gemini 3 Deep Think', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'unreleased', lastTested: '2025-11-19T00:00:00.000Z', notes: 'Enhanced reasoning mode. Coming to Google AI Ultra subscribers after safety testing' },
+    // Gemini 2.5 Series (NEVER RELEASED - skipped)
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'unreleased', lastTested: '2025-11-19T00:00:00.000Z', notes: 'NEVER RELEASED - Google skipped from 2.0 to 3.0', isLegacy: true },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', tier: 'free', badge: '🎁', status: 'unreleased', lastTested: '2025-11-19T00:00:00.000Z', notes: 'NEVER RELEASED - Google skipped from 2.0 to 3.0', isLegacy: true },
     // Gemini 2.0 Series (Free)
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has token limit issues under heavy use' },
     { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'google', tier: 'free', badge: '🎁', status: 'service_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Service overloaded during test (503 error) - may work at other times' },
     // Gemini 1.5 Series (Free, deprecated)
     { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'google', tier: 'free', badge: '🎁', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Model ID may have changed or deprecated - returns empty response', isLegacy: true },

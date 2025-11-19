@@ -105,9 +105,74 @@ export async function POST(request: NextRequest) {
           console.log('Memory system currently disabled - focusing on research validation')
         }
         
+        // ==================== RESEARCH PHASE (NEW - Research-Driven Architecture) ====================
+        // Conduct centralized web research BEFORE debate rounds begin
+        // This gathers factual data that all agents will analyze (not invent their own facts)
+        let researchReport: any = null
+        let researchSection = ''
+
+        if (enableWebSearch) {
+          try {
+            console.log('\n🔬 RESEARCH PHASE: Gathering factual data before debate...')
+
+            const { conductGeneralResearch } = await import('@/lib/agents/general-research-agents')
+
+            // Send research started event
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'research_started',
+              query: query,
+              timestamp: Date.now()
+            })}\n\n`))
+
+            // Conduct research with progress callbacks
+            researchReport = await conductGeneralResearch(query, (event) => {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'research_progress',
+                ...event
+              })}\n\n`))
+            })
+
+            console.log(`✅ Research complete: ${researchReport.totalSources} sources, ${researchReport.evidenceQuality} quality`)
+
+            // Send research complete event with results
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'research_complete',
+              sourcesFound: researchReport.totalSources,
+              evidenceQuality: researchReport.evidenceQuality,
+              confidence: researchReport.confidence,
+              duration: researchReport.researchDuration,
+              timestamp: Date.now()
+            })}\n\n`))
+
+            // Format research findings for injection into agent prompts
+            researchSection = `
+
+--- RESEARCH FINDINGS ---
+
+${researchReport.factualFindings}
+
+--- END RESEARCH FINDINGS ---
+
+CRITICAL INSTRUCTIONS FOR THIS DEBATE:
+- Base your analysis ONLY on the research findings provided above
+- DO NOT invent facts, studies, or statistics
+- Cite specific sources from the research when making claims
+- If the research doesn't cover something, state "insufficient research data on [topic]"
+- Your role is to ANALYZE the research, not create new research
+
+`
+
+          } catch (researchError) {
+            console.error('❌ Research phase error:', researchError)
+            researchSection = ''
+            // Continue without research rather than failing entire debate
+          }
+        }
+        // ==================== END RESEARCH PHASE ====================
+
         // Track all responses across rounds
         const allRoundResponses: any[] = []
-        
+
         // Process each round
         for (let roundNum = 1; roundNum <= rounds; roundNum++) {
           console.log(`Starting round ${roundNum} of ${rounds} with ${agents.length} agents`)
@@ -157,7 +222,11 @@ export async function POST(request: NextRequest) {
               })}\n\n`))
               
               // Progressive Role-Based Web Search
-              let enhancedQuery = query
+              // INJECT RESEARCH FINDINGS (if research phase was run)
+              let enhancedQuery = researchSection ? query + researchSection : query
+              if (researchSection) {
+                console.log(`📊 RESEARCH: Injected ${researchReport.totalSources} sources into ${agentConfig.persona?.name || agentConfig.model} prompt`)
+              }
               let webSearchResults = null
               let roleBasedSearchResult: RoleBasedSearchResult | null = null
               
@@ -180,7 +249,8 @@ export async function POST(request: NextRequest) {
                 console.log(`🧠 MEMORY: Enhanced query with ${relevantMemories.length} past experiences`)
               }
               
-              if (enableWebSearch) {
+              // Skip per-agent search if centralized research was already done
+              if (enableWebSearch && !researchSection) {
                 try {
                   // Send progressive web search started event
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
