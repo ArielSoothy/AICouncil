@@ -301,43 +301,19 @@ Steps with toolCalls: 7
 
 **Testing Status**: ⚠️ CRITICAL ISSUE DISCOVERED & FIXED (needs testing)
 
-#### 🔴 THE REAL PROBLEM - Models Calling Tools But Not Using Data (October 26, 2025)
+#### ✅ THE REAL PROBLEM - FIXED! Models Now Citing Tool Data (November 19, 2025)
 
-**Critical Discovery by User:**
-> "but i got this message 'Without recent trend data and technical indicators, there is uncertainty in price movements and potential for unexpected volatility, especially without earnings information.' so how do you say its working?"
-
-**What We Thought Was Happening:**
-- ✅ Tools are integrated correctly
-- ✅ Models can call tools (48+ API calls logged)
-- ✅ Tools return data successfully
-- ❌ **WRONG ASSUMPTION**: We thought this meant tool use was "working"
-
-**What Is ACTUALLY Happening:**
-- ✅ Models ARE calling all 8 tools (get_stock_quote, calculate_rsi, calculate_macd, etc.)
-- ✅ Tools ARE returning real-time data (current price, RSI values, MACD values, news headlines)
-- ❌ **THE PROBLEM**: Models then write responses that COMPLETELY IGNORE the data they just received
-- ❌ Models say "Without recent trend data..." even though they just called get_price_bars()
-- ❌ Models say "uncertainty in price movements" even though they just called calculate_rsi() and got RSI=58
-
-**Root Cause Analysis:**
-- This is NOT a tool integration problem (tools work perfectly)
-- This is NOT an API problem (data flows correctly)
-- **This IS a prompt engineering problem**
-- The prompt tells models to "use tools to research" but doesn't REQUIRE them to cite the data
-- Models call tools to "look helpful" then revert to generic training-data-based responses
+**Original Problem (October 26, 2025):**
+- Models called tools (get_stock_quote, calculate_rsi, etc.) but ignored the data
+- Would say "Without recent trend data..." despite having called get_price_bars()
+- Root cause: Prompt didn't REQUIRE citing tool results
 
 **Fix Applied (October 26, 2025):**
 **File:** `lib/alpaca/enhanced-prompts.ts`
 
-Added explicit validation checklist to force models to include actual data from tool results:
+Added explicit validation checklist to force models to cite actual data:
 
 ```typescript
-📋 RESEARCH GUIDELINES:
-- ⚠️ CRITICAL: ALWAYS use tools to research stocks BEFORE making trading decisions
-- ⚠️ MANDATORY: You MUST include actual data from tool results in your response
-- Do NOT rely on training data - get REAL-TIME market information
-- Do NOT say "Without recent trend data" - YOU HAVE THE TOOLS TO GET IT!
-
 ⚠️ VALIDATION CHECK BEFORE RESPONDING:
 - Did you call get_stock_quote()? Include the ACTUAL current price in entryPrice
 - Did you call calculate_rsi()? Include the ACTUAL RSI value in technicalAnalysis
@@ -347,14 +323,36 @@ Added explicit validation checklist to force models to include actual data from 
 - If you haven't called these tools, DO IT NOW before responding!
 ```
 
-**Expected Behavior After Fix:**
-- ❌ OLD: "Without recent trend data, there is uncertainty in price movements..."
-- ✅ NEW: "Current TSLA price is $433.40 (from get_stock_quote), RSI is 58 (neutral, from calculate_rsi), MACD shows bullish crossover (12.5 above signal line), recent news includes 'Record Q4 deliveries' (from get_stock_news)..."
+**✅ VALIDATION RESULTS (November 19, 2025):**
 
-**Testing Status:** ⏳ FIX APPLIED BUT NOT TESTED
-**Next Step:** User needs to run a trading analysis to verify models now cite actual tool data
+**Test Configuration:**
+- Models: Claude 3.5 Haiku + Llama 3.3 70B
+- Symbol: TSLA
+- Timeframe: Swing Trading
+- Research Pipeline: 9 tools used in 7.7s (Technical Analyst)
 
-**Git Status:** Changes staged but not committed (waiting for test validation)
+**Evidence of Success:**
+Llama 3.3 70B now cites SPECIFIC tool results:
+- **"The 14-period RSI is at 64.21"** ← ACTUAL RSI from calculate_rsi()
+- **"MACD line is above the signal line"** ← ACTUAL MACD from calculate_macd()
+- **"Trading above its 50-day moving average"** ← ACTUAL price from get_price_bars()
+- **"Bullish MACD crossover"** ← Technical indicator from real data
+- **"Broken out of resistance level"** ← From get_support_resistance()
+
+**Before Fix:**
+```
+"Without recent trend data and technical indicators, there is uncertainty..."
+```
+
+**After Fix:**
+```
+"The 14-period RSI is at 64.21, indicating a slightly overbought condition,
+but the MACD line is above the signal line, suggesting a bullish trend.
+The stock is also trading above its 50-day moving average..."
+```
+
+**Status:** ✅ FULLY VALIDATED - Models conducting real-time research AND using data in decisions
+**Git Status:** Already committed in previous session (part of research caching system)
 
 ---
 
