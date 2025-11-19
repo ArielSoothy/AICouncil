@@ -9,6 +9,7 @@ import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config
 import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { TradingHistoryDropdown } from './trading-history-dropdown'
+import { ResearchActivityPanel } from './research-activity-panel' // Phase 4: Research transparency
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { ModelConfig } from '@/types/consensus'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
@@ -63,6 +64,7 @@ export function ConsensusMode() {
   const [consensus, setConsensus] = useState<ConsensusResult | null>(null)
   const [decisions, setDecisions] = useState<TradingDecision[]>([])
   const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
+  const [researchData, setResearchData] = useState<any | null>(null) // Phase 4: Research pipeline data
 
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -202,6 +204,7 @@ export function ConsensusMode() {
 
       setConsensus(data.consensus)
       setDecisions(data.decisions || [])
+      setResearchData(data.research || null) // Phase 4: Capture research pipeline data
 
       // Save conversation for history and persistence (non-blocking, silent fail)
       // Fire-and-forget: 401 errors are expected for non-authenticated users
@@ -333,6 +336,9 @@ export function ConsensusMode() {
           modelName="Trading System"
         />
       )}
+
+      {/* Phase 4: Research Activity Panel - Show exhaustive research transparency */}
+      <ResearchActivityPanel research={researchData} isLoading={loading && !consensus} />
 
       {/* Consensus Results */}
       {consensus && (
