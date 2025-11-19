@@ -7,6 +7,12 @@ import { QuestionSequencer } from '@/lib/intake/question-sequencer'
 import { QuestionCard } from './QuestionCard'
 import { ProgressIndicator } from './ProgressIndicator'
 import { DepthSelector } from './DepthSelector'
+import {
+  extractContext,
+  isQuestionAnsweredByContext,
+  getPrefilledAnswers,
+  type ExtractedContext,
+} from '@/lib/intake/context-extractor'
 
 interface IntakeAgentProps {
   userQuery: string
@@ -14,7 +20,7 @@ interface IntakeAgentProps {
   onCancel?: () => void
 }
 
-type IntakeStep = 'classify' | 'depth' | 'questions' | 'review'
+type IntakeStep = 'classify' | 'depth' | 'extracting' | 'questions' | 'review'
 
 export function IntakeAgent({ userQuery, onComplete, onCancel }: IntakeAgentProps) {
   const [step, setStep] = useState<IntakeStep>('classify')
@@ -25,6 +31,8 @@ export function IntakeAgent({ userQuery, onComplete, onCancel }: IntakeAgentProp
   const [sequencer, setSequencer] = useState<QuestionSequencer | null>(null)
   const [orderedQuestions, setOrderedQuestions] = useState<Question[]>([])
   const [showValidation, setShowValidation] = useState(false)
+  const [extractedContext, setExtractedContext] = useState<ExtractedContext | null>(null)
+  const [isExtracting, setIsExtracting] = useState(false)
 
   // Step 1: Classify domain on mount
   useEffect(() => {
@@ -42,14 +50,59 @@ export function IntakeAgent({ userQuery, onComplete, onCancel }: IntakeAgentProp
     }
   }, [userQuery])
 
-  // Step 2: Initialize sequencer when domain/depth changes
+  // Step 2: Extract context from user query (Phase 2)
+  useEffect(() => {
+    if (userQuery && userQuery.length > 50 && step === 'depth' && !extractedContext) {
+      // Only extract if message is detailed enough (>50 chars)
+      setIsExtracting(true)
+
+      extractContext(userQuery)
+        .then((context) => {
+          setExtractedContext(context)
+          console.log('✅ Context extracted:', context)
+
+          // Pre-fill answers from extracted context
+          const prefilledAnswers = getPrefilledAnswers(context)
+          if (Object.keys(prefilledAnswers).length > 0) {
+            setAnswers(prefilledAnswers)
+            console.log(`📝 Pre-filled ${Object.keys(prefilledAnswers).length} answers from context`)
+          }
+        })
+        .catch((error) => {
+          console.error('Context extraction failed:', error)
+        })
+        .finally(() => {
+          setIsExtracting(false)
+        })
+    }
+  }, [userQuery, step, extractedContext])
+
+  // Step 3: Initialize sequencer when domain/depth changes
   useEffect(() => {
     if (domain !== 'generic') {
       const newSequencer = new QuestionSequencer(domain, depth)
       setSequencer(newSequencer)
-      setOrderedQuestions(newSequencer.getOrderedQuestions())
+
+      // Get all questions
+      let questions = newSequencer.getOrderedQuestions()
+
+      // Phase 2: Filter out questions already answered by context
+      if (extractedContext) {
+        const originalCount = questions.length
+        questions = questions.filter(
+          (q) => !isQuestionAnsweredByContext(q.id, extractedContext)
+        )
+        const skippedCount = originalCount - questions.length
+        if (skippedCount > 0) {
+          console.log(
+            `⚡ Skipped ${skippedCount} questions already answered in your message (${originalCount} → ${questions.length})`
+          )
+        }
+      }
+
+      setOrderedQuestions(questions)
     }
-  }, [domain, depth])
+  }, [domain, depth, extractedContext])
 
   const handleDomainSelect = (selectedDomain: DomainType) => {
     setDomain(selectedDomain)
@@ -145,6 +198,51 @@ export function IntakeAgent({ userQuery, onComplete, onCancel }: IntakeAgentProp
       {/* Step 2: Depth Selection */}
       {step === 'depth' && (
         <div>
+          {/* Context Extraction Status (Phase 2) */}
+          {isExtracting && (
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                <div>
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Analyzing your message...
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Extracting context to skip questions you've already answered
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Context Extraction Complete (Phase 2) */}
+          {extractedContext && Object.keys(answers).length > 0 && (
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <div className="flex items-start gap-3">
+                <svg
+                  className="w-5 h-5 text-green-500 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                    ⚡ Smart context extraction complete!
+                  </p>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                    Pre-filled {Object.keys(answers).length} answers from your message. You'll
+                    only be asked about what we couldn't extract.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <DepthSelector
             domain={domain}
             selectedDepth={depth}
@@ -159,9 +257,10 @@ export function IntakeAgent({ userQuery, onComplete, onCancel }: IntakeAgentProp
             </button>
             <button
               onClick={() => setStep('questions')}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+              disabled={isExtracting}
+              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Start Questions →
+              {isExtracting ? 'Analyzing...' : 'Start Questions →'}
             </button>
           </div>
         </div>
