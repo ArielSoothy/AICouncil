@@ -82,6 +82,9 @@ const MODELS_WITH_INTERNET = new Set([
 export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
   // ===== OPENAI =====
   openai: [
+    // GPT-5.1 Series (NEW - Nov 2025)
+    { id: 'gpt-5.1', name: 'GPT-5.1', provider: 'openai', tier: 'flagship', badge: '🌟', status: 'untested', lastTested: '2025-11-19T00:00:00.000Z', notes: 'Latest GPT-5 series release. Improved reasoning and performance over GPT-5' },
+    { id: 'gpt-5.1-mini', name: 'GPT-5.1 Mini', provider: 'openai', tier: 'balanced', badge: '⚡', status: 'untested', lastTested: '2025-11-19T00:00:00.000Z', notes: 'Smaller, faster version of GPT-5.1' },
     // GPT-5 Series (2025 Flagship)
     { id: 'gpt-5-chat-latest', name: 'GPT-5 Chat (Latest)', provider: 'openai', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     { id: 'gpt-5', name: 'GPT-5', provider: 'openai', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
