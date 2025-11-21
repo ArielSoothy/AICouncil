@@ -1,7 +1,7 @@
 # 📚 DOCUMENTATION MAP - AI Council Project
 
 **Complete reference of all documentation files and their organized structure**
-**Last Updated**: October 30, 2025
+**Last Updated**: November 21, 2025
 
 ---
 
@@ -40,7 +40,9 @@ These files MUST be read at the start of every development session:
 │   │   ├── PROJECT_OVERVIEW.md         # Complete system architecture
 │   │   ├── PROJECT_STRUCTURE.md        # Codebase structure & navigation
 │   │   ├── SUPABASE_SETUP.md           # Database setup & schemas
-│   │   └── AI_MODELS_SETUP.md          # AI provider configuration
+│   │   ├── AI_MODELS_SETUP.md          # AI provider configuration
+│   │   ├── UNIFIED_DEBATE_ENGINE.md    # Core debate architecture (MADR-inspired) (NEW)
+│   │   └── RESEARCH_DRIVEN_DEBATE.md   # Research-first debate implementation
 │   │
 │   ├── features/                       # Feature-specific documentation
 │   │   ├── GLOBAL_TIER_SELECTOR.md     # App-wide Free/Pro/Max tier system (NEW)
@@ -141,7 +143,9 @@ System design, tech stack, and configuration:
 | **PROJECT_OVERVIEW.md** | Complete system architecture, tech stack, feature map | For context, when planning changes |
 | **PROJECT_STRUCTURE.md** | Complete codebase structure, directory tree, navigation guide | When navigating codebase or adding new files |
 | **SUPABASE_SETUP.md** | Database setup, schemas, RLS policies | Database changes, auth work |
-| **AI_MODELS_SETUP.md** | AI provider configuration (8 providers, 43 models) | AI integration changes |
+| **AI_MODELS_SETUP.md** | AI provider configuration (8 providers, 46+ models) | AI integration changes |
+| **UNIFIED_DEBATE_ENGINE.md** | 🎯 Core debate architecture (MADR-inspired), research modes | Debate engine work |
+| **RESEARCH_DRIVEN_DEBATE.md** | Research-first debate implementation details | Debate debugging |
 
 **Path**: `/docs/architecture/`
 
