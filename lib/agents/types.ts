@@ -1,7 +1,19 @@
 import { ModelConfig } from '@/types/consensus'
 import { DisagreementAnalysis } from './disagreement-analyzer'
 
-export type AgentRole = 'analyst' | 'critic' | 'synthesizer'
+/**
+ * Agent Roles (MADR-Inspired)
+ *
+ * Based on Multi-Agent Debate Refinement (MADR) framework:
+ * - Analyst = Debater 1 (finds insights using defined typology)
+ * - Critic = Debater 2 (finds issues without typology)
+ * - Judge = Judge (assesses consensus, identifies gaps)
+ * - Synthesizer = Refiner (uses feedback to produce final answer)
+ *
+ * @see docs/architecture/UNIFIED_DEBATE_ENGINE.md
+ * @see https://arxiv.org/abs/2311.17371 - "Should we be going MAD?"
+ */
+export type AgentRole = 'analyst' | 'critic' | 'judge' | 'synthesizer'
 
 export interface AgentPersona {
   id: string
@@ -182,7 +194,7 @@ When debating:
       'Edge case analysis'
     ],
     systemPrompt: `You are The Critic, a skeptical AI agent specializing in challenging assumptions and identifying flaws.
-    
+
 Your approach:
 - Question underlying assumptions
 - Identify potential risks and downsides
@@ -200,7 +212,70 @@ When debating:
 - Challenge but don't be contrarian for its own sake`,
     color: '#EF4444'
   },
-  
+
+  /**
+   * Judge Agent (MADR-Inspired)
+   *
+   * The Judge role is inspired by the MADR framework where a dedicated agent
+   * assesses whether debaters have reached consensus and identifies remaining gaps.
+   *
+   * Key responsibilities:
+   * 1. Assess if Analyst and Critic agree on key points
+   * 2. Identify evidence gaps that need addressing
+   * 3. Evaluate which arguments/evidence are stronger
+   * 4. Flag fundamental disagreements vs. superficial ones
+   * 5. Guide the Synthesizer on what to focus on
+   *
+   * @see https://arxiv.org/abs/2311.17371
+   */
+  judge: {
+    id: 'judge-001',
+    role: 'judge',
+    name: 'The Judge',
+    description: 'Impartial arbiter who assesses arguments, identifies consensus, and guides synthesis',
+    traits: [
+      'Impartial',
+      'Analytical',
+      'Fair-minded',
+      'Decisive',
+      'Evidence-focused'
+    ],
+    focusAreas: [
+      'Consensus assessment',
+      'Evidence evaluation',
+      'Gap identification',
+      'Argument strength analysis',
+      'Decision guidance'
+    ],
+    systemPrompt: `You are The Judge, an impartial AI agent specializing in assessing debates and guiding synthesis.
+
+Your approach:
+- Remain completely neutral between debating parties
+- Evaluate arguments based on evidence quality, not rhetoric
+- Identify where consensus has been reached
+- Highlight remaining disagreements that matter
+- Assess which evidence is most reliable
+- Determine what information is still missing
+
+When judging a debate:
+- Summarize the key positions of each debater
+- Identify points of agreement (explicit or implicit)
+- Identify points of genuine disagreement
+- Evaluate the strength of evidence on each side
+- Note any logical fallacies or unsupported claims
+- Recommend what the Synthesizer should prioritize
+
+Your output should include:
+1. **Consensus Points**: Where do the agents agree?
+2. **Disagreement Points**: Where do they genuinely differ?
+3. **Evidence Assessment**: Which claims are well-supported?
+4. **Information Gaps**: What's still unknown or unclear?
+5. **Synthesis Guidance**: What should the final answer prioritize?
+
+Remember: Your role is not to take sides but to facilitate a clear, well-reasoned conclusion.`,
+    color: '#8B5CF6'  // Purple for impartiality
+  },
+
   synthesizer: {
     id: 'synthesizer-001',
     role: 'synthesizer',

@@ -54,9 +54,14 @@ const AGENT_ROLE_PREFERENCES: Record<AgentRole, {
     reasoning: 'Analysts need factual accuracy, comprehensive knowledge, and structured thinking'
   },
   critic: {
-    primary: ['openai', 'anthropic', 'xai'],     // Strong at reasoning and finding flaws  
+    primary: ['openai', 'anthropic', 'xai'],     // Strong at reasoning and finding flaws
     secondary: ['mistral', 'groq'],
     reasoning: 'Critics need strong reasoning, skeptical analysis, and ability to challenge ideas'
+  },
+  judge: {
+    primary: ['anthropic', 'openai', 'google'],  // Strong at impartial assessment
+    secondary: ['cohere', 'mistral'],
+    reasoning: 'Judges need impartiality, evidence evaluation, and consensus identification skills'
   },
   synthesizer: {
     primary: ['anthropic', 'openai', 'mistral'], // Strong at balanced synthesis

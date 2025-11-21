@@ -1,8 +1,8 @@
 'use client'
 
-import { Brain, Shield, Users, Target, LucideIcon } from 'lucide-react'
+import { Brain, Shield, Users, Target, Scale, LucideIcon } from 'lucide-react'
 
-type AgentRole = 'analyst' | 'critic' | 'synthesizer'
+type AgentRole = 'analyst' | 'critic' | 'judge' | 'synthesizer'
 
 interface AgentAvatarProps {
   role: AgentRole
@@ -15,12 +15,14 @@ interface AgentAvatarProps {
 const agentIcons: Record<AgentRole, LucideIcon> = {
   analyst: Brain,
   critic: Shield,
+  judge: Scale,
   synthesizer: Users
 }
 
 const agentColors: Record<AgentRole, string> = {
   analyst: '#3B82F6', // blue
   critic: '#EF4444',  // red
+  judge: '#8B5CF6',   // purple
   synthesizer: '#10B981' // green
 }
 
