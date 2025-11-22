@@ -140,9 +140,9 @@ export async function POST(request: NextRequest) {
           const roundResponses: any[] = []
           
           // Process each agent/model sequentially so they can debate with each other
-          // Order agents for proper debate flow: Analyst → Critic → Synthesizer
+          // Order agents for proper debate flow: Analyst → Critic → Judge → Synthesizer
           const orderedAgents = [...agents].sort((a, b) => {
-            const order = ['analyst', 'critic', 'synthesizer']
+            const order = ['analyst', 'critic', 'judge', 'synthesizer']
             const aIndex = order.indexOf(a.persona?.role || 'analyst')
             const bIndex = order.indexOf(b.persona?.role || 'analyst')
             return aIndex - bIndex
