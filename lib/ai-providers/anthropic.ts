@@ -42,10 +42,19 @@ export class AnthropicProvider implements AIProvider {
       }
 
       // Add Claude web search if requested
-      // Note: Claude's web search tool may require specific API access
+      // Requires @ai-sdk/anthropic v2.x+
       if (config.useWebSearch) {
-        console.log('Anthropic: Web search requested (model will research when prompted)');
-        // TODO: Implement anthropic.tools.webSearch when available in SDK
+        try {
+          const anthropicAny = anthropic as any;
+          if (anthropicAny.tools?.webSearch_20250305) {
+            tools.web_search = anthropicAny.tools.webSearch_20250305({ maxUses: 5 });
+            console.log('Anthropic: Native web search enabled');
+          } else {
+            console.log('Anthropic: Web search requested but SDK does not support anthropic.tools.webSearch_20250305');
+          }
+        } catch (e) {
+          console.log('Anthropic: Could not enable native search:', e);
+        }
       }
 
       const hasTools = Object.keys(tools).length > 0;

@@ -36,11 +36,19 @@ export class GoogleProvider implements AIProvider {
       }
 
       // Add Google Search grounding if web search is requested
-      // Note: Google Search grounding requires special handling - for now skip native search
-      // The model will use its built-in knowledge + can be prompted to indicate when info might be outdated
+      // Requires @ai-sdk/google v2.x+
       if (config.useWebSearch) {
-        console.log('Google AI: Web search requested (model will use grounded responses when available)');
-        // TODO: Implement google.tools.googleSearch when SDK supports it
+        try {
+          const googleAny = google as any;
+          if (googleAny.tools?.googleSearch) {
+            tools.google_search = googleAny.tools.googleSearch({});
+            console.log('Google AI: Native Google Search grounding enabled');
+          } else {
+            console.log('Google AI: Web search requested but SDK does not support google.tools.googleSearch');
+          }
+        } catch (e) {
+          console.log('Google AI: Could not enable native search:', e);
+        }
       }
 
       const hasTools = Object.keys(tools).length > 0;

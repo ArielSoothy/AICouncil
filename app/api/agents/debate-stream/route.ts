@@ -199,9 +199,10 @@ export async function POST(request: NextRequest) {
               }
               
               // Per-agent web search - each agent does their own research
-              // Providers with native search: OpenAI, xAI (use model's built-in search)
-              // Providers needing DuckDuckGo fallback: Groq, Google, Anthropic, Mistral, Perplexity, Cohere
-              const providersWithNativeSearch = ['openai', 'xai']
+              // Providers with native search: OpenAI, xAI, Google, Anthropic (use model's built-in search)
+              // Providers needing DuckDuckGo fallback: Groq, Mistral, Cohere
+              // Note: Google/Anthropic require SDK v2.x+ - will fallback gracefully if not available
+              const providersWithNativeSearch = ['openai', 'xai', 'google', 'anthropic']
               const useNativeSearch = providersWithNativeSearch.includes(agentConfig.provider)
 
               if (enableWebSearch) {
