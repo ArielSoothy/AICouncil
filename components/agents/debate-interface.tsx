@@ -58,7 +58,7 @@ const AGENT_PRESETS = {
     roles: {
       'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },        // Cheapest OpenAI (budget tier)
       'critic-001': { provider: 'anthropic', model: 'claude-3-haiku-20240307' },  // Cheapest Anthropic (budget tier)
-      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }    // Cheapest xAI (working)
+      'synthesizer-001': { provider: 'google', model: 'gemini-3-pro-preview-11-2025' }  // Google paid model
     }
   },
   max: {

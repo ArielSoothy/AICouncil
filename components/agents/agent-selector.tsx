@@ -52,6 +52,7 @@ const modelDisplayNames: Record<string, string> = {
   'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku',
   'claude-3-haiku-20240307': 'Claude 3 Haiku',
   'claude-3-opus-20240229': 'Claude 3 Opus',
+  'gemini-3-pro-preview-11-2025': 'Gemini 3 Pro',
   'gemini-2.5-pro': 'Gemini 2.5 Pro',
   'gemini-2.5-flash': 'Gemini 2.5 Flash',
   'gemini-2.0-flash': 'Gemini 2.0 Flash',
@@ -107,7 +108,7 @@ const AGENT_PRESETS = {
     roles: {
       'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI
       'critic-001': { provider: 'anthropic', model: 'claude-3-haiku-20240307' }, // Cheapest Anthropic
-      'judge-001': { provider: 'mistral', model: 'mistral-small-latest' },     // Cheapest Mistral
+      'judge-001': { provider: 'google', model: 'gemini-3-pro-preview-11-2025' }, // Google flagship (paid)
       'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI
     }
   },
