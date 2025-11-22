@@ -126,7 +126,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [showRound2Prompt, setShowRound2Prompt] = useState(false)
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   
-  // Web search tracking (per-agent)
+  // Web search tracking (per-agent) - single status for current search
   const [webSearchStatus, setWebSearchStatus] = useState<{
     isSearching: boolean;
     searchQuery?: string;
@@ -137,6 +137,19 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     agent?: string;  // Which agent is searching
     role?: string;   // Agent role (analyst, critic, etc.)
   }>({ isSearching: false })
+
+  // Accumulated agent search history - shows ALL agent searches
+  const [agentSearchHistory, setAgentSearchHistory] = useState<Array<{
+    agent: string;
+    role: string;
+    status: 'searching' | 'completed' | 'error';
+    searchQuery?: string;
+    provider?: string;
+    resultsCount?: number;
+    sources?: string[];
+    error?: string;
+    timestamp: number;
+  }>>([])
   
   // Memory system tracking
   const [memoryStatus, setMemoryStatus] = useState<{
@@ -632,9 +645,23 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     isSearching: true,
                     searchQuery: data.query,
                     provider: data.provider,
-                    agent: data.agent, // Track which agent is searching
+                    agent: data.agent,
                     role: data.role
                   })
+                  // Add to agent search history
+                  if (data.agent && data.role) {
+                    setAgentSearchHistory(prev => [
+                      ...prev.filter(s => s.role !== data.role), // Remove any existing entry for this role
+                      {
+                        agent: data.agent,
+                        role: data.role,
+                        status: 'searching',
+                        searchQuery: data.query,
+                        provider: data.provider,
+                        timestamp: Date.now()
+                      }
+                    ])
+                  }
                   // Show which agent is researching
                   const agentSearchingName = data.agent || 'Agent'
                   setCurrentPhase(`🔍 ${agentSearchingName} searching web...`)
@@ -657,6 +684,14 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     agent: data.agent,
                     role: data.role
                   })
+                  // Update agent search history - mark as completed
+                  if (data.agent && data.role) {
+                    setAgentSearchHistory(prev => prev.map(s =>
+                      s.role === data.role
+                        ? { ...s, status: 'completed' as const, resultsCount: data.resultsCount, sources: data.sources }
+                        : s
+                    ))
+                  }
                   // Show which agent completed research
                   const agentCompletedName = data.agent || 'Agent'
                   setCurrentPhase(`✅ ${agentCompletedName} found ${data.resultsCount || 0} sources`)
@@ -675,6 +710,14 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     provider: data.provider,
                     error: data.reason
                   })
+                  // Update agent search history - mark as error
+                  if (data.agent && data.role) {
+                    setAgentSearchHistory(prev => prev.map(s =>
+                      s.role === data.role
+                        ? { ...s, status: 'error' as const, error: data.reason }
+                        : s
+                    ))
+                  }
                   setCurrentPhase('Web search failed. Continuing with analysis...')
                   break
                   
@@ -1232,6 +1275,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     setActiveTab('setup')
     setError(null)
     setWebSearchStatus({ isSearching: false })
+    setAgentSearchHistory([]) // Reset agent search history
     setMemoryStatus({ isSearching: false, isStoring: false })
   }
 
@@ -1850,53 +1894,65 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   </div>
                 )}
 
-                {/* Web Search Status */}
-                {enableWebSearch && (webSearchStatus.isSearching || webSearchStatus.resultsCount !== undefined || webSearchStatus.error) && (
-                  <div className={`mb-4 p-4 rounded-lg border ${
-                    webSearchStatus.error ? 'bg-red-500/10 border-red-500/30' : 
-                    webSearchStatus.isSearching ? 'bg-blue-500/10 border-blue-500/30' :
-                    'bg-green-500/10 border-green-500/30'
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <Globe className={`h-5 w-5 ${
-                        webSearchStatus.error ? 'text-red-400' :
-                        webSearchStatus.isSearching ? 'text-blue-400 animate-pulse' :
-                        'text-green-400'
-                      }`} />
-                      <div className="flex-1">
-                        <h4 className="text-sm font-semibold mb-1">
-                          {webSearchStatus.isSearching ? '🔍 Searching Web...' :
-                           webSearchStatus.error ? '⚠️ Web Search Failed' :
-                           '✅ Web Search Complete'}
-                        </h4>
-                        {webSearchStatus.searchQuery && (
-                          <p className="text-xs text-muted-foreground">
-                            Query: &ldquo;{webSearchStatus.searchQuery}&rdquo;
-                          </p>
-                        )}
-                        {webSearchStatus.resultsCount !== undefined && (
-                          <p className="text-xs text-green-400 mt-1">
-                            Found {webSearchStatus.resultsCount} results from {webSearchStatus.provider}
-                          </p>
-                        )}
-                        {webSearchStatus.sources && webSearchStatus.sources.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-xs text-muted-foreground mb-1">Sources:</p>
-                            <ul className="text-xs space-y-1">
-                              {webSearchStatus.sources.map((source, idx) => (
-                                <li key={idx} className="text-blue-400 truncate">
-                                  • {source}
-                                </li>
-                              ))}
-                            </ul>
+                {/* Per-Agent Web Search Status - Accumulated View */}
+                {enableWebSearch && agentSearchHistory.length > 0 && (
+                  <div className="mb-4 p-4 rounded-lg border bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-600/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Globe className="h-5 w-5 text-blue-400" />
+                      <h4 className="text-sm font-semibold">Agent Research Progress</h4>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {agentSearchHistory.filter(s => s.status === 'completed').length}/{agentSearchHistory.length} complete
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {agentSearchHistory.map((search, idx) => (
+                        <div
+                          key={`${search.role}-${idx}`}
+                          className={`flex items-center gap-3 p-2 rounded-md transition-all ${
+                            search.status === 'searching'
+                              ? 'bg-blue-500/10 border border-blue-500/30'
+                              : search.status === 'completed'
+                                ? 'bg-green-500/10 border border-green-500/30'
+                                : 'bg-red-500/10 border border-red-500/30'
+                          }`}
+                        >
+                          {/* Status icon */}
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
+                            search.status === 'searching'
+                              ? 'bg-blue-500/20 animate-pulse'
+                              : search.status === 'completed'
+                                ? 'bg-green-500/20'
+                                : 'bg-red-500/20'
+                          }`}>
+                            {search.status === 'searching' ? '🔍' : search.status === 'completed' ? '✅' : '❌'}
                           </div>
-                        )}
-                        {webSearchStatus.error && (
-                          <p className="text-xs text-red-400 mt-1">
-                            Error: {webSearchStatus.error}
-                          </p>
-                        )}
-                      </div>
+
+                          {/* Agent info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{search.agent}</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/50 text-muted-foreground">
+                                {search.role}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {search.status === 'searching'
+                                ? `Searching: "${search.searchQuery?.substring(0, 50)}${(search.searchQuery?.length || 0) > 50 ? '...' : ''}"`
+                                : search.status === 'completed'
+                                  ? `Found ${search.resultsCount || 0} sources via ${search.provider}`
+                                  : `Error: ${search.error}`}
+                            </p>
+                          </div>
+
+                          {/* Results count badge */}
+                          {search.status === 'completed' && search.resultsCount !== undefined && (
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-medium">
+                              <span>{search.resultsCount}</span>
+                              <span className="text-green-400/60">sources</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
