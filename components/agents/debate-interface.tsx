@@ -121,7 +121,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [autoRound2, setAutoRound2] = useState(false)
   const [disagreementThreshold, setDisagreementThreshold] = useState(0.3)
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
-  const [enableWebSearch, setEnableWebSearch] = useState(false)
+  const [enableWebSearch, setEnableWebSearch] = useState(true) // Default ON - research always happens
   const [costEstimate, setCostEstimate] = useState<any>(null)
   const [showRound2Prompt, setShowRound2Prompt] = useState(false)
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)

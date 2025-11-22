@@ -57,22 +57,41 @@ export const PROVIDER_NAMES: Record<Provider, string> = {
 }
 
 // ============================================================================
-// INTERNET ACCESS MODELS
+// INTERNET ACCESS MODELS (Updated November 2025)
 // ============================================================================
+// Research findings:
+// - Anthropic: Claude has web search since March 2025 (global May 2025)
+// - OpenAI: GPT-4o, GPT-5, GPT-5.1 all have web search via API
+// - Google: Gemini has Google Search grounding
+// - xAI: Grok 4 has Live Search / Agent Tools API
+// - Perplexity: Sonar models are built for search (best at this)
+// - Mistral: Agents API with web search (uses Brave Search)
+// - Cohere: RAG connectors with web search
+// - Groq: NO native search (open-source models) - needs DuckDuckGo fallback
 
 const MODELS_WITH_INTERNET = new Set([
-  'gpt-4o',
-  'gpt-4-turbo-preview',
-  'claude-3-5-sonnet-20241022',
-  'gemini-2.5-pro',
-  'gemini-2.0-flash',
-  'llama-3.3-70b-versatile',
-  'grok-2-latest',
-  'grok-2-mini',
-  'grok-2-vision-1212',
-  'grok-2-1212',
-  'sonar-pro',
-  'sonar-small'
+  // OpenAI - All GPT-4o and GPT-5 series have web search
+  'gpt-5.1', 'gpt-5.1-mini',
+  'gpt-5-chat-latest', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano',
+  'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
+  'gpt-4o', 'gpt-4-turbo-preview', 'gpt-4',
+  // Anthropic - Claude has web search since March 2025
+  'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20250715',
+  'claude-opus-4-1-20250514', 'claude-sonnet-4-20250514',
+  'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022',
+  // Google - Gemini has Google Search grounding
+  'gemini-3-pro-preview-11-2025', 'gemini-3-deep-think',
+  'gemini-2.0-flash', 'gemini-2.0-flash-lite',
+  // xAI - Grok 4 has Live Search API
+  'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning', 'grok-4-0709',
+  'grok-code-fast-1',
+  // Perplexity - Built for search
+  'sonar-pro', 'sonar-small',
+  // Mistral - Agents API with Brave Search
+  'mistral-large-latest', 'mistral-small-latest',
+  // Cohere - RAG with web search
+  'command-r-plus', 'command-r'
+  // NOTE: Groq/Llama models do NOT have native web search
 ])
 
 // ============================================================================
@@ -107,18 +126,18 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'gpt-3.5-turbo-16k', name: 'GPT-3.5 Turbo 16k', provider: 'openai', tier: 'budget', badge: '💰', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' }
   ],
 
-  // ===== ANTHROPIC =====
+  // ===== ANTHROPIC (Web search available since March 2025) =====
   anthropic: [
-    // Claude 4.5 Series (2025 Flagship)
-    { id: 'claude-sonnet-4-5-20250929', name: 'Claude 4.5 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
-    { id: 'claude-haiku-4-5-20250715', name: 'Claude 4.5 Haiku', provider: 'anthropic', tier: 'balanced', badge: '⚡', status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Claude 4.5 Haiku not yet released via API' },
-    // Claude 4 Series
-    { id: 'claude-opus-4-1-20250514', name: 'Claude 4 Opus', provider: 'anthropic', tier: 'flagship', badge: '🌟', status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Claude 4 Opus not yet released via API' },
-    { id: 'claude-sonnet-4-20250514', name: 'Claude 4 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
-    // Claude 3.7 Series
-    { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
+    // Claude 4.5 Series (2025 Flagship) - All have web search
+    { id: 'claude-sonnet-4-5-20250929', name: 'Claude 4.5 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has web search capability' },
+    { id: 'claude-haiku-4-5-20250715', name: 'Claude 4.5 Haiku', provider: 'anthropic', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Claude 4.5 Haiku not yet released via API' },
+    // Claude 4 Series - All have web search
+    { id: 'claude-opus-4-1-20250514', name: 'Claude 4 Opus', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Claude 4 Opus not yet released via API' },
+    { id: 'claude-sonnet-4-20250514', name: 'Claude 4 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has web search capability' },
+    // Claude 3.7 Series - Has web search (first Claude with browsing)
+    { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. First Claude model with web search (March 2025)' },
     // Claude 3.5 Series (Haiku only - Sonnet was replaced by 3.7)
-    { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', provider: 'anthropic', tier: 'balanced', badge: '⚡', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
+    { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', provider: 'anthropic', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has web search capability' },
     { id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet (DEPRECATED)', provider: 'anthropic', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'service_error', isLegacy: true, lastTested: '2025-01-30T00:00:00.000Z', notes: 'Claude 3.5 Sonnet does not exist - replaced by Claude 3.7 Sonnet. Use claude-3-7-sonnet-20250219 instead.' },
     // Claude 3 Series (Budget)
     { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', provider: 'anthropic', tier: 'budget', badge: '💰', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
@@ -145,10 +164,10 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B', provider: 'google', tier: 'free', badge: '🎁', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Model ID may have changed or deprecated - returns empty response', isLegacy: true }
   ],
 
-  // ===== GROQ (All Free) =====
+  // ===== GROQ (All Free - NO native web search, needs DuckDuckGo fallback) =====
   groq: [
-    // Llama Models
-    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'groq', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
+    // Llama Models - NO native internet access (open-source models)
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'groq', tier: 'free', badge: '🎁', hasInternet: false, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. No native web search - use DuckDuckGo fallback' },
     { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'groq', tier: 'free', badge: '🎁', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     // Tool-Use Specialists (#1 and #3 on Berkeley Function Calling Leaderboard)
     { id: 'llama-3-groq-70b-tool-use', name: 'Llama 3 70B Tool Use', provider: 'groq', tier: 'free', badge: '🎁', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tool use models require special parameters - returns empty response with standard query' },
@@ -157,15 +176,15 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'gemma2-9b-it', name: 'Gemma 2 9B', provider: 'groq', tier: 'free', badge: '🎁', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Model may require special parameters or deprecated - returns empty response' }
   ],
 
-  // ===== XAI (Grok) =====
+  // ===== XAI (Grok) - Has Live Search / Agent Tools API =====
   xai: [
-    // Grok 4 Series (Flagship)
-    { id: 'grok-4-fast-reasoning', name: 'Grok 4 Fast Reasoning', provider: 'xai', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
-    { id: 'grok-4-fast-non-reasoning', name: 'Grok 4 Fast', provider: 'xai', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
-    { id: 'grok-4-0709', name: 'Grok 4 (0709)', provider: 'xai', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
+    // Grok 4 Series (Flagship) - All have Live Search API
+    { id: 'grok-4-fast-reasoning', name: 'Grok 4 Fast Reasoning', provider: 'xai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has Live Search API for real-time web/X data' },
+    { id: 'grok-4-fast-non-reasoning', name: 'Grok 4 Fast', provider: 'xai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has Live Search API' },
+    { id: 'grok-4-0709', name: 'Grok 4 (0709)', provider: 'xai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has Live Search API' },
     // Grok 3 Series (Balanced)
-    { id: 'grok-3', name: 'Grok 3', provider: 'xai', tier: 'balanced', badge: '⚡', status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 3 not yet released via API' },
-    { id: 'grok-3-mini', name: 'Grok 3 Mini', provider: 'xai', tier: 'balanced', badge: '⚡', status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 3 Mini not yet released via API' },
+    { id: 'grok-3', name: 'Grok 3', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 3 not yet released via API' },
+    { id: 'grok-3-mini', name: 'Grok 3 Mini', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 3 Mini not yet released via API' },
     // Grok 2 Series
     { id: 'grok-2-vision-1212', name: 'Grok 2 Vision', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 2 Vision not available - may have been superseded by Grok 4' },
     { id: 'grok-2-1212', name: 'Grok 2 (1212)', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 2 (1212) not available - may have been superseded by Grok 4' },
@@ -180,16 +199,16 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'sonar-small', name: 'Sonar Small', provider: 'perplexity', tier: 'budget', badge: '💰', hasInternet: true, status: 'no_api_key', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Perplexity API key may be invalid or API endpoint changed - returns empty response' }
   ],
 
-  // ===== MISTRAL =====
+  // ===== MISTRAL (Agents API with Brave Search - May 2025) =====
   mistral: [
-    { id: 'mistral-large-latest', name: 'Mistral Large', provider: 'mistral', tier: 'balanced', badge: '⚡', status: 'no_api_key', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Mistral API key may be invalid or API endpoint changed - returns empty response' },
-    { id: 'mistral-small-latest', name: 'Mistral Small', provider: 'mistral', tier: 'budget', badge: '💰', status: 'no_api_key', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Mistral API key may be invalid or API endpoint changed - returns empty response' }
+    { id: 'mistral-large-latest', name: 'Mistral Large', provider: 'mistral', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'no_api_key', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Has web search via Agents API (Brave Search). API key may be invalid' },
+    { id: 'mistral-small-latest', name: 'Mistral Small', provider: 'mistral', tier: 'budget', badge: '💰', hasInternet: true, status: 'no_api_key', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Has web search via Agents API. API key may be invalid' }
   ],
 
-  // ===== COHERE =====
+  // ===== COHERE (RAG connectors with web search) =====
   cohere: [
-    { id: 'command-r-plus', name: 'Command R+', provider: 'cohere', tier: 'balanced', badge: '⚡', status: 'no_api_key', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Cohere API key may be invalid or API endpoint changed - returns empty response' },
-    { id: 'command-r', name: 'Command R', provider: 'cohere', tier: 'budget', badge: '💰', status: 'no_api_key', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Cohere API key may be invalid or API endpoint changed - returns empty response' }
+    { id: 'command-r-plus', name: 'Command R+', provider: 'cohere', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'no_api_key', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Has RAG connectors with web search grounding. API key may be invalid' },
+    { id: 'command-r', name: 'Command R', provider: 'cohere', tier: 'budget', badge: '💰', hasInternet: true, status: 'no_api_key', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Has RAG connectors with web search. API key may be invalid' }
   ]
 }
 
