@@ -126,7 +126,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [showRound2Prompt, setShowRound2Prompt] = useState(false)
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   
-  // Web search tracking
+  // Web search tracking (per-agent)
   const [webSearchStatus, setWebSearchStatus] = useState<{
     isSearching: boolean;
     searchQuery?: string;
@@ -134,6 +134,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     resultsCount?: number;
     sources?: string[];
     error?: string;
+    agent?: string;  // Which agent is searching
+    role?: string;   // Agent role (analyst, critic, etc.)
   }>({ isSearching: false })
   
   // Memory system tracking
@@ -629,11 +631,20 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   setWebSearchStatus({
                     isSearching: true,
                     searchQuery: data.query,
-                    provider: data.provider
+                    provider: data.provider,
+                    agent: data.agent, // Track which agent is searching
+                    role: data.role
                   })
-                  setCurrentPhase('Searching web for real-time information...')
-                  // Update flowchart - research step active
-                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', { status: 'active' }))
+                  // Show which agent is researching
+                  const agentSearchingName = data.agent || 'Agent'
+                  setCurrentPhase(`🔍 ${agentSearchingName} searching web...`)
+                  // Update flowchart - mark agent as researching
+                  if (data.role) {
+                    setFlowchartSteps(prev => updateFlowchartStep(prev, data.role, {
+                      status: 'active',
+                      preview: 'Researching...'
+                    }))
+                  }
                   break
 
                 case 'web_search_completed':
@@ -642,14 +653,19 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     searchQuery: data.query,
                     provider: data.provider,
                     resultsCount: data.resultsCount,
-                    sources: data.sources
+                    sources: data.sources,
+                    agent: data.agent,
+                    role: data.role
                   })
-                  setCurrentPhase('Web search completed. Analyzing results...')
-                  // Update flowchart - research step complete
-                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
-                    status: 'complete',
-                    duration: data.duration ? data.duration / 1000 : undefined
-                  }))
+                  // Show which agent completed research
+                  const agentCompletedName = data.agent || 'Agent'
+                  setCurrentPhase(`✅ ${agentCompletedName} found ${data.resultsCount || 0} sources`)
+                  // Update flowchart - mark agent research complete
+                  if (data.role) {
+                    setFlowchartSteps(prev => updateFlowchartStep(prev, data.role, {
+                      preview: `${data.resultsCount || 0} sources found`
+                    }))
+                  }
                   break
                   
                 case 'web_search_failed':

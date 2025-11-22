@@ -105,71 +105,21 @@ export async function POST(request: NextRequest) {
           console.log('Memory system currently disabled - focusing on research validation')
         }
         
-        // ==================== RESEARCH PHASE (NEW - Research-Driven Architecture) ====================
-        // Conduct centralized web research BEFORE debate rounds begin
-        // This gathers factual data that all agents will analyze (not invent their own facts)
-        let researchReport: any = null
+        // ==================== RESEARCH PHASE ====================
+        // NEW APPROACH: Skip centralized Llama research (Llama doesn't have real web access!)
+        // Instead, each agent will use their model's native web search capability
+        // Only models without native search (Groq/Llama) will use DuckDuckGo fallback
         let researchSection = ''
 
-        if (enableWebSearch) {
-          try {
-            console.log('\n🔬 RESEARCH PHASE: Gathering factual data before debate...')
-
-            const { conductGeneralResearch } = await import('@/lib/agents/general-research-agents')
-
-            // Send research started event
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              type: 'research_started',
-              query: query,
-              timestamp: Date.now()
-            })}\n\n`))
-
-            // Conduct research with progress callbacks
-            researchReport = await conductGeneralResearch(query, (event) => {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'research_progress',
-                ...event
-              })}\n\n`))
-            })
-
-            console.log(`✅ Research complete: ${researchReport.totalSources} sources, ${researchReport.evidenceQuality} quality`)
-
-            // Send research complete event with results INCLUDING source URLs
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-              type: 'research_complete',
-              sourcesFound: researchReport.totalSources,
-              evidenceQuality: researchReport.evidenceQuality,
-              confidence: researchReport.confidence,
-              duration: researchReport.researchDuration,
-              sources: researchReport.sources || [], // Include actual source URLs/names
-              expertPerspectives: researchReport.expertPerspectives || [],
-              timestamp: Date.now()
-            })}\n\n`))
-
-            // Format research findings for injection into agent prompts
-            researchSection = `
-
---- RESEARCH FINDINGS ---
-
-${researchReport.factualFindings}
-
---- END RESEARCH FINDINGS ---
-
-CRITICAL INSTRUCTIONS FOR THIS DEBATE:
-- Base your analysis ONLY on the research findings provided above
-- DO NOT invent facts, studies, or statistics
-- Cite specific sources from the research when making claims
-- If the research doesn't cover something, state "insufficient research data on [topic]"
-- Your role is to ANALYZE the research, not create new research
-
-`
-
-          } catch (researchError) {
-            console.error('❌ Research phase error:', researchError)
-            researchSection = ''
-            // Continue without research rather than failing entire debate
-          }
-        }
+        // Note: Per-agent research happens in the agent loop below
+        // This ensures each model uses its OWN web search capability:
+        // - Gemini uses Google Search grounding
+        // - GPT uses Bing/web browsing
+        // - Perplexity has native search
+        // - Groq/Llama falls back to DuckDuckGo
+        console.log('\n🔬 Per-agent research enabled - each model will use native web search')
+        console.log('Models with native search: Gemini, GPT-4o, Perplexity, Grok, Mistral, Cohere')
+        console.log('Models using DuckDuckGo fallback: Groq/Llama\n')
         // ==================== END RESEARCH PHASE ====================
 
         // Track all responses across rounds
@@ -224,11 +174,8 @@ CRITICAL INSTRUCTIONS FOR THIS DEBATE:
               })}\n\n`))
               
               // Progressive Role-Based Web Search
-              // INJECT RESEARCH FINDINGS (if research phase was run)
-              let enhancedQuery = researchSection ? query + researchSection : query
-              if (researchSection) {
-                console.log(`📊 RESEARCH: Injected ${researchReport.totalSources} sources into ${agentConfig.persona?.name || agentConfig.model} prompt`)
-              }
+              // Note: Centralized research phase removed - each agent does their own search now
+              let enhancedQuery = query
               let webSearchResults = null
               let roleBasedSearchResult: RoleBasedSearchResult | null = null
               
@@ -251,8 +198,10 @@ CRITICAL INSTRUCTIONS FOR THIS DEBATE:
                 console.log(`🧠 MEMORY: Enhanced query with ${relevantMemories.length} past experiences`)
               }
               
-              // Skip per-agent search if centralized research was already done
-              if (enableWebSearch && !researchSection) {
+              // Per-agent web search - each agent does their own research
+              // Models with native search (Gemini, GPT, etc.) use their capabilities
+              // Groq/Llama models fall back to DuckDuckGo
+              if (enableWebSearch) {
                 try {
                   // Send progressive web search started event
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
