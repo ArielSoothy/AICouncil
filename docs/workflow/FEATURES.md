@@ -1128,5 +1128,30 @@
 - **Last Modified**: November 2025 (Audit & consolidation - removed duplicate lists)
 - **DO NOT**: Create duplicate model lists in components, hardcode model definitions outside registry
 
+### 36. Native Web Search Integration
+- **Status**: ✅ ACTIVE & CRITICAL
+- **Location**: `lib/ai-providers/*.ts` + `app/api/agents/debate-stream/route.ts`
+- **Purpose**: Use each model's native web search capability instead of DuckDuckGo fallback
+- **Key Features**:
+  - **OpenAI**: Uses `openai.tools.webSearchPreview()` - works with GPT-4o+
+  - **xAI**: Uses `searchParameters: { mode: 'auto' }` for Grok Live Search
+  - **Google**: Uses `google.tools.googleSearch()` (requires SDK v2.x+)
+  - **Anthropic**: Uses `anthropic.tools.webSearch_20250305()` (requires SDK v2.x+)
+  - **Groq/Llama**: Falls back to DuckDuckGo (no native search capability)
+- **SDK Requirements**:
+  - `@ai-sdk/google`: ^2.0.42 (for google.tools.googleSearch)
+  - `@ai-sdk/anthropic`: ^2.0.45 (for anthropic.tools.webSearch)
+  - `@ai-sdk/openai`: ^2.0.42 (for openai.tools.webSearchPreview)
+  - `ai`: ^5.0.99
+- **Runtime Detection**: Code uses graceful fallback if SDK doesn't support native search
+- **UI Indicator**: Shows "openai native" / "google native" instead of "duckduckgo"
+- **Related Files**:
+  - `lib/ai-providers/google.ts` - Google Search grounding
+  - `lib/ai-providers/openai.ts` - OpenAI web search
+  - `lib/ai-providers/anthropic.ts` - Claude web search
+  - `lib/ai-providers/xai.ts` - Grok Live Search
+- **Last Modified**: November 2025 (Initial native search implementation)
+- **DO NOT**: Remove native search without ensuring DuckDuckGo fallback works, change SDK versions without testing
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
