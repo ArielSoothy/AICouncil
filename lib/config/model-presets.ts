@@ -91,39 +91,36 @@ export const PRESET_CONFIGS: Record<PresetTier, PresetConfig> = {
   free: {
     label: 'Free',
     icon: Gift,
-    description: 'All free models (6 models)',
+    description: 'All free models (4 models)',
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300',
     modelIds: [
       // Google free models - excellent quality for free tier
-      'gemini-2.5-flash',
       'gemini-2.0-flash',
-      'gemini-1.5-flash',
       // Groq free models - fast inference, good quality
       'llama-3.3-70b-versatile',
       'llama-3.1-8b-instant',
-      'gemma2-9b-it',
+      // OpenAI budget - reliable
+      'gpt-3.5-turbo',
     ]
   },
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Balanced/Budget tier models (8 models)',
+    description: 'Balanced/Budget tier models (7 models)',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300',
     modelIds: [
       // Anthropic balanced tier - strong reasoning
-      'claude-3-5-sonnet-20241022',
+      'claude-3-7-sonnet-20250219',
       'claude-3-5-haiku-20241022',
       // OpenAI balanced tier - reliable performance
       'gpt-4o',
       'gpt-5-mini',
-      // Google flagship - good value for money
-      'gemini-2.5-pro',
+      // Google free - good value for money
+      'gemini-2.0-flash',
       // Groq best free - excellent free option
       'llama-3.3-70b-versatile',
       // xAI balanced - unique perspective
-      'grok-3',
-      // Mistral balanced - European AI alternative
-      'mistral-large-latest',
+      'grok-code-fast-1',
     ]
   },
   max: {
@@ -136,16 +133,15 @@ export const PRESET_CONFIGS: Record<PresetTier, PresetConfig> = {
       'claude-sonnet-4-5-20250929',
       // OpenAI flagship - best general purpose (Aug 2025)
       'gpt-5-chat-latest',
-      // Google flagship - best for web/current events
-      'gemini-2.5-pro',
+      'gpt-5',
       // xAI flagship models - unique reasoning approaches
       'grok-4-fast-reasoning',
       'grok-4-fast-non-reasoning',
       'grok-4-0709',
       // Groq best free - still excellent quality
       'llama-3.3-70b-versatile',
-      // Perplexity premium - best for search-augmented answers
-      'sonar-pro',
+      // Google free - good for web/current events
+      'gemini-2.0-flash',
     ]
   }
 }
@@ -174,9 +170,9 @@ export const DEBATE_PRESETS: Record<PresetTier, DebatePresetConfig> = {
     description: 'All free models',
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300',
     roles: {
-      analyst: 'gemini-2.0-flash',      // Google free (good reasoning, structured output)
+      analyst: 'gemini-2.0-flash',       // Google free (good reasoning, structured output)
       critic: 'llama-3.3-70b-versatile', // Groq free (best free model, critical analysis)
-      synthesizer: 'gemini-1.5-flash',   // Google free (fast synthesis, good quality)
+      synthesizer: 'llama-3.1-8b-instant', // Groq free (fast synthesis)
     }
   },
   pro: {
@@ -185,7 +181,7 @@ export const DEBATE_PRESETS: Record<PresetTier, DebatePresetConfig> = {
     description: 'Balanced tier models',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300',
     roles: {
-      analyst: 'claude-3-5-sonnet-20241022',  // Anthropic balanced (strong analytical reasoning)
+      analyst: 'claude-3-7-sonnet-20250219',  // Anthropic (strong analytical reasoning)
       critic: 'gpt-4o',                        // OpenAI balanced (excellent critical thinking)
       synthesizer: 'llama-3.3-70b-versatile', // Groq free (good synthesis, cost-effective)
     }
@@ -198,7 +194,7 @@ export const DEBATE_PRESETS: Record<PresetTier, DebatePresetConfig> = {
     roles: {
       analyst: 'claude-sonnet-4-5-20250929', // Anthropic flagship (best analytical depth)
       critic: 'gpt-5-chat-latest',            // OpenAI flagship (superior reasoning)
-      synthesizer: 'gemini-2.5-pro',          // Google flagship (comprehensive synthesis)
+      synthesizer: 'grok-4-fast-reasoning',   // xAI flagship (comprehensive synthesis)
     }
   }
 }

@@ -77,7 +77,7 @@ const providerNames = {
   cohere: 'Cohere'
 } as const
 
-// Agent Presets - Pre-selected models for each role
+// Agent Presets - Pre-selected models for each role (only working models)
 const AGENT_PRESETS = {
   free: {
     label: 'Free',
@@ -86,8 +86,8 @@ const AGENT_PRESETS = {
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 dark:border-green-700',
     roles: {
       'analyst-001': { provider: 'groq', model: 'llama-3.1-8b-instant' },       // Fast analyst
-      'critic-001': { provider: 'google', model: 'gemini-2.0-flash-lite' },      // Different provider
-      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }  // Best free model
+      'critic-001': { provider: 'google', model: 'gemini-2.0-flash' },          // Different provider
+      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' } // Best free model
     }
   },
   pro: {
@@ -96,7 +96,7 @@ const AGENT_PRESETS = {
     description: 'Balanced tier models',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
-      'analyst-001': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },  // Strong analysis
+      'analyst-001': { provider: 'anthropic', model: 'claude-3-7-sonnet-20250219' },  // Strong analysis
       'critic-001': { provider: 'openai', model: 'gpt-4o' },                           // Critical thinking
       'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }       // Good synthesis
     }
@@ -109,7 +109,7 @@ const AGENT_PRESETS = {
     roles: {
       'analyst-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },  // Flagship analysis
       'critic-001': { provider: 'openai', model: 'gpt-5-chat-latest' },               // Flagship reasoning
-      'synthesizer-001': { provider: 'google', model: 'gemini-2.5-pro' }              // Comprehensive synthesis
+      'synthesizer-001': { provider: 'xai', model: 'grok-4-fast-reasoning' }          // Flagship synthesis
     }
   }
 } as const
@@ -134,7 +134,7 @@ export function AgentSelector({
     // Using different providers (Groq + Google) for heterogeneous agent debate
     const agentDefaults: Record<string, { model: string; provider: string }> = {
       'analyst-001': { model: 'llama-3.1-8b-instant', provider: 'groq' },     // Fast, good for initial analysis
-      'critic-001': { model: 'gemini-2.0-flash-lite', provider: 'google' },   // Different provider for diversity
+      'critic-001': { model: 'gemini-2.0-flash', provider: 'google' },        // Different provider for diversity
       'synthesizer-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' } // Best model for final synthesis
     }
     

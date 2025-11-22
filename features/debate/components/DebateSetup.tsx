@@ -206,14 +206,52 @@ export function DebateSetup({ onSubmit, isLoading = false, userTier = 'free' }: 
           selectedAgents={selectedAgents}
           onAgentsChange={setSelectedAgents}
           availableModels={[
-            { 
-              provider: 'groq', 
+            {
+              provider: 'openai',
+              models: [
+                'gpt-5-chat-latest',
+                'gpt-5',
+                'gpt-5-mini',
+                'gpt-5-nano',
+                'gpt-4.1',
+                'gpt-4.1-mini',
+                'gpt-4o',
+                'gpt-4-turbo-preview',
+                'gpt-4',
+                'gpt-3.5-turbo'
+              ]
+            },
+            {
+              provider: 'anthropic',
+              models: [
+                'claude-sonnet-4-5-20250929',
+                'claude-sonnet-4-20250514',
+                'claude-3-7-sonnet-20250219',
+                'claude-3-5-haiku-20241022',
+                'claude-3-opus-20240229',
+                'claude-3-haiku-20240307'
+              ]
+            },
+            {
+              provider: 'google',
+              models: [
+                'gemini-2.0-flash'
+              ]
+            },
+            {
+              provider: 'groq',
               models: [
                 'llama-3.3-70b-versatile',
-                'llama-3.1-8b-instant',
-                'gemma2-9b-it',
-                'llama-3-groq-70b-tool-use',
-                'llama-3-groq-8b-tool-use'
+                'llama-3.1-8b-instant'
+              ]
+            },
+            {
+              provider: 'xai',
+              models: [
+                'grok-4-fast-reasoning',
+                'grok-4-fast-non-reasoning',
+                'grok-4-0709',
+                'grok-code-fast-1'
               ]
             }
           ]}
