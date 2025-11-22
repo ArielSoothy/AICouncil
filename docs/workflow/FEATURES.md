@@ -1100,5 +1100,33 @@
 - **Last Modified**: November 2025 (Initial implementation)
 - **DO NOT**: Remove skip option, change to synchronous-only flow, disable toggle functionality
 
+### 35. Centralized Model Registry System
+- **Status**: ✅ ACTIVE & CRITICAL
+- **Location**: `lib/models/model-registry.ts` - Single source of truth
+- **Purpose**: Centralized model definitions ensuring consistency across all modes
+- **Key Features**:
+  - `MODEL_REGISTRY` - All 46+ models from 8 providers with metadata
+  - `hasInternetAccess()` - Check if model has native web search
+  - `PROVIDER_NAMES` - Display names for all providers
+  - `getModelsByProvider()` - Get models for specific provider
+  - Tier classification: free/budget/balanced/premium/flagship
+  - Internet access flags for Claude, GPT, Gemini, Grok, Perplexity, Mistral, Cohere
+  - Groq/Llama correctly marked as NO internet access
+- **Consuming Files** (ALL use centralized registry):
+  - `lib/user-tiers.ts` - Derives ALL_MODELS from registry
+  - `lib/trading/models-config.ts` - Derives TRADING_MODELS from registry
+  - `lib/config/model-presets.ts` - Uses TRADING_MODELS
+  - `lib/services/model-service.ts` - Uses registry hasInternetAccess
+  - `components/consensus/model-selector.tsx` - Uses registry
+  - `components/consensus/enhanced-consensus-display-v3.tsx` - Derives from MODEL_COSTS_PER_1K
+  - `components/consensus/ultra-model-badge-selector.tsx` - Uses registry directly
+  - `components/arena/arena-model-selector.tsx` - Uses TRADING_MODELS
+  - `components/trading/*.tsx` - Uses TRADING_MODELS
+- **Related Files**:
+  - `lib/model-metadata.ts` - MODEL_COSTS_PER_1K (centralized pricing)
+- **Web Search Default**: Enabled by default (`useState(true)` in debate-interface.tsx)
+- **Last Modified**: November 2025 (Audit & consolidation - removed duplicate lists)
+- **DO NOT**: Create duplicate model lists in components, hardcode model definitions outside registry
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
