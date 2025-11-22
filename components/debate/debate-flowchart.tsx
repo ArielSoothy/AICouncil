@@ -200,10 +200,11 @@ export function createDebateSteps(
   }
 
   // Default agent roles if none provided
+  // NOTE: Must match backend execution order: analyst → critic → synthesizer
+  // Judge is NOT a debate agent - it's used in consensus processing
   const defaultAgents = [
     { id: 'analyst', label: 'Analyst' },
     { id: 'critic', label: 'Critic' },
-    { id: 'judge', label: 'Judge' },
     { id: 'synthesizer', label: 'Synthesizer' }
   ]
 

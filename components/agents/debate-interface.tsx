@@ -591,7 +591,39 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 case 'round_started':
                   setCurrentPhase(`Round ${data.round} of ${data.totalRounds}`)
                   break
-                  
+
+                // Centralized research phase events (before agents run)
+                case 'research_started':
+                  setWebSearchStatus({
+                    isSearching: true,
+                    searchQuery: data.query,
+                    provider: 'research'
+                  })
+                  setCurrentPhase('🔬 Conducting research to gather factual data...')
+                  // Update flowchart - research step active
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', { status: 'active' }))
+                  break
+
+                case 'research_progress':
+                  setCurrentPhase(data.status || data.message || 'Research in progress...')
+                  break
+
+                case 'research_complete':
+                  setWebSearchStatus({
+                    isSearching: false,
+                    searchQuery: data.query,
+                    provider: 'research',
+                    resultsCount: data.sourcesFound
+                  })
+                  setCurrentPhase(`✅ Research complete: ${data.sourcesFound} sources, ${data.evidenceQuality || 'good'} quality`)
+                  // Update flowchart - research step complete
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
+                    status: 'complete',
+                    duration: data.duration ? data.duration / 1000 : undefined,
+                    preview: `Found ${data.sourcesFound} sources (${data.evidenceQuality || 'good'} quality)`
+                  }))
+                  break
+
                 case 'web_search_started':
                   setWebSearchStatus({
                     isSearching: true,
@@ -685,6 +717,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       agentRole: data.agentRole
                     }
                   }))
+                  // Update verbal status to match flowchart
+                  setCurrentPhase(`🔄 ${data.agentName || 'Agent'} (${data.agentRole || 'analyst'}) analyzing...`)
                   // Update flowchart - agent step active
                   if (data.agentRole) {
                     setFlowchartSteps(prev => updateFlowchartStep(prev, data.agentRole, { status: 'active' }))
@@ -724,6 +758,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       preview: data.responsePreview?.substring(0, 150)
                     }))
                   }
+                  // Update verbal status to match flowchart
+                  setCurrentPhase(`✅ ${data.agentName || 'Agent'} (${data.agentRole || 'analyst'}) completed in ${(data.duration / 1000).toFixed(1)}s`)
                   // Include agent information and search data in the response
                   allResponses.push({
                     ...data,
