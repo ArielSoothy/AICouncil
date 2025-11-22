@@ -1035,5 +1035,36 @@
 - **Last Modified**: October 28, 2025 (Initial comprehensive testing)
 - **DO NOT**: Remove status metadata from model registry, disable model filtering in UI components, delete test infrastructure
 
+### 33. Debate Progress Flowchart
+- **Status**: ✅ ACTIVE & USER-REQUESTED
+- **Location**:
+  - `components/debate/flowchart-node.tsx` - Individual step nodes
+  - `components/debate/flowchart-connector.tsx` - SVG arrow connectors
+  - `components/debate/debate-flowchart.tsx` - Main orchestrator
+  - `components/agents/debate-interface.tsx` - Integration
+- **Purpose**: Visual horizontal flowchart showing real-time debate progression during loading
+- **Key Features**:
+  - Collapsible panel with progress bar (e.g., "3/5 steps")
+  - Animated nodes showing: Research → Analyst → Critic → Judge → Synthesizer → Synthesis
+  - Status-based styling (pending=gray, active=blue+spinner, complete=green, error=red)
+  - Model info displayed (provider/model) on each node
+  - Duration tracking per step (e.g., "11.2s")
+  - Response preview on hover via tooltip
+  - Animated flow particles on active connectors
+  - Works during loading state with real-time updates from streaming events
+- **Streaming Event Integration**:
+  - `web_search_started` / `web_search_completed` → Research step
+  - `model_started` / `model_completed` → Agent steps (by role)
+  - `synthesis_started` / `synthesis_completed` → Synthesis step
+- **Helper Functions**:
+  - `createDebateSteps()` - Initialize steps array
+  - `updateStepStatus()` - Update individual step progress
+- **Dependencies**:
+  - `@/components/ui/tooltip` - Preview on hover
+  - `@/components/ui/card` - Container
+  - lucide-react icons
+- **Last Modified**: November 2025 (Initial implementation)
+- **DO NOT**: Remove flowchart from loading state, break streaming event integration
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

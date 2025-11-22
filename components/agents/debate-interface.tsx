@@ -23,6 +23,7 @@ import { ConversationHistoryDropdown } from '@/components/conversation/conversat
 import { ShareButtons } from '@/components/conversation/share-buttons'
 import { SavedConversation } from '@/lib/types/conversation'
 import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles, Gift } from 'lucide-react'
+import { DebateFlowchart, createDebateSteps, updateStepStatus as updateFlowchartStep, DebateStepProgress } from '@/components/debate'
 import { useGlobalModelTier } from '@/contexts/trading-preset-context'
 import {
   Select,
@@ -199,6 +200,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     endTime?: number;
     description: string;
   }>>([])
+
+  // Visual flowchart tracking
+  const [flowchartSteps, setFlowchartSteps] = useState<DebateStepProgress[]>([])
+  const [flowchartStartTime, setFlowchartStartTime] = useState<number | null>(null)
 
   // Auto-apply global tier changes to agent roles
   useEffect(() => {
@@ -425,7 +430,25 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       }
       setModelStatuses(statuses)
       setDebateStartTime(Date.now())
-      
+
+      // Initialize flowchart steps based on mode
+      const agentSteps = round1Mode === 'agents'
+        ? selectedAgents.map(agent => ({
+            id: agent.persona?.role || agent.agentId,
+            label: agent.persona?.name || agent.model,
+            model: agent.model,
+            provider: agent.provider
+          }))
+        : selectedLLMs.map((llm, idx) => ({
+            id: `model-${idx}`,
+            label: `Model ${idx + 1}`,
+            model: llm.model,
+            provider: llm.provider
+          }))
+      const initialSteps = createDebateSteps(enableWebSearch, agentSteps)
+      setFlowchartSteps(initialSteps)
+      setFlowchartStartTime(Date.now())
+
       // Set a timeout to check if models actually start
       setTimeout(() => {
         setModelStatuses(prev => {
@@ -562,8 +585,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     provider: data.provider
                   })
                   setCurrentPhase('Searching web for real-time information...')
+                  // Update flowchart - research step active
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', { status: 'active' }))
                   break
-                  
+
                 case 'web_search_completed':
                   setWebSearchStatus({
                     isSearching: false,
@@ -573,6 +598,11 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     sources: data.sources
                   })
                   setCurrentPhase('Web search completed. Analyzing results...')
+                  // Update flowchart - research step complete
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
+                    status: 'complete',
+                    duration: data.duration ? data.duration / 1000 : undefined
+                  }))
                   break
                   
                 case 'web_search_failed':
@@ -641,6 +671,10 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       agentRole: data.agentRole
                     }
                   }))
+                  // Update flowchart - agent step active
+                  if (data.agentRole) {
+                    setFlowchartSteps(prev => updateFlowchartStep(prev, data.agentRole, { status: 'active' }))
+                  }
                   break
                   
                 case 'model_thinking':
@@ -668,6 +702,14 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       message: `Completed in ${(data.duration / 1000).toFixed(1)}s`
                     }
                   }))
+                  // Update flowchart - agent step complete
+                  if (data.agentRole) {
+                    setFlowchartSteps(prev => updateFlowchartStep(prev, data.agentRole, {
+                      status: 'complete',
+                      duration: data.duration / 1000,
+                      preview: data.responsePreview?.substring(0, 150)
+                    }))
+                  }
                   // Include agent information and search data in the response
                   allResponses.push({
                     ...data,
@@ -746,13 +788,20 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   setIsSynthesizing(true)
                   setCurrentPhase('Synthesizing unified response from agent debate...')
                   updateStepStatus('synthesis', 'in_progress')
+                  // Update flowchart - synthesis step active
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'synthesis', { status: 'active' }))
                   break
-                  
+
                 case 'synthesis_completed':
                   setCurrentPhase('Debate analysis complete - presenting unified conclusions')
                   updateStepStatus('synthesis', 'completed')
                   updateStepStatus('validation', 'completed')
                   updateStepStatus('formatting', 'completed')
+                  // Update flowchart - synthesis step complete
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'synthesis', {
+                    status: 'complete',
+                    preview: data.synthesis?.conclusion?.substring(0, 150)
+                  }))
                   // Use stored consensus data if not in synthesis event
                   const consensusComparisonData = data.consensusComparison || (window as any).tempConsensusData || null
                   
@@ -1602,6 +1651,17 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           {isLoading ? (
             <Card className="p-8">
               <div className="space-y-6">
+                {/* Visual Flowchart Progress */}
+                {flowchartSteps.length > 0 && (
+                  <DebateFlowchart
+                    steps={flowchartSteps}
+                    round={1}
+                    isComplete={false}
+                    totalDuration={flowchartStartTime ? (Date.now() - flowchartStartTime) / 1000 : undefined}
+                    className="mb-4"
+                  />
+                )}
+
                 {/* Show generated prompt for follow-ups */}
                 {generatedPrompt && (
                   <div className="mb-6 p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
@@ -1611,7 +1671,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Memory Status - Persistent Display */}
                 {/* Memory UI disabled - on backlog */}
                 {false && (memoryStatus.isSearching || memoryStatus.foundCount !== undefined || memoryStatus.isStoring || memoryStatus.stored) && (
