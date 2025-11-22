@@ -134,13 +134,15 @@ export async function POST(request: NextRequest) {
 
             console.log(`✅ Research complete: ${researchReport.totalSources} sources, ${researchReport.evidenceQuality} quality`)
 
-            // Send research complete event with results
+            // Send research complete event with results INCLUDING source URLs
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'research_complete',
               sourcesFound: researchReport.totalSources,
               evidenceQuality: researchReport.evidenceQuality,
               confidence: researchReport.confidence,
               duration: researchReport.researchDuration,
+              sources: researchReport.sources || [], // Include actual source URLs/names
+              expertPerspectives: researchReport.expertPerspectives || [],
               timestamp: Date.now()
             })}\n\n`))
 

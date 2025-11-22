@@ -613,7 +613,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     isSearching: false,
                     searchQuery: data.query,
                     provider: 'research',
-                    resultsCount: data.sourcesFound
+                    resultsCount: data.sourcesFound,
+                    sources: data.sources || [] // Include source URLs from backend
                   })
                   setCurrentPhase(`✅ Research complete: ${data.sourcesFound} sources, ${data.evidenceQuality || 'good'} quality`)
                   // Update flowchart - research step complete
