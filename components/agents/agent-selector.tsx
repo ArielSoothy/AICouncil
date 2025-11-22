@@ -26,6 +26,7 @@ interface AgentSelectorProps {
   onAgentsChange: (agents: AgentConfig[]) => void
   availableModels: { provider: string; models: string[] }[]
   userTier: 'guest' | 'free' | 'pro' | 'enterprise'
+  globalTier?: 'free' | 'pro' | 'max'  // Optional global tier from header selector
 }
 
 // Model display names for professional badges (same as Ultra Mode)
@@ -119,11 +120,12 @@ const AGENT_PRESETS = {
   }
 } as const
 
-export function AgentSelector({ 
-  selectedAgents, 
-  onAgentsChange, 
+export function AgentSelector({
+  selectedAgents,
+  onAgentsChange,
   availableModels,
-  userTier 
+  userTier,
+  globalTier
 }: AgentSelectorProps) {
   const [agentStates, setAgentStates] = useState<Record<string, {
     enabled: boolean
@@ -211,6 +213,27 @@ export function AgentSelector({
     
     onAgentsChange(agents)
   }, [agentStates, onAgentsChange])
+
+  // Auto-apply preset when global tier changes
+  useEffect(() => {
+    if (globalTier && AGENT_PRESETS[globalTier]) {
+      const preset = AGENT_PRESETS[globalTier]
+      const newStates: Record<string, { enabled: boolean; model: string; provider: string }> = {}
+
+      Object.values(AGENT_PERSONAS).forEach(persona => {
+        const roleConfig = preset.roles[persona.id as keyof typeof preset.roles]
+        if (roleConfig) {
+          newStates[persona.id] = {
+            enabled: true,
+            model: roleConfig.model,
+            provider: roleConfig.provider
+          }
+        }
+      })
+
+      setAgentStates(newStates)
+    }
+  }, [globalTier])
 
   const toggleAgent = (agentId: string) => {
     setAgentStates(prev => ({

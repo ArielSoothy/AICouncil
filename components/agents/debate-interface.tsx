@@ -1498,6 +1498,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
               onAgentsChange={setSelectedAgents}
               availableModels={availableModels}
               userTier={userTier}
+              globalTier={globalTier}
             />
           )}
           
@@ -1516,6 +1517,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   onAgentsChange={setSelectedAgents}
                   availableModels={availableModels}
                   userTier={userTier}
+                  globalTier={globalTier}
                 />
               </div>
             </Card>
