@@ -13,8 +13,12 @@
  */
 
 import Alpaca from '@alpacahq/alpaca-trade-api';
-import { tool } from 'ai';
+import { tool, Tool } from 'ai';
 import { z } from 'zod';
+
+// TypeScript workaround for AI SDK v5 deep type inference with Zod
+// Using 'any' to avoid "Type instantiation is excessively deep" errors
+type AnyTool = Tool<any, any>;
 
 // Initialize Alpaca client
 function getAlpacaClient(): Alpaca {
@@ -30,9 +34,9 @@ function getAlpacaClient(): Alpaca {
  * Tool 1: Get Real-Time Stock Quote
  * Returns current price, bid/ask, volume
  */
-export const getStockQuoteTool = tool({
+export const getStockQuoteTool: AnyTool = tool({
   description: 'Get real-time stock quote with current price, bid/ask spread, and volume. Use this to check current market price before making trading decisions.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol (e.g., TSLA, AAPL, NVDA)'),
   }),
   execute: async ({ symbol }) => {
@@ -62,9 +66,9 @@ export const getStockQuoteTool = tool({
  * Tool 2: Get Historical Price Bars
  * Returns candlestick data for technical analysis
  */
-export const getPriceBarsTool = tool({
+export const getPriceBarsTool: AnyTool = tool({
   description: 'Get historical price bars (candlesticks) for technical analysis. Returns OHLC (Open, High, Low, Close) data with volume. Use this to analyze price trends, patterns, and support/resistance levels.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
     timeframe: z.enum(['1Min', '5Min', '15Min', '1Hour', '1Day']).describe('Bar timeframe'),
     limit: z.number().min(1).max(100).describe('Number of bars to fetch (max 100)'),
@@ -138,9 +142,9 @@ export const getPriceBarsTool = tool({
  * Tool 3: Get Latest Stock News
  * Returns recent news articles that might affect the stock
  */
-export const getStockNewsTool = tool({
+export const getStockNewsTool: AnyTool = tool({
   description: 'Get latest news articles for a stock. Use this to understand recent catalysts, earnings announcements, or market sentiment affecting the stock price.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
     limit: z.number().min(1).max(10).default(5).describe('Number of news articles to fetch (max 10)'),
   }),
@@ -181,9 +185,9 @@ export const getStockNewsTool = tool({
  * Tool 4: Calculate RSI (Relative Strength Index)
  * Returns RSI indicator for overbought/oversold analysis
  */
-export const calculateRSITool = tool({
+export const calculateRSITool: AnyTool = tool({
   description: 'Calculate RSI (Relative Strength Index) indicator. RSI values: >70 = overbought (potential sell), <30 = oversold (potential buy), 40-60 = neutral. Use this to identify potential reversal points.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
     period: z.number().min(5).max(50).default(14).describe('RSI period (default 14)'),
   }),
@@ -269,9 +273,9 @@ export const calculateRSITool = tool({
  * Tool 5: Calculate MACD Indicator
  * Returns MACD line, signal line, and histogram for trend analysis
  */
-export const calculateMACDTool = tool({
+export const calculateMACDTool: AnyTool = tool({
   description: 'Calculate MACD (Moving Average Convergence Divergence) indicator. Positive MACD = bullish trend, negative = bearish. Crossovers indicate trend changes. Use this to identify trend direction and momentum.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
   }),
   execute: async ({ symbol }) => {
@@ -367,9 +371,9 @@ function calculateEMA(data: number[], period: number): number {
  * Tool 6: Get Volume Profile
  * Analyzes trading volume patterns
  */
-export const getVolumeProfileTool = tool({
+export const getVolumeProfileTool: AnyTool = tool({
   description: 'Analyze trading volume patterns. High volume = strong interest/conviction. Use this to confirm trend strength or identify potential reversals.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
     days: z.number().min(5).max(30).default(20).describe('Number of days to analyze (default 20)'),
   }),
@@ -441,9 +445,9 @@ export const getVolumeProfileTool = tool({
  * Tool 7: Get Support and Resistance Levels
  * Identifies key price levels from recent price action
  */
-export const getSupportResistanceTool = tool({
+export const getSupportResistanceTool: AnyTool = tool({
   description: 'Identify support and resistance levels from recent price action. Support = price floor where buying pressure emerges. Resistance = price ceiling where selling pressure emerges. Use these for entry/exit planning.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
     days: z.number().min(10).max(90).default(30).describe('Number of days to analyze (10-90 days, default 30)'),
   }),
@@ -531,9 +535,9 @@ export const getSupportResistanceTool = tool({
  * Tool 8: Check Earnings Date
  * Returns upcoming earnings date if available
  */
-export const checkEarningsDateTool = tool({
+export const checkEarningsDateTool: AnyTool = tool({
   description: 'Check if the stock has upcoming earnings announcement. Earnings can cause significant price volatility. Use this to avoid or capitalize on earnings-related moves.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
   }),
   execute: async ({ symbol }) => {

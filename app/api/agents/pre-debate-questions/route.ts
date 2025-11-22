@@ -29,7 +29,7 @@ async function generateWithGroq(query: string): Promise<{ questions: Array<{ que
     system: PRE_DEBATE_PROMPT,
     prompt: `User query: ${query}`,
     temperature: 0.7,
-    maxTokens: 500
+    maxOutputTokens: 500
   })
 
   const content = result.text || '[]'
@@ -54,7 +54,7 @@ async function generateWithClaude(query: string): Promise<{ questions: Array<{ q
     system: PRE_DEBATE_PROMPT,
     prompt: `User query: ${query}`,
     temperature: 0.7,
-    maxTokens: 500
+    maxOutputTokens: 500
   })
 
   const content = result.text || '[]'

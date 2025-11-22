@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+import { generateText, stepCountIs } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
 import { alpacaTools, toolTracker } from '../alpaca/market-data-tools';
@@ -29,7 +29,7 @@ export class OpenAIProvider implements AIProvider {
       // GPT-5 requires maxCompletionTokens instead of maxTokens
       const tokenConfig = isGPT5
         ? { maxCompletionTokens: config.maxTokens || 1000 }
-        : { maxTokens: config.maxTokens || 1000 };
+        : { maxOutputTokens: config.maxTokens || 1000 };
 
       // GPT-5 only supports temperature=1, other values are not allowed
       const temperatureConfig = isGPT5
@@ -74,10 +74,9 @@ export class OpenAIProvider implements AIProvider {
 
         // ✅ Tool use integration (Alpaca + Web Search)
         tools: hasTools ? tools : undefined,
-        maxSteps: hasTools ? (config.maxSteps || 15) : 1,
+        stopWhen: hasTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
         onStepFinish: hasTools ? (step) => {
           console.log('🔍 OpenAI Step finished:', {
-            stepType: step.stepType,
             text: step.text?.substring(0, 100),
             toolCalls: step.toolCalls?.length || 0,
             toolResults: step.toolResults?.length || 0
@@ -117,12 +116,16 @@ export class OpenAIProvider implements AIProvider {
         confidence: this.calculateConfidence(result),
         responseTime,
         tokens: {
-          prompt: result.usage?.promptTokens || 0,
-          completion: result.usage?.completionTokens || 0,
-          total: result.usage?.totalTokens || 0,
+          prompt: result.usage?.inputTokens || 0,
+          completion: result.usage?.outputTokens || 0,
+          total: (result.usage?.inputTokens || 0) + (result.usage?.outputTokens || 0),
         },
         timestamp: new Date(),
-        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : undefined,
+        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []).map((tc: any) => ({
+          toolName: tc.toolName,
+          args: tc.args || {},
+          result: tc.result
+        })) : undefined,
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;

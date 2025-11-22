@@ -127,7 +127,7 @@ Respond with JSON:
         content: promptContent
       }
     ],
-    maxTokens: 600,
+    maxOutputTokens: 600,
     temperature: 0.3
   })
 
@@ -192,7 +192,7 @@ Provide fresh ${levelDescription} analysis as JSON:
         content: promptContent
       }
     ],
-    maxTokens: 600,
+    maxOutputTokens: 600,
     temperature: 0.3
   })
 
@@ -250,7 +250,7 @@ Respond with JSON:
         content: promptContent
       }
     ],
-    maxTokens: 600,
+    maxOutputTokens: 600,
     temperature: 0.3
   })
 

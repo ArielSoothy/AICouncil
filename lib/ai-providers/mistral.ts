@@ -32,7 +32,7 @@ export class MistralProvider implements AIProvider {
         model: mistral(config.model),
         prompt,
         temperature: config.temperature || 0.7,
-        maxTokens: config.maxTokens || 1000,
+        maxOutputTokens: config.maxTokens || 1000,
         topP: config.topP || 1,
       });
 
@@ -52,9 +52,9 @@ export class MistralProvider implements AIProvider {
         confidence: this.calculateConfidence(result),
         responseTime,
         tokens: {
-          prompt: result.usage?.promptTokens || 0,
-          completion: result.usage?.completionTokens || 0,
-          total: result.usage?.totalTokens || 0,
+          prompt: result.usage?.inputTokens || 0,
+          completion: result.usage?.outputTokens || 0,
+          total: (result.usage?.inputTokens || 0) + (result.usage?.outputTokens || 0),
         },
         timestamp: new Date(),
       };

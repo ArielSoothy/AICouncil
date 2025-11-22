@@ -1,5 +1,5 @@
 import { anthropic } from '@ai-sdk/anthropic';
-import { generateText } from 'ai';
+import { generateText, stepCountIs } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
 import { alpacaTools, toolTracker } from '../alpaca/market-data-tools';
@@ -63,16 +63,15 @@ export class AnthropicProvider implements AIProvider {
         model: anthropic(config.model),
         prompt,
         temperature: config.temperature || 0.7,
-        maxTokens: config.maxTokens || 1000,
+        maxOutputTokens: config.maxTokens || 1000,
         // Claude Sonnet 4.5 doesn't allow both temperature and topP
         // topP: config.topP || 1,
 
         // ✅ Tool use integration (Alpaca + Web Search)
         tools: hasTools ? tools : undefined,
-        maxSteps: hasTools ? (config.maxSteps || 15) : 1,
+        stopWhen: hasTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
         onStepFinish: hasTools ? (step) => {
           console.log('🔍 Step finished:', {
-            stepType: step.stepType,
             text: step.text?.substring(0, 100),
             toolCalls: step.toolCalls?.length || 0,
             toolResults: step.toolResults?.length || 0
@@ -100,7 +99,6 @@ export class AnthropicProvider implements AIProvider {
         console.log('Total steps:', result.steps?.length || 0);
         console.log('Steps with toolCalls:', result.steps?.filter(s => s.toolCalls && s.toolCalls.length > 0).length || 0);
         console.log('Steps detail:', result.steps?.map(s => ({
-          stepType: s.stepType,
           toolCallsCount: s.toolCalls?.length || 0,
           toolResultsCount: s.toolResults?.length || 0
         })));
@@ -115,12 +113,16 @@ export class AnthropicProvider implements AIProvider {
         confidence: this.calculateConfidence(result),
         responseTime,
         tokens: {
-          prompt: result.usage?.promptTokens || 0,
-          completion: result.usage?.completionTokens || 0,
-          total: result.usage?.totalTokens || 0,
+          prompt: result.usage?.inputTokens || 0,
+          completion: result.usage?.outputTokens || 0,
+          total: (result.usage?.inputTokens || 0) + (result.usage?.outputTokens || 0),
         },
         timestamp: new Date(),
-        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : undefined,
+        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []).map((tc: any) => ({
+          toolName: tc.toolName,
+          args: tc.args || {},
+          result: tc.result
+        })) : undefined,
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;

@@ -92,15 +92,15 @@ const MODEL_EXPERTISE = {
 const RESPONSE_MODES = {
   concise: {
     systemPrompt: "Respond in MAX 50 words. List format if multiple items. No explanations.",
-    maxTokens: 75
+    maxOutputTokens: 75
   },
   normal: {
     systemPrompt: "Respond in 100-150 words. Be direct and clear.",
-    maxTokens: 200
+    maxOutputTokens: 200
   },
   detailed: {
     systemPrompt: "Provide comprehensive answer with examples.",
-    maxTokens: 500
+    maxOutputTokens: 500
   }
 }
 
@@ -198,7 +198,7 @@ async function runEnhancedClaudeJudge(query: string, responses: StructuredModelR
         content: promptContent
       }
     ],
-    maxTokens: mode === 'concise' ? 300 : 800,
+    maxOutputTokens: mode === 'concise' ? 300 : 800,
     temperature: 0.2
   })
 
@@ -319,7 +319,7 @@ async function runEnhancedGPTJudge(query: string, responses: StructuredModelResp
         content: promptContent
       }
     ],
-    maxTokens: mode === 'concise' ? 300 : 800,
+    maxOutputTokens: mode === 'concise' ? 300 : 800,
     temperature: 0.2
   })
 
@@ -374,7 +374,7 @@ async function runEnhancedGeminiJudge(query: string, responses: StructuredModelR
         content: promptContent
       }
     ],
-    maxTokens: mode === 'concise' ? 300 : 800,
+    maxOutputTokens: mode === 'concise' ? 300 : 800,
     temperature: 0.2
   })
 
@@ -608,7 +608,7 @@ export async function POST(request: NextRequest) {
         if (compProvider && compProvider.isConfigured()) {
           const compConfig = {
             ...comparisonModel,
-            maxTokens: responseMode === 'concise' ? 100 : responseMode === 'normal' ? 400 : 800
+            maxOutputTokens: responseMode === 'concise' ? 100 : responseMode === 'normal' ? 400 : 800
           }
           const compStartTime = Date.now()
           const compResponse = await compProvider.query(structuredPrompt, compConfig)
@@ -647,7 +647,7 @@ export async function POST(request: NextRequest) {
         // Concise mode uses very few tokens for brief, list-style responses
         const enhancedConfig = {
           ...config,
-          maxTokens: responseMode === 'concise' ? 100 : responseMode === 'normal' ? 400 : 800
+          maxOutputTokens: responseMode === 'concise' ? 100 : responseMode === 'normal' ? 400 : 800
         }
         
         return provider.query(structuredPrompt, enhancedConfig)
