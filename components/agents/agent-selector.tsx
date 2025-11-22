@@ -30,6 +30,7 @@ interface AgentSelectorProps {
 
 // Model display names for professional badges (same as Ultra Mode)
 const modelDisplayNames: Record<string, string> = {
+  'gpt-5.1': 'GPT-5.1',
   'gpt-5-chat-latest': 'GPT-5 Chat',
   'gpt-5': 'GPT-5',
   'gpt-5-mini': 'GPT-5 Mini',
@@ -78,7 +79,7 @@ const providerNames = {
   cohere: 'Cohere'
 } as const
 
-// Agent Presets - Pre-selected models for each role (only working models)
+// Agent Presets - Pre-selected models for each role (4 agents: analyst, critic, judge, synthesizer)
 const AGENT_PRESETS = {
   free: {
     label: 'Free',
@@ -88,7 +89,8 @@ const AGENT_PRESETS = {
     roles: {
       'analyst-001': { provider: 'groq', model: 'llama-3.1-8b-instant' },       // Fast analyst
       'critic-001': { provider: 'google', model: 'gemini-2.0-flash' },          // Different provider
-      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' } // Best free model
+      'judge-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' },      // Best free for judging
+      'synthesizer-001': { provider: 'google', model: 'gemini-2.0-flash' }      // Synthesis
     }
   },
   pro: {
@@ -99,6 +101,7 @@ const AGENT_PRESETS = {
     roles: {
       'analyst-001': { provider: 'anthropic', model: 'claude-3-7-sonnet-20250219' },  // Strong analysis
       'critic-001': { provider: 'openai', model: 'gpt-4o' },                           // Critical thinking
+      'judge-001': { provider: 'anthropic', model: 'claude-3-7-sonnet-20250219' },    // Balanced judging
       'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }       // Good synthesis
     }
   },
@@ -108,9 +111,10 @@ const AGENT_PRESETS = {
     description: 'Best flagship models',
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700',
     roles: {
-      'analyst-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },  // Flagship analysis
-      'critic-001': { provider: 'openai', model: 'gpt-5-chat-latest' },               // Flagship reasoning
-      'synthesizer-001': { provider: 'xai', model: 'grok-4-fast-reasoning' }          // Flagship synthesis
+      'analyst-001': { provider: 'openai', model: 'gpt-5.1' },                         // GPT-5.1 for analysis
+      'critic-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },   // Claude 4.5 for critique
+      'judge-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },    // Claude 4.5 for judging
+      'synthesizer-001': { provider: 'xai', model: 'grok-4-fast-reasoning' } // Grok 4 for synthesis (gemini-3-pro untested)
     }
   }
 } as const
@@ -136,7 +140,8 @@ export function AgentSelector({
     const agentDefaults: Record<string, { model: string; provider: string }> = {
       'analyst-001': { model: 'llama-3.1-8b-instant', provider: 'groq' },     // Fast, good for initial analysis
       'critic-001': { model: 'gemini-2.0-flash', provider: 'google' },        // Different provider for diversity
-      'synthesizer-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' } // Best model for final synthesis
+      'judge-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' },    // Best free model for judging
+      'synthesizer-001': { model: 'gemini-2.0-flash', provider: 'google' }    // Synthesis
     }
     
     Object.values(AGENT_PERSONAS).forEach(persona => {
