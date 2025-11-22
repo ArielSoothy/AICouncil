@@ -10,7 +10,7 @@ import { hasInternetAccess } from '@/lib/user-tiers'
 import { FollowUpQuestionsCard } from './follow-up-questions-card'
 import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp, Globe, ExternalLink } from 'lucide-react'
 import { useEffect } from 'react'
-import { MODEL_POWER } from '@/lib/model-metadata'
+import { MODEL_POWER, MODEL_COSTS_PER_1K } from '@/lib/model-metadata'
 
 interface EnhancedConsensusDisplayProps {
   result: EnhancedConsensusResponse
@@ -21,40 +21,24 @@ interface EnhancedConsensusDisplayProps {
   onRefineQuery?: (enrichedQuery: string) => void
 }
 
-// Model pricing per 1K tokens (input → output) - same as in model selector
-const modelCosts = {
-  // OpenAI Models
-  'gpt-3.5-turbo': { input: 0.0005, output: 0.0015, tier: 'budget' },
-  'gpt-3.5-turbo-16k': { input: 0.001, output: 0.002, tier: 'budget' },
-  'gpt-4': { input: 0.03, output: 0.06, tier: 'premium' },
-  'gpt-4o': { input: 0.01, output: 0.03, tier: 'premium' },
-  'gpt-4-turbo-preview': { input: 0.01, output: 0.03, tier: 'premium' },
-  
-  // Claude 4 Series (2025) - Flagship
-  'claude-opus-4-1-20250514': { input: 0.015, output: 0.075, tier: 'flagship' },
-  'claude-sonnet-4-20250514': { input: 0.003, output: 0.015, tier: 'balanced' },
-  
-  // Claude 3.7 Series (2025)
-  'claude-3-7-sonnet-20250219': { input: 0.003, output: 0.015, tier: 'balanced' },
-  
-  // Claude 3.5 Series (2024)
-  'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015, tier: 'balanced' },
-  'claude-3-5-haiku-20241022': { input: 0.0008, output: 0.004, tier: 'budget' },
-  
-  // Claude 3 Series (Legacy)
-  'claude-3-opus-20240229': { input: 0.015, output: 0.075, tier: 'flagship' },
-  'claude-3-sonnet-20240229': { input: 0.003, output: 0.015, tier: 'balanced' },
-  'claude-3-haiku-20240307': { input: 0.00025, output: 0.00125, tier: 'budget' },
-  
-  // Claude 2 Series
-  'claude-2.1': { input: 0.008, output: 0.024, tier: 'balanced' },
-  'claude-2.0': { input: 0.008, output: 0.024, tier: 'balanced' },
-  
-  // Google Models
-  'gemini-pro': { input: 0.0, output: 0.0, tier: 'free' },
-  'gemini-pro-vision': { input: 0.0, output: 0.0, tier: 'free' },
-  'gemini-1.5-pro-latest': { input: 0.0, output: 0.0, tier: 'free' },
-}
+// Derive model pricing and tier from centralized metadata (MODEL_COSTS_PER_1K)
+// This ensures consistency with model-selector and other components
+const modelCosts: Record<string, { input: number; output: number; tier: 'free' | 'budget' | 'balanced' | 'premium' | 'flagship' }> = {}
+Object.entries(MODEL_COSTS_PER_1K).forEach(([model, cost]) => {
+  const input = cost.input
+  const output = cost.output
+  const avg = (input + output) / 2
+  const tier = avg === 0
+    ? 'free'
+    : avg < 0.002
+      ? 'budget'
+      : avg < 0.01
+        ? 'balanced'
+        : avg < 0.05
+          ? 'premium'
+          : 'flagship'
+  modelCosts[model] = { input, output, tier }
+})
 
 const tierColors = {
   free: 'border-l-gray-400',
