@@ -890,7 +890,7 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
             try {
               synthesisResult = await googleProvider.query(synthesisPrompt, {
                 provider: 'google',
-                model: 'gemini-2.5-flash',
+                model: 'gemini-2.0-flash',  // Use working model instead of untested gemini-2.5-flash
                 enabled: true,
                 maxTokens: responseMode === 'detailed' ? 1200 : 800
               })
@@ -899,18 +899,23 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
               if (!synthesisResult || !synthesisResult.response || synthesisResult.response.trim().length < 50) {
                 console.warn('⚠️  Gemini returned empty or too short synthesis response:', {
                   hasResult: !!synthesisResult,
+                  hasError: !!synthesisResult?.error,
+                  errorMsg: synthesisResult?.error || 'none',
                   responseLength: synthesisResult?.response?.length || 0,
-                  response: synthesisResult?.response || 'null'
+                  responsePreview: (synthesisResult?.response || 'null').substring(0, 100)
                 })
                 synthesisResult = null // Force fallback to Groq
+              } else {
+                console.log('✅ Gemini synthesis succeeded, response length:', synthesisResult.response.length)
               }
             } catch (googleError: any) {
-              console.log('Google AI failed, trying Groq fallback:', googleError.message)
+              console.error('❌ Google AI failed:', googleError.message)
+              console.error('Google AI error stack:', googleError.stack?.substring(0, 500))
               synthesisResult = null
             }
           }
 
-          // Fallback to Groq if Gemini failed or returned empty
+          // Fallback to Groq 70B if Gemini failed or returned empty
           if (!synthesisResult) {
             const groqProvider = providerRegistry.getProvider('groq')
             if (groqProvider) {
@@ -924,13 +929,33 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
                   maxTokens: responseMode === 'detailed' ? 1200 : 800
                 })
 
-                // Check if Groq also returned empty
+                // Check if Groq 70B also returned empty
                 if (!synthesisResult || !synthesisResult.response || synthesisResult.response.trim().length < 50) {
-                  console.warn('⚠️  Groq also returned empty synthesis response')
-                  synthesisResult = null
+                  console.warn('⚠️  Groq 70B returned empty, trying Llama 3.1 8B...')
+
+                  // Try smaller model as third fallback
+                  try {
+                    synthesisResult = await groqProvider.query(synthesisPrompt, {
+                      provider: 'groq',
+                      model: 'llama-3.1-8b-instant',
+                      enabled: true,
+                      maxTokens: responseMode === 'detailed' ? 1200 : 800
+                    })
+
+                    if (synthesisResult && synthesisResult.response && synthesisResult.response.trim().length >= 50) {
+                      console.log('✅ Groq Llama 8B synthesis succeeded')
+                      usedProvider = 'groq-8b'
+                    } else {
+                      console.warn('⚠️  Groq 8B also returned empty')
+                      synthesisResult = null
+                    }
+                  } catch (smallModelError: any) {
+                    console.error('❌ Groq 8B also failed:', smallModelError.message)
+                    synthesisResult = null
+                  }
                 }
               } catch (groqError: any) {
-                console.error('❌ Groq also failed for synthesis:', groqError.message)
+                console.error('❌ Groq 70B failed for synthesis:', groqError.message)
                 synthesisResult = null
               }
             }

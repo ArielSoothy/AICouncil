@@ -19,9 +19,9 @@ export class GroqProvider implements AIProvider {
     const startTime = Date.now();
     
     // Define fallback models for rate-limited models
-    // Try multiple fallbacks in order of preference
+    // Try llama 8b instant first (fast and reliable)
     const fallbackModels: Record<string, string[]> = {
-      'llama-3.3-70b-versatile': ['gemma2-9b-it', 'llama-3.1-8b-instant'],  // Try gemma2 first, then llama 8b
+      'llama-3.3-70b-versatile': ['llama-3.1-8b-instant'],  // gemma2-9b-it was decommissioned
       'llama-3-groq-70b-tool-use': ['llama-3-groq-8b-tool-use', 'llama-3.1-8b-instant']  // Try 8b tool-use first
     };
     

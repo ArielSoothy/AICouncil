@@ -195,8 +195,8 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     // Tool-Use Specialists (#1 and #3 on Berkeley Function Calling Leaderboard)
     { id: 'llama-3-groq-70b-tool-use', name: 'Llama 3 70B Tool Use', provider: 'groq', tier: 'free', badge: '🎁', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tool use models require special parameters - returns empty response with standard query' },
     { id: 'llama-3-groq-8b-tool-use', name: 'Llama 3 8B Tool Use', provider: 'groq', tier: 'free', badge: '🎁', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tool use models require special parameters - returns empty response with standard query' },
-    // Gemma
-    { id: 'gemma2-9b-it', name: 'Gemma 2 9B', provider: 'groq', tier: 'free', badge: '🎁', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Model may require special parameters or deprecated - returns empty response' }
+    // Gemma (DECOMMISSIONED as of Nov 2025)
+    { id: 'gemma2-9b-it', name: 'Gemma 2 9B', provider: 'groq', tier: 'free', badge: '🎁', status: 'decommissioned', lastTested: '2025-11-23T00:00:00.000Z', notes: 'DECOMMISSIONED by Groq Nov 2025. Do not use.', isLegacy: true }
   ],
 
   // ===== XAI (Grok) - Has Live Search / Agent Tools API =====
