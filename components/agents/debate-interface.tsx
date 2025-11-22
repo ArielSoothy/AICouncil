@@ -1968,49 +1968,92 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   </div>
                 )}
 
-                {/* Search Capabilities - Per-Agent Search Provider Display */}
+                {/* Search Capabilities - Per-Agent Search Provider Display with Real-Time Progress */}
                 {enableWebSearch && searchCapabilities.length > 0 && (
                   <div className="mb-4 p-4 rounded-lg border bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-600/30">
                     <div className="flex items-center gap-2 mb-3">
                       <Search className="h-5 w-5 text-blue-400" />
-                      <h4 className="text-sm font-semibold">Search Capabilities</h4>
+                      <h4 className="text-sm font-semibold">Research Progress</h4>
                       <span className="text-xs text-muted-foreground ml-auto">
-                        {searchCapabilities.filter(a => a.hasNativeSearch).length} native, {searchCapabilities.filter(a => !a.hasNativeSearch).length} DuckDuckGo
+                        {agentSearchHistory.filter(a => a.status === 'completed').length}/{searchCapabilities.length} complete
                       </span>
                     </div>
                     <div className="space-y-2">
-                      {searchCapabilities.map((agent, idx) => (
-                        <div
-                          key={`cap-${agent.role}-${idx}`}
-                          className={`flex items-center gap-3 p-2 rounded-md transition-all ${
-                            agent.hasNativeSearch
-                              ? 'bg-blue-500/10 border border-blue-500/30'
-                              : 'bg-yellow-500/10 border border-yellow-500/30'
-                          }`}
-                        >
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
-                            agent.hasNativeSearch ? 'bg-blue-500/20' : 'bg-yellow-500/20'
-                          }`}>
-                            {agent.hasNativeSearch ? '🌐' : '🦆'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm">{agent.role}</span>
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/50 text-muted-foreground">
-                                {agent.model}
-                              </span>
+                      {searchCapabilities.map((agent, idx) => {
+                        // Find real-time search status for this agent
+                        const searchStatus = agentSearchHistory.find(s => s.role === agent.role)
+                        const isSearching = searchStatus?.status === 'searching'
+                        const isComplete = searchStatus?.status === 'completed'
+                        const hasError = searchStatus?.status === 'error'
+
+                        return (
+                          <div
+                            key={`cap-${agent.role}-${idx}`}
+                            className={`flex items-center gap-3 p-2 rounded-md transition-all ${
+                              isSearching ? 'bg-blue-500/20 border border-blue-500/50 animate-pulse' :
+                              isComplete ? 'bg-green-500/10 border border-green-500/30' :
+                              hasError ? 'bg-red-500/10 border border-red-500/30' :
+                              agent.hasNativeSearch
+                                ? 'bg-blue-500/10 border border-blue-500/30'
+                                : 'bg-yellow-500/10 border border-yellow-500/30'
+                            }`}
+                          >
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
+                              isSearching ? 'bg-blue-500/30' :
+                              isComplete ? 'bg-green-500/20' :
+                              hasError ? 'bg-red-500/20' :
+                              agent.hasNativeSearch ? 'bg-blue-500/20' : 'bg-yellow-500/20'
+                            }`}>
+                              {isSearching ? '🔍' : isComplete ? '✅' : hasError ? '❌' : agent.hasNativeSearch ? '🌐' : '🦆'}
                             </div>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {agent.searchProvider}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm capitalize">{agent.role}</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/50 text-muted-foreground">
+                                  {agent.model}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {isSearching ? 'Searching web...' :
+                                 isComplete && searchStatus?.resultsCount !== undefined ? `${searchStatus.resultsCount} sources found` :
+                                 hasError ? searchStatus?.error || 'Search failed' :
+                                 agent.searchProvider}
+                              </p>
+                              {/* Show sources when complete */}
+                              {isComplete && searchStatus?.sources && searchStatus.sources.length > 0 && (
+                                <details className="mt-1">
+                                  <summary className="text-xs text-blue-400 cursor-pointer hover:text-blue-300">
+                                    View {searchStatus.sources.length} sources
+                                  </summary>
+                                  <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground pl-2">
+                                    {searchStatus.sources.slice(0, 5).map((source, i) => (
+                                      <li key={i} className="truncate">
+                                        <a href={source} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400">
+                                          {new URL(source).hostname}
+                                        </a>
+                                      </li>
+                                    ))}
+                                    {searchStatus.sources.length > 5 && (
+                                      <li className="text-muted-foreground">+{searchStatus.sources.length - 5} more</li>
+                                    )}
+                                  </ul>
+                                </details>
+                              )}
+                            </div>
+                            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              isSearching ? 'bg-blue-500/30 text-blue-300' :
+                              isComplete ? 'bg-green-500/20 text-green-400' :
+                              hasError ? 'bg-red-500/20 text-red-400' :
+                              agent.hasNativeSearch ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {isSearching ? 'Searching...' :
+                               isComplete ? `${searchStatus?.resultsCount || 0} sources` :
+                               hasError ? 'Error' :
+                               agent.hasNativeSearch ? 'Native' : 'Fallback'}
+                            </div>
                           </div>
-                          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                            agent.hasNativeSearch ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-400'
-                          }`}>
-                            {agent.hasNativeSearch ? 'Native' : 'Fallback'}
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
