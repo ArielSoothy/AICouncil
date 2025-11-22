@@ -56,9 +56,9 @@ const AGENT_PRESETS = {
     description: 'Cheapest paid models',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
-      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },        // Cheapest OpenAI (budget tier)
-      'critic-001': { provider: 'anthropic', model: 'claude-3-haiku-20240307' },  // Cheapest Anthropic (budget tier)
-      'synthesizer-001': { provider: 'google', model: 'gemini-3-pro-preview-11-2025' }  // Google paid model
+      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI ($0.0004/1K)
+      'critic-001': { provider: 'anthropic', model: 'claude-3-haiku-20240307' }, // Cheapest Anthropic ($0.0003/1K)
+      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI ($0.0002/1K)
     }
   },
   max: {

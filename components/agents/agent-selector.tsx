@@ -57,6 +57,7 @@ const modelDisplayNames: Record<string, string> = {
   'gemini-2.5-flash': 'Gemini 2.5 Flash',
   'gemini-2.0-flash': 'Gemini 2.0 Flash',
   'gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
+  'gemini-2.5-flash-lite': 'Gemini 2.5 Flash Lite',
   'gemini-1.5-flash': 'Gemini 1.5 Flash',
   'llama-3.3-70b-versatile': 'Llama 3.3 70B',
   'llama-3.1-8b-instant': 'Llama 3.1 8B',
@@ -106,10 +107,10 @@ const AGENT_PRESETS = {
     description: 'Cheapest paid models',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
-      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI
-      'critic-001': { provider: 'anthropic', model: 'claude-3-haiku-20240307' }, // Cheapest Anthropic
-      'judge-001': { provider: 'google', model: 'gemini-3-pro-preview-11-2025' }, // Google flagship (paid)
-      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI
+      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI ($0.0004/1K)
+      'critic-001': { provider: 'anthropic', model: 'claude-3-haiku-20240307' }, // Cheapest Anthropic ($0.0003/1K)
+      'judge-001': { provider: 'google', model: 'gemini-2.5-flash-lite' },     // Cheapest Google ($0.10/M = $0.0001/1K)
+      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI ($0.0002/1K)
     }
   },
   max: {
