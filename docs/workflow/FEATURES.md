@@ -1066,5 +1066,39 @@
 - **Last Modified**: November 2025 (Initial implementation)
 - **DO NOT**: Remove flowchart from loading state, break streaming event integration
 
+### 34. Pre-Debate Clarifying Questions
+- **Status**: ✅ ACTIVE & USER-REQUESTED
+- **Location**:
+  - `app/api/agents/pre-debate-questions/route.ts` - Question generation API
+  - `components/debate/pre-debate-questions.tsx` - UI component
+  - `components/agents/debate-interface.tsx` - Integration (toggle + state)
+- **Purpose**: AI-generated clarifying questions before debate to improve result quality
+- **Key Features**:
+  - Generates 3-4 contextual questions based on user query
+  - Uses Groq first (free/fast), falls back to Claude
+  - Optional answers - user can skip and start debate directly
+  - Toggle in setup UI to enable/disable feature
+  - Questions include hints for better user guidance
+  - Seamlessly integrates answers into debate context
+- **UI Flow**:
+  1. User clicks "Start Debate" with toggle enabled
+  2. Pre-debate questions panel appears with loading state
+  3. AI generates 3-4 clarifying questions specific to query
+  4. User can answer any/all questions or click "Skip & Start Debate"
+  5. Debate begins with additional context from answers (if provided)
+- **API Details**:
+  - Endpoint: `POST /api/agents/pre-debate-questions`
+  - Input: `{ query: string }`
+  - Output: `{ success: true, questions: [{ question: string, hint?: string }] }`
+  - Uses `@ai-sdk/groq` with `llama-3.3-70b-versatile` model
+  - Fallback to `@ai-sdk/anthropic` with `claude-3-5-haiku-20241022`
+- **Dependencies**:
+  - `@ai-sdk/groq`, `@ai-sdk/anthropic`, `ai` (generateText)
+  - shadcn/ui components (Card, Button, Textarea, Label)
+  - lucide-react icons (HelpCircle, Lightbulb, SkipForward, etc.)
+- **Related Fix**: Also fixed false "Failed to start" timeout error - now only shows error if NO models start within 15 seconds (prevents false positives for sequential agents)
+- **Last Modified**: November 2025 (Initial implementation)
+- **DO NOT**: Remove skip option, change to synchronous-only flow, disable toggle functionality
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
