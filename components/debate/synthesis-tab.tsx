@@ -117,9 +117,9 @@ export function SynthesisTab({ session, onFollowUpRound }: SynthesisTabProps) {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Final Synthesis</h3>
-            {session.finalSynthesis.confidence && (
+            {session.finalSynthesis.confidence !== undefined && (
               <Badge variant="default" className="text-sm">
-                {session.finalSynthesis.confidence}% Confidence
+                {Math.round(session.finalSynthesis.confidence * 100)}% Confidence
               </Badge>
             )}
           </div>

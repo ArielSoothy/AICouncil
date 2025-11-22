@@ -837,7 +837,7 @@ export async function POST(request: NextRequest) {
             ? '\n\nProvide comprehensive analysis with detailed explanations and thorough reasoning.'
             : '\n\nProvide balanced analysis incorporating the full debate discussion.'
 
-          const synthesisPrompt = `You are the Chief Judge synthesizing an expert multi-agent debate. These agents engaged in substantive discussion with longer, more detailed arguments.
+          const synthesisPrompt = `You are the Chief Judge synthesizing an expert multi-agent debate. Your job is to deliver CLEAR, ACTIONABLE recommendations.
 
 Query: ${query}
 
@@ -850,16 +850,36 @@ Round: ${r.round || 1}
 ${r.content || r.response || 'No content'}
 `).join('\n')}
 
-As Chief Judge, synthesize this rich debate into a comprehensive analysis:
+As Chief Judge, synthesize this debate into CLEAR RECOMMENDATIONS. Users need actionable answers, not summaries.
 
-1. AGREEMENTS: What key points did multiple agents converge on? (bullet points)
-2. DISAGREEMENTS: Where did agents clash and why? What were the core tensions? (bullet points)
-3. CONCLUSION: Your expert synthesis drawing from the best arguments across all agents${concisenessInstruction}
-4. FOLLOW-UP QUESTIONS (optional): If more context would strengthen the recommendation, what specific questions should the user answer?
+FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
 
-The agents provided substantial analysis - your synthesis should reflect that depth and nuance.
+### TOP 3 RECOMMENDATIONS
 
-Format your response with clear sections using markdown headers (###).`
+1. **[Specific Recommendation Name]**: [2-3 sentence explanation of WHY this is recommended, with specific details mentioned by agents]
+
+2. **[Specific Recommendation Name]**: [2-3 sentence explanation]
+
+3. **[Specific Recommendation Name]**: [2-3 sentence explanation]
+
+### AGREEMENTS
+- [Specific point all/most agents agreed on]
+- [Another agreement point]
+- [Third agreement point]
+
+### DISAGREEMENTS
+- [Specific disagreement - what Agent X said vs Agent Y]
+- [Another disagreement with context]
+
+### CONCLUSION
+${concisenessInstruction ? 'Brief summary' : 'Comprehensive final verdict'} explaining which recommendation you endorse most strongly and why.
+
+CONFIDENCE: [Number 1-100 based on how much agents agreed and quality of evidence]
+
+### FOLLOW-UP QUESTIONS
+- [Optional: Questions that would help refine the recommendation]
+
+IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or options - NAME THEM. Users want answers, not generic advice.`
 
           // Try Gemini first, fallback to Groq if it fails or returns empty
           let synthesisResult = null
@@ -931,7 +951,7 @@ Format your response with clear sections using markdown headers (###).`
               id: 'fallback-synthesis',
               provider: 'fallback',
               model: 'fallback',
-              response: `### AGREEMENTS\n\n- All agents provided substantive analysis on the query\n- Multiple perspectives were considered\n\n### DISAGREEMENTS\n\n- Agents had different approaches and focus areas\n- Various recommendations emerged from the debate\n\n### CONCLUSION\n\nBased on the agent debate:\n\n${summaryPoints}\n\nThe agents provided diverse insights. Review the individual agent responses above for detailed analysis.`,
+              response: `### TOP 3 RECOMMENDATIONS\n\n1. **Review Individual Agent Responses**: Each agent provided unique insights that should be considered together.\n\n2. **Compare Agent Perspectives**: The Analyst, Critic, Judge, and Synthesizer each approached the query differently.\n\n3. **Consider All Viewpoints**: Multiple perspectives were offered across the debate rounds.\n\n### AGREEMENTS\n- All agents provided substantive analysis on the query\n- Multiple perspectives were considered\n- Agents engaged with the core question meaningfully\n\n### DISAGREEMENTS\n- Agents had different approaches and focus areas\n- Various recommendations emerged from the debate\n\n### CONCLUSION\n\nBased on the agent debate:\n\n${summaryPoints}\n\nCONFIDENCE: 60\n\nThe agents provided diverse insights. Review the individual agent responses above for detailed analysis.`,
               confidence: 0.6,
               responseTime: 0,
               tokens: { prompt: 0, completion: 0, total: 0 },
