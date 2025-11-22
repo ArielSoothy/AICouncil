@@ -54,6 +54,9 @@ export interface ModelConfig {
   temperature?: number;
   maxTokens?: number;
   topP?: number;
+  useWebSearch?: boolean; // Enable native AI provider web search (GPT, Claude, Gemini, Grok)
+  useTools?: boolean; // Enable tool use (Alpaca trading tools)
+  maxSteps?: number; // Max steps for multi-step tool use
 }
 
 export interface QueryRequest {

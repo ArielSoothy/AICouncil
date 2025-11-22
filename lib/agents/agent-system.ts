@@ -262,7 +262,9 @@ export class AgentDebateOrchestrator {
       
       const result = await provider.query(fullPrompt, {
         ...config,
-        maxTokens: isLLMMode ? 1000 : DEBATE_CONFIG.tokenLimits.perResponse  // Increased from 300 to 1000 for LLM mode
+        maxTokens: isLLMMode ? 1000 : DEBATE_CONFIG.tokenLimits.perResponse,  // Increased from 300 to 1000 for LLM mode
+        // Enable native web search for providers that support it
+        useWebSearch: this.request.enableWebSearch && round === 1
       })
       
       // Parse response for key points

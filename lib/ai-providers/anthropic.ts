@@ -5,6 +5,21 @@ import { AIProvider } from './types';
 import { alpacaTools, toolTracker } from '../alpaca/market-data-tools';
 import { getModelsByProvider } from '../models/model-registry';
 
+// Models that support Anthropic's native web search (web_search_20250305)
+// Only newer Claude 3.5+ models support this feature
+const WEB_SEARCH_SUPPORTED_MODELS = [
+  'claude-sonnet-4-5-20250929',     // Claude Sonnet 4.5
+  'claude-sonnet-4-20250514',       // Claude Sonnet 4
+  'claude-opus-4-1-20250514',       // Claude Opus 4.1
+  'claude-3-7-sonnet-20250219',     // Claude 3.7 Sonnet
+  'claude-3-5-sonnet-20241022',     // Claude 3.5 Sonnet v2
+  'claude-3-5-sonnet-20240620',     // Claude 3.5 Sonnet v1
+];
+
+function supportsWebSearch(model: string): boolean {
+  return WEB_SEARCH_SUPPORTED_MODELS.some(m => model.includes(m) || m.includes(model));
+}
+
 export class AnthropicProvider implements AIProvider {
   name = 'Anthropic';
   models = getModelsByProvider('anthropic').map(m => m.id);
@@ -41,19 +56,24 @@ export class AnthropicProvider implements AIProvider {
         Object.assign(tools, alpacaTools);
       }
 
-      // Add Claude web search if requested
-      // Requires @ai-sdk/anthropic v2.x+
+      // Add Claude web search if requested AND model supports it
+      // Only newer Claude 3.5+ models support web_search_20250305
+      // Older models (Haiku, Opus, Claude 3) will cause runtime errors
       if (config.useWebSearch) {
-        try {
-          const anthropicAny = anthropic as any;
-          if (anthropicAny.tools?.webSearch_20250305) {
-            tools.web_search = anthropicAny.tools.webSearch_20250305({ maxUses: 5 });
-            console.log('Anthropic: Native web search enabled');
-          } else {
-            console.log('Anthropic: Web search requested but SDK does not support anthropic.tools.webSearch_20250305');
+        if (supportsWebSearch(config.model)) {
+          try {
+            const anthropicAny = anthropic as any;
+            if (anthropicAny.tools?.webSearch_20250305) {
+              tools.web_search = anthropicAny.tools.webSearch_20250305({ maxUses: 5 });
+              console.log(`Anthropic: Native web search enabled for ${config.model}`);
+            } else {
+              console.log('Anthropic: Web search requested but SDK does not support anthropic.tools.webSearch_20250305');
+            }
+          } catch (e) {
+            console.log('Anthropic: Could not enable native search:', e);
           }
-        } catch (e) {
-          console.log('Anthropic: Could not enable native search:', e);
+        } else {
+          console.log(`Anthropic: Model ${config.model} does not support web_search_20250305, skipping native web search`);
         }
       }
 
