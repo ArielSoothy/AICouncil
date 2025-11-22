@@ -36,6 +36,9 @@ const modelDisplayNames: Record<string, string> = {
   'gpt-5': 'GPT-5',
   'gpt-5-mini': 'GPT-5 Mini',
   'gpt-5-nano': 'GPT-5 Nano',
+  'gpt-4.1': 'GPT-4.1',
+  'gpt-4.1-mini': 'GPT-4.1 Mini',
+  'gpt-4.1-nano': 'GPT-4.1 Nano',
   'gpt-4-turbo-preview': 'GPT-4 Turbo',
   'gpt-4': 'GPT-4',
   'gpt-4o': 'GPT-4o',
@@ -47,6 +50,8 @@ const modelDisplayNames: Record<string, string> = {
   'claude-3-7-sonnet-20250219': 'Claude 3.7 Sonnet',
   'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
   'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku',
+  'claude-3-haiku-20240307': 'Claude 3 Haiku',
+  'claude-3-opus-20240229': 'Claude 3 Opus',
   'gemini-2.5-pro': 'Gemini 2.5 Pro',
   'gemini-2.5-flash': 'Gemini 2.5 Flash',
   'gemini-2.0-flash': 'Gemini 2.0 Flash',
@@ -97,13 +102,13 @@ const AGENT_PRESETS = {
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Balanced tier models',
+    description: 'Cheapest paid models',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
-      'analyst-001': { provider: 'anthropic', model: 'claude-3-7-sonnet-20250219' },  // Strong analysis
-      'critic-001': { provider: 'openai', model: 'gpt-4o' },                           // Critical thinking
-      'judge-001': { provider: 'anthropic', model: 'claude-3-7-sonnet-20250219' },    // Balanced judging
-      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }       // Good synthesis
+      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI
+      'critic-001': { provider: 'anthropic', model: 'claude-3-haiku-20240307' }, // Cheapest Anthropic
+      'judge-001': { provider: 'mistral', model: 'mistral-small-latest' },     // Cheapest Mistral
+      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI
     }
   },
   max: {

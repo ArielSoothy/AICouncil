@@ -53,12 +53,12 @@ const AGENT_PRESETS = {
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Balanced tier models',
+    description: 'Cheapest paid models',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
-      'analyst-001': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },  // Strong analysis
-      'critic-001': { provider: 'openai', model: 'gpt-4o' },                           // Critical thinking
-      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }       // Good synthesis
+      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },        // Cheapest OpenAI (budget tier)
+      'critic-001': { provider: 'anthropic', model: 'claude-3-haiku-20240307' },  // Cheapest Anthropic (budget tier)
+      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }    // Cheapest xAI (working)
     }
   },
   max: {
