@@ -4,7 +4,29 @@
  * This is the ONLY place where models should be defined.
  * All other files should import from this registry.
  *
- * Last Updated: 2025-01-28
+ * Last Updated: 2025-11-22
+ *
+ * ============================================================================
+ * GOOGLE GEMINI MODELS - Official Pricing (ai.google.dev, Nov 2025)
+ * ============================================================================
+ *
+ * FLAGSHIP TIER:
+ * - gemini-3-pro-preview-11-2025: $2.00/M input (≤200k), $12.00/M output | #1 on LMArena
+ * - gemini-2.5-pro:               $1.25/M input, $10.00/M output | Best reasoning
+ *
+ * BUDGET TIER:
+ * - gemini-2.5-flash-lite:        $0.10/M input, $0.40/M output | CHEAPEST PAID Google model
+ *
+ * FREE TIER (with free API quota):
+ * - gemini-2.5-flash:             $0.30/M input, $2.50/M output | Free tier available
+ * - gemini-2.0-flash:             Free tier only | Tested and working
+ * - gemini-2.0-flash-lite:        $0.075/M input, $0.30/M output | Free tier available
+ *
+ * LEGACY (deprecated):
+ * - gemini-1.5-flash:             Use 2.0+ instead
+ *
+ * Source: https://ai.google.dev/gemini-api/docs/models/gemini
+ * ============================================================================
  */
 
 import { MODEL_COSTS_PER_1K, MODEL_BENCHMARKS, MODEL_POWER } from '../model-metadata'
@@ -81,6 +103,7 @@ const MODELS_WITH_INTERNET = new Set([
   'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022',
   // Google - Gemini has Google Search grounding
   'gemini-3-pro-preview-11-2025', 'gemini-3-deep-think',
+  'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite',
   'gemini-2.0-flash', 'gemini-2.0-flash-lite',
   // xAI - Grok 4 has Live Search API
   'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning', 'grok-4-0709',
