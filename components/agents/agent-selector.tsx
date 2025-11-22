@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Brain, Target, Shield, Users, ChevronDown, Gift, Zap, Sparkles } from 'lucide-react'
 import { canUseModel } from '@/lib/user-tiers'
+import { IS_PRODUCTION } from '@/lib/utils/environment'
 import { AgentAvatar } from '@/components/shared'
 import {
   DropdownMenu,
@@ -144,23 +145,26 @@ export function AgentSelector({
       let defaultProvider = agentDefaults[persona.id]?.provider || ''
       
       // Check if user can use the preferred model
-      let canUsePreferred = false
-      for (const providerInfo of availableModels) {
-        if (providerInfo.provider === defaultProvider) {
-          for (const model of providerInfo.models) {
-            if (model === defaultModel && canUseModel(userTier, providerInfo.provider, model)) {
-              canUsePreferred = true
-              break
+      // In development mode, all models are available
+      let canUsePreferred = !IS_PRODUCTION
+      if (IS_PRODUCTION) {
+        for (const providerInfo of availableModels) {
+          if (providerInfo.provider === defaultProvider) {
+            for (const model of providerInfo.models) {
+              if (model === defaultModel && canUseModel(userTier, providerInfo.provider, model)) {
+                canUsePreferred = true
+                break
+              }
             }
           }
         }
       }
-      
+
       // If can't use preferred, find any suitable model
       if (!canUsePreferred) {
         for (const providerInfo of availableModels) {
           for (const model of providerInfo.models) {
-            if (canUseModel(userTier, providerInfo.provider, model)) {
+            if (!IS_PRODUCTION || canUseModel(userTier, providerInfo.provider, model)) {
               defaultModel = model
               defaultProvider = providerInfo.provider
               break
@@ -339,9 +343,12 @@ export function AgentSelector({
                               <DropdownMenuLabel>Select Provider & Model</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               {availableModels.map(providerInfo => {
-                                const availableProviderModels = providerInfo.models.filter(model =>
-                                  canUseModel(userTier, providerInfo.provider, model)
-                                )
+                                // In development, show all models; in production, filter by tier
+                                const availableProviderModels = IS_PRODUCTION
+                                  ? providerInfo.models.filter(model =>
+                                      canUseModel(userTier, providerInfo.provider, model)
+                                    )
+                                  : providerInfo.models
 
                                 if (availableProviderModels.length === 0) return null
 
