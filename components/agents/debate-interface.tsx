@@ -22,8 +22,8 @@ import { useConversationPersistence } from '@/hooks/use-conversation-persistence
 import { ConversationHistoryDropdown } from '@/components/conversation/conversation-history-dropdown'
 import { ShareButtons } from '@/components/conversation/share-buttons'
 import { SavedConversation } from '@/lib/types/conversation'
-import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles, Gift } from 'lucide-react'
-import { DebateFlowchart, createDebateSteps, updateStepStatus as updateFlowchartStep, DebateStepProgress } from '@/components/debate'
+import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles, Gift, HelpCircle } from 'lucide-react'
+import { DebateFlowchart, createDebateSteps, updateStepStatus as updateFlowchartStep, DebateStepProgress, PreDebateQuestions } from '@/components/debate'
 import { useGlobalModelTier } from '@/contexts/trading-preset-context'
 import {
   Select,
@@ -204,6 +204,11 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   // Visual flowchart tracking
   const [flowchartSteps, setFlowchartSteps] = useState<DebateStepProgress[]>([])
   const [flowchartStartTime, setFlowchartStartTime] = useState<number | null>(null)
+
+  // Pre-debate clarifying questions
+  const [enablePreDebateQuestions, setEnablePreDebateQuestions] = useState(true)
+  const [showPreDebateQuestions, setShowPreDebateQuestions] = useState(false)
+  const [preDebateAnswers, setPreDebateAnswers] = useState<Record<number, string>>({})
 
   // Auto-apply global tier changes to agent roles
   useEffect(() => {
@@ -449,23 +454,32 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       setFlowchartSteps(initialSteps)
       setFlowchartStartTime(Date.now())
 
-      // Set a timeout to check if models actually start
+      // Set a timeout to check if ANY model started (connection check)
+      // Only show error if NO models have started after 15 seconds (true connection issue)
+      // Don't mark individual models as error since they run sequentially
       setTimeout(() => {
         setModelStatuses(prev => {
-          const updated = { ...prev }
-          Object.keys(updated).forEach(key => {
-            // If still waiting after 10 seconds, mark as error
-            if (updated[key].status === 'waiting') {
-              updated[key] = {
-                ...updated[key],
-                status: 'error',
-                message: 'Failed to start - check API connection'
+          // Check if at least one model has started or completed
+          const anyStarted = Object.values(prev).some(
+            status => status.status === 'thinking' || status.status === 'completed'
+          )
+          // Only mark as error if nothing has started at all (connection issue)
+          if (!anyStarted) {
+            const updated = { ...prev }
+            Object.keys(updated).forEach(key => {
+              if (updated[key].status === 'waiting') {
+                updated[key] = {
+                  ...updated[key],
+                  status: 'error',
+                  message: 'Failed to connect - check API connection'
+                }
               }
-            }
-          })
-          return updated
+            })
+            return updated
+          }
+          return prev
         })
-      }, 10000) // 10 second timeout
+      }, 15000) // 15 second timeout for connection check only
       setIsSynthesizing(false)
     }
     setShowRound2Prompt(false)
@@ -1010,24 +1024,9 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       }
       setModelStatuses(statuses)
       setDebateStartTime(Date.now())
-      
-      // Set a timeout to check if models actually start
-      setTimeout(() => {
-        setModelStatuses(prev => {
-          const updated = { ...prev }
-          Object.keys(updated).forEach(key => {
-            // If still waiting after 10 seconds, mark as error
-            if (updated[key].status === 'waiting') {
-              updated[key] = {
-                ...updated[key],
-                status: 'error',
-                message: 'Failed to start - check API connection'
-              }
-            }
-          })
-          return updated
-        })
-      }, 10000) // 10 second timeout
+
+      // Non-streaming mode: No timeout needed since models start immediately as "thinking"
+      // The API call will handle errors directly
     }
     setShowRound2Prompt(false)
 
@@ -1259,8 +1258,15 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 {/* Start Debate button right-aligned with the query */}
                 <div className="flex justify-end">
                   <Button
-                    onClick={() => startDebateWithStreaming()}
-                    disabled={isLoading || isRestoring ||
+                    onClick={() => {
+                      // If pre-debate questions enabled and not already showing, show them first
+                      if (enablePreDebateQuestions && !showPreDebateQuestions) {
+                        setShowPreDebateQuestions(true)
+                      } else {
+                        startDebateWithStreaming()
+                      }
+                    }}
+                    disabled={isLoading || isRestoring || showPreDebateQuestions ||
                       (round1Mode === 'llm' ? selectedLLMs.length < 2 : selectedAgents.length < DEBATE_CONFIG.minAgents)}
                     size="lg"
                     className="min-w-[200px]"
@@ -1283,6 +1289,37 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     )}
                   </Button>
                 </div>
+
+                {/* Pre-Debate Questions Modal */}
+                {showPreDebateQuestions && (
+                  <PreDebateQuestions
+                    query={query}
+                    onSubmit={(answers) => {
+                      setPreDebateAnswers(answers)
+                      setShowPreDebateQuestions(false)
+                      // Start debate with answers included in context
+                      const contextWithAnswers = Object.keys(answers).length > 0
+                        ? `${query}\n\nAdditional context from user:\n${Object.entries(answers).map(([idx, answer]) => `- ${answer}`).join('\n')}`
+                        : query
+                      // Store original query and update with context
+                      const originalQuery = query
+                      setQuery(contextWithAnswers)
+                      // Use setTimeout to ensure state update before starting
+                      setTimeout(() => {
+                        startDebateWithStreaming()
+                        // Restore original query after starting
+                        setQuery(originalQuery)
+                      }, 100)
+                    }}
+                    onSkip={() => {
+                      setShowPreDebateQuestions(false)
+                      startDebateWithStreaming()
+                    }}
+                    onCancel={() => {
+                      setShowPreDebateQuestions(false)
+                    }}
+                  />
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1442,8 +1479,34 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 {enableWebSearch && (
                   <div className="pl-7">
                     <p className="text-xs text-muted-foreground">
-                      🆓 FREE web search using DuckDuckGo! Enriches agent responses with real-time web information. 
+                      🆓 FREE web search using DuckDuckGo! Enriches agent responses with real-time web information.
                       Perfect for current events, prices, and recent developments. No API key required!
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Pre-Debate Questions Toggle */}
+              <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5 text-blue-500" />
+                    <Label htmlFor="pre-debate-questions" className="font-medium">
+                      Clarifying Questions
+                    </Label>
+                  </div>
+                  <Switch
+                    id="pre-debate-questions"
+                    checked={enablePreDebateQuestions}
+                    onCheckedChange={setEnablePreDebateQuestions}
+                  />
+                </div>
+
+                {enablePreDebateQuestions && (
+                  <div className="pl-7">
+                    <p className="text-xs text-muted-foreground">
+                      AI will analyze your query and ask clarifying questions before the debate starts.
+                      This helps agents provide more relevant and accurate responses.
                     </p>
                   </div>
                 )}

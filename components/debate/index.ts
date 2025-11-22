@@ -14,3 +14,6 @@ export {
   createDebateSteps,
   updateStepStatus
 } from './debate-flowchart'
+
+// Pre-debate clarifying questions
+export { PreDebateQuestions } from './pre-debate-questions'
