@@ -99,6 +99,14 @@ export interface DebateSession {
     round2?: number
     synthesis?: number
   }
+  preResearch?: {  // New: Pre-research stage metadata
+    searchesExecuted: number
+    sourcesFound: number
+    sources: string[]
+    cacheHit: boolean
+    researchTime: number
+    queryType: string
+  }
   startTime: Date
   endTime?: Date
   status: 'initializing' | 'debating' | 'synthesizing' | 'completed' | 'error' | 'awaiting-round2'

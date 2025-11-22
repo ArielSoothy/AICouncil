@@ -7,6 +7,7 @@ import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
 import { getRoleBasedSearchService, type AgentSearchContext, type RoleBasedSearchResult } from '@/lib/web-search/role-based-search'
 import { getContextExtractor, type DebateMessage } from '@/lib/web-search/context-extractor'
 import { DisagreementAnalyzer } from '@/lib/agents/disagreement-analyzer'
+import { executePreResearch, type PreResearchResult } from '@/lib/web-search/pre-research-service'
 // import { SimpleMemoryService } from '@/lib/memory/simple-memory-service' // Disabled - memory on backlog
 
 export const dynamic = 'force-dynamic'
@@ -105,22 +106,72 @@ export async function POST(request: NextRequest) {
           console.log('Memory system currently disabled - focusing on research validation')
         }
         
-        // ==================== RESEARCH PHASE ====================
-        // NEW APPROACH: Skip centralized Llama research (Llama doesn't have real web access!)
-        // Instead, each agent will use their model's native web search capability
-        // Only models without native search (Groq/Llama) will use DuckDuckGo fallback
-        let researchSection = ''
+        // ==================== PRE-RESEARCH PHASE ====================
+        // NEW ARCHITECTURE: Pre-research stage instead of per-agent tool-based search
+        // Models have web search tools but choose NOT to call them (toolCalls: 0)
+        // Pre-research gathers evidence BEFORE the debate, ensuring consistent quality
+        // See: docs/architecture/PRE_RESEARCH_ARCHITECTURE.md
+        let preResearchContext = ''
+        let preResearchResult: PreResearchResult | null = null
 
-        // Note: Per-agent research happens in the agent loop below
-        // This ensures each model uses its OWN web search capability:
-        // - Gemini uses Google Search grounding
-        // - GPT uses Bing/web browsing
-        // - Perplexity has native search
-        // - Groq/Llama falls back to DuckDuckGo
-        console.log('\n🔬 Per-agent research enabled - each model will use native web search')
+        if (enableWebSearch) {
+          console.log('\n🔬 Starting PRE-RESEARCH stage...')
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'pre_research_started',
+            message: 'Gathering evidence before debate...',
+            timestamp: Date.now()
+          })}\n\n`))
+
+          try {
+            preResearchResult = await executePreResearch(query, {
+              enabled: true,
+              maxSearches: 4,
+              maxResultsPerSearch: 5,
+              cacheEnabled: true,
+              roleSpecificQueries: true,
+              forceSearch: true  // User explicitly enabled web search, respect their choice
+            })
+
+            if (preResearchResult.formattedContext) {
+              preResearchContext = preResearchResult.formattedContext
+              console.log('✅ Pre-research complete:', {
+                searchesExecuted: preResearchResult.searchesExecuted,
+                sourcesFound: preResearchResult.sources.length,
+                cacheHit: preResearchResult.cacheHit,
+                researchTime: preResearchResult.researchTime + 'ms'
+              })
+
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'pre_research_completed',
+                searchesExecuted: preResearchResult.searchesExecuted,
+                sourcesFound: preResearchResult.sources.length,
+                sources: preResearchResult.sources.slice(0, 5),
+                cacheHit: preResearchResult.cacheHit,
+                researchTime: preResearchResult.researchTime,
+                queryType: preResearchResult.queryAnalysis.primaryType,
+                // Include individual search results per role for display
+                searchResults: preResearchResult.searchResults.map(sr => ({
+                  role: sr.role,
+                  searchQuery: sr.searchQuery,
+                  resultsCount: sr.results?.results?.length || 0,
+                  success: sr.results !== null
+                })),
+                timestamp: Date.now()
+              })}\n\n`))
+            } else {
+              console.log('⏭️ Pre-research skipped - query type does not require web search')
+            }
+          } catch (preResearchError) {
+            console.warn('⚠️ Pre-research failed, continuing without:', preResearchError)
+            // Continue without pre-research
+          }
+        }
+
+        // Keep native web search as fallback for models that prefer it
+        console.log('\n🔬 Native web search also available as fallback for models')
         console.log('Models with native search: Gemini, GPT-4o, Perplexity, Grok, Mistral, Cohere')
         console.log('Models using DuckDuckGo fallback: Groq/Llama\n')
-        // ==================== END RESEARCH PHASE ====================
+        // ==================== END PRE-RESEARCH PHASE ====================
 
         // Track all responses across rounds
         const allRoundResponses: any[] = []
@@ -379,9 +430,15 @@ export async function POST(request: NextRequest) {
               const formatInstruction = (responseMode === 'concise' && isLLMMode) 
                 ? '\n\nFOR FINAL ANSWER: End with a clear conclusion in this format:\n\n1. [Specific recommendation]\n2. [Specific recommendation]\n3. [Specific recommendation]\n\n[One sentence explaining why #1 is best].\n\nBut FIRST provide your debate analysis and reasoning (aim for 80-100 words of debate content, then the numbered conclusion).'
                 : ''
-              let fullPrompt = isLLMMode 
-                ? `Please answer this query concisely and directly:\n\n${enhancedQuery}${formatInstruction}`
-                : `${agentConfig.persona?.systemPrompt || ''}\n\n${generateRoundPrompt(
+              // Inject pre-research context if available
+              // This ensures all agents have access to the pre-gathered evidence
+              const researchPrefix = preResearchContext
+                ? `${preResearchContext}\n\n---\n\n`
+                : ''
+
+              let fullPrompt = isLLMMode
+                ? `${researchPrefix}Please answer this query concisely and directly:\n\n${enhancedQuery}${formatInstruction}`
+                : `${agentConfig.persona?.systemPrompt || ''}\n\n${researchPrefix}${generateRoundPrompt(
                     enhancedQuery,
                     agentConfig.persona || {
                       id: modelId,
@@ -416,7 +473,7 @@ export async function POST(request: NextRequest) {
                   [...(roundNum > 1 ? allRoundResponses.filter(r => r.round === roundNum - 1) : []), ...roundResponses],
                   responseMode // Pass the response mode
                 );
-                fullPrompt = `${agentConfig.persona?.systemPrompt || ''}\n\n${enhancedPrompt}`;
+                fullPrompt = `${agentConfig.persona?.systemPrompt || ''}\n\n${researchPrefix}${enhancedPrompt}`;
               }
               
               // Send thinking status with preview of prompt

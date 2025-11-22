@@ -1,10 +1,10 @@
-import { 
-  AgentConfig, 
-  AgentMessage, 
-  DebateRound, 
-  DebateSession, 
+import {
+  AgentConfig,
+  AgentMessage,
+  DebateRound,
+  DebateSession,
   DebateRequest,
-  DEBATE_CONFIG 
+  DEBATE_CONFIG
 } from './types'
 import { providerRegistry } from '@/lib/ai-providers'
 import { generateDebatePrompt, generateRoundPrompt } from './debate-prompts'
@@ -12,13 +12,15 @@ import { calculateDisagreementScore } from './cost-calculator'
 import { DisagreementAnalyzer } from './disagreement-analyzer'
 import { detectInformationRequests } from './information-detector'
 import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
+import { executePreResearch, PreResearchResult } from '@/lib/web-search/pre-research-service'
 import { v4 as uuidv4 } from 'uuid'
 
 export class AgentDebateOrchestrator {
   private session: DebateSession
   private abortController: AbortController
   private request: DebateRequest
-  
+  private preResearchResult: PreResearchResult | null = null
+
   constructor(request: DebateRequest) {
     this.request = request
     this.session = this.initializeSession(request)
@@ -48,7 +50,42 @@ export class AgentDebateOrchestrator {
     try {
       this.session.status = 'debating'
       const plannedRounds = this.request.rounds || DEBATE_CONFIG.defaultRounds
-      
+
+      // Execute pre-research if web search is enabled
+      // This gathers evidence BEFORE the debate starts, ensuring consistent research
+      if (this.request.enableWebSearch) {
+        console.log('🔬 Starting pre-research stage...')
+        try {
+          this.preResearchResult = await executePreResearch(this.session.query, {
+            enabled: true,
+            maxSearches: 4,
+            maxResultsPerSearch: 5,
+            cacheEnabled: true,
+            roleSpecificQueries: true
+          })
+
+          console.log('✅ Pre-research complete:', {
+            searchesExecuted: this.preResearchResult.searchesExecuted,
+            sourcesFound: this.preResearchResult.sources.length,
+            cacheHit: this.preResearchResult.cacheHit,
+            researchTime: this.preResearchResult.researchTime + 'ms'
+          })
+
+          // Store pre-research metadata in session for UI display
+          this.session.preResearch = {
+            searchesExecuted: this.preResearchResult.searchesExecuted,
+            sourcesFound: this.preResearchResult.sources.length,
+            sources: this.preResearchResult.sources,
+            cacheHit: this.preResearchResult.cacheHit,
+            researchTime: this.preResearchResult.researchTime,
+            queryType: this.preResearchResult.queryAnalysis.primaryType
+          }
+        } catch (preResearchError) {
+          console.warn('⚠️ Pre-research failed, continuing without:', preResearchError)
+          // Continue without pre-research if it fails
+        }
+      }
+
       // Run first round
       await this.runRound(1)
       
@@ -234,31 +271,45 @@ export class AgentDebateOrchestrator {
       // Use LLM mode for round 1 if specified
       const isLLMMode = round === 1 && this.request.round1Mode === 'llm'
       
-      // Enrich query with web search if enabled (only for first round to avoid redundant searches)
+      // Inject pre-research context if available (only for first round)
       let enhancedPrompt = prompt
       if (this.request.enableWebSearch && round === 1) {
-        try {
-          const enriched = await enrichQueryWithWebSearch(this.session.query, {
-            enabled: true,
-            provider: 'duckduckgo',
-            maxResults: 5,
-            cache: true,
-            includeInPrompt: true
-          })
-          
-          if (enriched.searchContext) {
-            enhancedPrompt = prompt + enriched.searchContext
+        // Use pre-research results (gathered before debate started)
+        if (this.preResearchResult && this.preResearchResult.formattedContext) {
+          enhancedPrompt = prompt + this.preResearchResult.formattedContext
+          console.log(`📚 Injected pre-research context for ${config.persona.role} (${this.preResearchResult.sources.length} sources)`)
+        } else {
+          // Fallback to old enrichment method if pre-research didn't run
+          try {
+            const enriched = await enrichQueryWithWebSearch(this.session.query, {
+              enabled: true,
+              provider: 'duckduckgo',
+              maxResults: 5,
+              cache: true,
+              includeInPrompt: true
+            })
+
+            if (enriched.searchContext) {
+              enhancedPrompt = prompt + enriched.searchContext
+            }
+          } catch (searchError) {
+            console.warn('Web search failed for agent debate:', searchError)
+            // Continue without web search if it fails
           }
-        } catch (searchError) {
-          console.warn('Web search failed for agent debate:', searchError)
-          // Continue without web search if it fails
         }
       }
-      
+
+      // Add web search instructions if native web search is enabled AND no pre-research was done
+      // When pre-research is available, models should use that evidence instead of searching
+      const hasPreResearchContext = this.preResearchResult && this.preResearchResult.formattedContext
+      const webSearchInstructions = (this.request.enableWebSearch && round === 1 && !hasPreResearchContext)
+        ? `\n\n🔍 WEB SEARCH AVAILABLE: You have access to a web_search tool. Use it to find current, factual information about the query. Search for specific details, prices, reviews, and recent data to support your arguments with real evidence. Call the web search tool BEFORE writing your response.\n\n`
+        : ''
+
       // Adjust prompt based on mode
-      const fullPrompt = isLLMMode 
+      const fullPrompt = isLLMMode
         ? `Please answer this query concisely and directly:\n\n${this.session.query}`
-        : `${config.persona.systemPrompt}\n\n${enhancedPrompt}`
+        : `${config.persona.systemPrompt}${webSearchInstructions}\n\n${enhancedPrompt}`
       
       const result = await provider.query(fullPrompt, {
         ...config,

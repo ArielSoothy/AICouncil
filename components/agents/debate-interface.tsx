@@ -22,7 +22,7 @@ import { useConversationPersistence } from '@/hooks/use-conversation-persistence
 import { ConversationHistoryDropdown } from '@/components/conversation/conversation-history-dropdown'
 import { ShareButtons } from '@/components/conversation/share-buttons'
 import { SavedConversation } from '@/lib/types/conversation'
-import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles, Gift, HelpCircle } from 'lucide-react'
+import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles, Gift, HelpCircle, Search } from 'lucide-react'
 import { DebateFlowchart, createDebateSteps, updateStepStatus as updateFlowchartStep, DebateStepProgress, PreDebateQuestions } from '@/components/debate'
 import { useGlobalModelTier } from '@/contexts/trading-preset-context'
 import {
@@ -159,6 +159,23 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     isStoring: boolean;
     stored?: boolean;
   }>({ isSearching: false, isStoring: false })
+
+  // Pre-research tracking (shared research BEFORE agents debate)
+  const [preResearchStatus, setPreResearchStatus] = useState<{
+    isSearching: boolean;
+    searchesExecuted?: number;
+    sourcesFound?: number;
+    sources?: string[];
+    cacheHit?: boolean;
+    researchTime?: number;
+    queryType?: string;
+    searchResults?: Array<{
+      role: string;
+      searchQuery: string;
+      resultsCount: number;
+      success: boolean;
+    }>;
+  }>({ isSearching: false })
   
   // Model status tracking
   const [modelStatuses, setModelStatuses] = useState<Record<string, {
@@ -637,6 +654,36 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     status: 'complete',
                     duration: data.duration ? data.duration / 1000 : undefined,
                     preview: `Found ${data.sourcesFound} sources (${data.evidenceQuality || 'good'} quality)`
+                  }))
+                  break
+
+                case 'pre_research_started':
+                  setPreResearchStatus({ isSearching: true })
+                  setCurrentPhase('🔬 Pre-research: Gathering evidence before debate...')
+                  // Update flowchart - research step starting
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
+                    status: 'active',
+                    preview: 'Gathering shared research...'
+                  }))
+                  break
+
+                case 'pre_research_completed':
+                  setPreResearchStatus({
+                    isSearching: false,
+                    searchesExecuted: data.searchesExecuted,
+                    sourcesFound: data.sourcesFound,
+                    sources: data.sources,
+                    cacheHit: data.cacheHit,
+                    researchTime: data.researchTime,
+                    queryType: data.queryType,
+                    searchResults: data.searchResults
+                  })
+                  setCurrentPhase(`📚 Pre-research complete: ${data.sourcesFound} sources found${data.cacheHit ? ' (cached)' : ''}`)
+                  // Update flowchart - research step complete
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
+                    status: 'complete',
+                    duration: data.researchTime ? data.researchTime / 1000 : undefined,
+                    preview: `${data.sourcesFound} sources (${data.queryType || 'general'})`
                   }))
                   break
 
@@ -1894,66 +1941,86 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   </div>
                 )}
 
-                {/* Per-Agent Web Search Status - Accumulated View */}
-                {enableWebSearch && agentSearchHistory.length > 0 && (
+                {/* Pre-Research Status (Shared Research BEFORE Debate) - Card Style */}
+                {enableWebSearch && (preResearchStatus.isSearching || preResearchStatus.sourcesFound !== undefined) && (
                   <div className="mb-4 p-4 rounded-lg border bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-600/30">
                     <div className="flex items-center gap-2 mb-3">
                       <Globe className="h-5 w-5 text-blue-400" />
-                      <h4 className="text-sm font-semibold">Agent Research Progress</h4>
+                      <h4 className="text-sm font-semibold">Pre-Research Progress</h4>
+                      {preResearchStatus.cacheHit && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
+                          cached
+                        </span>
+                      )}
                       <span className="text-xs text-muted-foreground ml-auto">
-                        {agentSearchHistory.filter(s => s.status === 'completed').length}/{agentSearchHistory.length} complete
+                        {preResearchStatus.isSearching
+                          ? 'searching...'
+                          : `${preResearchStatus.searchResults?.filter(s => s.success).length || 0}/${preResearchStatus.searchResults?.length || 0} complete`}
+                        {preResearchStatus.researchTime && ` (${(preResearchStatus.researchTime / 1000).toFixed(1)}s)`}
                       </span>
                     </div>
-                    <div className="space-y-2">
-                      {agentSearchHistory.map((search, idx) => (
-                        <div
-                          key={`${search.role}-${idx}`}
-                          className={`flex items-center gap-3 p-2 rounded-md transition-all ${
-                            search.status === 'searching'
-                              ? 'bg-blue-500/10 border border-blue-500/30'
-                              : search.status === 'completed'
-                                ? 'bg-green-500/10 border border-green-500/30'
-                                : 'bg-red-500/10 border border-red-500/30'
-                          }`}
-                        >
-                          {/* Status icon */}
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
-                            search.status === 'searching'
-                              ? 'bg-blue-500/20 animate-pulse'
-                              : search.status === 'completed'
-                                ? 'bg-green-500/20'
-                                : 'bg-red-500/20'
-                          }`}>
-                            {search.status === 'searching' ? '🔍' : search.status === 'completed' ? '✅' : '❌'}
-                          </div>
 
-                          {/* Agent info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm">{search.agent}</span>
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/50 text-muted-foreground">
-                                {search.role}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {search.status === 'searching'
-                                ? `Searching: "${search.searchQuery?.substring(0, 50)}${(search.searchQuery?.length || 0) > 50 ? '...' : ''}"`
-                                : search.status === 'completed'
-                                  ? `Found ${search.resultsCount || 0} sources via ${search.provider}`
-                                  : `Error: ${search.error}`}
-                            </p>
-                          </div>
+                    {preResearchStatus.isSearching ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Gathering evidence before debate starts...</span>
+                      </div>
+                    ) : preResearchStatus.searchResults && preResearchStatus.searchResults.length > 0 ? (
+                      <div className="space-y-2">
+                        {preResearchStatus.searchResults.map((search, idx) => {
+                          const roleLabels: Record<string, string> = {
+                            'general': 'General Research',
+                            'analyst': 'The Analyst',
+                            'critic': 'The Critic',
+                            'synthesizer': 'The Synthesizer'
+                          }
+                          return (
+                            <div
+                              key={`${search.role}-${idx}`}
+                              className={`flex items-center gap-3 p-2 rounded-md transition-all ${
+                                search.success
+                                  ? 'bg-green-500/10 border border-green-500/30'
+                                  : 'bg-red-500/10 border border-red-500/30'
+                              }`}
+                            >
+                              {/* Status icon */}
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
+                                search.success ? 'bg-green-500/20' : 'bg-red-500/20'
+                              }`}>
+                                {search.success ? '✅' : '❌'}
+                              </div>
 
-                          {/* Results count badge */}
-                          {search.status === 'completed' && search.resultsCount !== undefined && (
-                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-medium">
-                              <span>{search.resultsCount}</span>
-                              <span className="text-green-400/60">sources</span>
+                              {/* Search info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm">{roleLabels[search.role] || search.role}</span>
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/50 text-muted-foreground">
+                                    {search.role}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {search.success
+                                    ? `Found ${search.resultsCount} sources via DuckDuckGo`
+                                    : 'No results found'}
+                                </p>
+                              </div>
+
+                              {/* Results count badge */}
+                              {search.success && (
+                                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-medium">
+                                  <span>{search.resultsCount}</span>
+                                  <span className="text-green-400/60">sources</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        No search results available
+                      </div>
+                    )}
                   </div>
                 )}
                 
