@@ -13,6 +13,7 @@ import { DisagreementAnalyzer } from './disagreement-analyzer'
 import { detectInformationRequests } from './information-detector'
 import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
 import { executePreResearch, PreResearchResult } from '@/lib/web-search/pre-research-service'
+import { hasInternetAccess, getModelInfo, PROVIDER_NAMES } from '@/lib/models/model-registry'
 import { v4 as uuidv4 } from 'uuid'
 
 export class AgentDebateOrchestrator {
@@ -51,10 +52,20 @@ export class AgentDebateOrchestrator {
       this.session.status = 'debating'
       const plannedRounds = this.request.rounds || DEBATE_CONFIG.defaultRounds
 
-      // Execute pre-research if web search is enabled
-      // This gathers evidence BEFORE the debate starts, ensuring consistent research
-      if (this.request.enableWebSearch) {
-        console.log('🔬 Starting pre-research stage...')
+      // Determine which models need DuckDuckGo fallback (no native search)
+      // Models with native search (OpenAI, Anthropic, Google, Perplexity, xAI) use their own search
+      // Models without native search (Groq/Llama, Mistral, Cohere) get DuckDuckGo pre-research
+      const modelsWithoutNativeSearch = this.request.agents.filter(agent => {
+        const modelHasNativeSearch = hasInternetAccess(agent.model)
+        const modelInfo = getModelInfo(agent.model)
+        const providerName = modelInfo?.provider ? PROVIDER_NAMES[modelInfo.provider] : 'Unknown'
+        console.log(`🔍 Search capability check: ${agent.persona.role} (${agent.model}) → ${modelHasNativeSearch ? `Native (${providerName})` : 'DuckDuckGo fallback'}`)
+        return !modelHasNativeSearch
+      })
+
+      // Only run DuckDuckGo pre-research for models that lack native search
+      if (this.request.enableWebSearch && modelsWithoutNativeSearch.length > 0) {
+        console.log(`🔬 Starting DuckDuckGo pre-research for ${modelsWithoutNativeSearch.length} model(s) without native search...`)
         try {
           this.preResearchResult = await executePreResearch(this.session.query, {
             enabled: true,
@@ -64,11 +75,12 @@ export class AgentDebateOrchestrator {
             roleSpecificQueries: true
           })
 
-          console.log('✅ Pre-research complete:', {
+          console.log('✅ DuckDuckGo pre-research complete:', {
             searchesExecuted: this.preResearchResult.searchesExecuted,
             sourcesFound: this.preResearchResult.sources.length,
             cacheHit: this.preResearchResult.cacheHit,
-            researchTime: this.preResearchResult.researchTime + 'ms'
+            researchTime: this.preResearchResult.researchTime + 'ms',
+            forModels: modelsWithoutNativeSearch.map(a => a.model)
           })
 
           // Store pre-research metadata in session for UI display
@@ -81,9 +93,11 @@ export class AgentDebateOrchestrator {
             queryType: this.preResearchResult.queryAnalysis.primaryType
           }
         } catch (preResearchError) {
-          console.warn('⚠️ Pre-research failed, continuing without:', preResearchError)
+          console.warn('⚠️ DuckDuckGo pre-research failed, continuing without:', preResearchError)
           // Continue without pre-research if it fails
         }
+      } else if (this.request.enableWebSearch) {
+        console.log('✅ All models have native search capability - skipping DuckDuckGo pre-research')
       }
 
       // Run first round
@@ -270,52 +284,61 @@ export class AgentDebateOrchestrator {
       
       // Use LLM mode for round 1 if specified
       const isLLMMode = round === 1 && this.request.round1Mode === 'llm'
-      
-      // Inject pre-research context if available (only for first round)
-      let enhancedPrompt = prompt
-      if (this.request.enableWebSearch && round === 1) {
-        // Use pre-research results (gathered before debate started)
-        if (this.preResearchResult && this.preResearchResult.formattedContext) {
-          enhancedPrompt = prompt + this.preResearchResult.formattedContext
-          console.log(`📚 Injected pre-research context for ${config.persona.role} (${this.preResearchResult.sources.length} sources)`)
-        } else {
-          // Fallback to old enrichment method if pre-research didn't run
-          try {
-            const enriched = await enrichQueryWithWebSearch(this.session.query, {
-              enabled: true,
-              provider: 'duckduckgo',
-              maxResults: 5,
-              cache: true,
-              includeInPrompt: true
-            })
 
-            if (enriched.searchContext) {
-              enhancedPrompt = prompt + enriched.searchContext
+      // Check if THIS model has native search capability
+      const modelHasNativeSearch = hasInternetAccess(config.model)
+      const modelInfo = getModelInfo(config.model)
+      const providerName = modelInfo?.provider ? PROVIDER_NAMES[modelInfo.provider] : 'Unknown'
+
+      // Inject search context based on model capability
+      let enhancedPrompt = prompt
+      let webSearchInstructions = ''
+      let useNativeSearch = false
+
+      if (this.request.enableWebSearch && round === 1) {
+        if (modelHasNativeSearch) {
+          // Model HAS native search - tell it to use its native search tool
+          console.log(`🌐 ${config.persona.role} (${config.model}): Using NATIVE ${providerName} search`)
+          webSearchInstructions = `\n\n🔍 WEB SEARCH REQUIRED: You have access to a web_search tool. You MUST use it to find current, factual information about the query. Search for specific details, statistics, prices, reviews, and recent data to support your arguments with real evidence. Call the web search tool BEFORE writing your response. Do not rely on training data alone - actively search for current information.\n\n`
+          useNativeSearch = true
+        } else {
+          // Model does NOT have native search - inject DuckDuckGo pre-research context
+          console.log(`🦆 ${config.persona.role} (${config.model}): Using DuckDuckGo fallback`)
+          if (this.preResearchResult && this.preResearchResult.formattedContext) {
+            enhancedPrompt = prompt + this.preResearchResult.formattedContext
+            console.log(`📚 Injected DuckDuckGo pre-research for ${config.persona.role} (${this.preResearchResult.sources.length} sources)`)
+          } else {
+            // Inline DuckDuckGo search as last resort
+            try {
+              const enriched = await enrichQueryWithWebSearch(this.session.query, {
+                enabled: true,
+                provider: 'duckduckgo',
+                maxResults: 5,
+                cache: true,
+                includeInPrompt: true
+              })
+
+              if (enriched.searchContext) {
+                enhancedPrompt = prompt + enriched.searchContext
+                console.log(`📚 Inline DuckDuckGo search for ${config.persona.role}`)
+              }
+            } catch (searchError) {
+              console.warn(`DuckDuckGo search failed for ${config.persona.role}:`, searchError)
             }
-          } catch (searchError) {
-            console.warn('Web search failed for agent debate:', searchError)
-            // Continue without web search if it fails
           }
         }
       }
-
-      // Add web search instructions if native web search is enabled AND no pre-research was done
-      // When pre-research is available, models should use that evidence instead of searching
-      const hasPreResearchContext = this.preResearchResult && this.preResearchResult.formattedContext
-      const webSearchInstructions = (this.request.enableWebSearch && round === 1 && !hasPreResearchContext)
-        ? `\n\n🔍 WEB SEARCH AVAILABLE: You have access to a web_search tool. Use it to find current, factual information about the query. Search for specific details, prices, reviews, and recent data to support your arguments with real evidence. Call the web search tool BEFORE writing your response.\n\n`
-        : ''
 
       // Adjust prompt based on mode
       const fullPrompt = isLLMMode
         ? `Please answer this query concisely and directly:\n\n${this.session.query}`
         : `${config.persona.systemPrompt}${webSearchInstructions}\n\n${enhancedPrompt}`
-      
+
       const result = await provider.query(fullPrompt, {
         ...config,
-        maxTokens: isLLMMode ? 1000 : DEBATE_CONFIG.tokenLimits.perResponse,  // Increased from 300 to 1000 for LLM mode
-        // Enable native web search for providers that support it
-        useWebSearch: this.request.enableWebSearch && round === 1
+        maxTokens: isLLMMode ? 1000 : DEBATE_CONFIG.tokenLimits.perResponse,
+        // Enable native web search ONLY for models that support it
+        useWebSearch: useNativeSearch
       })
       
       // Parse response for key points

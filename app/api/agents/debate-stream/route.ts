@@ -8,6 +8,7 @@ import { getRoleBasedSearchService, type AgentSearchContext, type RoleBasedSearc
 import { getContextExtractor, type DebateMessage } from '@/lib/web-search/context-extractor'
 import { DisagreementAnalyzer } from '@/lib/agents/disagreement-analyzer'
 import { executePreResearch, type PreResearchResult } from '@/lib/web-search/pre-research-service'
+import { hasInternetAccess, getModelInfo, PROVIDER_NAMES, type Provider } from '@/lib/models/model-registry'
 // import { SimpleMemoryService } from '@/lib/memory/simple-memory-service' // Disabled - memory on backlog
 
 export const dynamic = 'force-dynamic'
@@ -106,72 +107,107 @@ export async function POST(request: NextRequest) {
           console.log('Memory system currently disabled - focusing on research validation')
         }
         
-        // ==================== PRE-RESEARCH PHASE ====================
-        // NEW ARCHITECTURE: Pre-research stage instead of per-agent tool-based search
-        // Models have web search tools but choose NOT to call them (toolCalls: 0)
-        // Pre-research gathers evidence BEFORE the debate, ensuring consistent quality
+        // ==================== SMART SEARCH PHASE ====================
+        // NEW ARCHITECTURE: Native search for capable models, DuckDuckGo fallback for others
+        // - OpenAI, Anthropic, Google, Perplexity, xAI → Use their native search
+        // - Groq (Llama), Mistral, Cohere → Use DuckDuckGo pre-research
         // See: docs/architecture/PRE_RESEARCH_ARCHITECTURE.md
         let preResearchContext = ''
         let preResearchResult: PreResearchResult | null = null
 
+        // Analyze which agents have native search vs need DuckDuckGo
+        const agentSearchCapabilities = agents.map((agent: any) => {
+          const modelHasNative = hasInternetAccess(agent.model)
+          const modelInfo = getModelInfo(agent.model)
+          const providerName = modelInfo?.provider ? PROVIDER_NAMES[modelInfo.provider as Provider] : 'Unknown'
+          return {
+            role: agent.persona?.role || 'Unknown',
+            model: agent.model,
+            provider: providerName,
+            hasNativeSearch: modelHasNative,
+            searchProvider: modelHasNative ? `${providerName} Native` : 'DuckDuckGo'
+          }
+        })
+
+        const modelsNeedingDuckDuckGo = agentSearchCapabilities.filter((a: any) => !a.hasNativeSearch)
+        const modelsWithNativeSearch = agentSearchCapabilities.filter((a: any) => a.hasNativeSearch)
+
+        console.log('\n🔍 Search capability analysis:')
+        agentSearchCapabilities.forEach((a: any) => {
+          console.log(`   ${a.role} (${a.model}): ${a.searchProvider}`)
+        })
+
         if (enableWebSearch) {
-          console.log('\n🔬 Starting PRE-RESEARCH stage...')
+          // Send search capabilities to UI
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            type: 'pre_research_started',
-            message: 'Gathering evidence before debate...',
+            type: 'search_capabilities',
+            agents: agentSearchCapabilities,
+            nativeSearchCount: modelsWithNativeSearch.length,
+            duckDuckGoCount: modelsNeedingDuckDuckGo.length,
             timestamp: Date.now()
           })}\n\n`))
 
-          try {
-            preResearchResult = await executePreResearch(query, {
-              enabled: true,
-              maxSearches: 4,
-              maxResultsPerSearch: 5,
-              cacheEnabled: true,
-              roleSpecificQueries: true,
-              forceSearch: true  // User explicitly enabled web search, respect their choice
-            })
+          // Only run DuckDuckGo pre-research for models that need it
+          if (modelsNeedingDuckDuckGo.length > 0) {
+            console.log(`\n🦆 Starting DuckDuckGo pre-research for ${modelsNeedingDuckDuckGo.length} model(s)...`)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'pre_research_started',
+              message: `Gathering evidence for ${modelsNeedingDuckDuckGo.length} model(s) without native search...`,
+              forModels: modelsNeedingDuckDuckGo.map((a: any) => a.model),
+              timestamp: Date.now()
+            })}\n\n`))
 
-            if (preResearchResult.formattedContext) {
-              preResearchContext = preResearchResult.formattedContext
-              console.log('✅ Pre-research complete:', {
-                searchesExecuted: preResearchResult.searchesExecuted,
-                sourcesFound: preResearchResult.sources.length,
-                cacheHit: preResearchResult.cacheHit,
-                researchTime: preResearchResult.researchTime + 'ms'
+            try {
+              preResearchResult = await executePreResearch(query, {
+                enabled: true,
+                maxSearches: 4,
+                maxResultsPerSearch: 5,
+                cacheEnabled: true,
+                roleSpecificQueries: true,
+                forceSearch: true
               })
 
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                type: 'pre_research_completed',
-                searchesExecuted: preResearchResult.searchesExecuted,
-                sourcesFound: preResearchResult.sources.length,
-                sources: preResearchResult.sources.slice(0, 5),
-                cacheHit: preResearchResult.cacheHit,
-                researchTime: preResearchResult.researchTime,
-                queryType: preResearchResult.queryAnalysis.primaryType,
-                // Include individual search results per role for display
-                searchResults: preResearchResult.searchResults.map(sr => ({
-                  role: sr.role,
-                  searchQuery: sr.searchQuery,
-                  resultsCount: sr.results?.results?.length || 0,
-                  success: sr.results !== null
-                })),
-                timestamp: Date.now()
-              })}\n\n`))
-            } else {
-              console.log('⏭️ Pre-research skipped - query type does not require web search')
+              if (preResearchResult.formattedContext) {
+                preResearchContext = preResearchResult.formattedContext
+                console.log('✅ DuckDuckGo pre-research complete:', {
+                  searchesExecuted: preResearchResult.searchesExecuted,
+                  sourcesFound: preResearchResult.sources.length,
+                  cacheHit: preResearchResult.cacheHit,
+                  researchTime: preResearchResult.researchTime + 'ms'
+                })
+
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'pre_research_completed',
+                  searchesExecuted: preResearchResult.searchesExecuted,
+                  sourcesFound: preResearchResult.sources.length,
+                  sources: preResearchResult.sources.slice(0, 5),
+                  cacheHit: preResearchResult.cacheHit,
+                  researchTime: preResearchResult.researchTime,
+                  queryType: preResearchResult.queryAnalysis.primaryType,
+                  forModels: modelsNeedingDuckDuckGo.map((a: any) => a.model),
+                  searchResults: preResearchResult.searchResults.map(sr => ({
+                    role: sr.role,
+                    searchQuery: sr.searchQuery,
+                    resultsCount: sr.results?.results?.length || 0,
+                    success: sr.results !== null
+                  })),
+                  timestamp: Date.now()
+                })}\n\n`))
+              }
+            } catch (preResearchError) {
+              console.warn('⚠️ DuckDuckGo pre-research failed:', preResearchError)
             }
-          } catch (preResearchError) {
-            console.warn('⚠️ Pre-research failed, continuing without:', preResearchError)
-            // Continue without pre-research
+          } else {
+            console.log('\n✅ All models have native search - skipping DuckDuckGo pre-research')
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'pre_research_skipped',
+              reason: 'All models have native search capability',
+              agents: agentSearchCapabilities,
+              timestamp: Date.now()
+            })}\n\n`))
           }
         }
-
-        // Keep native web search as fallback for models that prefer it
-        console.log('\n🔬 Native web search also available as fallback for models')
-        console.log('Models with native search: Gemini, GPT-4o, Perplexity, Grok, Mistral, Cohere')
-        console.log('Models using DuckDuckGo fallback: Groq/Llama\n')
-        // ==================== END PRE-RESEARCH PHASE ====================
+        // ==================== END SMART SEARCH PHASE ====================
 
         // Track all responses across rounds
         const allRoundResponses: any[] = []

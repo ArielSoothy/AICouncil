@@ -44,8 +44,8 @@ const modelDisplayNames: Record<string, string> = {
   'gpt-4o': 'GPT-4o',
   'gpt-3.5-turbo': 'GPT-3.5 Turbo',
   'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5',
-  'claude-haiku-4-5-20250715': 'Claude Haiku 4.5',
-  'claude-opus-4-1-20250514': 'Claude Opus 4.1',
+  'claude-haiku-4-5-20251001': 'Claude Haiku 4.5',
+  'claude-opus-4-1-20250805': 'Claude Opus 4.1',
   'claude-sonnet-4-20250514': 'Claude Sonnet 4',
   'claude-3-7-sonnet-20250219': 'Claude 3.7 Sonnet',
   'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
@@ -108,8 +108,8 @@ const AGENT_PRESETS = {
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
       'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI ($0.0004/1K)
-      'critic-001': { provider: 'anthropic', model: 'claude-3-haiku-20240307' }, // Cheapest Anthropic ($0.0003/1K)
-      'judge-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' },     // Free, confident, doesn't hedge
+      'critic-001': { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' }, // Haiku 3.5 ($0.80/$4 per 1M tokens)
+      'judge-001': { provider: 'google', model: 'gemini-2.0-flash-lite' },     // Free, fast judge
       'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI ($0.0002/1K)
     }
   },

@@ -97,17 +97,16 @@ const MODELS_WITH_INTERNET = new Set([
   'gpt-5-chat-latest', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano',
   'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
   'gpt-4o', 'gpt-4-turbo-preview', 'gpt-4',
-  // Anthropic - Claude has web search since March 2025
-  'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20250715',
-  'claude-opus-4-1-20250514', 'claude-sonnet-4-20250514',
+  // Anthropic - Claude has web search since March 2025 (FIXED Nov 2025)
+  'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001',
+  'claude-opus-4-1-20250805', 'claude-opus-4-20250514', 'claude-sonnet-4-20250514',
   'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022',
   // Google - Gemini has Google Search grounding
-  'gemini-3-pro-preview-11-2025', 'gemini-3-deep-think',
-  'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite',
+  'gemini-3-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite',
   'gemini-2.0-flash', 'gemini-2.0-flash-lite',
   // xAI - Grok 4 has Live Search API
-  'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning', 'grok-4-0709',
-  'grok-code-fast-1',
+  'grok-4-1-fast-reasoning', 'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning', 'grok-4-0709',
+  'grok-3-beta', 'grok-3-mini-beta', 'grok-code-fast-1',
   // Perplexity - Built for search
   'sonar-pro', 'sonar-small',
   // Mistral - Agents API with Brave Search
@@ -153,9 +152,11 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
   anthropic: [
     // Claude 4.5 Series (2025 Flagship) - All have web search
     { id: 'claude-sonnet-4-5-20250929', name: 'Claude 4.5 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has web search capability' },
-    { id: 'claude-haiku-4-5-20250715', name: 'Claude 4.5 Haiku', provider: 'anthropic', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Claude 4.5 Haiku not yet released via API' },
-    // Claude 4 Series - All have web search
-    { id: 'claude-opus-4-1-20250514', name: 'Claude 4 Opus', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Claude 4 Opus not yet released via API' },
+    { id: 'claude-haiku-4-5-20251001', name: 'Claude 4.5 Haiku', provider: 'anthropic', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: 'Fast, cost-effective model released October 2025. $1/$5 per million tokens' },
+    // Claude 4.1 Series - Opus 4.1 (August 2025)
+    { id: 'claude-opus-4-1-20250805', name: 'Claude 4.1 Opus', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: 'Released August 5, 2025. Premium agentic tasks and reasoning' },
+    // Claude 4 Series (May 2025) - All have web search
+    { id: 'claude-opus-4-20250514', name: 'Claude 4 Opus', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: 'Released May 22, 2025. Previous flagship model' },
     { id: 'claude-sonnet-4-20250514', name: 'Claude 4 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has web search capability' },
     // Claude 3.7 Series - Has web search (first Claude with browsing)
     { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. First Claude model with web search (March 2025)' },
@@ -200,19 +201,19 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
 
   // ===== XAI (Grok) - Has Live Search / Agent Tools API =====
   xai: [
+    // Grok 4.1 Series (Newest - Nov 2025)
+    { id: 'grok-4-1-fast-reasoning', name: 'Grok 4.1 Fast Reasoning', provider: 'xai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: 'Released Nov 17-18, 2025. Best tool-calling model with 2M context' },
     // Grok 4 Series (Flagship) - All have Live Search API
-    { id: 'grok-4-fast-reasoning', name: 'Grok 4 Fast Reasoning', provider: 'xai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has Live Search API for real-time web/X data' },
-    { id: 'grok-4-fast-non-reasoning', name: 'Grok 4 Fast', provider: 'xai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has Live Search API' },
-    { id: 'grok-4-0709', name: 'Grok 4 (0709)', provider: 'xai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has Live Search API' },
-    // Grok 3 Series (Balanced)
-    { id: 'grok-3', name: 'Grok 3', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 3 not yet released via API' },
-    { id: 'grok-3-mini', name: 'Grok 3 Mini', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'unreleased', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 3 Mini not yet released via API' },
-    // Grok 2 Series
-    { id: 'grok-2-vision-1212', name: 'Grok 2 Vision', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 2 Vision not available - may have been superseded by Grok 4' },
-    { id: 'grok-2-1212', name: 'Grok 2 (1212)', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 2 (1212) not available - may have been superseded by Grok 4' },
-    { id: 'grok-2-latest', name: 'Grok 2 Latest', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Grok 2 Latest not available - may have been superseded by Grok 4' },
+    { id: 'grok-4-fast-reasoning', name: 'Grok 4 Fast Reasoning', provider: 'xai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Has Live Search API for real-time web/X data' },
+    { id: 'grok-4-fast-non-reasoning', name: 'Grok 4 Fast', provider: 'xai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Has Live Search API' },
+    { id: 'grok-4-0709', name: 'Grok 4 (0709)', provider: 'xai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Has Live Search API' },
+    // Grok 3 Series (Balanced) - Beta versions
+    { id: 'grok-3-beta', name: 'Grok 3 Beta', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: '131K context. Has Live Search API' },
+    { id: 'grok-3-mini-beta', name: 'Grok 3 Mini Beta', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: '131K context. Fast, efficient model' },
+    // Grok 2 Series (Deprecated - superseded by Grok 4)
+    { id: 'grok-2-image-1212', name: 'Grok 2 Image', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: false, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: 'Text-to-image generation only' },
     // Grok Code (Specialized)
-    { id: 'grok-code-fast-1', name: 'Grok Code Fast', provider: 'xai', tier: 'balanced', badge: '⚡', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' }
+    { id: 'grok-code-fast-1', name: 'Grok Code Fast', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: '256K context. Optimized for code generation' }
   ],
 
   // ===== PERPLEXITY =====

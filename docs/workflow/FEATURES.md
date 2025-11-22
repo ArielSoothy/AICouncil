@@ -1154,37 +1154,44 @@
 - **DO NOT**: Remove native search without ensuring DuckDuckGo fallback works, change SDK versions without testing
 
 ### 37. Pre-Research Stage for Agent Debates
-- **Status**: ✅ ACTIVE & CRITICAL
-- **Location**: `lib/web-search/pre-research-service.ts` + `app/api/agents/debate-stream/route.ts`
-- **Purpose**: Gather research evidence BEFORE debate starts, ensuring consistent quality
-- **Why This Exists**:
-  - Models have web search tools but choose NOT to call them (toolCalls: 0)
-  - LLMs are trained to answer directly, not "research first"
-  - Pre-research ensures all agents have access to the same evidence
-- **Key Features**:
-  - Executes when user enables "Web Search" toggle (`forceSearch: true`)
+- **Status**: ✅ ACTIVE - SMART DETECTION (November 2025)
+- **Location**: `lib/web-search/pre-research-service.ts` + `app/api/agents/debate-stream/route.ts` + `lib/agents/agent-system.ts`
+- **Purpose**: Gather research evidence BEFORE debate, using native search when available, DuckDuckGo as fallback
+- **Smart Search Detection** (NEW - November 2025):
+  - Models WITH native search (OpenAI, Anthropic, Google, xAI, Perplexity): Get instructions to use their native web search tools
+  - Models WITHOUT native search (Groq/Llama, Mistral, Cohere): Get DuckDuckGo pre-research injected into prompts
+  - Detection uses `hasInternetAccess()` from model registry
+- **Native Search Providers**:
+  - OpenAI: `webSearchPreview` tool
+  - Anthropic: `webSearch_20250305` tool
+  - Google: `googleSearch` grounding
+  - xAI: Grok Live Search (`searchParameters: { mode: 'auto' }`)
+  - Perplexity: Built-in search (Sonar models)
+- **DuckDuckGo Fallback** (for non-native models):
+  - Executes when ANY agent lacks native search capability
   - Generates 4 role-specific search queries (general, analyst, critic, synthesizer)
-  - Uses DuckDuckGo for reliable free search
-  - Injects formatted research context into all agent prompts
-  - Smart caching with TTL based on query type (15min-4hr)
+  - Injects formatted research context into prompts for non-native models only
+- **UI Indicators**:
+  - "Search Capabilities" card shows per-agent search provider
+  - 🌐 = Native search (provider name shown)
+  - 🦆 = DuckDuckGo Fallback
+  - Summary: "X native, Y DuckDuckGo"
+- **SSE Events**:
+  - `search_capabilities` - Per-agent search provider info
+  - `pre_research_skipped` - When all models have native search
+  - `pre_research_status` - DuckDuckGo progress (only for fallback models)
 - **Data Flow**:
-  1. User query → Query Analyzer (detect type/complexity)
-  2. Generate role-specific search queries
-  3. Execute parallel DuckDuckGo searches
-  4. Format results as "RESEARCH CONTEXT"
-  5. Inject into agent prompts before debate
-- **TTL Strategy**:
-  - Current events: 15 minutes
-  - Factual queries: 4 hours
-  - Analytical: 1 hour
-  - Comparative: 2 hours
+  1. Analyze which models have native search vs need DuckDuckGo
+  2. For native models: Add instructions to use their web search tools
+  3. For non-native models: Run DuckDuckGo pre-research, inject results
+  4. UI shows correct search provider per agent
 - **Related Files**:
-  - `lib/web-search/pre-research-service.ts` - Main service
-  - `lib/heterogeneous-mixing/query-analyzer.ts` - Query analysis
-  - `lib/web-search/web-search-service.ts` - DuckDuckGo integration
-  - `docs/architecture/PRE_RESEARCH_ARCHITECTURE.md` - Full documentation
-- **Last Modified**: November 2025 (Initial pre-research implementation)
-- **DO NOT**: Remove pre-research without ensuring native search fallback works, disable forceSearch when user has web search enabled
+  - `lib/agents/agent-system.ts` - Smart search detection logic (lines 134-180)
+  - `app/api/agents/debate-stream/route.ts` - SSE events for search status
+  - `components/agents/debate-interface.tsx` - UI for search capabilities display
+  - `lib/models/model-registry.ts` - `hasInternetAccess()` function
+- **Last Modified**: November 2025 (Smart detection - native search priority, DuckDuckGo fallback)
+- **DO NOT**: Use DuckDuckGo for models with native search, remove smart detection logic, hide search provider indicators
 
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

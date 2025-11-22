@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { AgentSelector } from './agent-selector'
 import { LLMPillSelector } from './llm-pill-selector'
 import { ModelSelector } from '@/components/consensus/model-selector'
+import { SingleModelBadgeSelector } from '@/components/trading/single-model-badge-selector'
 import { DebateDisplay } from './debate-display'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -57,7 +58,7 @@ const AGENT_PRESETS = {
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
       'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI ($0.0004/1K)
-      'critic-001': { provider: 'anthropic', model: 'claude-3-haiku-20240307' }, // Cheapest Anthropic ($0.0003/1K)
+      'critic-001': { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' }, // Haiku 3.5 ($0.80/$4 per 1M tokens)
       'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI ($0.0002/1K)
     }
   },
@@ -77,7 +78,7 @@ const AGENT_PRESETS = {
 export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const { toast } = useToast()
   const { globalTier } = useGlobalModelTier()
-  const [query, setQuery] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
+  const [query, setQuery] = useState('Best Dubai hotel for a family: 2 couples (2 adults + 2 elderly) + 1 baby (14 months), 5 nights, first time in Dubai, 24-29 Nov, $400 max per night per couple')
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [selectedAgents, setSelectedAgents] = useState<AgentConfig[]>([])
   // For ModelSelector compatibility
@@ -108,8 +109,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [availableModels, setAvailableModels] = useState<{ provider: string; models: string[] }[]>([])
   const [includeComparison, setIncludeComparison] = useState(true)
   const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>({
-    provider: 'groq',
-    model: 'llama-3.3-70b-versatile',
+    provider: 'openai',
+    model: 'gpt-4.1-nano',  // Cheap paid model ($0.10/$0.40 per 1M tokens)
     enabled: true
   })
   const [includeConsensusComparison, setIncludeConsensusComparison] = useState(true)
@@ -169,6 +170,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     cacheHit?: boolean;
     researchTime?: number;
     queryType?: string;
+    forModels?: string[];  // Models that use DuckDuckGo
     searchResults?: Array<{
       role: string;
       searchQuery: string;
@@ -176,6 +178,16 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       success: boolean;
     }>;
   }>({ isSearching: false })
+
+  // Search capabilities per agent (native vs DuckDuckGo)
+  const [searchCapabilities, setSearchCapabilities] = useState<Array<{
+    role: string;
+    model: string;
+    provider: string;
+    hasNativeSearch: boolean;
+    searchProvider: string;
+  }>>([])
+  const [allModelsHaveNativeSearch, setAllModelsHaveNativeSearch] = useState(false)
   
   // Model status tracking
   const [modelStatuses, setModelStatuses] = useState<Record<string, {
@@ -657,13 +669,32 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   }))
                   break
 
+                case 'search_capabilities':
+                  // Store search capabilities per agent
+                  setSearchCapabilities(data.agents || [])
+                  setAllModelsHaveNativeSearch(data.duckDuckGoCount === 0)
+                  console.log('Search capabilities received:', data.agents)
+                  setCurrentPhase(`🔍 Search analysis: ${data.nativeSearchCount} native, ${data.duckDuckGoCount} DuckDuckGo`)
+                  break
+
                 case 'pre_research_started':
-                  setPreResearchStatus({ isSearching: true })
-                  setCurrentPhase('🔬 Pre-research: Gathering evidence before debate...')
+                  setPreResearchStatus({ isSearching: true, forModels: data.forModels })
+                  setCurrentPhase(`🦆 DuckDuckGo: Gathering evidence for ${data.forModels?.length || 0} model(s)...`)
                   // Update flowchart - research step starting
                   setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
                     status: 'active',
-                    preview: 'Gathering shared research...'
+                    preview: `DuckDuckGo for ${data.forModels?.length || 0} models...`
+                  }))
+                  break
+
+                case 'pre_research_skipped':
+                  // All models have native search - no DuckDuckGo needed
+                  setPreResearchStatus({ isSearching: false })
+                  setAllModelsHaveNativeSearch(true)
+                  setCurrentPhase('✅ All models using native search')
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
+                    status: 'complete',
+                    preview: 'All models have native search'
                   }))
                   break
 
@@ -676,6 +707,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     cacheHit: data.cacheHit,
                     researchTime: data.researchTime,
                     queryType: data.queryType,
+                    forModels: data.forModels,
                     searchResults: data.searchResults
                   })
                   setCurrentPhase(`📚 Pre-research complete: ${data.sourcesFound} sources found${data.cacheHit ? ' (cached)' : ''}`)
@@ -1556,31 +1588,26 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 {includeComparison && (
                   <div className="pl-7 space-y-4">
                     <div>
-                      <Label className="text-sm text-muted-foreground mb-2 block">
-                        Select model for comparison:
-                      </Label>
-                      <ModelSelector
-                        models={comparisonModel ? [comparisonModel] : [{
-                          provider: 'google',
-                          model: 'gemini-2.5-flash',
-                          enabled: false
-                        }]}
-                        onChange={(models) => {
-                          // ModelSelector returns an array, we just need the first one
-                          if (models.length > 0) {
-                            const newModel = models[0]
-                            setComparisonModel({
-                              provider: newModel.provider,
-                              model: newModel.model,
-                              enabled: true
-                            })
-                          } else {
-                            // If no models selected, but keep the default available
-                            setComparisonModel(null)
-                          }
+                      <SingleModelBadgeSelector
+                        value={comparisonModel?.model || 'gpt-4.1-nano'}
+                        onChange={(modelId) => {
+                          // Determine provider from model ID
+                          let provider = 'openai'
+                          if (modelId.startsWith('claude')) provider = 'anthropic'
+                          else if (modelId.startsWith('gemini')) provider = 'google'
+                          else if (modelId.startsWith('llama') || modelId.startsWith('gemma')) provider = 'groq'
+                          else if (modelId.startsWith('grok')) provider = 'xai'
+                          else if (modelId.startsWith('sonar')) provider = 'perplexity'
+                          else if (modelId.startsWith('mistral')) provider = 'mistral'
+                          else if (modelId.startsWith('command')) provider = 'cohere'
+
+                          setComparisonModel({
+                            provider: provider as any,
+                            model: modelId,
+                            enabled: true
+                          })
                         }}
-                        maxModels={1}
-                        userTier={userTier}
+                        label="Select model for comparison:"
                       />
                     </div>
                     
@@ -1941,12 +1968,59 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   </div>
                 )}
 
-                {/* Pre-Research Status (Shared Research BEFORE Debate) - Card Style */}
-                {enableWebSearch && (preResearchStatus.isSearching || preResearchStatus.sourcesFound !== undefined) && (
+                {/* Search Capabilities - Per-Agent Search Provider Display */}
+                {enableWebSearch && searchCapabilities.length > 0 && (
                   <div className="mb-4 p-4 rounded-lg border bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-600/30">
                     <div className="flex items-center gap-2 mb-3">
-                      <Globe className="h-5 w-5 text-blue-400" />
-                      <h4 className="text-sm font-semibold">Pre-Research Progress</h4>
+                      <Search className="h-5 w-5 text-blue-400" />
+                      <h4 className="text-sm font-semibold">Search Capabilities</h4>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {searchCapabilities.filter(a => a.hasNativeSearch).length} native, {searchCapabilities.filter(a => !a.hasNativeSearch).length} DuckDuckGo
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {searchCapabilities.map((agent, idx) => (
+                        <div
+                          key={`cap-${agent.role}-${idx}`}
+                          className={`flex items-center gap-3 p-2 rounded-md transition-all ${
+                            agent.hasNativeSearch
+                              ? 'bg-blue-500/10 border border-blue-500/30'
+                              : 'bg-yellow-500/10 border border-yellow-500/30'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
+                            agent.hasNativeSearch ? 'bg-blue-500/20' : 'bg-yellow-500/20'
+                          }`}>
+                            {agent.hasNativeSearch ? '🌐' : '🦆'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{agent.role}</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/50 text-muted-foreground">
+                                {agent.model}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {agent.searchProvider}
+                            </p>
+                          </div>
+                          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                            agent.hasNativeSearch ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                            {agent.hasNativeSearch ? 'Native' : 'Fallback'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* DuckDuckGo Pre-Research (Only for models without native search) */}
+                {enableWebSearch && !allModelsHaveNativeSearch && (preResearchStatus.isSearching || preResearchStatus.sourcesFound !== undefined) && (
+                  <div className="mb-4 p-4 rounded-lg border bg-gradient-to-br from-yellow-900/20 to-slate-900/50 border-yellow-600/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xl">🦆</span>
+                      <h4 className="text-sm font-semibold">DuckDuckGo Fallback Research</h4>
                       {preResearchStatus.cacheHit && (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
                           cached
@@ -1959,11 +2033,16 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                         {preResearchStatus.researchTime && ` (${(preResearchStatus.researchTime / 1000).toFixed(1)}s)`}
                       </span>
                     </div>
+                    {preResearchStatus.forModels && preResearchStatus.forModels.length > 0 && (
+                      <p className="text-xs text-muted-foreground mb-2">
+                        For models without native search: {preResearchStatus.forModels.join(', ')}
+                      </p>
+                    )}
 
                     {preResearchStatus.isSearching ? (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Gathering evidence before debate starts...</span>
+                        <span>Gathering DuckDuckGo evidence for fallback models...</span>
                       </div>
                     ) : preResearchStatus.searchResults && preResearchStatus.searchResults.length > 0 ? (
                       <div className="space-y-2">
@@ -1983,14 +2062,11 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                                   : 'bg-red-500/10 border border-red-500/30'
                               }`}
                             >
-                              {/* Status icon */}
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
                                 search.success ? 'bg-green-500/20' : 'bg-red-500/20'
                               }`}>
                                 {search.success ? '✅' : '❌'}
                               </div>
-
-                              {/* Search info */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium text-sm">{roleLabels[search.role] || search.role}</span>
@@ -2004,8 +2080,6 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                                     : 'No results found'}
                                 </p>
                               </div>
-
-                              {/* Results count badge */}
                               {search.success && (
                                 <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-medium">
                                   <span>{search.resultsCount}</span>

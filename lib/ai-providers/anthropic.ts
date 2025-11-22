@@ -7,13 +7,15 @@ import { getModelsByProvider } from '../models/model-registry';
 
 // Models that support Anthropic's native web search (web_search_20250305)
 // Only newer Claude 3.5+ models support this feature
+// Updated Nov 2025 with correct model IDs
 const WEB_SEARCH_SUPPORTED_MODELS = [
-  'claude-sonnet-4-5-20250929',     // Claude Sonnet 4.5
-  'claude-sonnet-4-20250514',       // Claude Sonnet 4
-  'claude-opus-4-1-20250514',       // Claude Opus 4.1
-  'claude-3-7-sonnet-20250219',     // Claude 3.7 Sonnet
-  'claude-3-5-sonnet-20241022',     // Claude 3.5 Sonnet v2
-  'claude-3-5-sonnet-20240620',     // Claude 3.5 Sonnet v1
+  'claude-sonnet-4-5-20250929',     // Claude Sonnet 4.5 (Sept 2025)
+  'claude-haiku-4-5-20251001',      // Claude Haiku 4.5 (Oct 2025)
+  'claude-opus-4-1-20250805',       // Claude Opus 4.1 (Aug 2025)
+  'claude-opus-4-20250514',         // Claude Opus 4 (May 2025)
+  'claude-sonnet-4-20250514',       // Claude Sonnet 4 (May 2025)
+  'claude-3-7-sonnet-20250219',     // Claude 3.7 Sonnet (Feb 2025)
+  'claude-3-5-haiku-20241022',      // Claude 3.5 Haiku (Oct 2024)
 ];
 
 function supportsWebSearch(model: string): boolean {
