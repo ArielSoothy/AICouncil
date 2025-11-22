@@ -199,13 +199,45 @@ export async function POST(request: NextRequest) {
               }
               
               // Per-agent web search - each agent does their own research
-              // Models with native search (Gemini, GPT, etc.) use their capabilities
-              // Groq/Llama models fall back to DuckDuckGo
+              // Providers with native search: OpenAI, xAI (use model's built-in search)
+              // Providers needing DuckDuckGo fallback: Groq, Google, Anthropic, Mistral, Perplexity, Cohere
+              const providersWithNativeSearch = ['openai', 'xai']
+              const useNativeSearch = providersWithNativeSearch.includes(agentConfig.provider)
+
               if (enableWebSearch) {
+                if (useNativeSearch) {
+                  // Provider has native search - model will search on its own
+                  console.log(`🔍 ${agentConfig.provider}: Using native web search capability`)
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'web_search_started',
+                    query: query,
+                    provider: agentConfig.provider + ' native',
+                    agent: agentConfig.persona?.name || agentConfig.model,
+                    role: agentConfig.persona?.role || 'analyst',
+                    round: roundNum,
+                    searchType: 'native',
+                    timestamp: Date.now()
+                  })}\n\n`))
+
+                  // Mark as completed immediately - actual search happens during model query
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'web_search_completed',
+                    query: query,
+                    provider: agentConfig.provider + ' native',
+                    agent: agentConfig.persona?.name || agentConfig.model,
+                    role: agentConfig.persona?.role || 'analyst',
+                    round: roundNum,
+                    searchType: 'native',
+                    resultsCount: 0, // Native search doesn't report count upfront
+                    sources: [],
+                    timestamp: Date.now()
+                  })}\n\n`))
+                } else {
+                  // Use DuckDuckGo fallback for providers without native search
                 try {
                   // Send progressive web search started event
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                    type: 'web_search_started', 
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'web_search_started',
                     query: query,
                     provider: 'duckduckgo',
                     agent: agentConfig.persona?.name || agentConfig.model,
@@ -325,8 +357,8 @@ export async function POST(request: NextRequest) {
                   console.warn('Progressive web search failed for agent debate streaming:', searchError)
                   
                   // Send web search failed event
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                    type: 'web_search_failed', 
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'web_search_failed',
                     query: query,
                     provider: 'duckduckgo',
                     agent: agentConfig.persona?.name || agentConfig.model,
@@ -337,6 +369,7 @@ export async function POST(request: NextRequest) {
                     timestamp: Date.now()
                   })}\n\n`))
                 }
+                } // End of else block (DuckDuckGo fallback)
               }
               
               // Generate appropriate prompt
@@ -413,11 +446,19 @@ export async function POST(request: NextRequest) {
               }
               
               console.log(`Provider found for ${agentConfig.provider}, attempting query...`)
+
+              // Use the native search flag determined earlier (from line ~204)
+              // useNativeSearch is already set based on provider capability
+              if (useNativeSearch && enableWebSearch) {
+                console.log(`🔍 ${agentConfig.provider}: Using native web search (no DuckDuckGo needed)`)
+              }
+
               if (provider) {
                 try {
                   result = await provider.query(fullPrompt, {
                     ...agentConfig,
-                    maxTokens: tokenLimit
+                    maxTokens: tokenLimit,
+                    useWebSearch: useNativeSearch && enableWebSearch  // Enable native search for supported providers
                   })
                 } catch (providerError: any) {
                   console.log(`${agentConfig.provider} failed for ${modelId}, trying fallback:`, providerError.message)

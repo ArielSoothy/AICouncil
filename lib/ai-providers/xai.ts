@@ -17,7 +17,7 @@ export class XAIProvider implements AIProvider {
     );
   }
 
-  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number }): Promise<ModelResponse> {
+  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number; useWebSearch?: boolean }): Promise<ModelResponse> {
     const startTime = Date.now();
 
     try {
@@ -30,6 +30,21 @@ export class XAIProvider implements AIProvider {
         apiKey: process.env.XAI_API_KEY as string,
       });
 
+      console.log('=== XAI DEBUG ===');
+      console.log('Model:', config.model);
+      console.log('useTools:', config.useTools);
+      console.log('useWebSearch:', config.useWebSearch);
+      console.log('=================');
+
+      // Build tools object
+      const tools: Record<string, any> = {};
+
+      if (config.useTools) {
+        Object.assign(tools, alpacaTools);
+      }
+
+      const hasTools = Object.keys(tools).length > 0;
+
       const result = await generateText({
         model: xai(config.model),
         prompt,
@@ -37,10 +52,21 @@ export class XAIProvider implements AIProvider {
         maxTokens: config.maxTokens || 1000,
         topP: config.topP || 1,
 
+        // xAI Live Search via provider options
+        providerOptions: config.useWebSearch ? {
+          xai: {
+            searchParameters: {
+              mode: 'auto', // 'auto', 'on', or 'off'
+              returnCitations: true,
+              maxSearchResults: 5,
+            },
+          },
+        } : undefined,
+
         // ✅ Tool use integration
-        tools: config.useTools ? alpacaTools : undefined,
-        maxSteps: config.useTools ? (config.maxSteps || 15) : 1,
-        onStepFinish: config.useTools ? (step) => {
+        tools: hasTools ? tools : undefined,
+        maxSteps: hasTools ? (config.maxSteps || 15) : 1,
+        onStepFinish: hasTools ? (step) => {
           if (step.toolCalls && step.toolCalls.length > 0) {
             step.toolCalls.forEach((call: any) => {
               console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
@@ -49,6 +75,10 @@ export class XAIProvider implements AIProvider {
           }
         } : undefined,
       });
+
+      if (config.useWebSearch) {
+        console.log('xAI: Live Search enabled (auto mode)');
+      }
 
       const responseTime = Date.now() - startTime;
 

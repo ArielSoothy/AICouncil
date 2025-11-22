@@ -15,7 +15,7 @@ export class OpenAIProvider implements AIProvider {
              process.env.OPENAI_API_KEY.startsWith('sk-'));
   }
 
-  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number }): Promise<ModelResponse> {
+  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number; useWebSearch?: boolean }): Promise<ModelResponse> {
     const startTime = Date.now();
 
     try {
@@ -44,9 +44,26 @@ export class OpenAIProvider implements AIProvider {
       console.log('Token value:', config.maxTokens || 1000);
       console.log('Temperature:', isGPT5 ? '1 (default only)' : (config.temperature || 0.7));
       console.log('useTools:', config.useTools);
+      console.log('useWebSearch:', config.useWebSearch);
       console.log('maxSteps:', config.maxSteps);
       console.log('Tools passed:', config.useTools ? Object.keys(alpacaTools) : 'none');
       console.log('====================');
+
+      // Build tools object - combine alpaca tools with web search if needed
+      const tools: Record<string, any> = {};
+
+      // Add Alpaca trading tools if requested
+      if (config.useTools) {
+        Object.assign(tools, alpacaTools);
+      }
+
+      // Add OpenAI web search if requested (requires GPT-4o+ or GPT-5)
+      if (config.useWebSearch) {
+        tools.web_search = openai.tools.webSearchPreview({});
+        console.log('OpenAI: Native web search enabled');
+      }
+
+      const hasTools = Object.keys(tools).length > 0;
 
       const result = await generateText({
         model: openai(config.model),
@@ -55,10 +72,10 @@ export class OpenAIProvider implements AIProvider {
         ...tokenConfig,
         topP: config.topP || 1,
 
-        // ✅ Tool use integration
-        tools: config.useTools ? alpacaTools : undefined,
-        maxSteps: config.useTools ? (config.maxSteps || 15) : 1,
-        onStepFinish: config.useTools ? (step) => {
+        // ✅ Tool use integration (Alpaca + Web Search)
+        tools: hasTools ? tools : undefined,
+        maxSteps: hasTools ? (config.maxSteps || 15) : 1,
+        onStepFinish: hasTools ? (step) => {
           console.log('🔍 OpenAI Step finished:', {
             stepType: step.stepType,
             text: step.text?.substring(0, 100),
@@ -67,8 +84,12 @@ export class OpenAIProvider implements AIProvider {
           });
           if (step.toolCalls && step.toolCalls.length > 0) {
             step.toolCalls.forEach((call: any) => {
-              console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
-              toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
+              if (call.toolName === 'web_search') {
+                console.log(`🔍 ${config.model} → OpenAI Web Search`);
+              } else {
+                console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
+                toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
+              }
             });
           }
         } : undefined,
