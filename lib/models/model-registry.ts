@@ -51,7 +51,7 @@ export interface ModelInfo {
   isLegacy?: boolean
   // Testing metadata
   status?: 'working' | 'unreleased' | 'no_api_key' | 'rate_limited' |
-           'parameter_error' | 'service_error' | 'empty_response' | 'untested'
+           'parameter_error' | 'service_error' | 'empty_response' | 'untested' | 'decommissioned'
   lastTested?: string  // ISO 8601 timestamp
   notes?: string  // Human-readable error details
   testResponseTime?: number  // milliseconds
