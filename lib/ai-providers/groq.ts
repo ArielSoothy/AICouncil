@@ -1,5 +1,5 @@
 import { groq } from '@ai-sdk/groq';
-import { generateText } from 'ai';
+import { generateText, stepCountIs } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
 import { alpacaTools, toolTracker } from '../alpaca/market-data-tools';
@@ -19,10 +19,9 @@ export class GroqProvider implements AIProvider {
     const startTime = Date.now();
     
     // Define fallback models for rate-limited models
-    // Try multiple fallbacks in order of preference
-    // NOTE: gemma2-9b-it was decommissioned - use llama-3.1-8b-instant instead
+    // Try llama 8b instant first (fast and reliable)
     const fallbackModels: Record<string, string[]> = {
-      'llama-3.3-70b-versatile': ['llama-3.1-8b-instant'],  // gemma2-9b-it decommissioned
+      'llama-3.3-70b-versatile': ['llama-3.1-8b-instant'],  // gemma2-9b-it was decommissioned
       'llama-3-groq-70b-tool-use': ['llama-3-groq-8b-tool-use', 'llama-3.1-8b-instant']  // Try 8b tool-use first
     };
     
@@ -47,12 +46,12 @@ export class GroqProvider implements AIProvider {
           model: groq(modelToUse),
           prompt,
           temperature: config.temperature || 0.7,
-          maxTokens: config.maxTokens || 1000,
+          maxOutputTokens: config.maxTokens || 1000,
           topP: config.topP || 1,
 
           // ✅ Tool use integration
           tools: config.useTools ? alpacaTools : undefined,
-          maxSteps: config.useTools ? (config.maxSteps || 15) : 1,
+          stopWhen: config.useTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
           onStepFinish: config.useTools ? (step) => {
             if (step.toolCalls && step.toolCalls.length > 0) {
               step.toolCalls.forEach((call: any) => {
@@ -90,12 +89,16 @@ export class GroqProvider implements AIProvider {
           confidence: this.calculateConfidence(result),
           responseTime,
           tokens: {
-            prompt: result.usage?.promptTokens || 0,
-            completion: result.usage?.completionTokens || 0,
-            total: result.usage?.totalTokens || 0,
+            prompt: result.usage?.inputTokens || 0,
+            completion: result.usage?.outputTokens || 0,
+            total: (result.usage?.inputTokens || 0) + (result.usage?.outputTokens || 0),
           },
           timestamp: new Date(),
-          toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : undefined,
+          toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []).map((tc: any) => ({
+            toolName: tc.toolName,
+            args: tc.args || {},
+            result: tc.result
+          })) : undefined,
         };
       } catch (error) {
         // Check if it's a rate limit error and we have a fallback

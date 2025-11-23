@@ -9,6 +9,7 @@ export function generateDebatePrompt(
   const rolePrompts = {
     analyst: generateAnalystPrompt,
     critic: generateCriticPrompt,
+    judge: generateJudgePrompt,
     synthesizer: generateSynthesizerPrompt
   }
   
@@ -320,6 +321,68 @@ Address:
 - Overlooked risks
 - Unquestioned assumptions
 - Alternative viewpoints not considered`
+  }
+}
+
+/**
+ * Judge Prompt Generator (MADR-Inspired)
+ *
+ * The Judge evaluates the debate between Analyst and Critic,
+ * identifies consensus points and gaps, and guides synthesis.
+ *
+ * @see docs/architecture/UNIFIED_DEBATE_ENGINE.md
+ * @see https://arxiv.org/abs/2311.17371
+ */
+function generateJudgePrompt(query: string, round: number, totalRounds: number): string {
+  if (round === 1) {
+    return `As The Judge, provide an impartial assessment of this query:
+"${query}"
+
+Your role is to set the framework for evaluation. Consider:
+- What criteria should be used to evaluate answers to this query?
+- What evidence would be most relevant and reliable?
+- What potential biases or assumptions should we watch for?
+- What information gaps might affect the quality of the answer?
+
+Establish clear evaluation criteria that the debate should address.`
+  } else if (round === totalRounds) {
+    return `As The Judge, provide your final assessment of the debate:
+"${query}"
+
+Evaluate the debate and provide:
+
+**1. CONSENSUS POINTS:**
+Where do the Analyst and Critic agree? List specific points.
+
+**2. DISAGREEMENT POINTS:**
+Where do they genuinely differ? Are these differences meaningful?
+
+**3. EVIDENCE ASSESSMENT:**
+- Which claims are well-supported by the research?
+- Which claims lack sufficient evidence?
+- Are there any logical fallacies or unsupported assertions?
+
+**4. INFORMATION GAPS:**
+What important information is still missing or unclear?
+
+**5. SYNTHESIS GUIDANCE:**
+Based on the evidence and arguments presented:
+- What should the final recommendation prioritize?
+- What caveats should be included?
+- What confidence level is appropriate?
+
+Be impartial. Your goal is to facilitate a clear, well-reasoned conclusion.`
+  } else {
+    return `As The Judge, assess the current state of the debate:
+"${query}"
+
+Evaluate:
+- Are the arguments based on evidence from the research?
+- Where have the debaters reached agreement?
+- Where do meaningful disagreements remain?
+- What additional evidence or reasoning is needed?
+
+Guide the debate toward a productive resolution.`
   }
 }
 

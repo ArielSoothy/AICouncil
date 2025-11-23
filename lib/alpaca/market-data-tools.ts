@@ -1,5 +1,5 @@
 /**
- * Market Data Tools for AI Trading Research (Yahoo Finance-based)
+ * Alpaca Market Data Tools for AI Trading Research
  *
  * Provides 8 trading tools that AI models can use to research stocks:
  * 1. get_stock_quote - Real-time price data
@@ -10,50 +10,55 @@
  * 6. get_volume_profile - Volume analysis
  * 7. get_support_resistance - Key price levels
  * 8. check_earnings_date - Upcoming earnings
- *
- * DATA SOURCE: Yahoo Finance (FREE, no API key required)
- * Previously used Alpaca API but free tier doesn't include SIP data (403 errors)
- * Yahoo Finance provides all the data we need for technical/fundamental analysis
  */
 
-import { tool } from 'ai';
+import Alpaca from '@alpacahq/alpaca-trade-api';
+import { tool, Tool } from 'ai';
 import { z } from 'zod';
-import { YahooFinanceProvider } from '../data-providers/yahoo-finance-provider';
 
-// Initialize Yahoo Finance provider (FREE, no API key needed!)
-function getYahooProvider(): YahooFinanceProvider {
-  return new YahooFinanceProvider();
+// TypeScript workaround for AI SDK v5 deep type inference with Zod
+// The AI SDK v5 has extremely complex type inference that causes TypeScript to exceed
+// its instantiation depth limit. We need to cast at call sites to avoid this.
+type AnyTool = Tool<any, any>;
+
+// Helper function to bypass deep type inference
+function createTool(config: any): AnyTool {
+  return tool(config) as unknown as AnyTool;
+}
+
+// Initialize Alpaca client
+function getAlpacaClient(): Alpaca {
+  return new Alpaca({
+    keyId: process.env.ALPACA_API_KEY!,
+    secretKey: process.env.ALPACA_SECRET_KEY!,
+    paper: true,
+    baseUrl: process.env.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets',
+  });
 }
 
 /**
  * Tool 1: Get Real-Time Stock Quote
- * Returns current price, bid/ask, volume (Yahoo Finance)
+ * Returns current price, bid/ask, volume
  */
-export const getStockQuoteTool = tool({
+export const getStockQuoteTool: AnyTool = createTool({
   description: 'Get real-time stock quote with current price, bid/ask spread, and volume. Use this to check current market price before making trading decisions.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol (e.g., TSLA, AAPL, NVDA)'),
   }),
   execute: async ({ symbol }) => {
     try {
-      console.log(`📊 [get_stock_quote] Fetching quote for ${symbol} from Yahoo Finance...`);
-      const yahoo = getYahooProvider();
-      const data = await yahoo.fetchMarketData(symbol.toUpperCase());
-
-      console.log(`✅ [get_stock_quote] Retrieved: $${data.quote.price.toFixed(2)}, volume: ${data.quote.volume.toLocaleString()}`);
+      const alpaca = getAlpacaClient();
+      const trade = await alpaca.getLatestTrade(symbol.toUpperCase());
 
       return {
-        symbol: data.symbol,
-        price: data.quote.price,
-        bid: data.quote.bid,
-        ask: data.quote.ask,
-        spread: data.quote.spread,
-        volume: data.quote.volume,
-        timestamp: data.quote.timestamp,
+        symbol: symbol.toUpperCase(),
+        price: trade.Price,
+        timestamp: trade.Timestamp,
+        size: trade.Size,
+        exchange: trade.Exchange,
         success: true
       };
     } catch (error) {
-      console.error(`❌ [get_stock_quote] ERROR for ${symbol}:`, error);
       return {
         symbol: symbol.toUpperCase(),
         error: error instanceof Error ? error.message : 'Failed to fetch quote',
@@ -67,44 +72,69 @@ export const getStockQuoteTool = tool({
  * Tool 2: Get Historical Price Bars
  * Returns candlestick data for technical analysis
  */
-export const getPriceBarsTool = tool({
+export const getPriceBarsTool: AnyTool = createTool({
   description: 'Get historical price bars (candlesticks) for technical analysis. Returns OHLC (Open, High, Low, Close) data with volume. Use this to analyze price trends, patterns, and support/resistance levels.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
     timeframe: z.enum(['1Min', '5Min', '15Min', '1Hour', '1Day']).describe('Bar timeframe'),
     limit: z.number().min(1).max(100).describe('Number of bars to fetch (max 100)'),
   }),
   execute: async ({ symbol, timeframe, limit }) => {
     try {
-      console.log(`🔍 [get_price_bars] Fetching ${limit} bars for ${symbol} (Yahoo Finance)`);
-      const yahoo = getYahooProvider();
-      const data = await yahoo.fetchMarketData(symbol.toUpperCase());
+      const alpaca = getAlpacaClient();
 
-      // Yahoo Finance provides daily bars by default
-      // For intraday timeframes (1Min, 5Min, etc.), we return daily bars
-      // This is a limitation of free data but still useful for analysis
-      const bars = data.bars.slice(-limit).map(bar => ({
-        date: bar.date,
-        open: bar.open,
-        high: bar.high,
-        low: bar.low,
-        close: bar.close,
-        volume: bar.volume
-      }));
+      // Calculate start date based on timeframe and limit
+      const end = new Date();
+      const start = new Date();
 
-      console.log(`✅ [get_price_bars] Retrieved ${bars.length} daily bars for ${symbol}`);
+      if (timeframe === '1Min') {
+        start.setMinutes(start.getMinutes() - (limit * 2)); // Extra buffer
+      } else if (timeframe === '5Min') {
+        start.setMinutes(start.getMinutes() - (limit * 10)); // Extra buffer
+      } else if (timeframe === '15Min') {
+        start.setMinutes(start.getMinutes() - (limit * 30)); // Extra buffer
+      } else if (timeframe === '1Hour') {
+        start.setHours(start.getHours() - (limit * 2)); // Extra buffer
+      } else if (timeframe === '1Day') {
+        start.setDate(start.getDate() - (limit * 2)); // Extra buffer
+      }
+
+      const barsGenerator = alpaca.getBarsV2(symbol.toUpperCase(), {
+        start: start.toISOString(),
+        end: end.toISOString(),
+        timeframe,
+        limit,
+      });
+
+      // Collect bars from async generator
+      const formattedBars: Array<{
+        timestamp: string;
+        open: number;
+        high: number;
+        low: number;
+        close: number;
+        volume: number;
+      }> = [];
+
+      for await (const bar of barsGenerator) {
+        formattedBars.push({
+          timestamp: bar.Timestamp,
+          open: bar.OpenPrice,
+          high: bar.HighPrice,
+          low: bar.LowPrice,
+          close: bar.ClosePrice,
+          volume: bar.Volume,
+        });
+      }
 
       return {
-        symbol: data.symbol,
-        timeframe: '1Day', // Yahoo Finance provides daily data
-        bars,
-        count: bars.length,
-        note: 'Yahoo Finance provides daily bars (free tier)',
+        symbol: symbol.toUpperCase(),
+        timeframe,
+        bars: formattedBars.slice(-limit), // Return only requested limit
+        count: formattedBars.length,
         success: true
       };
     } catch (error) {
-      console.error(`❌ [get_price_bars] ERROR for ${symbol}:`, error);
-
       return {
         symbol: symbol.toUpperCase(),
         error: error instanceof Error ? error.message : 'Failed to fetch bars',
@@ -115,39 +145,39 @@ export const getPriceBarsTool = tool({
 });
 
 /**
- * Tool 3: Get Latest Stock News (Yahoo Finance)
+ * Tool 3: Get Latest Stock News
  * Returns recent news articles that might affect the stock
  */
-export const getStockNewsTool = tool({
+export const getStockNewsTool: AnyTool = createTool({
   description: 'Get latest news articles for a stock. Use this to understand recent catalysts, earnings announcements, or market sentiment affecting the stock price.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
     limit: z.number().min(1).max(10).default(5).describe('Number of news articles to fetch (max 10)'),
   }),
   execute: async ({ symbol, limit }) => {
     try {
-      console.log(`📰 [get_stock_news] Fetching news for ${symbol} (Yahoo Finance)`);
-      const yahoo = getYahooProvider();
-      const data = await yahoo.fetchMarketData(symbol.toUpperCase());
+      const alpaca = getAlpacaClient();
+      const news = await alpaca.getNews({
+        symbols: [symbol.toUpperCase()],
+        limit,
+      });
 
-      const news = data.news.slice(0, limit).map(article => ({
+      const formattedNews = news.map((article: any) => ({
         headline: article.headline,
         summary: article.summary,
-        source: article.source,
-        timestamp: article.timestamp,
-        url: article.url
+        author: article.author,
+        created_at: article.created_at,
+        url: article.url,
+        symbols: article.symbols,
       }));
 
-      console.log(`✅ [get_stock_news] Retrieved ${news.length} news articles for ${symbol}`);
-
       return {
-        symbol: data.symbol,
-        news,
-        count: news.length,
+        symbol: symbol.toUpperCase(),
+        news: formattedNews,
+        count: formattedNews.length,
         success: true
       };
     } catch (error) {
-      console.error(`❌ [get_stock_news] ERROR for ${symbol}:`, error);
       return {
         symbol: symbol.toUpperCase(),
         error: error instanceof Error ? error.message : 'Failed to fetch news',
@@ -161,44 +191,81 @@ export const getStockNewsTool = tool({
  * Tool 4: Calculate RSI (Relative Strength Index)
  * Returns RSI indicator for overbought/oversold analysis
  */
-export const calculateRSITool = tool({
+export const calculateRSITool: AnyTool = createTool({
   description: 'Calculate RSI (Relative Strength Index) indicator. RSI values: >70 = overbought (potential sell), <30 = oversold (potential buy), 40-60 = neutral. Use this to identify potential reversal points.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
     period: z.number().min(5).max(50).default(14).describe('RSI period (default 14)'),
   }),
   execute: async ({ symbol, period }) => {
     try {
-      console.log(`📈 [calculate_rsi] Calculating RSI for ${symbol} (Yahoo Finance)`);
-      const yahoo = getYahooProvider();
-      const data = await yahoo.fetchMarketData(symbol.toUpperCase());
+      const alpaca = getAlpacaClient();
 
-      // Yahoo Finance already calculates RSI for us!
-      const rsi = data.technical.rsi;
-      const signal = data.technical.rsiSignal;
+      // Calculate start date for enough historical data
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - (period + 30)); // Extra buffer for accurate calculation
 
-      let interpretation = '';
-      if (signal === 'Overbought') {
-        interpretation = 'Overbought - Potential sell signal';
-      } else if (signal === 'Oversold') {
-        interpretation = 'Oversold - Potential buy signal';
-      } else {
-        interpretation = 'Neutral zone';
+      const barsGenerator = alpaca.getBarsV2(symbol.toUpperCase(), {
+        start: start.toISOString(),
+        end: end.toISOString(),
+        timeframe: '1Day',
+        limit: period + 30,
+      });
+
+      // Collect bars
+      const bars: Array<{ close: number }> = [];
+      for await (const bar of barsGenerator) {
+        bars.push({ close: bar.ClosePrice });
       }
 
-      console.log(`✅ [calculate_rsi] RSI: ${rsi.toFixed(2)} (${signal})`);
+      if (bars.length < period + 1) {
+        return {
+          symbol: symbol.toUpperCase(),
+          error: `Not enough data to calculate RSI (need ${period + 1} bars, got ${bars.length})`,
+          success: false
+        };
+      }
+
+      // Calculate RSI
+      const closes = bars.map(bar => bar.close);
+      const gains: number[] = [];
+      const losses: number[] = [];
+
+      for (let i = 1; i < closes.length; i++) {
+        const change = closes[i] - closes[i - 1];
+        gains.push(change > 0 ? change : 0);
+        losses.push(change < 0 ? Math.abs(change) : 0);
+      }
+
+      // Calculate average gain and loss
+      const avgGain = gains.slice(-period).reduce((a, b) => a + b, 0) / period;
+      const avgLoss = losses.slice(-period).reduce((a, b) => a + b, 0) / period;
+
+      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+      const rsi = 100 - (100 / (1 + rs));
+
+      let interpretation = '';
+      if (rsi > 70) {
+        interpretation = 'Overbought - Potential sell signal';
+      } else if (rsi < 30) {
+        interpretation = 'Oversold - Potential buy signal';
+      } else if (rsi >= 40 && rsi <= 60) {
+        interpretation = 'Neutral - No clear signal';
+      } else if (rsi > 60) {
+        interpretation = 'Bullish momentum';
+      } else {
+        interpretation = 'Bearish momentum';
+      }
 
       return {
-        symbol: data.symbol,
+        symbol: symbol.toUpperCase(),
         rsi: Math.round(rsi * 100) / 100,
         interpretation,
-        signal,
-        period: 14, // Yahoo Finance uses standard 14-period RSI
+        period,
         success: true
       };
     } catch (error) {
-      console.error(`❌ [calculate_rsi] ERROR for ${symbol}:`, error);
-
       return {
         symbol: symbol.toUpperCase(),
         error: error instanceof Error ? error.message : 'Failed to calculate RSI',
@@ -209,36 +276,82 @@ export const calculateRSITool = tool({
 });
 
 /**
- * Tool 5: Calculate MACD Indicator (Yahoo Finance)
+ * Tool 5: Calculate MACD Indicator
  * Returns MACD line, signal line, and histogram for trend analysis
  */
-export const calculateMACDTool = tool({
+export const calculateMACDTool: AnyTool = createTool({
   description: 'Calculate MACD (Moving Average Convergence Divergence) indicator. Positive MACD = bullish trend, negative = bearish. Crossovers indicate trend changes. Use this to identify trend direction and momentum.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
   }),
   execute: async ({ symbol }) => {
     try {
-      console.log(`📉 [calculate_macd] Calculating MACD for ${symbol} (Yahoo Finance)`);
-      const yahoo = getYahooProvider();
-      const data = await yahoo.fetchMarketData(symbol.toUpperCase());
+      const alpaca = getAlpacaClient();
 
-      // Yahoo Finance already calculates MACD for us!
-      const macd = data.technical.macd;
+      // Calculate start date for 60 days of data
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 60);
 
-      console.log(`✅ [calculate_macd] MACD: ${macd.MACD.toFixed(3)}, Signal: ${macd.signal.toFixed(3)} (${macd.trend})`);
+      const barsGenerator = alpaca.getBarsV2(symbol.toUpperCase(), {
+        start: start.toISOString(),
+        end: end.toISOString(),
+        timeframe: '1Day',
+        limit: 60,
+      });
+
+      // Collect bars
+      const bars: Array<{ close: number }> = [];
+      for await (const bar of barsGenerator) {
+        bars.push({ close: bar.ClosePrice });
+      }
+
+      if (bars.length < 26) {
+        return {
+          symbol: symbol.toUpperCase(),
+          error: 'Not enough data to calculate MACD (need 26+ bars)',
+          success: false
+        };
+      }
+
+      const closes = bars.map(bar => bar.close);
+
+      // Calculate EMAs
+      const ema12 = calculateEMA(closes, 12);
+      const ema26 = calculateEMA(closes, 26);
+      const macdLine = ema12 - ema26;
+
+      // Calculate signal line (9-period EMA of MACD)
+      const macdHistory = [];
+      for (let i = 0; i < closes.length - 26; i++) {
+        const shortEMA = calculateEMA(closes.slice(0, i + 26), 12);
+        const longEMA = calculateEMA(closes.slice(0, i + 26), 26);
+        macdHistory.push(shortEMA - longEMA);
+      }
+
+      const signalLine = calculateEMA(macdHistory, 9);
+      const histogram = macdLine - signalLine;
+
+      let interpretation = '';
+      if (macdLine > signalLine && histogram > 0) {
+        interpretation = 'Bullish - MACD above signal line';
+      } else if (macdLine < signalLine && histogram < 0) {
+        interpretation = 'Bearish - MACD below signal line';
+      } else if (histogram > 0) {
+        interpretation = 'Bullish momentum building';
+      } else {
+        interpretation = 'Bearish momentum building';
+      }
 
       return {
-        symbol: data.symbol,
-        macd: Math.round(macd.MACD * 1000) / 1000,
-        signal: Math.round(macd.signal * 1000) / 1000,
-        histogram: Math.round(macd.histogram * 1000) / 1000,
-        trend: macd.trend,
-        interpretation: macd.trend === 'Bullish' ? 'Bullish - MACD above signal line' : 'Bearish - MACD below signal line',
+        symbol: symbol.toUpperCase(),
+        macd: Math.round(macdLine * 100) / 100,
+        signal: Math.round(signalLine * 100) / 100,
+        histogram: Math.round(histogram * 100) / 100,
+        interpretation,
         success: true
       };
     } catch (error) {
-      console.error(`❌ [calculate_macd] ERROR for ${symbol}:`, error);
       return {
         symbol: symbol.toUpperCase(),
         error: error instanceof Error ? error.message : 'Failed to calculate MACD',
@@ -261,25 +374,48 @@ function calculateEMA(data: number[], period: number): number {
 }
 
 /**
- * Tool 6: Get Volume Profile (Yahoo Finance)
+ * Tool 6: Get Volume Profile
  * Analyzes trading volume patterns
  */
-export const getVolumeProfileTool = tool({
+export const getVolumeProfileTool: AnyTool = createTool({
   description: 'Analyze trading volume patterns. High volume = strong interest/conviction. Use this to confirm trend strength or identify potential reversals.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
     days: z.number().min(5).max(30).default(20).describe('Number of days to analyze (default 20)'),
   }),
   execute: async ({ symbol, days }) => {
     try {
-      console.log(`📊 [get_volume_profile] Analyzing volume for ${symbol} (Yahoo Finance)`);
-      const yahoo = getYahooProvider();
-      const data = await yahoo.fetchMarketData(symbol.toUpperCase());
+      const alpaca = getAlpacaClient();
 
-      const bars = data.bars.slice(-days);
+      // Calculate start date
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - (days + 5)); // Extra buffer
+
+      const barsGenerator = alpaca.getBarsV2(symbol.toUpperCase(), {
+        start: start.toISOString(),
+        end: end.toISOString(),
+        timeframe: '1Day',
+        limit: days + 5,
+      });
+
+      // Collect bars
+      const bars: Array<{ volume: number }> = [];
+      for await (const bar of barsGenerator) {
+        bars.push({ volume: bar.Volume });
+      }
+
+      if (bars.length < 5) {
+        return {
+          symbol: symbol.toUpperCase(),
+          error: 'Not enough data for volume analysis',
+          success: false
+        };
+      }
+
       const volumes = bars.map(bar => bar.volume);
       const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
-      const currentVolume = data.quote.volume;
+      const currentVolume = volumes[volumes.length - 1];
       const volumeRatio = currentVolume / avgVolume;
 
       let interpretation = '';
@@ -293,10 +429,8 @@ export const getVolumeProfileTool = tool({
         interpretation = 'Normal volume';
       }
 
-      console.log(`✅ [get_volume_profile] Volume ratio: ${volumeRatio.toFixed(2)}x (${interpretation})`);
-
       return {
-        symbol: data.symbol,
+        symbol: symbol.toUpperCase(),
         currentVolume: Math.round(currentVolume),
         averageVolume: Math.round(avgVolume),
         volumeRatio: Math.round(volumeRatio * 100) / 100,
@@ -304,7 +438,6 @@ export const getVolumeProfileTool = tool({
         success: true
       };
     } catch (error) {
-      console.error(`❌ [get_volume_profile] ERROR for ${symbol}:`, error);
       return {
         symbol: symbol.toUpperCase(),
         error: error instanceof Error ? error.message : 'Failed to analyze volume',
@@ -315,25 +448,60 @@ export const getVolumeProfileTool = tool({
 });
 
 /**
- * Tool 7: Get Support and Resistance Levels (Yahoo Finance)
+ * Tool 7: Get Support and Resistance Levels
  * Identifies key price levels from recent price action
  */
-export const getSupportResistanceTool = tool({
+export const getSupportResistanceTool: AnyTool = createTool({
   description: 'Identify support and resistance levels from recent price action. Support = price floor where buying pressure emerges. Resistance = price ceiling where selling pressure emerges. Use these for entry/exit planning.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
     days: z.number().min(10).max(90).default(30).describe('Number of days to analyze (10-90 days, default 30)'),
   }),
   execute: async ({ symbol, days }) => {
     try {
-      console.log(`🎯 [get_support_resistance] Finding levels for ${symbol} (Yahoo Finance)`);
-      const yahoo = getYahooProvider();
-      const data = await yahoo.fetchMarketData(symbol.toUpperCase());
+      const alpaca = getAlpacaClient();
 
-      // Yahoo Finance already calculates support/resistance for us!
-      const support = data.levels.support;
-      const resistance = data.levels.resistance;
-      const currentPrice = data.quote.price;
+      // Calculate start date
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - (days + 10)); // Extra buffer
+
+      const barsGenerator = alpaca.getBarsV2(symbol.toUpperCase(), {
+        start: start.toISOString(),
+        end: end.toISOString(),
+        timeframe: '1Day',
+        limit: days + 10,
+      });
+
+      // Collect bars
+      const bars: Array<{ high: number; low: number; close: number }> = [];
+      for await (const bar of barsGenerator) {
+        bars.push({
+          high: bar.HighPrice,
+          low: bar.LowPrice,
+          close: bar.ClosePrice,
+        });
+      }
+
+      if (bars.length < 10) {
+        return {
+          symbol: symbol.toUpperCase(),
+          error: 'Not enough data for support/resistance analysis',
+          success: false
+        };
+      }
+
+      const highs = bars.map(bar => bar.high);
+      const lows = bars.map(bar => bar.low);
+      const currentPrice = bars[bars.length - 1].close;
+
+      // Find resistance (recent highs)
+      const sortedHighs = [...highs].sort((a, b) => b - a);
+      const resistance = sortedHighs[Math.floor(sortedHighs.length * 0.1)]; // Top 10% high
+
+      // Find support (recent lows)
+      const sortedLows = [...lows].sort((a, b) => a - b);
+      const support = sortedLows[Math.floor(sortedLows.length * 0.1)]; // Bottom 10% low
 
       const distanceToResistance = ((resistance - currentPrice) / currentPrice) * 100;
       const distanceToSupport = ((currentPrice - support) / currentPrice) * 100;
@@ -349,22 +517,17 @@ export const getSupportResistanceTool = tool({
         interpretation = 'Closer to support than resistance';
       }
 
-      console.log(`✅ [get_support_resistance] Support: $${support.toFixed(2)}, Resistance: $${resistance.toFixed(2)}`);
-
       return {
-        symbol: data.symbol,
+        symbol: symbol.toUpperCase(),
         currentPrice: Math.round(currentPrice * 100) / 100,
         resistance: Math.round(resistance * 100) / 100,
         support: Math.round(support * 100) / 100,
-        yearHigh: Math.round(data.levels.yearHigh * 100) / 100,
-        yearLow: Math.round(data.levels.yearLow * 100) / 100,
         distanceToResistance: Math.round(distanceToResistance * 100) / 100 + '%',
         distanceToSupport: Math.round(distanceToSupport * 100) / 100 + '%',
         interpretation,
         success: true
       };
     } catch (error) {
-      console.error(`❌ [get_support_resistance] ERROR for ${symbol}:`, error);
       return {
         symbol: symbol.toUpperCase(),
         error: error instanceof Error ? error.message : 'Failed to find support/resistance',
@@ -378,9 +541,9 @@ export const getSupportResistanceTool = tool({
  * Tool 8: Check Earnings Date
  * Returns upcoming earnings date if available
  */
-export const checkEarningsDateTool = tool({
+export const checkEarningsDateTool: AnyTool = createTool({
   description: 'Check if the stock has upcoming earnings announcement. Earnings can cause significant price volatility. Use this to avoid or capitalize on earnings-related moves.',
-  parameters: z.object({
+  inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
   }),
   execute: async ({ symbol }) => {

@@ -1,20 +1,19 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Loader2, TrendingUp, TrendingDown, Minus, Users, CheckCircle, AlertCircle, XCircle, RotateCcw } from 'lucide-react'
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
-import { ResearchProgressPanel, type ResearchProgressPanelHandle } from './research-progress-panel'
 import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
 import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { TradingHistoryDropdown } from './trading-history-dropdown'
+import { ResearchActivityPanel } from './research-activity-panel' // Phase 4: Research transparency
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { ModelConfig } from '@/types/consensus'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
 import { getModelsForPreset } from '@/lib/config/model-presets'
-import type { ResearchProgressEvent } from '@/types/research-progress'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -65,10 +64,7 @@ export function ConsensusMode() {
   const [consensus, setConsensus] = useState<ConsensusResult | null>(null)
   const [decisions, setDecisions] = useState<TradingDecision[]>([])
   const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
-  const [showProgressPanel, setShowProgressPanel] = useState(false)
-  const [progressEvents, setProgressEvents] = useState<ResearchProgressEvent[]>([])
-  const eventSourceRef = useRef<EventSource | null>(null)
-  const progressPanelRef = useRef<ResearchProgressPanelHandle>(null)
+  const [researchData, setResearchData] = useState<any | null>(null) // Phase 4: Research pipeline data
 
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -138,15 +134,9 @@ export function ConsensusMode() {
 
   // Reset/clear results and start new analysis
   const handleStartNew = () => {
-    // Close any active EventSource
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close()
-      eventSourceRef.current = null
-    }
     setConsensus(null)
     setDecisions([])
     setProgressSteps([])
-    setShowProgressPanel(false)
     // Remove URL parameter
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
@@ -160,25 +150,42 @@ export function ConsensusMode() {
     setConsensus(null)
     setDecisions([])
     setProgressSteps([])
-    setShowProgressPanel(true)
 
     // Extract enabled model IDs for API
     const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
+    const enabledModels = selectedModels.filter(m => m.enabled)
 
-    // Store final results in local variables to avoid React state timing issues
-    let finalConsensus: any = null
-    let finalDecisions: any[] = []
+    // Show initial progress
+    const initialSteps: ReasoningStep[] = [
+      createReasoningStep('thinking', '🔄 Starting consensus analysis...'),
+    ]
+    setProgressSteps(initialSteps)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    // Add models being queried
+    const modelSteps = [
+      ...initialSteps,
+      createReasoningStep('analysis', `💰 Fetching account data...`),
+      createReasoningStep('thinking', `🤖 Querying ${modelIds.length} AI models for consensus:`),
+    ]
+    enabledModels.forEach(m => {
+      modelSteps.push(createReasoningStep('analysis', `   • ${getModelDisplayName(m.model)}`))
+    })
+    setProgressSteps(modelSteps)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    setProgressSteps([
+      ...modelSteps,
+      createReasoningStep('thinking', '⏳ Building consensus from all models...')
+    ])
 
     try {
-      // Use fetch with streaming instead of EventSource (which doesn't support POST)
-      const response = await fetch('/api/trading/consensus/stream', {
+      const response = await fetch('/api/trading/consensus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          selectedModels: modelIds,
-          timeframe,
-          targetSymbol: targetSymbol.trim() || undefined
-        }),
+        body: JSON.stringify({ selectedModels: modelIds, timeframe, targetSymbol: targetSymbol.trim() || undefined }),
       })
 
       if (!response.ok) {
@@ -186,100 +193,20 @@ export function ConsensusMode() {
         throw new Error(error.error || 'Failed to get consensus decision')
       }
 
-      // Read SSE stream manually
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
+      const data = await response.json()
 
-      if (!reader) {
-        throw new Error('No response body')
-      }
-
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || '' // Keep incomplete line in buffer
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event: ResearchProgressEvent = JSON.parse(line.slice(6))
-
-              // Log all events to console so user can see them
-              console.log('[SSE Event]', event.type, event)
-
-              // Send event to progress panel for real-time display
-              progressPanelRef.current?.processEvent(event)
-
-              // Collect events for display (optional, for debugging)
-              setProgressEvents(prev => [...prev, event])
-
-              // Handle final_result event
-              if (event.type === 'final_result') {
-                console.log('🎯 FINAL RESULT received:', {
-                  hasConsensus: !!event.consensus,
-                  hasDecisions: !!event.decisions,
-                  consensusAction: event.consensus?.action
-                })
-
-                // Store in local variables FIRST (for conversation save logic)
-                finalConsensus = event.consensus
-                finalDecisions = event.decisions
-
-                // Then update React state (async)
-                setConsensus(event.consensus)
-                setDecisions(event.decisions)
-                setShowProgressPanel(false)
-              }
-
-              // Handle error events gracefully
-              if (event.type === 'error') {
-                console.error('❌ SSE Error Event:', event.message, event)
-                // Don't throw - let the stream complete and show what we have
-              }
-            } catch (e) {
-              console.error('Failed to parse SSE event:', e)
-            }
-          }
-        }
-      }
-
-      // Keep old fake progress for now as fallback (will be hidden by progress panel)
-      setProgressSteps([
+      // Show completion
+      setProgressSteps(prev => [
+        ...prev,
         createReasoningStep('decision', `✅ Consensus reached!`),
         createReasoningStep('analysis', '📊 Processing final decision...')
       ])
 
-      // Log what we received (for debugging)
-      console.log('📊 Stream completed. Results received:', {
-        hasFinalConsensus: !!finalConsensus,
-        hasFinalDecisions: !!finalDecisions,
-        finalConsensusAction: finalConsensus?.action,
-        finalDecisionsCount: finalDecisions?.length,
-        reactConsensus: consensus,
-        reactDecisions: decisions
-      })
-
-      // Verify we received final results (don't throw, just warn)
-      if (!finalConsensus || !finalDecisions.length) {
-        console.warn('⚠️ Stream completed but no final results received. Check backend logs for errors.')
-        console.warn('This could mean Phase 1 (research) or Phase 2 (decisions) failed.')
-        // Don't throw - let the UI show what we have
-        return
-      }
-
-      console.log('✅ Final results stored:', {
-        consensus: finalConsensus.action,
-        decisionsCount: finalDecisions.length
-      })
+      setConsensus(data.consensus)
+      setDecisions(data.decisions || [])
+      setResearchData(data.research || null) // Phase 4: Capture research pipeline data
 
       // Save conversation for history and persistence (non-blocking, silent fail)
-      // Use finalConsensus/finalDecisions (local variables) instead of React state
       // Fire-and-forget: 401 errors are expected for non-authenticated users
       fetch('/api/conversations', {
         method: 'POST',
@@ -287,8 +214,8 @@ export function ConsensusMode() {
         body: JSON.stringify({
           query: 'Consensus Trading Analysis',
           responses: {
-            consensus: finalConsensus,
-            decisions: finalDecisions
+            consensus: data.consensus,
+            decisions: data.decisions
           },
           mode: 'trading-consensus',
           metadata: {
@@ -307,12 +234,12 @@ export function ConsensusMode() {
         } else {
           // Guest mode: persist locally only
           const clientId = `local-${Date.now()}`
-          console.log('👤 Guest mode: persisting locally with ID:', clientId, '(using free mode models)')
+          console.log('👤 Guest mode: persisting locally with ID:', clientId)
 
           if (typeof window !== 'undefined') {
             localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
-              consensus: finalConsensus,
-              decisions: finalDecisions,
+              consensus: data.consensus,
+              decisions: data.decisions,
               metadata: {
                 timeframe,
                 targetSymbol: targetSymbol.trim() || null,
@@ -400,13 +327,8 @@ export function ConsensusMode() {
         </Button>
       </div>
 
-      {/* Real-time Progress Panel */}
-      {loading && showProgressPanel && (
-        <ResearchProgressPanel ref={progressPanelRef} />
-      )}
-
-      {/* Fallback: Old progress (hidden when showProgressPanel is true) */}
-      {loading && !showProgressPanel && progressSteps.length > 0 && (
+      {/* Real-time Progress */}
+      {loading && progressSteps.length > 0 && (
         <ReasoningStream
           steps={progressSteps}
           isStreaming={true}
@@ -414,6 +336,9 @@ export function ConsensusMode() {
           modelName="Trading System"
         />
       )}
+
+      {/* Phase 4: Research Activity Panel - Show exhaustive research transparency */}
+      <ResearchActivityPanel research={researchData} isLoading={loading && !consensus} />
 
       {/* Consensus Results */}
       {consensus && (

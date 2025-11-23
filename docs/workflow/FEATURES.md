@@ -1035,5 +1035,163 @@
 - **Last Modified**: October 28, 2025 (Initial comprehensive testing)
 - **DO NOT**: Remove status metadata from model registry, disable model filtering in UI components, delete test infrastructure
 
+### 33. Debate Progress Flowchart
+- **Status**: ✅ ACTIVE & USER-REQUESTED
+- **Location**:
+  - `components/debate/flowchart-node.tsx` - Individual step nodes
+  - `components/debate/flowchart-connector.tsx` - SVG arrow connectors
+  - `components/debate/debate-flowchart.tsx` - Main orchestrator
+  - `components/agents/debate-interface.tsx` - Integration
+- **Purpose**: Visual horizontal flowchart showing real-time debate progression during loading
+- **Key Features**:
+  - Collapsible panel with progress bar (e.g., "3/5 steps")
+  - Animated nodes showing: Research → Analyst → Critic → Judge → Synthesizer → Synthesis
+  - Status-based styling (pending=gray, active=blue+spinner, complete=green, error=red)
+  - Model info displayed (provider/model) on each node
+  - Duration tracking per step (e.g., "11.2s")
+  - Response preview on hover via tooltip
+  - Animated flow particles on active connectors
+  - Works during loading state with real-time updates from streaming events
+- **Streaming Event Integration**:
+  - `web_search_started` / `web_search_completed` → Research step
+  - `model_started` / `model_completed` → Agent steps (by role)
+  - `synthesis_started` / `synthesis_completed` → Synthesis step
+- **Helper Functions**:
+  - `createDebateSteps()` - Initialize steps array
+  - `updateStepStatus()` - Update individual step progress
+- **Dependencies**:
+  - `@/components/ui/tooltip` - Preview on hover
+  - `@/components/ui/card` - Container
+  - lucide-react icons
+- **Last Modified**: November 2025 (Initial implementation)
+- **DO NOT**: Remove flowchart from loading state, break streaming event integration
+
+### 34. Pre-Debate Clarifying Questions
+- **Status**: ✅ ACTIVE & USER-REQUESTED
+- **Location**:
+  - `app/api/agents/pre-debate-questions/route.ts` - Question generation API
+  - `components/debate/pre-debate-questions.tsx` - UI component
+  - `components/agents/debate-interface.tsx` - Integration (toggle + state)
+- **Purpose**: AI-generated clarifying questions before debate to improve result quality
+- **Key Features**:
+  - Generates 3-4 contextual questions based on user query
+  - Uses Groq first (free/fast), falls back to Claude
+  - Optional answers - user can skip and start debate directly
+  - Toggle in setup UI to enable/disable feature
+  - Questions include hints for better user guidance
+  - Seamlessly integrates answers into debate context
+- **UI Flow**:
+  1. User clicks "Start Debate" with toggle enabled
+  2. Pre-debate questions panel appears with loading state
+  3. AI generates 3-4 clarifying questions specific to query
+  4. User can answer any/all questions or click "Skip & Start Debate"
+  5. Debate begins with additional context from answers (if provided)
+- **API Details**:
+  - Endpoint: `POST /api/agents/pre-debate-questions`
+  - Input: `{ query: string }`
+  - Output: `{ success: true, questions: [{ question: string, hint?: string }] }`
+  - Uses `@ai-sdk/groq` with `llama-3.3-70b-versatile` model
+  - Fallback to `@ai-sdk/anthropic` with `claude-3-5-haiku-20241022`
+- **Dependencies**:
+  - `@ai-sdk/groq`, `@ai-sdk/anthropic`, `ai` (generateText)
+  - shadcn/ui components (Card, Button, Textarea, Label)
+  - lucide-react icons (HelpCircle, Lightbulb, SkipForward, etc.)
+- **Related Fix**: Also fixed false "Failed to start" timeout error - now only shows error if NO models start within 15 seconds (prevents false positives for sequential agents)
+- **Last Modified**: November 2025 (Initial implementation)
+- **DO NOT**: Remove skip option, change to synchronous-only flow, disable toggle functionality
+
+### 35. Centralized Model Registry System
+- **Status**: ✅ ACTIVE & CRITICAL
+- **Location**: `lib/models/model-registry.ts` - Single source of truth
+- **Purpose**: Centralized model definitions ensuring consistency across all modes
+- **Key Features**:
+  - `MODEL_REGISTRY` - All 46+ models from 8 providers with metadata
+  - `hasInternetAccess()` - Check if model has native web search
+  - `PROVIDER_NAMES` - Display names for all providers
+  - `getModelsByProvider()` - Get models for specific provider
+  - Tier classification: free/budget/balanced/premium/flagship
+  - Internet access flags for Claude, GPT, Gemini, Grok, Perplexity, Mistral, Cohere
+  - Groq/Llama correctly marked as NO internet access
+- **Consuming Files** (ALL use centralized registry):
+  - `lib/user-tiers.ts` - Derives ALL_MODELS from registry
+  - `lib/trading/models-config.ts` - Derives TRADING_MODELS from registry
+  - `lib/config/model-presets.ts` - Uses TRADING_MODELS
+  - `lib/services/model-service.ts` - Uses registry hasInternetAccess
+  - `components/consensus/model-selector.tsx` - Uses registry
+  - `components/consensus/enhanced-consensus-display-v3.tsx` - Derives from MODEL_COSTS_PER_1K
+  - `components/consensus/ultra-model-badge-selector.tsx` - Uses registry directly
+  - `components/arena/arena-model-selector.tsx` - Uses TRADING_MODELS
+  - `components/trading/*.tsx` - Uses TRADING_MODELS
+- **Related Files**:
+  - `lib/model-metadata.ts` - MODEL_COSTS_PER_1K (centralized pricing)
+- **Web Search Default**: Enabled by default (`useState(true)` in debate-interface.tsx)
+- **Last Modified**: November 2025 (Audit & consolidation - removed duplicate lists)
+- **DO NOT**: Create duplicate model lists in components, hardcode model definitions outside registry
+
+### 36. Native Web Search Integration
+- **Status**: ✅ ACTIVE & CRITICAL
+- **Location**: `lib/ai-providers/*.ts` + `app/api/agents/debate-stream/route.ts`
+- **Purpose**: Use each model's native web search capability instead of DuckDuckGo fallback
+- **Key Features**:
+  - **OpenAI**: Uses `openai.tools.webSearchPreview()` - works with GPT-4o+
+  - **xAI**: Uses `searchParameters: { mode: 'auto' }` for Grok Live Search
+  - **Google**: Uses `google.tools.googleSearch()` (requires SDK v2.x+)
+  - **Anthropic**: Uses `anthropic.tools.webSearch_20250305()` (requires SDK v2.x+)
+  - **Groq/Llama**: Falls back to DuckDuckGo (no native search capability)
+- **SDK Requirements**:
+  - `@ai-sdk/google`: ^2.0.42 (for google.tools.googleSearch)
+  - `@ai-sdk/anthropic`: ^2.0.45 (for anthropic.tools.webSearch)
+  - `@ai-sdk/openai`: ^2.0.42 (for openai.tools.webSearchPreview)
+  - `ai`: ^5.0.99
+- **Runtime Detection**: Code uses graceful fallback if SDK doesn't support native search
+- **UI Indicator**: Shows "openai native" / "google native" instead of "duckduckgo"
+- **Related Files**:
+  - `lib/ai-providers/google.ts` - Google Search grounding
+  - `lib/ai-providers/openai.ts` - OpenAI web search
+  - `lib/ai-providers/anthropic.ts` - Claude web search
+  - `lib/ai-providers/xai.ts` - Grok Live Search
+- **Last Modified**: November 2025 (Initial native search implementation)
+- **DO NOT**: Remove native search without ensuring DuckDuckGo fallback works, change SDK versions without testing
+
+### 37. Pre-Research Stage for Agent Debates
+- **Status**: ✅ ACTIVE - SMART DETECTION (November 2025)
+- **Location**: `lib/web-search/pre-research-service.ts` + `app/api/agents/debate-stream/route.ts` + `lib/agents/agent-system.ts`
+- **Purpose**: Gather research evidence BEFORE debate, using native search when available, DuckDuckGo as fallback
+- **Smart Search Detection** (NEW - November 2025):
+  - Models WITH native search (OpenAI, Anthropic, Google, xAI, Perplexity): Get instructions to use their native web search tools
+  - Models WITHOUT native search (Groq/Llama, Mistral, Cohere): Get DuckDuckGo pre-research injected into prompts
+  - Detection uses `hasInternetAccess()` from model registry
+- **Native Search Providers**:
+  - OpenAI: `webSearchPreview` tool
+  - Anthropic: `webSearch_20250305` tool
+  - Google: `googleSearch` grounding
+  - xAI: Grok Live Search (`searchParameters: { mode: 'auto' }`)
+  - Perplexity: Built-in search (Sonar models)
+- **DuckDuckGo Fallback** (for non-native models):
+  - Executes when ANY agent lacks native search capability
+  - Generates 4 role-specific search queries (general, analyst, critic, synthesizer)
+  - Injects formatted research context into prompts for non-native models only
+- **UI Indicators**:
+  - "Search Capabilities" card shows per-agent search provider
+  - 🌐 = Native search (provider name shown)
+  - 🦆 = DuckDuckGo Fallback
+  - Summary: "X native, Y DuckDuckGo"
+- **SSE Events**:
+  - `search_capabilities` - Per-agent search provider info
+  - `pre_research_skipped` - When all models have native search
+  - `pre_research_status` - DuckDuckGo progress (only for fallback models)
+- **Data Flow**:
+  1. Analyze which models have native search vs need DuckDuckGo
+  2. For native models: Add instructions to use their web search tools
+  3. For non-native models: Run DuckDuckGo pre-research, inject results
+  4. UI shows correct search provider per agent
+- **Related Files**:
+  - `lib/agents/agent-system.ts` - Smart search detection logic (lines 134-180)
+  - `app/api/agents/debate-stream/route.ts` - SSE events for search status
+  - `components/agents/debate-interface.tsx` - UI for search capabilities display
+  - `lib/models/model-registry.ts` - `hasInternetAccess()` function
+- **Last Modified**: November 2025 (Smart detection - native search priority, DuckDuckGo fallback)
+- **DO NOT**: Use DuckDuckGo for models with native search, remove smart detection logic, hide search provider indicators
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

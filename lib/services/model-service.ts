@@ -1,26 +1,5 @@
 import { CostService, TierType } from './cost-service'
-
-// Provider names mapping
-const PROVIDER_NAMES = {
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  google: 'Google AI',
-  groq: 'Groq',
-  xai: 'xAI (Grok)',
-  perplexity: 'Perplexity',
-  mistral: 'Mistral',
-  cohere: 'Cohere'
-} as const
-
-// Models that have internet access
-const INTERNET_ACCESS_MODELS = [
-  'grok-2-latest',
-  'grok-2-mini',
-  'sonar-pro',
-  'sonar-small',
-  'gemini-2.5-pro',
-  'gemini-2.0-flash'
-] as const
+import { hasInternetAccess as registryHasInternetAccess, PROVIDER_NAMES } from '@/lib/models/model-registry'
 
 export class ModelService {
   /**
@@ -29,12 +8,13 @@ export class ModelService {
   static getProviderName(provider: string): string {
     return PROVIDER_NAMES[provider as keyof typeof PROVIDER_NAMES] || provider
   }
-  
+
   /**
    * Check if model has internet access
+   * Uses centralized MODEL_REGISTRY as single source of truth
    */
   static hasInternetAccess(model: string): boolean {
-    return INTERNET_ACCESS_MODELS.includes(model as any)
+    return registryHasInternetAccess(model)
   }
   
   /**

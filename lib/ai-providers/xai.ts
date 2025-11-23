@@ -1,5 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+import { generateText, stepCountIs } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
 import { alpacaTools, toolTracker } from '../alpaca/market-data-tools';
@@ -17,7 +17,7 @@ export class XAIProvider implements AIProvider {
     );
   }
 
-  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number }): Promise<ModelResponse> {
+  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number; useWebSearch?: boolean }): Promise<ModelResponse> {
     const startTime = Date.now();
 
     try {
@@ -30,17 +30,43 @@ export class XAIProvider implements AIProvider {
         apiKey: process.env.XAI_API_KEY as string,
       });
 
+      console.log('=== XAI DEBUG ===');
+      console.log('Model:', config.model);
+      console.log('useTools:', config.useTools);
+      console.log('useWebSearch:', config.useWebSearch);
+      console.log('=================');
+
+      // Build tools object
+      const tools: Record<string, any> = {};
+
+      if (config.useTools) {
+        Object.assign(tools, alpacaTools);
+      }
+
+      const hasTools = Object.keys(tools).length > 0;
+
       const result = await generateText({
         model: xai(config.model),
         prompt,
         temperature: config.temperature || 0.7,
-        maxTokens: config.maxTokens || 1000,
+        maxOutputTokens: config.maxTokens || 1000,
         topP: config.topP || 1,
 
+        // xAI Live Search via provider options
+        providerOptions: config.useWebSearch ? {
+          xai: {
+            searchParameters: {
+              mode: 'auto', // 'auto', 'on', or 'off'
+              returnCitations: true,
+              maxSearchResults: 5,
+            },
+          },
+        } : undefined,
+
         // ✅ Tool use integration
-        tools: config.useTools ? alpacaTools : undefined,
-        maxSteps: config.useTools ? (config.maxSteps || 15) : 1,
-        onStepFinish: config.useTools ? (step) => {
+        tools: hasTools ? tools : undefined,
+        stopWhen: hasTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
+        onStepFinish: hasTools ? (step) => {
           if (step.toolCalls && step.toolCalls.length > 0) {
             step.toolCalls.forEach((call: any) => {
               console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
@@ -49,6 +75,10 @@ export class XAIProvider implements AIProvider {
           }
         } : undefined,
       });
+
+      if (config.useWebSearch) {
+        console.log('xAI: Live Search enabled (auto mode)');
+      }
 
       const responseTime = Date.now() - startTime;
 
@@ -60,12 +90,16 @@ export class XAIProvider implements AIProvider {
         confidence: this.calculateConfidence(result),
         responseTime,
         tokens: {
-          prompt: result.usage?.promptTokens || 0,
-          completion: result.usage?.completionTokens || 0,
-          total: result.usage?.totalTokens || 0,
+          prompt: result.usage?.inputTokens || 0,
+          completion: result.usage?.outputTokens || 0,
+          total: (result.usage?.inputTokens || 0) + (result.usage?.outputTokens || 0),
         },
         timestamp: new Date(),
-        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : undefined,
+        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []).map((tc: any) => ({
+          toolName: tc.toolName,
+          args: tc.args || {},
+          result: tc.result
+        })) : undefined,
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;

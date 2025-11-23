@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { AgentSelector } from './agent-selector'
 import { LLMPillSelector } from './llm-pill-selector'
 import { ModelSelector } from '@/components/consensus/model-selector'
+import { SingleModelBadgeSelector } from '@/components/trading/single-model-badge-selector'
 import { DebateDisplay } from './debate-display'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -22,7 +23,8 @@ import { useConversationPersistence } from '@/hooks/use-conversation-persistence
 import { ConversationHistoryDropdown } from '@/components/conversation/conversation-history-dropdown'
 import { ShareButtons } from '@/components/conversation/share-buttons'
 import { SavedConversation } from '@/lib/types/conversation'
-import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles, Gift } from 'lucide-react'
+import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles, Gift, HelpCircle, Search } from 'lucide-react'
+import { DebateFlowchart, createDebateSteps, updateStepStatus as updateFlowchartStep, DebateStepProgress, PreDebateQuestions } from '@/components/debate'
 import { useGlobalModelTier } from '@/contexts/trading-preset-context'
 import {
   Select,
@@ -52,12 +54,12 @@ const AGENT_PRESETS = {
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Balanced tier models',
+    description: 'Cheapest paid models',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
-      'analyst-001': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },  // Strong analysis
-      'critic-001': { provider: 'openai', model: 'gpt-4o' },                           // Critical thinking
-      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }       // Good synthesis
+      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI ($0.0004/1K)
+      'critic-001': { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' }, // Haiku 3.5 ($0.80/$4 per 1M tokens)
+      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI ($0.0002/1K)
     }
   },
   max: {
@@ -76,7 +78,7 @@ const AGENT_PRESETS = {
 export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const { toast } = useToast()
   const { globalTier } = useGlobalModelTier()
-  const [query, setQuery] = useState('What are the best value for money top 3 scooters (automatic) up to 500cc, 2nd hand up to 20k shekels, drive from tlv to jerusalem but can get to eilat comfortably?')
+  const [query, setQuery] = useState('Best Dubai hotel for a family: 2 couples (2 adults + 2 elderly) + 1 baby (14 months), 5 nights, first time in Dubai, 24-29 Nov, $400 max per night per couple')
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [selectedAgents, setSelectedAgents] = useState<AgentConfig[]>([])
   // For ModelSelector compatibility
@@ -107,8 +109,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [availableModels, setAvailableModels] = useState<{ provider: string; models: string[] }[]>([])
   const [includeComparison, setIncludeComparison] = useState(true)
   const [comparisonModel, setComparisonModel] = useState<ModelConfig | null>({
-    provider: 'groq',
-    model: 'llama-3.3-70b-versatile',
+    provider: 'openai',
+    model: 'gpt-4.1-nano',  // Cheap paid model ($0.10/$0.40 per 1M tokens)
     enabled: true
   })
   const [includeConsensusComparison, setIncludeConsensusComparison] = useState(true)
@@ -120,12 +122,12 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const [autoRound2, setAutoRound2] = useState(false)
   const [disagreementThreshold, setDisagreementThreshold] = useState(0.3)
   const [responseMode, setResponseMode] = useState<'concise' | 'normal' | 'detailed'>('concise')
-  const [enableWebSearch, setEnableWebSearch] = useState(false)
+  const [enableWebSearch, setEnableWebSearch] = useState(true) // Default ON - research always happens
   const [costEstimate, setCostEstimate] = useState<any>(null)
   const [showRound2Prompt, setShowRound2Prompt] = useState(false)
   const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
   
-  // Web search tracking
+  // Web search tracking (per-agent) - single status for current search
   const [webSearchStatus, setWebSearchStatus] = useState<{
     isSearching: boolean;
     searchQuery?: string;
@@ -133,7 +135,22 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     resultsCount?: number;
     sources?: string[];
     error?: string;
+    agent?: string;  // Which agent is searching
+    role?: string;   // Agent role (analyst, critic, etc.)
   }>({ isSearching: false })
+
+  // Accumulated agent search history - shows ALL agent searches
+  const [agentSearchHistory, setAgentSearchHistory] = useState<Array<{
+    agent: string;
+    role: string;
+    status: 'searching' | 'completed' | 'error';
+    searchQuery?: string;
+    provider?: string;
+    resultsCount?: number;
+    sources?: string[];
+    error?: string;
+    timestamp: number;
+  }>>([])
   
   // Memory system tracking
   const [memoryStatus, setMemoryStatus] = useState<{
@@ -143,6 +160,34 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     isStoring: boolean;
     stored?: boolean;
   }>({ isSearching: false, isStoring: false })
+
+  // Pre-research tracking (shared research BEFORE agents debate)
+  const [preResearchStatus, setPreResearchStatus] = useState<{
+    isSearching: boolean;
+    searchesExecuted?: number;
+    sourcesFound?: number;
+    sources?: string[];
+    cacheHit?: boolean;
+    researchTime?: number;
+    queryType?: string;
+    forModels?: string[];  // Models that use DuckDuckGo
+    searchResults?: Array<{
+      role: string;
+      searchQuery: string;
+      resultsCount: number;
+      success: boolean;
+    }>;
+  }>({ isSearching: false })
+
+  // Search capabilities per agent (native vs DuckDuckGo)
+  const [searchCapabilities, setSearchCapabilities] = useState<Array<{
+    role: string;
+    model: string;
+    provider: string;
+    hasNativeSearch: boolean;
+    searchProvider: string;
+  }>>([])
+  const [allModelsHaveNativeSearch, setAllModelsHaveNativeSearch] = useState(false)
   
   // Model status tracking
   const [modelStatuses, setModelStatuses] = useState<Record<string, {
@@ -199,6 +244,15 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     endTime?: number;
     description: string;
   }>>([])
+
+  // Visual flowchart tracking
+  const [flowchartSteps, setFlowchartSteps] = useState<DebateStepProgress[]>([])
+  const [flowchartStartTime, setFlowchartStartTime] = useState<number | null>(null)
+
+  // Pre-debate clarifying questions
+  const [enablePreDebateQuestions, setEnablePreDebateQuestions] = useState(true)
+  const [showPreDebateQuestions, setShowPreDebateQuestions] = useState(false)
+  const [preDebateAnswers, setPreDebateAnswers] = useState<Record<number, string>>({})
 
   // Auto-apply global tier changes to agent roles
   useEffect(() => {
@@ -425,24 +479,51 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       }
       setModelStatuses(statuses)
       setDebateStartTime(Date.now())
-      
-      // Set a timeout to check if models actually start
+
+      // Initialize flowchart steps based on mode
+      const agentSteps = round1Mode === 'agents'
+        ? selectedAgents.map(agent => ({
+            id: agent.persona?.role || agent.agentId,
+            label: agent.persona?.name || agent.model,
+            model: agent.model,
+            provider: agent.provider
+          }))
+        : selectedLLMs.map((llm, idx) => ({
+            id: `model-${idx}`,
+            label: `Model ${idx + 1}`,
+            model: llm.model,
+            provider: llm.provider
+          }))
+      const initialSteps = createDebateSteps(enableWebSearch, agentSteps)
+      setFlowchartSteps(initialSteps)
+      setFlowchartStartTime(Date.now())
+
+      // Set a timeout to check if ANY model started (connection check)
+      // Only show error if NO models have started after 15 seconds (true connection issue)
+      // Don't mark individual models as error since they run sequentially
       setTimeout(() => {
         setModelStatuses(prev => {
-          const updated = { ...prev }
-          Object.keys(updated).forEach(key => {
-            // If still waiting after 10 seconds, mark as error
-            if (updated[key].status === 'waiting') {
-              updated[key] = {
-                ...updated[key],
-                status: 'error',
-                message: 'Failed to start - check API connection'
+          // Check if at least one model has started or completed
+          const anyStarted = Object.values(prev).some(
+            status => status.status === 'thinking' || status.status === 'completed'
+          )
+          // Only mark as error if nothing has started at all (connection issue)
+          if (!anyStarted) {
+            const updated = { ...prev }
+            Object.keys(updated).forEach(key => {
+              if (updated[key].status === 'waiting') {
+                updated[key] = {
+                  ...updated[key],
+                  status: 'error',
+                  message: 'Failed to connect - check API connection'
+                }
               }
-            }
-          })
-          return updated
+            })
+            return updated
+          }
+          return prev
         })
-      }, 10000) // 10 second timeout
+      }, 15000) // 15 second timeout for connection check only
       setIsSynthesizing(false)
     }
     setShowRound2Prompt(false)
@@ -554,25 +635,151 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 case 'round_started':
                   setCurrentPhase(`Round ${data.round} of ${data.totalRounds}`)
                   break
-                  
+
+                // Centralized research phase events (before agents run)
+                case 'research_started':
+                  setWebSearchStatus({
+                    isSearching: true,
+                    searchQuery: data.query,
+                    provider: 'research'
+                  })
+                  setCurrentPhase('🔬 Conducting research to gather factual data...')
+                  // Update flowchart - research step active
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', { status: 'active' }))
+                  break
+
+                case 'research_progress':
+                  setCurrentPhase(data.status || data.message || 'Research in progress...')
+                  break
+
+                case 'research_complete':
+                  setWebSearchStatus({
+                    isSearching: false,
+                    searchQuery: data.query,
+                    provider: 'research',
+                    resultsCount: data.sourcesFound,
+                    sources: data.sources || [] // Include source URLs from backend
+                  })
+                  setCurrentPhase(`✅ Research complete: ${data.sourcesFound} sources, ${data.evidenceQuality || 'good'} quality`)
+                  // Update flowchart - research step complete
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
+                    status: 'complete',
+                    duration: data.duration ? data.duration / 1000 : undefined,
+                    preview: `Found ${data.sourcesFound} sources (${data.evidenceQuality || 'good'} quality)`
+                  }))
+                  break
+
+                case 'search_capabilities':
+                  // Store search capabilities per agent
+                  setSearchCapabilities(data.agents || [])
+                  setAllModelsHaveNativeSearch(data.duckDuckGoCount === 0)
+                  console.log('Search capabilities received:', data.agents)
+                  setCurrentPhase(`🔍 Search analysis: ${data.nativeSearchCount} native, ${data.duckDuckGoCount} DuckDuckGo`)
+                  break
+
+                case 'pre_research_started':
+                  setPreResearchStatus({ isSearching: true, forModels: data.forModels })
+                  setCurrentPhase(`🦆 DuckDuckGo: Gathering evidence for ${data.forModels?.length || 0} model(s)...`)
+                  // Update flowchart - research step starting
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
+                    status: 'active',
+                    preview: `DuckDuckGo for ${data.forModels?.length || 0} models...`
+                  }))
+                  break
+
+                case 'pre_research_skipped':
+                  // All models have native search - no DuckDuckGo needed
+                  setPreResearchStatus({ isSearching: false })
+                  setAllModelsHaveNativeSearch(true)
+                  setCurrentPhase('✅ All models using native search')
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
+                    status: 'complete',
+                    preview: 'All models have native search'
+                  }))
+                  break
+
+                case 'pre_research_completed':
+                  setPreResearchStatus({
+                    isSearching: false,
+                    searchesExecuted: data.searchesExecuted,
+                    sourcesFound: data.sourcesFound,
+                    sources: data.sources,
+                    cacheHit: data.cacheHit,
+                    researchTime: data.researchTime,
+                    queryType: data.queryType,
+                    forModels: data.forModels,
+                    searchResults: data.searchResults
+                  })
+                  setCurrentPhase(`📚 Pre-research complete: ${data.sourcesFound} sources found${data.cacheHit ? ' (cached)' : ''}`)
+                  // Update flowchart - research step complete
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'research', {
+                    status: 'complete',
+                    duration: data.researchTime ? data.researchTime / 1000 : undefined,
+                    preview: `${data.sourcesFound} sources (${data.queryType || 'general'})`
+                  }))
+                  break
+
                 case 'web_search_started':
                   setWebSearchStatus({
                     isSearching: true,
                     searchQuery: data.query,
-                    provider: data.provider
+                    provider: data.provider,
+                    agent: data.agent,
+                    role: data.role
                   })
-                  setCurrentPhase('Searching web for real-time information...')
+                  // Add to agent search history
+                  if (data.agent && data.role) {
+                    setAgentSearchHistory(prev => [
+                      ...prev.filter(s => s.role !== data.role), // Remove any existing entry for this role
+                      {
+                        agent: data.agent,
+                        role: data.role,
+                        status: 'searching',
+                        searchQuery: data.query,
+                        provider: data.provider,
+                        timestamp: Date.now()
+                      }
+                    ])
+                  }
+                  // Show which agent is researching
+                  const agentSearchingName = data.agent || 'Agent'
+                  setCurrentPhase(`🔍 ${agentSearchingName} searching web...`)
+                  // Update flowchart - mark agent as researching
+                  if (data.role) {
+                    setFlowchartSteps(prev => updateFlowchartStep(prev, data.role, {
+                      status: 'active',
+                      preview: 'Researching...'
+                    }))
+                  }
                   break
-                  
+
                 case 'web_search_completed':
                   setWebSearchStatus({
                     isSearching: false,
                     searchQuery: data.query,
                     provider: data.provider,
                     resultsCount: data.resultsCount,
-                    sources: data.sources
+                    sources: data.sources,
+                    agent: data.agent,
+                    role: data.role
                   })
-                  setCurrentPhase('Web search completed. Analyzing results...')
+                  // Update agent search history - mark as completed
+                  if (data.agent && data.role) {
+                    setAgentSearchHistory(prev => prev.map(s =>
+                      s.role === data.role
+                        ? { ...s, status: 'completed' as const, resultsCount: data.resultsCount, sources: data.sources }
+                        : s
+                    ))
+                  }
+                  // Show which agent completed research
+                  const agentCompletedName = data.agent || 'Agent'
+                  setCurrentPhase(`✅ ${agentCompletedName} found ${data.resultsCount || 0} sources`)
+                  // Update flowchart - mark agent research complete
+                  if (data.role) {
+                    setFlowchartSteps(prev => updateFlowchartStep(prev, data.role, {
+                      preview: `${data.resultsCount || 0} sources found`
+                    }))
+                  }
                   break
                   
                 case 'web_search_failed':
@@ -582,6 +789,14 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     provider: data.provider,
                     error: data.reason
                   })
+                  // Update agent search history - mark as error
+                  if (data.agent && data.role) {
+                    setAgentSearchHistory(prev => prev.map(s =>
+                      s.role === data.role
+                        ? { ...s, status: 'error' as const, error: data.reason }
+                        : s
+                    ))
+                  }
                   setCurrentPhase('Web search failed. Continuing with analysis...')
                   break
                   
@@ -641,6 +856,12 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       agentRole: data.agentRole
                     }
                   }))
+                  // Update verbal status to match flowchart
+                  setCurrentPhase(`🔄 ${data.agentName || 'Agent'} (${data.agentRole || 'analyst'}) analyzing...`)
+                  // Update flowchart - agent step active
+                  if (data.agentRole) {
+                    setFlowchartSteps(prev => updateFlowchartStep(prev, data.agentRole, { status: 'active' }))
+                  }
                   break
                   
                 case 'model_thinking':
@@ -668,6 +889,16 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       message: `Completed in ${(data.duration / 1000).toFixed(1)}s`
                     }
                   }))
+                  // Update flowchart - agent step complete
+                  if (data.agentRole) {
+                    setFlowchartSteps(prev => updateFlowchartStep(prev, data.agentRole, {
+                      status: 'complete',
+                      duration: data.duration / 1000,
+                      preview: data.responsePreview?.substring(0, 150)
+                    }))
+                  }
+                  // Update verbal status to match flowchart
+                  setCurrentPhase(`✅ ${data.agentName || 'Agent'} (${data.agentRole || 'analyst'}) completed in ${(data.duration / 1000).toFixed(1)}s`)
                   // Include agent information and search data in the response
                   allResponses.push({
                     ...data,
@@ -746,13 +977,20 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   setIsSynthesizing(true)
                   setCurrentPhase('Synthesizing unified response from agent debate...')
                   updateStepStatus('synthesis', 'in_progress')
+                  // Update flowchart - synthesis step active
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'synthesis', { status: 'active' }))
                   break
-                  
+
                 case 'synthesis_completed':
                   setCurrentPhase('Debate analysis complete - presenting unified conclusions')
                   updateStepStatus('synthesis', 'completed')
                   updateStepStatus('validation', 'completed')
                   updateStepStatus('formatting', 'completed')
+                  // Update flowchart - synthesis step complete
+                  setFlowchartSteps(prev => updateFlowchartStep(prev, 'synthesis', {
+                    status: 'complete',
+                    preview: data.synthesis?.conclusion?.substring(0, 150)
+                  }))
                   // Use stored consensus data if not in synthesis event
                   const consensusComparisonData = data.consensusComparison || (window as any).tempConsensusData || null
                   
@@ -961,24 +1199,9 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       }
       setModelStatuses(statuses)
       setDebateStartTime(Date.now())
-      
-      // Set a timeout to check if models actually start
-      setTimeout(() => {
-        setModelStatuses(prev => {
-          const updated = { ...prev }
-          Object.keys(updated).forEach(key => {
-            // If still waiting after 10 seconds, mark as error
-            if (updated[key].status === 'waiting') {
-              updated[key] = {
-                ...updated[key],
-                status: 'error',
-                message: 'Failed to start - check API connection'
-              }
-            }
-          })
-          return updated
-        })
-      }, 10000) // 10 second timeout
+
+      // Non-streaming mode: No timeout needed since models start immediately as "thinking"
+      // The API call will handle errors directly
     }
     setShowRound2Prompt(false)
 
@@ -1131,6 +1354,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     setActiveTab('setup')
     setError(null)
     setWebSearchStatus({ isSearching: false })
+    setAgentSearchHistory([]) // Reset agent search history
     setMemoryStatus({ isSearching: false, isStoring: false })
   }
 
@@ -1210,8 +1434,15 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 {/* Start Debate button right-aligned with the query */}
                 <div className="flex justify-end">
                   <Button
-                    onClick={() => startDebateWithStreaming()}
-                    disabled={isLoading || isRestoring ||
+                    onClick={() => {
+                      // If pre-debate questions enabled and not already showing, show them first
+                      if (enablePreDebateQuestions && !showPreDebateQuestions) {
+                        setShowPreDebateQuestions(true)
+                      } else {
+                        startDebateWithStreaming()
+                      }
+                    }}
+                    disabled={isLoading || isRestoring || showPreDebateQuestions ||
                       (round1Mode === 'llm' ? selectedLLMs.length < 2 : selectedAgents.length < DEBATE_CONFIG.minAgents)}
                     size="lg"
                     className="min-w-[200px]"
@@ -1234,6 +1465,37 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     )}
                   </Button>
                 </div>
+
+                {/* Pre-Debate Questions Modal */}
+                {showPreDebateQuestions && (
+                  <PreDebateQuestions
+                    query={query}
+                    onSubmit={(answers) => {
+                      setPreDebateAnswers(answers)
+                      setShowPreDebateQuestions(false)
+                      // Start debate with answers included in context
+                      const contextWithAnswers = Object.keys(answers).length > 0
+                        ? `${query}\n\nAdditional context from user:\n${Object.entries(answers).map(([idx, answer]) => `- ${answer}`).join('\n')}`
+                        : query
+                      // Store original query and update with context
+                      const originalQuery = query
+                      setQuery(contextWithAnswers)
+                      // Use setTimeout to ensure state update before starting
+                      setTimeout(() => {
+                        startDebateWithStreaming()
+                        // Restore original query after starting
+                        setQuery(originalQuery)
+                      }, 100)
+                    }}
+                    onSkip={() => {
+                      setShowPreDebateQuestions(false)
+                      startDebateWithStreaming()
+                    }}
+                    onCancel={() => {
+                      setShowPreDebateQuestions(false)
+                    }}
+                  />
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1326,31 +1588,26 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 {includeComparison && (
                   <div className="pl-7 space-y-4">
                     <div>
-                      <Label className="text-sm text-muted-foreground mb-2 block">
-                        Select model for comparison:
-                      </Label>
-                      <ModelSelector
-                        models={comparisonModel ? [comparisonModel] : [{
-                          provider: 'google',
-                          model: 'gemini-2.5-flash',
-                          enabled: false
-                        }]}
-                        onChange={(models) => {
-                          // ModelSelector returns an array, we just need the first one
-                          if (models.length > 0) {
-                            const newModel = models[0]
-                            setComparisonModel({
-                              provider: newModel.provider,
-                              model: newModel.model,
-                              enabled: true
-                            })
-                          } else {
-                            // If no models selected, but keep the default available
-                            setComparisonModel(null)
-                          }
+                      <SingleModelBadgeSelector
+                        value={comparisonModel?.model || 'gpt-4.1-nano'}
+                        onChange={(modelId) => {
+                          // Determine provider from model ID
+                          let provider = 'openai'
+                          if (modelId.startsWith('claude')) provider = 'anthropic'
+                          else if (modelId.startsWith('gemini')) provider = 'google'
+                          else if (modelId.startsWith('llama') || modelId.startsWith('gemma')) provider = 'groq'
+                          else if (modelId.startsWith('grok')) provider = 'xai'
+                          else if (modelId.startsWith('sonar')) provider = 'perplexity'
+                          else if (modelId.startsWith('mistral')) provider = 'mistral'
+                          else if (modelId.startsWith('command')) provider = 'cohere'
+
+                          setComparisonModel({
+                            provider: provider as any,
+                            model: modelId,
+                            enabled: true
+                          })
                         }}
-                        maxModels={1}
-                        userTier={userTier}
+                        label="Select model for comparison:"
                       />
                     </div>
                     
@@ -1393,8 +1650,34 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                 {enableWebSearch && (
                   <div className="pl-7">
                     <p className="text-xs text-muted-foreground">
-                      🆓 FREE web search using DuckDuckGo! Enriches agent responses with real-time web information. 
+                      🆓 FREE web search using DuckDuckGo! Enriches agent responses with real-time web information.
                       Perfect for current events, prices, and recent developments. No API key required!
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Pre-Debate Questions Toggle */}
+              <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5 text-blue-500" />
+                    <Label htmlFor="pre-debate-questions" className="font-medium">
+                      Clarifying Questions
+                    </Label>
+                  </div>
+                  <Switch
+                    id="pre-debate-questions"
+                    checked={enablePreDebateQuestions}
+                    onCheckedChange={setEnablePreDebateQuestions}
+                  />
+                </div>
+
+                {enablePreDebateQuestions && (
+                  <div className="pl-7">
+                    <p className="text-xs text-muted-foreground">
+                      AI will analyze your query and ask clarifying questions before the debate starts.
+                      This helps agents provide more relevant and accurate responses.
                     </p>
                   </div>
                 )}
@@ -1498,6 +1781,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
               onAgentsChange={setSelectedAgents}
               availableModels={availableModels}
               userTier={userTier}
+              globalTier={globalTier}
             />
           )}
           
@@ -1516,6 +1800,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   onAgentsChange={setSelectedAgents}
                   availableModels={availableModels}
                   userTier={userTier}
+                  globalTier={globalTier}
                 />
               </div>
             </Card>
@@ -1600,6 +1885,17 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           {isLoading ? (
             <Card className="p-8">
               <div className="space-y-6">
+                {/* Visual Flowchart Progress */}
+                {flowchartSteps.length > 0 && (
+                  <DebateFlowchart
+                    steps={flowchartSteps}
+                    round={1}
+                    isComplete={false}
+                    totalDuration={flowchartStartTime ? (Date.now() - flowchartStartTime) / 1000 : undefined}
+                    className="mb-4"
+                  />
+                )}
+
                 {/* Show generated prompt for follow-ups */}
                 {generatedPrompt && (
                   <div className="mb-6 p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
@@ -1609,7 +1905,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Memory Status - Persistent Display */}
                 {/* Memory UI disabled - on backlog */}
                 {false && (memoryStatus.isSearching || memoryStatus.foundCount !== undefined || memoryStatus.isStoring || memoryStatus.stored) && (
@@ -1672,54 +1968,176 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   </div>
                 )}
 
-                {/* Web Search Status */}
-                {enableWebSearch && (webSearchStatus.isSearching || webSearchStatus.resultsCount !== undefined || webSearchStatus.error) && (
-                  <div className={`mb-4 p-4 rounded-lg border ${
-                    webSearchStatus.error ? 'bg-red-500/10 border-red-500/30' : 
-                    webSearchStatus.isSearching ? 'bg-blue-500/10 border-blue-500/30' :
-                    'bg-green-500/10 border-green-500/30'
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <Globe className={`h-5 w-5 ${
-                        webSearchStatus.error ? 'text-red-400' :
-                        webSearchStatus.isSearching ? 'text-blue-400 animate-pulse' :
-                        'text-green-400'
-                      }`} />
-                      <div className="flex-1">
-                        <h4 className="text-sm font-semibold mb-1">
-                          {webSearchStatus.isSearching ? '🔍 Searching Web...' :
-                           webSearchStatus.error ? '⚠️ Web Search Failed' :
-                           '✅ Web Search Complete'}
-                        </h4>
-                        {webSearchStatus.searchQuery && (
-                          <p className="text-xs text-muted-foreground">
-                            Query: &ldquo;{webSearchStatus.searchQuery}&rdquo;
-                          </p>
-                        )}
-                        {webSearchStatus.resultsCount !== undefined && (
-                          <p className="text-xs text-green-400 mt-1">
-                            Found {webSearchStatus.resultsCount} results from {webSearchStatus.provider}
-                          </p>
-                        )}
-                        {webSearchStatus.sources && webSearchStatus.sources.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-xs text-muted-foreground mb-1">Sources:</p>
-                            <ul className="text-xs space-y-1">
-                              {webSearchStatus.sources.map((source, idx) => (
-                                <li key={idx} className="text-blue-400 truncate">
-                                  • {source}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {webSearchStatus.error && (
-                          <p className="text-xs text-red-400 mt-1">
-                            Error: {webSearchStatus.error}
-                          </p>
-                        )}
-                      </div>
+                {/* Search Capabilities - Per-Agent Search Provider Display with Real-Time Progress */}
+                {enableWebSearch && searchCapabilities.length > 0 && (
+                  <div className="mb-4 p-4 rounded-lg border bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-600/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Search className="h-5 w-5 text-blue-400" />
+                      <h4 className="text-sm font-semibold">Research Progress</h4>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {agentSearchHistory.filter(a => a.status === 'completed').length}/{searchCapabilities.length} complete
+                      </span>
                     </div>
+                    <div className="space-y-2">
+                      {searchCapabilities.map((agent, idx) => {
+                        // Find real-time search status for this agent
+                        const searchStatus = agentSearchHistory.find(s => s.role === agent.role)
+                        const isSearching = searchStatus?.status === 'searching'
+                        const isComplete = searchStatus?.status === 'completed'
+                        const hasError = searchStatus?.status === 'error'
+
+                        return (
+                          <div
+                            key={`cap-${agent.role}-${idx}`}
+                            className={`flex items-center gap-3 p-2 rounded-md transition-all ${
+                              isSearching ? 'bg-blue-500/20 border border-blue-500/50 animate-pulse' :
+                              isComplete ? 'bg-green-500/10 border border-green-500/30' :
+                              hasError ? 'bg-red-500/10 border border-red-500/30' :
+                              agent.hasNativeSearch
+                                ? 'bg-blue-500/10 border border-blue-500/30'
+                                : 'bg-yellow-500/10 border border-yellow-500/30'
+                            }`}
+                          >
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
+                              isSearching ? 'bg-blue-500/30' :
+                              isComplete ? 'bg-green-500/20' :
+                              hasError ? 'bg-red-500/20' :
+                              agent.hasNativeSearch ? 'bg-blue-500/20' : 'bg-yellow-500/20'
+                            }`}>
+                              {isSearching ? '🔍' : isComplete ? '✅' : hasError ? '❌' : agent.hasNativeSearch ? '🌐' : '🦆'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm capitalize">{agent.role}</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/50 text-muted-foreground">
+                                  {agent.model}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {isSearching ? 'Searching web...' :
+                                 isComplete && searchStatus?.resultsCount !== undefined ? `${searchStatus.resultsCount} sources found` :
+                                 hasError ? searchStatus?.error || 'Search failed' :
+                                 agent.searchProvider}
+                              </p>
+                              {/* Show sources when complete */}
+                              {isComplete && searchStatus?.sources && searchStatus.sources.length > 0 && (
+                                <details className="mt-1">
+                                  <summary className="text-xs text-blue-400 cursor-pointer hover:text-blue-300">
+                                    View {searchStatus.sources.length} sources
+                                  </summary>
+                                  <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground pl-2">
+                                    {searchStatus.sources.slice(0, 5).map((source, i) => (
+                                      <li key={i} className="truncate">
+                                        <a href={source} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400">
+                                          {new URL(source).hostname}
+                                        </a>
+                                      </li>
+                                    ))}
+                                    {searchStatus.sources.length > 5 && (
+                                      <li className="text-muted-foreground">+{searchStatus.sources.length - 5} more</li>
+                                    )}
+                                  </ul>
+                                </details>
+                              )}
+                            </div>
+                            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              isSearching ? 'bg-blue-500/30 text-blue-300' :
+                              isComplete ? 'bg-green-500/20 text-green-400' :
+                              hasError ? 'bg-red-500/20 text-red-400' :
+                              agent.hasNativeSearch ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {isSearching ? 'Searching...' :
+                               isComplete ? `${searchStatus?.resultsCount || 0} sources` :
+                               hasError ? 'Error' :
+                               agent.hasNativeSearch ? 'Native' : 'Fallback'}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* DuckDuckGo Pre-Research (Only for models without native search) */}
+                {enableWebSearch && !allModelsHaveNativeSearch && (preResearchStatus.isSearching || preResearchStatus.sourcesFound !== undefined) && (
+                  <div className="mb-4 p-4 rounded-lg border bg-gradient-to-br from-yellow-900/20 to-slate-900/50 border-yellow-600/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xl">🦆</span>
+                      <h4 className="text-sm font-semibold">DuckDuckGo Fallback Research</h4>
+                      {preResearchStatus.cacheHit && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
+                          cached
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {preResearchStatus.isSearching
+                          ? 'searching...'
+                          : `${preResearchStatus.searchResults?.filter(s => s.success).length || 0}/${preResearchStatus.searchResults?.length || 0} complete`}
+                        {preResearchStatus.researchTime && ` (${(preResearchStatus.researchTime / 1000).toFixed(1)}s)`}
+                      </span>
+                    </div>
+                    {preResearchStatus.forModels && preResearchStatus.forModels.length > 0 && (
+                      <p className="text-xs text-muted-foreground mb-2">
+                        For models without native search: {preResearchStatus.forModels.join(', ')}
+                      </p>
+                    )}
+
+                    {preResearchStatus.isSearching ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Gathering DuckDuckGo evidence for fallback models...</span>
+                      </div>
+                    ) : preResearchStatus.searchResults && preResearchStatus.searchResults.length > 0 ? (
+                      <div className="space-y-2">
+                        {preResearchStatus.searchResults.map((search, idx) => {
+                          const roleLabels: Record<string, string> = {
+                            'general': 'General Research',
+                            'analyst': 'The Analyst',
+                            'critic': 'The Critic',
+                            'synthesizer': 'The Synthesizer'
+                          }
+                          return (
+                            <div
+                              key={`${search.role}-${idx}`}
+                              className={`flex items-center gap-3 p-2 rounded-md transition-all ${
+                                search.success
+                                  ? 'bg-green-500/10 border border-green-500/30'
+                                  : 'bg-red-500/10 border border-red-500/30'
+                              }`}
+                            >
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
+                                search.success ? 'bg-green-500/20' : 'bg-red-500/20'
+                              }`}>
+                                {search.success ? '✅' : '❌'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm">{roleLabels[search.role] || search.role}</span>
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/50 text-muted-foreground">
+                                    {search.role}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {search.success
+                                    ? `Found ${search.resultsCount} sources via DuckDuckGo`
+                                    : 'No results found'}
+                                </p>
+                              </div>
+                              {search.success && (
+                                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-medium">
+                                  <span>{search.resultsCount}</span>
+                                  <span className="text-green-400/60">sources</span>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        No search results available
+                      </div>
+                    )}
                   </div>
                 )}
                 

@@ -1,9 +1,26 @@
 import { anthropic } from '@ai-sdk/anthropic';
-import { generateText } from 'ai';
+import { generateText, stepCountIs } from 'ai';
 import { ModelResponse, ModelConfig } from '../../types/consensus';
 import { AIProvider } from './types';
 import { alpacaTools, toolTracker } from '../alpaca/market-data-tools';
 import { getModelsByProvider } from '../models/model-registry';
+
+// Models that support Anthropic's native web search (web_search_20250305)
+// Only newer Claude 3.5+ models support this feature
+// Updated Nov 2025 with correct model IDs
+const WEB_SEARCH_SUPPORTED_MODELS = [
+  'claude-sonnet-4-5-20250929',     // Claude Sonnet 4.5 (Sept 2025)
+  'claude-haiku-4-5-20251001',      // Claude Haiku 4.5 (Oct 2025)
+  'claude-opus-4-1-20250805',       // Claude Opus 4.1 (Aug 2025)
+  'claude-opus-4-20250514',         // Claude Opus 4 (May 2025)
+  'claude-sonnet-4-20250514',       // Claude Sonnet 4 (May 2025)
+  'claude-3-7-sonnet-20250219',     // Claude 3.7 Sonnet (Feb 2025)
+  'claude-3-5-haiku-20241022',      // Claude 3.5 Haiku (Oct 2024)
+];
+
+function supportsWebSearch(model: string): boolean {
+  return WEB_SEARCH_SUPPORTED_MODELS.some(m => model.includes(m) || m.includes(model));
+}
 
 export class AnthropicProvider implements AIProvider {
   name = 'Anthropic';
@@ -15,7 +32,7 @@ export class AnthropicProvider implements AIProvider {
              process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-'));
   }
 
-  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number }): Promise<ModelResponse> {
+  async query(prompt: string, config: ModelConfig & { useTools?: boolean; maxSteps?: number; useWebSearch?: boolean }): Promise<ModelResponse> {
     const startTime = Date.now();
 
     try {
@@ -27,33 +44,68 @@ export class AnthropicProvider implements AIProvider {
       console.log('=== ANTHROPIC DEBUG ===');
       console.log('Model:', config.model);
       console.log('useTools:', config.useTools);
+      console.log('useWebSearch:', config.useWebSearch);
       console.log('maxSteps:', config.maxSteps);
       console.log('Tools passed:', config.useTools ? Object.keys(alpacaTools) : 'none');
       console.log('Prompt includes tools section:', prompt.includes('AVAILABLE RESEARCH TOOLS'));
       console.log('=======================');
 
+      // Build tools object - combine alpaca tools with web search if needed
+      const tools: Record<string, any> = {};
+
+      // Add Alpaca trading tools if requested
+      if (config.useTools) {
+        Object.assign(tools, alpacaTools);
+      }
+
+      // Add Claude web search if requested AND model supports it
+      // Only newer Claude 3.5+ models support web_search_20250305
+      // Older models (Haiku, Opus, Claude 3) will cause runtime errors
+      if (config.useWebSearch) {
+        if (supportsWebSearch(config.model)) {
+          try {
+            const anthropicAny = anthropic as any;
+            if (anthropicAny.tools?.webSearch_20250305) {
+              tools.web_search = anthropicAny.tools.webSearch_20250305({ maxUses: 5 });
+              console.log(`Anthropic: Native web search enabled for ${config.model}`);
+            } else {
+              console.log('Anthropic: Web search requested but SDK does not support anthropic.tools.webSearch_20250305');
+            }
+          } catch (e) {
+            console.log('Anthropic: Could not enable native search:', e);
+          }
+        } else {
+          console.log(`Anthropic: Model ${config.model} does not support web_search_20250305, skipping native web search`);
+        }
+      }
+
+      const hasTools = Object.keys(tools).length > 0;
+
       const result = await generateText({
         model: anthropic(config.model),
         prompt,
         temperature: config.temperature || 0.7,
-        maxTokens: config.maxTokens || 1000,
+        maxOutputTokens: config.maxTokens || 1000,
         // Claude Sonnet 4.5 doesn't allow both temperature and topP
         // topP: config.topP || 1,
 
-        // ✅ Tool use integration
-        tools: config.useTools ? alpacaTools : undefined,
-        maxSteps: config.useTools ? (config.maxSteps || 15) : 1,
-        onStepFinish: config.useTools ? (step) => {
+        // ✅ Tool use integration (Alpaca + Web Search)
+        tools: hasTools ? tools : undefined,
+        stopWhen: hasTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
+        onStepFinish: hasTools ? (step) => {
           console.log('🔍 Step finished:', {
-            stepType: step.stepType,
             text: step.text?.substring(0, 100),
             toolCalls: step.toolCalls?.length || 0,
             toolResults: step.toolResults?.length || 0
           });
           if (step.toolCalls && step.toolCalls.length > 0) {
             step.toolCalls.forEach((call: any) => {
-              console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
-              toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
+              if (call.toolName === 'web_search') {
+                console.log(`🔍 ${config.model} → Claude Web Search`);
+              } else {
+                console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
+                toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
+              }
             });
           }
         } : undefined,
@@ -69,7 +121,6 @@ export class AnthropicProvider implements AIProvider {
         console.log('Total steps:', result.steps?.length || 0);
         console.log('Steps with toolCalls:', result.steps?.filter(s => s.toolCalls && s.toolCalls.length > 0).length || 0);
         console.log('Steps detail:', result.steps?.map(s => ({
-          stepType: s.stepType,
           toolCallsCount: s.toolCalls?.length || 0,
           toolResultsCount: s.toolResults?.length || 0
         })));
@@ -84,12 +135,16 @@ export class AnthropicProvider implements AIProvider {
         confidence: this.calculateConfidence(result),
         responseTime,
         tokens: {
-          prompt: result.usage?.promptTokens || 0,
-          completion: result.usage?.completionTokens || 0,
-          total: result.usage?.totalTokens || 0,
+          prompt: result.usage?.inputTokens || 0,
+          completion: result.usage?.outputTokens || 0,
+          total: (result.usage?.inputTokens || 0) + (result.usage?.outputTokens || 0),
         },
         timestamp: new Date(),
-        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : undefined,
+        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []).map((tc: any) => ({
+          toolName: tc.toolName,
+          args: tc.args || {},
+          result: tc.result
+        })) : undefined,
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;

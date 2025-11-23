@@ -7,6 +7,8 @@ import { enrichQueryWithWebSearch } from '@/lib/web-search/web-search-service'
 import { getRoleBasedSearchService, type AgentSearchContext, type RoleBasedSearchResult } from '@/lib/web-search/role-based-search'
 import { getContextExtractor, type DebateMessage } from '@/lib/web-search/context-extractor'
 import { DisagreementAnalyzer } from '@/lib/agents/disagreement-analyzer'
+import { executePreResearch, type PreResearchResult } from '@/lib/web-search/pre-research-service'
+import { hasInternetAccess, getModelInfo, PROVIDER_NAMES, type Provider } from '@/lib/models/model-registry'
 // import { SimpleMemoryService } from '@/lib/memory/simple-memory-service' // Disabled - memory on backlog
 
 export const dynamic = 'force-dynamic'
@@ -105,9 +107,111 @@ export async function POST(request: NextRequest) {
           console.log('Memory system currently disabled - focusing on research validation')
         }
         
+        // ==================== SMART SEARCH PHASE ====================
+        // NEW ARCHITECTURE: Native search for capable models, DuckDuckGo fallback for others
+        // - OpenAI, Anthropic, Google, Perplexity, xAI → Use their native search
+        // - Groq (Llama), Mistral, Cohere → Use DuckDuckGo pre-research
+        // See: docs/architecture/PRE_RESEARCH_ARCHITECTURE.md
+        let preResearchContext = ''
+        let preResearchResult: PreResearchResult | null = null
+
+        // Analyze which agents have native search vs need DuckDuckGo
+        const agentSearchCapabilities = agents.map((agent: any) => {
+          const modelHasNative = hasInternetAccess(agent.model)
+          const modelInfo = getModelInfo(agent.model)
+          const providerName = modelInfo?.provider ? PROVIDER_NAMES[modelInfo.provider as Provider] : 'Unknown'
+          return {
+            role: agent.persona?.role || 'Unknown',
+            model: agent.model,
+            provider: providerName,
+            hasNativeSearch: modelHasNative,
+            searchProvider: modelHasNative ? `${providerName} Native` : 'DuckDuckGo'
+          }
+        })
+
+        const modelsNeedingDuckDuckGo = agentSearchCapabilities.filter((a: any) => !a.hasNativeSearch)
+        const modelsWithNativeSearch = agentSearchCapabilities.filter((a: any) => a.hasNativeSearch)
+
+        console.log('\n🔍 Search capability analysis:')
+        agentSearchCapabilities.forEach((a: any) => {
+          console.log(`   ${a.role} (${a.model}): ${a.searchProvider}`)
+        })
+
+        if (enableWebSearch) {
+          // Send search capabilities to UI
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'search_capabilities',
+            agents: agentSearchCapabilities,
+            nativeSearchCount: modelsWithNativeSearch.length,
+            duckDuckGoCount: modelsNeedingDuckDuckGo.length,
+            timestamp: Date.now()
+          })}\n\n`))
+
+          // Only run DuckDuckGo pre-research for models that need it
+          if (modelsNeedingDuckDuckGo.length > 0) {
+            console.log(`\n🦆 Starting DuckDuckGo pre-research for ${modelsNeedingDuckDuckGo.length} model(s)...`)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'pre_research_started',
+              message: `Gathering evidence for ${modelsNeedingDuckDuckGo.length} model(s) without native search...`,
+              forModels: modelsNeedingDuckDuckGo.map((a: any) => a.model),
+              timestamp: Date.now()
+            })}\n\n`))
+
+            try {
+              preResearchResult = await executePreResearch(query, {
+                enabled: true,
+                maxSearches: 4,
+                maxResultsPerSearch: 5,
+                cacheEnabled: true,
+                roleSpecificQueries: true,
+                forceSearch: true
+              })
+
+              if (preResearchResult.formattedContext) {
+                preResearchContext = preResearchResult.formattedContext
+                console.log('✅ DuckDuckGo pre-research complete:', {
+                  searchesExecuted: preResearchResult.searchesExecuted,
+                  sourcesFound: preResearchResult.sources.length,
+                  cacheHit: preResearchResult.cacheHit,
+                  researchTime: preResearchResult.researchTime + 'ms'
+                })
+
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'pre_research_completed',
+                  searchesExecuted: preResearchResult.searchesExecuted,
+                  sourcesFound: preResearchResult.sources.length,
+                  sources: preResearchResult.sources.slice(0, 5),
+                  cacheHit: preResearchResult.cacheHit,
+                  researchTime: preResearchResult.researchTime,
+                  queryType: preResearchResult.queryAnalysis.primaryType,
+                  forModels: modelsNeedingDuckDuckGo.map((a: any) => a.model),
+                  searchResults: preResearchResult.searchResults.map(sr => ({
+                    role: sr.role,
+                    searchQuery: sr.searchQuery,
+                    resultsCount: sr.results?.results?.length || 0,
+                    success: sr.results !== null
+                  })),
+                  timestamp: Date.now()
+                })}\n\n`))
+              }
+            } catch (preResearchError) {
+              console.warn('⚠️ DuckDuckGo pre-research failed:', preResearchError)
+            }
+          } else {
+            console.log('\n✅ All models have native search - skipping DuckDuckGo pre-research')
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'pre_research_skipped',
+              reason: 'All models have native search capability',
+              agents: agentSearchCapabilities,
+              timestamp: Date.now()
+            })}\n\n`))
+          }
+        }
+        // ==================== END SMART SEARCH PHASE ====================
+
         // Track all responses across rounds
         const allRoundResponses: any[] = []
-        
+
         // Process each round
         for (let roundNum = 1; roundNum <= rounds; roundNum++) {
           console.log(`Starting round ${roundNum} of ${rounds} with ${agents.length} agents`)
@@ -123,9 +227,9 @@ export async function POST(request: NextRequest) {
           const roundResponses: any[] = []
           
           // Process each agent/model sequentially so they can debate with each other
-          // Order agents for proper debate flow: Analyst → Critic → Synthesizer
+          // Order agents for proper debate flow: Analyst → Critic → Judge → Synthesizer
           const orderedAgents = [...agents].sort((a, b) => {
-            const order = ['analyst', 'critic', 'synthesizer']
+            const order = ['analyst', 'critic', 'judge', 'synthesizer']
             const aIndex = order.indexOf(a.persona?.role || 'analyst')
             const bIndex = order.indexOf(b.persona?.role || 'analyst')
             return aIndex - bIndex
@@ -157,6 +261,7 @@ export async function POST(request: NextRequest) {
               })}\n\n`))
               
               // Progressive Role-Based Web Search
+              // Note: Centralized research phase removed - each agent does their own search now
               let enhancedQuery = query
               let webSearchResults = null
               let roleBasedSearchResult: RoleBasedSearchResult | null = null
@@ -180,11 +285,47 @@ export async function POST(request: NextRequest) {
                 console.log(`🧠 MEMORY: Enhanced query with ${relevantMemories.length} past experiences`)
               }
               
+              // Per-agent web search - each agent does their own research
+              // Providers with native search: OpenAI, xAI, Google, Anthropic (use model's built-in search)
+              // Providers needing DuckDuckGo fallback: Groq, Mistral, Cohere
+              // Note: Google/Anthropic require SDK v2.x+ - will fallback gracefully if not available
+              const providersWithNativeSearch = ['openai', 'xai', 'google', 'anthropic']
+              const useNativeSearch = providersWithNativeSearch.includes(agentConfig.provider)
+
               if (enableWebSearch) {
+                if (useNativeSearch) {
+                  // Provider has native search - model will search on its own
+                  console.log(`🔍 ${agentConfig.provider}: Using native web search capability`)
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'web_search_started',
+                    query: query,
+                    provider: agentConfig.provider + ' native',
+                    agent: agentConfig.persona?.name || agentConfig.model,
+                    role: agentConfig.persona?.role || 'analyst',
+                    round: roundNum,
+                    searchType: 'native',
+                    timestamp: Date.now()
+                  })}\n\n`))
+
+                  // Mark as completed immediately - actual search happens during model query
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'web_search_completed',
+                    query: query,
+                    provider: agentConfig.provider + ' native',
+                    agent: agentConfig.persona?.name || agentConfig.model,
+                    role: agentConfig.persona?.role || 'analyst',
+                    round: roundNum,
+                    searchType: 'native',
+                    resultsCount: 0, // Native search doesn't report count upfront
+                    sources: [],
+                    timestamp: Date.now()
+                  })}\n\n`))
+                } else {
+                  // Use DuckDuckGo fallback for providers without native search
                 try {
                   // Send progressive web search started event
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                    type: 'web_search_started', 
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'web_search_started',
                     query: query,
                     provider: 'duckduckgo',
                     agent: agentConfig.persona?.name || agentConfig.model,
@@ -304,8 +445,8 @@ export async function POST(request: NextRequest) {
                   console.warn('Progressive web search failed for agent debate streaming:', searchError)
                   
                   // Send web search failed event
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                    type: 'web_search_failed', 
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'web_search_failed',
                     query: query,
                     provider: 'duckduckgo',
                     agent: agentConfig.persona?.name || agentConfig.model,
@@ -316,6 +457,7 @@ export async function POST(request: NextRequest) {
                     timestamp: Date.now()
                   })}\n\n`))
                 }
+                } // End of else block (DuckDuckGo fallback)
               }
               
               // Generate appropriate prompt
@@ -324,9 +466,15 @@ export async function POST(request: NextRequest) {
               const formatInstruction = (responseMode === 'concise' && isLLMMode) 
                 ? '\n\nFOR FINAL ANSWER: End with a clear conclusion in this format:\n\n1. [Specific recommendation]\n2. [Specific recommendation]\n3. [Specific recommendation]\n\n[One sentence explaining why #1 is best].\n\nBut FIRST provide your debate analysis and reasoning (aim for 80-100 words of debate content, then the numbered conclusion).'
                 : ''
-              let fullPrompt = isLLMMode 
-                ? `Please answer this query concisely and directly:\n\n${enhancedQuery}${formatInstruction}`
-                : `${agentConfig.persona?.systemPrompt || ''}\n\n${generateRoundPrompt(
+              // Inject pre-research context if available
+              // This ensures all agents have access to the pre-gathered evidence
+              const researchPrefix = preResearchContext
+                ? `${preResearchContext}\n\n---\n\n`
+                : ''
+
+              let fullPrompt = isLLMMode
+                ? `${researchPrefix}Please answer this query concisely and directly:\n\n${enhancedQuery}${formatInstruction}`
+                : `${agentConfig.persona?.systemPrompt || ''}\n\n${researchPrefix}${generateRoundPrompt(
                     enhancedQuery,
                     agentConfig.persona || {
                       id: modelId,
@@ -361,7 +509,7 @@ export async function POST(request: NextRequest) {
                   [...(roundNum > 1 ? allRoundResponses.filter(r => r.round === roundNum - 1) : []), ...roundResponses],
                   responseMode // Pass the response mode
                 );
-                fullPrompt = `${agentConfig.persona?.systemPrompt || ''}\n\n${enhancedPrompt}`;
+                fullPrompt = `${agentConfig.persona?.systemPrompt || ''}\n\n${researchPrefix}${enhancedPrompt}`;
               }
               
               // Send thinking status with preview of prompt
@@ -392,11 +540,19 @@ export async function POST(request: NextRequest) {
               }
               
               console.log(`Provider found for ${agentConfig.provider}, attempting query...`)
+
+              // Use the native search flag determined earlier (from line ~204)
+              // useNativeSearch is already set based on provider capability
+              if (useNativeSearch && enableWebSearch) {
+                console.log(`🔍 ${agentConfig.provider}: Using native web search (no DuckDuckGo needed)`)
+              }
+
               if (provider) {
                 try {
                   result = await provider.query(fullPrompt, {
                     ...agentConfig,
-                    maxTokens: tokenLimit
+                    maxTokens: tokenLimit,
+                    useWebSearch: useNativeSearch && enableWebSearch  // Enable native search for supported providers
                   })
                 } catch (providerError: any) {
                   console.log(`${agentConfig.provider} failed for ${modelId}, trying fallback:`, providerError.message)
@@ -681,7 +837,7 @@ export async function POST(request: NextRequest) {
             ? '\n\nProvide comprehensive analysis with detailed explanations and thorough reasoning.'
             : '\n\nProvide balanced analysis incorporating the full debate discussion.'
 
-          const synthesisPrompt = `You are the Chief Judge synthesizing an expert multi-agent debate. These agents engaged in substantive discussion with longer, more detailed arguments.
+          const synthesisPrompt = `You are the Chief Judge synthesizing an expert multi-agent debate. Your job is to deliver CLEAR, ACTIONABLE recommendations.
 
 Query: ${query}
 
@@ -694,16 +850,36 @@ Round: ${r.round || 1}
 ${r.content || r.response || 'No content'}
 `).join('\n')}
 
-As Chief Judge, synthesize this rich debate into a comprehensive analysis:
+As Chief Judge, synthesize this debate into CLEAR RECOMMENDATIONS. Users need actionable answers, not summaries.
 
-1. AGREEMENTS: What key points did multiple agents converge on? (bullet points)
-2. DISAGREEMENTS: Where did agents clash and why? What were the core tensions? (bullet points)
-3. CONCLUSION: Your expert synthesis drawing from the best arguments across all agents${concisenessInstruction}
-4. FOLLOW-UP QUESTIONS (optional): If more context would strengthen the recommendation, what specific questions should the user answer?
+FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
 
-The agents provided substantial analysis - your synthesis should reflect that depth and nuance.
+### TOP 3 RECOMMENDATIONS
 
-Format your response with clear sections using markdown headers (###).`
+1. **[Specific Recommendation Name]**: [2-3 sentence explanation of WHY this is recommended, with specific details mentioned by agents]
+
+2. **[Specific Recommendation Name]**: [2-3 sentence explanation]
+
+3. **[Specific Recommendation Name]**: [2-3 sentence explanation]
+
+### AGREEMENTS
+- [Specific point all/most agents agreed on]
+- [Another agreement point]
+- [Third agreement point]
+
+### DISAGREEMENTS
+- [Specific disagreement - what Agent X said vs Agent Y]
+- [Another disagreement with context]
+
+### CONCLUSION
+${concisenessInstruction ? 'Brief summary' : 'Comprehensive final verdict'} explaining which recommendation you endorse most strongly and why.
+
+CONFIDENCE: [Number 1-100 based on how much agents agreed and quality of evidence]
+
+### FOLLOW-UP QUESTIONS
+- [Optional: Questions that would help refine the recommendation]
+
+IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or options - NAME THEM. Users want answers, not generic advice.`
 
           // Try Gemini first, fallback to Groq if it fails or returns empty
           let synthesisResult = null
@@ -714,7 +890,7 @@ Format your response with clear sections using markdown headers (###).`
             try {
               synthesisResult = await googleProvider.query(synthesisPrompt, {
                 provider: 'google',
-                model: 'gemini-2.5-flash',
+                model: 'gemini-2.0-flash',  // Use working model instead of untested gemini-2.5-flash
                 enabled: true,
                 maxTokens: responseMode === 'detailed' ? 1200 : 800
               })
@@ -723,18 +899,23 @@ Format your response with clear sections using markdown headers (###).`
               if (!synthesisResult || !synthesisResult.response || synthesisResult.response.trim().length < 50) {
                 console.warn('⚠️  Gemini returned empty or too short synthesis response:', {
                   hasResult: !!synthesisResult,
+                  hasError: !!synthesisResult?.error,
+                  errorMsg: synthesisResult?.error || 'none',
                   responseLength: synthesisResult?.response?.length || 0,
-                  response: synthesisResult?.response || 'null'
+                  responsePreview: (synthesisResult?.response || 'null').substring(0, 100)
                 })
                 synthesisResult = null // Force fallback to Groq
+              } else {
+                console.log('✅ Gemini synthesis succeeded, response length:', synthesisResult.response.length)
               }
             } catch (googleError: any) {
-              console.log('Google AI failed, trying Groq fallback:', googleError.message)
+              console.error('❌ Google AI failed:', googleError.message)
+              console.error('Google AI error stack:', googleError.stack?.substring(0, 500))
               synthesisResult = null
             }
           }
 
-          // Fallback to Groq if Gemini failed or returned empty
+          // Fallback to Groq 70B if Gemini failed or returned empty
           if (!synthesisResult) {
             const groqProvider = providerRegistry.getProvider('groq')
             if (groqProvider) {
@@ -748,13 +929,33 @@ Format your response with clear sections using markdown headers (###).`
                   maxTokens: responseMode === 'detailed' ? 1200 : 800
                 })
 
-                // Check if Groq also returned empty
+                // Check if Groq 70B also returned empty
                 if (!synthesisResult || !synthesisResult.response || synthesisResult.response.trim().length < 50) {
-                  console.warn('⚠️  Groq also returned empty synthesis response')
-                  synthesisResult = null
+                  console.warn('⚠️  Groq 70B returned empty, trying Llama 3.1 8B...')
+
+                  // Try smaller model as third fallback
+                  try {
+                    synthesisResult = await groqProvider.query(synthesisPrompt, {
+                      provider: 'groq',
+                      model: 'llama-3.1-8b-instant',
+                      enabled: true,
+                      maxTokens: responseMode === 'detailed' ? 1200 : 800
+                    })
+
+                    if (synthesisResult && synthesisResult.response && synthesisResult.response.trim().length >= 50) {
+                      console.log('✅ Groq Llama 8B synthesis succeeded')
+                      usedProvider = 'groq-8b'
+                    } else {
+                      console.warn('⚠️  Groq 8B also returned empty')
+                      synthesisResult = null
+                    }
+                  } catch (smallModelError: any) {
+                    console.error('❌ Groq 8B also failed:', smallModelError.message)
+                    synthesisResult = null
+                  }
                 }
               } catch (groqError: any) {
-                console.error('❌ Groq also failed for synthesis:', groqError.message)
+                console.error('❌ Groq 70B failed for synthesis:', groqError.message)
                 synthesisResult = null
               }
             }
@@ -775,7 +976,7 @@ Format your response with clear sections using markdown headers (###).`
               id: 'fallback-synthesis',
               provider: 'fallback',
               model: 'fallback',
-              response: `### AGREEMENTS\n\n- All agents provided substantive analysis on the query\n- Multiple perspectives were considered\n\n### DISAGREEMENTS\n\n- Agents had different approaches and focus areas\n- Various recommendations emerged from the debate\n\n### CONCLUSION\n\nBased on the agent debate:\n\n${summaryPoints}\n\nThe agents provided diverse insights. Review the individual agent responses above for detailed analysis.`,
+              response: `### TOP 3 RECOMMENDATIONS\n\n1. **Review Individual Agent Responses**: Each agent provided unique insights that should be considered together.\n\n2. **Compare Agent Perspectives**: The Analyst, Critic, Judge, and Synthesizer each approached the query differently.\n\n3. **Consider All Viewpoints**: Multiple perspectives were offered across the debate rounds.\n\n### AGREEMENTS\n- All agents provided substantive analysis on the query\n- Multiple perspectives were considered\n- Agents engaged with the core question meaningfully\n\n### DISAGREEMENTS\n- Agents had different approaches and focus areas\n- Various recommendations emerged from the debate\n\n### CONCLUSION\n\nBased on the agent debate:\n\n${summaryPoints}\n\nCONFIDENCE: 60\n\nThe agents provided diverse insights. Review the individual agent responses above for detailed analysis.`,
               confidence: 0.6,
               responseTime: 0,
               tokens: { prompt: 0, completion: 0, total: 0 },

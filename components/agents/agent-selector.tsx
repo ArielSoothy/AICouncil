@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Brain, Target, Shield, Users, ChevronDown, Gift, Zap, Sparkles } from 'lucide-react'
 import { canUseModel } from '@/lib/user-tiers'
+import { IS_PRODUCTION } from '@/lib/utils/environment'
 import { AgentAvatar } from '@/components/shared'
 import {
   DropdownMenu,
@@ -25,29 +26,38 @@ interface AgentSelectorProps {
   onAgentsChange: (agents: AgentConfig[]) => void
   availableModels: { provider: string; models: string[] }[]
   userTier: 'guest' | 'free' | 'pro' | 'enterprise'
+  globalTier?: 'free' | 'pro' | 'max'  // Optional global tier from header selector
 }
 
 // Model display names for professional badges (same as Ultra Mode)
 const modelDisplayNames: Record<string, string> = {
+  'gpt-5.1': 'GPT-5.1',
   'gpt-5-chat-latest': 'GPT-5 Chat',
   'gpt-5': 'GPT-5',
   'gpt-5-mini': 'GPT-5 Mini',
   'gpt-5-nano': 'GPT-5 Nano',
+  'gpt-4.1': 'GPT-4.1',
+  'gpt-4.1-mini': 'GPT-4.1 Mini',
+  'gpt-4.1-nano': 'GPT-4.1 Nano',
   'gpt-4-turbo-preview': 'GPT-4 Turbo',
   'gpt-4': 'GPT-4',
   'gpt-4o': 'GPT-4o',
   'gpt-3.5-turbo': 'GPT-3.5 Turbo',
   'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5',
-  'claude-haiku-4-5-20250715': 'Claude Haiku 4.5',
-  'claude-opus-4-1-20250514': 'Claude Opus 4.1',
+  'claude-haiku-4-5-20251001': 'Claude Haiku 4.5',
+  'claude-opus-4-1-20250805': 'Claude Opus 4.1',
   'claude-sonnet-4-20250514': 'Claude Sonnet 4',
   'claude-3-7-sonnet-20250219': 'Claude 3.7 Sonnet',
   'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
   'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku',
+  'claude-3-haiku-20240307': 'Claude 3 Haiku',
+  'claude-3-opus-20240229': 'Claude 3 Opus',
+  'gemini-3-pro-preview-11-2025': 'Gemini 3 Pro',
   'gemini-2.5-pro': 'Gemini 2.5 Pro',
   'gemini-2.5-flash': 'Gemini 2.5 Flash',
   'gemini-2.0-flash': 'Gemini 2.0 Flash',
   'gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
+  'gemini-2.5-flash-lite': 'Gemini 2.5 Flash Lite',
   'gemini-1.5-flash': 'Gemini 1.5 Flash',
   'llama-3.3-70b-versatile': 'Llama 3.3 70B',
   'llama-3.1-8b-instant': 'Llama 3.1 8B',
@@ -77,7 +87,7 @@ const providerNames = {
   cohere: 'Cohere'
 } as const
 
-// Agent Presets - Pre-selected models for each role
+// Agent Presets - Pre-selected models for each role (4 agents: analyst, critic, judge, synthesizer)
 const AGENT_PRESETS = {
   free: {
     label: 'Free',
@@ -86,19 +96,21 @@ const AGENT_PRESETS = {
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 dark:border-green-700',
     roles: {
       'analyst-001': { provider: 'groq', model: 'llama-3.1-8b-instant' },       // Fast analyst
-      'critic-001': { provider: 'google', model: 'gemini-2.0-flash-lite' },      // Different provider
-      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }  // Best free model
+      'critic-001': { provider: 'google', model: 'gemini-2.0-flash' },          // Different provider
+      'judge-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' },      // Best free for judging
+      'synthesizer-001': { provider: 'google', model: 'gemini-2.0-flash' }      // Synthesis
     }
   },
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Balanced tier models',
+    description: 'Cheapest paid models',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
-      'analyst-001': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },  // Strong analysis
-      'critic-001': { provider: 'openai', model: 'gpt-4o' },                           // Critical thinking
-      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }       // Good synthesis
+      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI ($0.0004/1K)
+      'critic-001': { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' }, // Haiku 3.5 ($0.80/$4 per 1M tokens)
+      'judge-001': { provider: 'google', model: 'gemini-2.0-flash-lite' },     // Free, fast judge
+      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI ($0.0002/1K)
     }
   },
   max: {
@@ -107,18 +119,20 @@ const AGENT_PRESETS = {
     description: 'Best flagship models',
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700',
     roles: {
-      'analyst-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },  // Flagship analysis
-      'critic-001': { provider: 'openai', model: 'gpt-5-chat-latest' },               // Flagship reasoning
-      'synthesizer-001': { provider: 'google', model: 'gemini-2.5-pro' }              // Comprehensive synthesis
+      'analyst-001': { provider: 'openai', model: 'gpt-5.1' },                         // GPT-5.1 for analysis
+      'critic-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },   // Claude 4.5 for critique
+      'judge-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },    // Claude 4.5 for judging
+      'synthesizer-001': { provider: 'xai', model: 'grok-4-fast-reasoning' } // Grok 4 for synthesis (gemini-3-pro untested)
     }
   }
 } as const
 
-export function AgentSelector({ 
-  selectedAgents, 
-  onAgentsChange, 
+export function AgentSelector({
+  selectedAgents,
+  onAgentsChange,
   availableModels,
-  userTier 
+  userTier,
+  globalTier
 }: AgentSelectorProps) {
   const [agentStates, setAgentStates] = useState<Record<string, {
     enabled: boolean
@@ -134,8 +148,9 @@ export function AgentSelector({
     // Using different providers (Groq + Google) for heterogeneous agent debate
     const agentDefaults: Record<string, { model: string; provider: string }> = {
       'analyst-001': { model: 'llama-3.1-8b-instant', provider: 'groq' },     // Fast, good for initial analysis
-      'critic-001': { model: 'gemini-2.0-flash-lite', provider: 'google' },   // Different provider for diversity
-      'synthesizer-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' } // Best model for final synthesis
+      'critic-001': { model: 'gemini-2.0-flash', provider: 'google' },        // Different provider for diversity
+      'judge-001': { model: 'llama-3.3-70b-versatile', provider: 'groq' },    // Best free model for judging
+      'synthesizer-001': { model: 'gemini-2.0-flash', provider: 'google' }    // Synthesis
     }
     
     Object.values(AGENT_PERSONAS).forEach(persona => {
@@ -144,23 +159,26 @@ export function AgentSelector({
       let defaultProvider = agentDefaults[persona.id]?.provider || ''
       
       // Check if user can use the preferred model
-      let canUsePreferred = false
-      for (const providerInfo of availableModels) {
-        if (providerInfo.provider === defaultProvider) {
-          for (const model of providerInfo.models) {
-            if (model === defaultModel && canUseModel(userTier, providerInfo.provider, model)) {
-              canUsePreferred = true
-              break
+      // In development mode, all models are available
+      let canUsePreferred = !IS_PRODUCTION
+      if (IS_PRODUCTION) {
+        for (const providerInfo of availableModels) {
+          if (providerInfo.provider === defaultProvider) {
+            for (const model of providerInfo.models) {
+              if (model === defaultModel && canUseModel(userTier, providerInfo.provider, model)) {
+                canUsePreferred = true
+                break
+              }
             }
           }
         }
       }
-      
+
       // If can't use preferred, find any suitable model
       if (!canUsePreferred) {
         for (const providerInfo of availableModels) {
           for (const model of providerInfo.models) {
-            if (canUseModel(userTier, providerInfo.provider, model)) {
+            if (!IS_PRODUCTION || canUseModel(userTier, providerInfo.provider, model)) {
               defaultModel = model
               defaultProvider = providerInfo.provider
               break
@@ -202,6 +220,27 @@ export function AgentSelector({
     
     onAgentsChange(agents)
   }, [agentStates, onAgentsChange])
+
+  // Auto-apply preset when global tier changes
+  useEffect(() => {
+    if (globalTier && AGENT_PRESETS[globalTier]) {
+      const preset = AGENT_PRESETS[globalTier]
+      const newStates: Record<string, { enabled: boolean; model: string; provider: string }> = {}
+
+      Object.values(AGENT_PERSONAS).forEach(persona => {
+        const roleConfig = preset.roles[persona.id as keyof typeof preset.roles]
+        if (roleConfig) {
+          newStates[persona.id] = {
+            enabled: true,
+            model: roleConfig.model,
+            provider: roleConfig.provider
+          }
+        }
+      })
+
+      setAgentStates(newStates)
+    }
+  }, [globalTier])
 
   const toggleAgent = (agentId: string) => {
     setAgentStates(prev => ({
@@ -339,9 +378,12 @@ export function AgentSelector({
                               <DropdownMenuLabel>Select Provider & Model</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               {availableModels.map(providerInfo => {
-                                const availableProviderModels = providerInfo.models.filter(model =>
-                                  canUseModel(userTier, providerInfo.provider, model)
-                                )
+                                // In development, show all models; in production, filter by tier
+                                const availableProviderModels = IS_PRODUCTION
+                                  ? providerInfo.models.filter(model =>
+                                      canUseModel(userTier, providerInfo.provider, model)
+                                    )
+                                  : providerInfo.models
 
                                 if (availableProviderModels.length === 0) return null
 

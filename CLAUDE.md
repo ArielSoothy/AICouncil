@@ -61,6 +61,53 @@ git reset --hard HEAD  # Nuclear option
 
 **Launch Pattern**: Start with Orchestration Agent for multi-file features
 
+## 🎯 UNIFIED DEBATE ENGINE - THE CORE PRODUCT
+
+**CRITICAL: The Debate Engine is the core product. All features should connect to it.**
+
+### Vision (November 2025)
+```
+User Query → Domain Detection → Research Phase → Debate → Clear Answer
+```
+
+### Architecture
+- **Consensus Mode**: Quick - multiple models answer independently
+- **Debate Mode**: Deep - models challenge each other with real research
+
+### Research Modes (Configurable)
+| Mode | Description | Best For |
+|------|-------------|----------|
+| **Centralized** (default) | 1 model researches → shares with all | Fast, cheap, consistent |
+| **Distributed** | Each model researches independently | Thorough, diverse perspectives |
+| **Hybrid** | Base research + agents request more | Balanced approach |
+
+### Agent Roles (MADR-Inspired)
+| Agent | Role | MADR Equivalent |
+|-------|------|-----------------|
+| **Analyst** | Systematic analysis | Debater 1 |
+| **Critic** | Challenge flaws | Debater 2 |
+| **Judge** (NEW) | Assess consensus | Judge |
+| **Synthesizer** | Refine & conclude | Refiner |
+
+### Domain Frameworks (Plugins)
+All frameworks use the SAME debate engine:
+- **General**: Any query, no special intake
+- **Vacation**: 9 questions → MAUT scorecard
+- **Apartment**: 10 questions → Comparison table
+- **Trading**: Symbol + timeframe → Bull/Bear analysis
+
+### Key Files
+- `lib/debate/research-modes.ts` - Research mode configuration
+- `lib/agents/general-research-agents.ts` - Research engine
+- `app/api/agents/debate-stream/route.ts` - Main debate orchestration
+
+### Academic Foundation
+- Google 2023: 17.7% reasoning improvement with debate
+- Microsoft 2024: 31% hallucination reduction
+- MIT 2024: 25% improvement from model diversity
+
+**📚 Full documentation: `docs/architecture/UNIFIED_DEBATE_ENGINE.md`**
+
 ## 🎯 MODEL REGISTRY - SINGLE SOURCE OF TRUTH
 
 **CRITICAL: All models must be defined in `lib/models/model-registry.ts` ONLY**
@@ -166,6 +213,8 @@ Models marked with `isLegacy: true` (e.g., Claude 2.0/2.1) are kept in registry 
 | **docs/workflow/FEATURES.md** | Protected features | Before any changes |
 | **docs/architecture/PROJECT_OVERVIEW.md** | Architecture + vision + status | For context |
 | **docs/architecture/PROJECT_STRUCTURE.md** | Complete codebase structure + navigation | When navigating codebase or adding files |
+| **docs/architecture/UNIFIED_DEBATE_ENGINE.md** | 🎯 Core product architecture, research modes, MADR | Debate engine work |
+| **docs/architecture/RESEARCH_DRIVEN_DEBATE.md** | Research-first debate implementation | Debate debugging |
 | **docs/guides/BEST_PRACTICES.md** | Debugging patterns | When issues arise |
 | **docs/guides/SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
 | **docs/features/TRADING_ENHANCEMENTS.md** | Paper trading system (Phase 2) | Trading feature work |

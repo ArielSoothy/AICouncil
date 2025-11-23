@@ -35,7 +35,7 @@ export interface AgentConfig {
 export interface AgentPersona {
   id: string
   name: string
-  role: 'analyst' | 'critic' | 'synthesizer'
+  role: 'analyst' | 'critic' | 'judge' | 'synthesizer'
   description: string
   traits: string[]
   focusAreas: string[]

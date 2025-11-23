@@ -43,9 +43,9 @@ MODELS AND TOP ITEMS:\n${compact}`
     let result: { text: string }
     try {
       if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-        result = await generateText({ model: google('gemini-2.0-flash'), prompt, maxTokens: 400, temperature: 0.2 })
+        result = await generateText({ model: google('gemini-2.0-flash'), prompt, maxOutputTokens: 400, temperature: 0.2 })
       } else if (process.env.GROQ_API_KEY) {
-        result = await generateText({ model: groq('llama-3.3-70b-versatile'), prompt, maxTokens: 400, temperature: 0.2 })
+        result = await generateText({ model: groq('llama-3.3-70b-versatile'), prompt, maxOutputTokens: 400, temperature: 0.2 })
       } else {
         // Heuristic fallback: map common tokens to canned reasons
         const reasons = itemsPerModel.map(it => ({ model: it.model, reason: heuristicReason(it.topItems[0] || '') }))
