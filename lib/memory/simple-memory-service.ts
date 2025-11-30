@@ -73,13 +73,13 @@ export class SimpleMemoryService {
 
       // Create new fact
       const semanticMemory: SemanticMemory = {
+        ...memory,
         id: `semantic_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: 'semantic',
         created_at: new Date(),
         updated_at: new Date(),
         user_id: this.userId,
-        validations: 1,
-        ...memory
+        validations: memory.validations ?? 1,
       }
 
       inMemoryStorage.semantic.push(semanticMemory)
@@ -97,13 +97,13 @@ export class SimpleMemoryService {
   async storeProceduralMemory(memory: Omit<ProceduralMemory, 'id' | 'created_at' | 'updated_at' | 'type'>): Promise<ProceduralMemory | null> {
     try {
       const proceduralMemory: ProceduralMemory = {
+        ...memory,
         id: `procedural_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: 'procedural',
         created_at: new Date(),
         updated_at: new Date(),
         user_id: this.userId,
-        usage_count: 0,
-        ...memory
+        usage_count: memory.usage_count ?? 0,
       }
 
       inMemoryStorage.procedural.push(proceduralMemory)

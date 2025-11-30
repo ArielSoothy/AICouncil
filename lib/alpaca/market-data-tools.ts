@@ -45,7 +45,7 @@ export const getStockQuoteTool: AnyTool = createTool({
   inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol (e.g., TSLA, AAPL, NVDA)'),
   }),
-  execute: async ({ symbol }) => {
+  execute: async ({ symbol }: { symbol: string }) => {
     try {
       const alpaca = getAlpacaClient();
       const trade = await alpaca.getLatestTrade(symbol.toUpperCase());
@@ -79,7 +79,7 @@ export const getPriceBarsTool: AnyTool = createTool({
     timeframe: z.enum(['1Min', '5Min', '15Min', '1Hour', '1Day']).describe('Bar timeframe'),
     limit: z.number().min(1).max(100).describe('Number of bars to fetch (max 100)'),
   }),
-  execute: async ({ symbol, timeframe, limit }) => {
+  execute: async ({ symbol, timeframe, limit }: { symbol: string; timeframe: string; limit: number }) => {
     try {
       const alpaca = getAlpacaClient();
 
@@ -154,7 +154,7 @@ export const getStockNewsTool: AnyTool = createTool({
     symbol: z.string().describe('Stock ticker symbol'),
     limit: z.number().min(1).max(10).default(5).describe('Number of news articles to fetch (max 10)'),
   }),
-  execute: async ({ symbol, limit }) => {
+  execute: async ({ symbol, limit }: { symbol: string; limit: number }) => {
     try {
       const alpaca = getAlpacaClient();
       const news = await alpaca.getNews({
@@ -197,7 +197,7 @@ export const calculateRSITool: AnyTool = createTool({
     symbol: z.string().describe('Stock ticker symbol'),
     period: z.number().min(5).max(50).default(14).describe('RSI period (default 14)'),
   }),
-  execute: async ({ symbol, period }) => {
+  execute: async ({ symbol, period }: { symbol: string; period: number }) => {
     try {
       const alpaca = getAlpacaClient();
 
@@ -284,7 +284,7 @@ export const calculateMACDTool: AnyTool = createTool({
   inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
   }),
-  execute: async ({ symbol }) => {
+  execute: async ({ symbol }: { symbol: string }) => {
     try {
       const alpaca = getAlpacaClient();
 
@@ -383,7 +383,7 @@ export const getVolumeProfileTool: AnyTool = createTool({
     symbol: z.string().describe('Stock ticker symbol'),
     days: z.number().min(5).max(30).default(20).describe('Number of days to analyze (default 20)'),
   }),
-  execute: async ({ symbol, days }) => {
+  execute: async ({ symbol, days }: { symbol: string; days: number }) => {
     try {
       const alpaca = getAlpacaClient();
 
@@ -457,7 +457,7 @@ export const getSupportResistanceTool: AnyTool = createTool({
     symbol: z.string().describe('Stock ticker symbol'),
     days: z.number().min(10).max(90).default(30).describe('Number of days to analyze (10-90 days, default 30)'),
   }),
-  execute: async ({ symbol, days }) => {
+  execute: async ({ symbol, days }: { symbol: string; days: number }) => {
     try {
       const alpaca = getAlpacaClient();
 
@@ -546,7 +546,7 @@ export const checkEarningsDateTool: AnyTool = createTool({
   inputSchema: z.object({
     symbol: z.string().describe('Stock ticker symbol'),
   }),
-  execute: async ({ symbol }) => {
+  execute: async ({ symbol }: { symbol: string }) => {
     // Note: Alpaca's free tier doesn't provide earnings calendar
     // This is a placeholder that would need a different data source
     // For now, we'll return a message indicating this limitation
@@ -589,8 +589,6 @@ export class ToolCallTracker {
     const oneMinuteAgo = new Date(now.getTime() - 60000);
     this.callsPerMinute = this.callsPerMinute.filter(time => time > oneMinuteAgo.getTime());
     this.callsPerMinute.push(now.getTime());
-
-    console.log(`🔧 Tool Call: ${toolName}(${symbol}) - ${this.callsPerMinute.length}/200 calls this minute`);
   }
 
   getCallsThisMinute(): number {

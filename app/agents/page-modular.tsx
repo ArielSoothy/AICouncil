@@ -12,7 +12,7 @@ function AgentsPageContent() {
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
   
-  const effectiveUserTier = isGuestMode ? 'guest' : userTier
+  const effectiveUserTier = isGuestMode ? 'guest' : (userTier ?? 'free')
 
   return (
     <div className="flex flex-col min-h-screen">
