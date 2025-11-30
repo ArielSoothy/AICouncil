@@ -40,16 +40,6 @@ export class AnthropicProvider implements AIProvider {
         throw new Error('Anthropic API key not configured');
       }
 
-      // 🔍 DEBUG: Log tool configuration
-      console.log('=== ANTHROPIC DEBUG ===');
-      console.log('Model:', config.model);
-      console.log('useTools:', config.useTools);
-      console.log('useWebSearch:', config.useWebSearch);
-      console.log('maxSteps:', config.maxSteps);
-      console.log('Tools passed:', config.useTools ? Object.keys(alpacaTools) : 'none');
-      console.log('Prompt includes tools section:', prompt.includes('AVAILABLE RESEARCH TOOLS'));
-      console.log('=======================');
-
       // Build tools object - combine alpaca tools with web search if needed
       const tools: Record<string, any> = {};
 
@@ -67,15 +57,10 @@ export class AnthropicProvider implements AIProvider {
             const anthropicAny = anthropic as any;
             if (anthropicAny.tools?.webSearch_20250305) {
               tools.web_search = anthropicAny.tools.webSearch_20250305({ maxUses: 5 });
-              console.log(`Anthropic: Native web search enabled for ${config.model}`);
-            } else {
-              console.log('Anthropic: Web search requested but SDK does not support anthropic.tools.webSearch_20250305');
             }
-          } catch (e) {
-            console.log('Anthropic: Could not enable native search:', e);
+          } catch {
+            // Web search not available for this model
           }
-        } else {
-          console.log(`Anthropic: Model ${config.model} does not support web_search_20250305, skipping native web search`);
         }
       }
 
@@ -93,17 +78,10 @@ export class AnthropicProvider implements AIProvider {
         tools: hasTools ? tools : undefined,
         stopWhen: hasTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
         onStepFinish: hasTools ? (step) => {
-          console.log('🔍 Step finished:', {
-            text: step.text?.substring(0, 100),
-            toolCalls: step.toolCalls?.length || 0,
-            toolResults: step.toolResults?.length || 0
-          });
+          // Track tool usage for analytics (non-debug)
           if (step.toolCalls && step.toolCalls.length > 0) {
             step.toolCalls.forEach((call: any) => {
-              if (call.toolName === 'web_search') {
-                console.log(`🔍 ${config.model} → Claude Web Search`);
-              } else {
-                console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
+              if (call.toolName !== 'web_search') {
                 toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
               }
             });
@@ -112,20 +90,6 @@ export class AnthropicProvider implements AIProvider {
       });
 
       const responseTime = Date.now() - startTime;
-
-      console.log('=== ANTHROPIC SUCCESS ===');
-      console.log('Response length:', result.text?.length || 0);
-      console.log('Has text:', !!result.text);
-      console.log('First 200 chars:', result.text ? result.text.substring(0, 200) : 'NO TEXT');
-      if (config.useTools) {
-        console.log('Total steps:', result.steps?.length || 0);
-        console.log('Steps with toolCalls:', result.steps?.filter(s => s.toolCalls && s.toolCalls.length > 0).length || 0);
-        console.log('Steps detail:', result.steps?.map(s => ({
-          toolCallsCount: s.toolCalls?.length || 0,
-          toolResultsCount: s.toolResults?.length || 0
-        })));
-      }
-      console.log('=========================');
 
       return {
         id: `anthropic-${Date.now()}`,
@@ -148,13 +112,7 @@ export class AnthropicProvider implements AIProvider {
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      
-      console.error('=== ANTHROPIC PROVIDER ERROR ===');
-      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
-      console.error('Full error:', error);
-      console.error('Model:', config.model);
-      console.error('================================');
-      
+
       return {
         id: `anthropic-error-${Date.now()}`,
         provider: 'anthropic',

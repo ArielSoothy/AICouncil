@@ -27,11 +27,9 @@ export function AuthForms() {
 
   // Redirect to main page when user is authenticated
   useEffect(() => {
-    console.log('Auth state:', { user: user?.id, authLoading, formLoading: loading })
     if (user && !authLoading) {
       // Check for redirect parameter in URL
       const redirect = searchParams.get('redirect') || '/app'
-      console.log('Auth redirect triggered:', { user: user.id, redirect })
       // Clear loading state immediately when user is detected
       setLoading(false)
       // Small delay to ensure auth state is properly set
@@ -43,44 +41,35 @@ export function AuthForms() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Form submitted:', { email, isSignUp })
     setLoading(true)
     setError('')
     setSuccessMessage('')
 
     try {
       if (isSignUp) {
-        console.log('Attempting sign up...')
         const { error } = await signUp(email, password)
         if (error) {
-          console.error('Sign up error:', error)
           setError(error.message)
         } else {
-          console.log('Sign up successful')
           setSuccessMessage('Check your email for a confirmation link to complete your signup!')
           setEmail('')
           setPassword('')
         }
         setLoading(false)
       } else {
-        console.log('Attempting sign in...')
         const { error } = await signIn(email, password)
-        console.log('Sign in result:', { error: error?.message })
-        
+
         if (error) {
-          console.error('Sign in error:', error)
           setError(error.message)
           setLoading(false)
         } else {
-          console.log('Sign-in successful, navigating...')
           const redirect = searchParams.get('redirect') || '/app'
           // Navigate immediately; AuthContext will hydrate user shortly after
           setLoading(false)
           router.push(redirect)
         }
       }
-    } catch (err) {
-      console.error('Unexpected error:', err)
+    } catch {
       setError('An unexpected error occurred')
       setLoading(false)
     }

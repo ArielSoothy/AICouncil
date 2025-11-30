@@ -67,24 +67,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    console.log('🔄 AUTH CONTEXT: useEffect triggered')
     // Get initial session
     const getInitialSession = async () => {
-      console.log('🔄 AUTH CONTEXT: Getting initial session...')
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('🔄 AUTH CONTEXT: Session:', session ? 'exists' : 'null')
       setUser(session?.user ?? null)
 
       if (session?.user?.id) {
-        console.log('🔄 AUTH CONTEXT: User logged in, fetching profile...')
         await fetchUserProfile(session.user.id)
       } else {
-        console.log('🔄 AUTH CONTEXT: No session, setting tier to null')
         setUserTier(null)
         setPremiumCredits(0)
       }
 
-      console.log('🔄 AUTH CONTEXT: Setting loading to false')
       setLoading(false)
     }
 
@@ -92,8 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id)
+      async (_event, session) => {
         setUser(session?.user ?? null)
 
         if (session?.user?.id) {
@@ -119,12 +112,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signIn = async (email: string, password: string) => {
-    console.log('AuthContext: signIn called with:', email)
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
-    console.log('AuthContext: signIn result:', { user: data.user?.id, session: !!data.session, error: error?.message })
     return { error }
   }
 

@@ -60,8 +60,7 @@ interface MainAppProps {
 }
 
 function MainApp({ userTier }: MainAppProps) {
-  // TESTING FEATURE: Pro mode unlock for testing all agents
-  // TODO: Remove this before production deployment
+  // Development-only: Pro mode unlock for testing all agents (hidden in production)
   const [isProModeUnlocked, setIsProModeUnlocked] = useState(false);
   const effectiveTier = isProModeUnlocked ? 'pro' : userTier;
   
