@@ -8,7 +8,7 @@
 
 **The World's First Multi-Agent AI Decision Verification Platform**
 
-[Live Demo](https://aicouncil.vercel.app) | [Full Documentation](./docs/core/SYSTEM_OVERVIEW.md) | [GitHub](https://github.com/yourusername/AICouncil)
+[Live Demo](https://aicouncil.vercel.app) | [Full Documentation](./docs/core/SYSTEM_OVERVIEW.md) | [GitHub](https://github.com/ArielSoothy/AICouncil)
 
 </div>
 
@@ -18,7 +18,7 @@
 
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/AICouncil.git
+git clone https://github.com/ArielSoothy/AICouncil.git
 cd AICouncil
 npm install
 
@@ -114,7 +114,7 @@ npm run build
 ## 📞 Support
 
 - **Documentation**: [docs/core/SYSTEM_OVERVIEW.md](./docs/core/SYSTEM_OVERVIEW.md)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/AICouncil/issues)
+- **Issues**: [GitHub Issues](https://github.com/ArielSoothy/AICouncil/issues)
 - **Email**: business@verdictai.com
 - **LinkedIn**: [Ariel Soothy](https://www.linkedin.com/in/ariel-soothy/)
 
