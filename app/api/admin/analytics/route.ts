@@ -22,7 +22,7 @@ export async function GET() {
       .not('user_rating', 'is', null)
 
     const averageRating = ratingData && ratingData.length > 0
-      ? ratingData.reduce((sum, item) => sum + (item.user_rating || 0), 0) / ratingData.length
+      ? ratingData.reduce((sum: number, item: { user_rating: number | null }) => sum + (item.user_rating || 0), 0) / ratingData.length
       : 0
 
     // Get recent queries (last 50)
@@ -65,7 +65,7 @@ export async function GET() {
     }
 
     // Count conversations by date
-    conversationsByDate?.forEach(conv => {
+    conversationsByDate?.forEach((conv: { created_at: string }) => {
       const date = new Date(conv.created_at).toISOString().split('T')[0]
       if (dailyStats[date]) {
         dailyStats[date].conversations++
@@ -73,7 +73,7 @@ export async function GET() {
     })
 
     // Count feedback by date
-    feedbackByDate?.forEach(feedback => {
+    feedbackByDate?.forEach((feedback: { created_at: string }) => {
       const date = new Date(feedback.created_at).toISOString().split('T')[0]
       if (dailyStats[date]) {
         dailyStats[date].feedback++

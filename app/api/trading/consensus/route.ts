@@ -269,11 +269,11 @@ export async function POST(request: NextRequest) {
           console.log(`⚠️ ${modelName} returned malformed response (reasoning only), wrapping it...`);
           decision = {
             action: 'HOLD' as const,
-            symbol: undefined,
-            quantity: undefined,
+            symbol: targetSymbol || 'UNKNOWN',
+            quantity: 0,
             reasoning: decision as any, // The entire response is the reasoning object
             confidence: 0.5, // Medium confidence since it's a fallback
-          } as TradeDecision;
+          };
         }
 
         // Add model ID for judge weighting
@@ -292,11 +292,11 @@ export async function POST(request: NextRequest) {
         // Return HOLD on error
         return {
           action: 'HOLD' as const,
-          symbol: undefined,
-          quantity: undefined,
+          symbol: targetSymbol || 'UNKNOWN',
+          quantity: 0,
           reasoning: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
           confidence: 0,
-        } as TradeDecision;
+        };
       }
     });
 

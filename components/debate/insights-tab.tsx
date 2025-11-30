@@ -1,6 +1,6 @@
 'use client'
 
-import { DebateSession } from '@/lib/agents/types'
+import { DebateSession, AgentRole } from '@/lib/agents/types'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -27,8 +27,16 @@ export function InsightsTab({ session }: InsightsTabProps) {
         {(() => {
           // Analyze messages for disagreement patterns
           const allMessages = session.rounds.flatMap(r => r.messages)
-          const disagreements = []
-          const recommendations = []
+          const disagreements: Array<{
+            agent: string;
+            type: string;
+            context: string;
+            targetAgents: string[];
+          }> = []
+          const recommendations: Array<{
+            agent: string;
+            recommendations: string[];
+          }> = []
           
           // Look for disagreement patterns
           const disagreementKeywords = [
@@ -128,8 +136,8 @@ export function InsightsTab({ session }: InsightsTabProps) {
                       return (
                         <div key={idx} className="border rounded-lg p-4 bg-red-50/50 dark:bg-red-950/20">
                           <div className="flex items-start gap-3">
-                            <AgentAvatar 
-                              role={disagreement.agent}
+                            <AgentAvatar
+                              role={disagreement.agent as AgentRole}
                               size="md"
                               showName={false}
                             />
@@ -167,14 +175,14 @@ export function InsightsTab({ session }: InsightsTabProps) {
                       return (
                         <div key={idx} className="border rounded-lg p-4 bg-blue-50/50 dark:bg-blue-950/20">
                           <div className="flex items-start gap-3">
-                            <AgentAvatar 
-                              role={rec.agent}
+                            <AgentAvatar
+                              role={rec.agent as AgentRole}
                               size="md"
                               showName={false}
                             />
                             <div className="flex-1">
                               <div className="font-medium capitalize mb-2">{rec.agent}&apos;s Approach:</div>
-                              {rec.recommendations.map((recommendation, ridx) => (
+                              {rec.recommendations.map((recommendation: string, ridx: number) => (
                                 <div key={ridx} className="text-sm text-muted-foreground mb-1">
                                   • {recommendation}
                                 </div>

@@ -133,9 +133,9 @@ export class DisagreementAnalyzer {
     return disagreements.slice(0, 5) // Limit to top 5
   }
   
-  private static extractRecommendations(messages: AgentMessage[]) {
-    const recommendations = []
-    
+  private static extractRecommendations(messages: AgentMessage[]): Array<{ agent: string; recommendation: string }> {
+    const recommendations: Array<{ agent: string; recommendation: string }> = []
+
     messages.forEach(msg => {
       const sentences = msg.content.split(/[.!?]/)
       sentences.forEach(sentence => {
@@ -148,17 +148,17 @@ export class DisagreementAnalyzer {
         }
       })
     })
-    
+
     return recommendations
   }
   
-  private static compareRecommendations(recommendations: any[]) {
-    const conflicts = []
-    
+  private static compareRecommendations(recommendations: Array<{ agent: string; recommendation: string }>): DisagreementReason[] {
+    const conflicts: DisagreementReason[] = []
+
     if (recommendations.length > 1) {
       const firstRec = recommendations[0]
       const otherRecs = recommendations.slice(1)
-      
+
       otherRecs.forEach(rec => {
         conflicts.push({
           type: 'methodological' as const,
@@ -172,18 +172,18 @@ export class DisagreementAnalyzer {
         })
       })
     }
-    
+
     return conflicts
   }
   
-  private static extractConclusions(messages: AgentMessage[]) {
-    const conclusions = []
-    
+  private static extractConclusions(messages: AgentMessage[]): Array<{ agent: string; conclusion: string }> {
+    const conclusions: Array<{ agent: string; conclusion: string }> = []
+
     messages.forEach(msg => {
       // Look for conclusive statements (last paragraph, "in conclusion", etc.)
       const paragraphs = msg.content.split('\n\n')
       const lastParagraph = paragraphs[paragraphs.length - 1]
-      
+
       if (lastParagraph && lastParagraph.length > 30) {
         conclusions.push({
           agent: msg.role,
@@ -191,12 +191,12 @@ export class DisagreementAnalyzer {
         })
       }
     })
-    
+
     return conclusions
   }
   
   private static identifyDebatePatterns(messages: AgentMessage[]): DisagreementPattern[] {
-    const patterns = []
+    const patterns: DisagreementPattern[] = []
     
     // Binary Opposition: agents taking opposite stances
     if (messages.length >= 2) {

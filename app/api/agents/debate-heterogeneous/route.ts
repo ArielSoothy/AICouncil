@@ -192,12 +192,15 @@ export async function POST(request: NextRequest) {
     } else {
       // Manual agent selection or default configuration
       if (agentSelection.mode === 'manual' && agentSelection.agents) {
-        agentConfigs = agentSelection.agents.map(agent => ({
-          ...agent,
-          agentId: agent.agentId || `${agent.persona.role}-${Date.now()}`,
-          persona: agent.persona || AGENT_PERSONAS[agent.persona.role],
-          enabled: true
-        }))
+        agentConfigs = agentSelection.agents.map(agent => {
+          const role = agent.persona?.role as AgentRole || 'analyst'
+          return {
+            ...agent,
+            agentId: agent.agentId || `${role}-${Date.now()}`,
+            persona: agent.persona || AGENT_PERSONAS[role],
+            enabled: true
+          }
+        })
       } else {
         // Default configuration
         const defaultModels = {

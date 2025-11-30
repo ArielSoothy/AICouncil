@@ -24,17 +24,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate rankings
-    const leaderboard = performances?.map((perf, index) => ({
+    interface ModelPerformance {
+      total_pnl: string | number | null;
+      win_rate: string | number | null;
+      avg_win: string | number | null;
+      avg_loss: string | number | null;
+      profit_factor: string | number | null;
+      sharpe_ratio: string | number | null;
+      max_drawdown: string | number | null;
+    }
+    const leaderboard = performances?.map((perf: ModelPerformance, index: number) => ({
       ...perf,
       rank: index + 1,
       // Format metrics for display
-      total_pnl: parseFloat(perf.total_pnl || 0).toFixed(2),
-      win_rate: parseFloat(perf.win_rate || 0).toFixed(1),
-      avg_win: parseFloat(perf.avg_win || 0).toFixed(2),
-      avg_loss: parseFloat(perf.avg_loss || 0).toFixed(2),
-      profit_factor: parseFloat(perf.profit_factor || 0).toFixed(2),
-      sharpe_ratio: parseFloat(perf.sharpe_ratio || 0).toFixed(2),
-      max_drawdown: parseFloat(perf.max_drawdown || 0).toFixed(2),
+      total_pnl: parseFloat(String(perf.total_pnl ?? 0)).toFixed(2),
+      win_rate: parseFloat(String(perf.win_rate ?? 0)).toFixed(1),
+      avg_win: parseFloat(String(perf.avg_win ?? 0)).toFixed(2),
+      avg_loss: parseFloat(String(perf.avg_loss ?? 0)).toFixed(2),
+      profit_factor: parseFloat(String(perf.profit_factor ?? 0)).toFixed(2),
+      sharpe_ratio: parseFloat(String(perf.sharpe_ratio ?? 0)).toFixed(2),
+      max_drawdown: parseFloat(String(perf.max_drawdown ?? 0)).toFixed(2),
     })) || [];
 
     return NextResponse.json({ leaderboard });

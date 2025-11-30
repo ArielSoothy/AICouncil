@@ -722,17 +722,17 @@ export async function POST(request: NextRequest) {
             console.log('Starting consensus comparison for three-way display')
             
             // Use the SAME models that just debated
-            const consensusModelsToUse = agents.map(agent => ({
+            const consensusModelsToUse = agents.map((agent: { provider: string; model: string }) => ({
               provider: agent.provider,
               model: agent.model,
               enabled: true
             }))
-            
+
             console.log('Using these models for consensus:', consensusModelsToUse)
-            
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'consensus_comparison_started',
-              models: consensusModelsToUse.map(m => `${m.provider}/${m.model}`),
+              models: consensusModelsToUse.map((m: { provider: string; model: string }) => `${m.provider}/${m.model}`),
               timestamp: Date.now()
             })}\n\n`))
             
@@ -764,7 +764,7 @@ export async function POST(request: NextRequest) {
                 unifiedAnswer: result.consensus?.unifiedAnswer || 'No consensus generated',
                 judgeAnswer: result.consensus?.judgeAnalysis?.bestAnswer || result.consensus?.unifiedAnswer,
                 confidence: result.consensus?.confidence || result.consensus?.judgeAnalysis?.confidence || 0,
-                models: consensusModelsToUse.map(m => `${m.provider}/${m.model}`),
+                models: consensusModelsToUse.map((m: { provider: string; model: string }) => `${m.provider}/${m.model}`),
                 tokensUsed: result.totalTokensUsed || 0,
                 cost: result.estimatedCost || 0,
                 responseTime: (Date.now() - consensusStartTime) / 1000,
@@ -1111,7 +1111,7 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
                 session: {
                   id: `debate-${Date.now()}`,
                   query,
-                  agents: agents.map((a, i) => ({
+                  agents: agents.map((a: { persona?: { name?: string; role?: string }; model?: string }, i: number) => ({
                     id: `agent-${i}`,
                     name: a.persona?.name || a.model || `Model ${i+1}`,
                     role: a.persona?.role || 'analyst'
@@ -1244,7 +1244,7 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
           }
           
           // const storedMemory = await memoryService.storeEpisodicMemory(episodicMemory)
-          const storedMemory = null // Memory disabled
+          const storedMemory: { id?: string } | null = null // Memory disabled
           console.log(`✅ MEMORY STORAGE: Stored episodic memory: ${storedMemory?.id}`)
           
           // Also store semantic memory for high confidence results
@@ -1260,7 +1260,7 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
             }
             
             // const storedSemantic = await memoryService.storeSemanticMemory(semanticMemory)
-            const storedSemantic = null // Memory disabled
+            const storedSemantic: { id?: string } | null = null // Memory disabled
             console.log(`✅ MEMORY STORAGE: Stored high-confidence semantic memory: ${storedSemantic?.id}`)
           }
           

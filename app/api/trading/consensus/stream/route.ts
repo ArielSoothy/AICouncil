@@ -306,11 +306,11 @@ export async function POST(request: NextRequest) {
               if (!decision.action && (decision as any).bullishCase) {
                 decision = {
                   action: 'HOLD' as const,
-                  symbol: undefined,
-                  quantity: undefined,
+                  symbol: normalizedSymbol || 'UNKNOWN',
+                  quantity: 0,
                   reasoning: decision as any,
                   confidence: 0.5,
-                } as TradeDecision;
+                };
               }
 
               decision.model = modelId;

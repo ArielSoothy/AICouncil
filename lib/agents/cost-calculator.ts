@@ -142,7 +142,7 @@ export function calculateDisagreementScore(messages: any[]): number {
   // Check for conflicting numbers
   const numbers = responses.flatMap(r => {
     const matches = r.match(/\d+/g)
-    return matches ? matches.map(n => parseInt(n)) : []
+    return matches ? matches.map((n: string) => parseInt(n)) : []
   })
   if (numbers.length > 1) {
     const variance = Math.max(...numbers) - Math.min(...numbers)
