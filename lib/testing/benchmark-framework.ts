@@ -279,7 +279,7 @@ export class BenchmarkRunner {
       answer,
       confidence: avgConfidence,
       response_time_ms: Math.max(...responses.map(r => r.response_time_ms)),
-      tokens_used: responses.reduce((sum, r) => sum + r.tokens_used, 0),
+      tokens_used: responses.reduce((sum, r) => sum + (r.tokens_used ?? 0), 0),
       cost: responses.reduce((sum, r) => sum + r.cost, 0),
       timestamp: new Date(),
       test_run_id: `test_${Date.now()}`

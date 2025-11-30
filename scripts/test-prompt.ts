@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { getAccount } from '../lib/alpaca/client';
 import { generateTradingPrompt } from '../lib/alpaca/prompts';
+import type { AlpacaPosition } from '../lib/alpaca/types';
 
 // Load environment variables
 dotenv.config({ path: '.env.local' });
@@ -10,7 +11,7 @@ async function main() {
 
   try {
     const account = await getAccount();
-    const positions = []; // Empty for now
+    const positions: AlpacaPosition[] = []; // Empty for now
     const date = new Date().toISOString().split('T')[0];
 
     console.log('\n📝 Generating trading prompt...\n');

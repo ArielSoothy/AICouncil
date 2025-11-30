@@ -371,7 +371,8 @@ export function getOptimalModelCombination(
   }
   
   const tierCombos = combinations[userTier] || combinations.free
-  const baseCombo = tierCombos[queryType] || tierCombos.analytical
+  // Only some QueryTypes have predefined combos - fallback to analytical for others
+  const baseCombo = (tierCombos as Record<string, typeof tierCombos.analytical>)[queryType] || tierCombos.analytical
   
   // Adjust for complexity (use better models for high complexity)
   if (complexity === 'very-high' && userTier !== 'guest') {

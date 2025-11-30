@@ -65,7 +65,9 @@ export async function applyHeterogeneousMixing(
     
     // Convert to agent configs
     agentConfigs = config.agentRoles.map((role) => {
-      const modelName = quickCombo[role]
+      // Judge uses synthesizer model as fallback since quickCombo doesn't include judge
+      const roleKey = role === 'judge' ? 'synthesizer' : role
+      const modelName = quickCombo[roleKey as keyof typeof quickCombo]
       const provider = getProviderFromModel(modelName)
       
       return {
