@@ -76,22 +76,7 @@ export function DebateDisplay({ session, onRefinedQuery, onFollowUpRound, onAddR
   const [showFollowUpInput, setShowFollowUpInput] = useState(false)
   const [showCostBreakdown, setShowCostBreakdown] = useState(false)
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
-  
-  
-  // Debug logging
-  console.log('DebateDisplay received session:', {
-    hasComparison: !!session.comparisonResponse,
-    hasConsensus: !!session.consensusComparison,
-    hasSynthesis: !!session.finalSynthesis,
-    consensusData: session.consensusComparison,
-    roundsCount: session.rounds.length,
-    rounds: session.rounds.map(r => ({
-      roundNumber: r.roundNumber,
-      messagesCount: r.messages.length,
-      messageRounds: r.messages.map(m => m.round)
-    }))
-  })
-  
+
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString('en-US', {
       hour: '2-digit',

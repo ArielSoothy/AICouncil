@@ -49,15 +49,17 @@ export default function AdminAnalyticsPage() {
           loadAnalytics()
         } else {
           // Production: prompt for admin password
+          // Password should be set via ADMIN_PASSWORD env variable
           const adminPassword = prompt('Enter admin password:')
-          if (adminPassword === 'verdict2025') { // Simple MVP admin password
+          const expectedPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ''
+          if (expectedPassword && adminPassword === expectedPassword) {
             setIsAdmin(true)
             loadAnalytics()
           } else {
             setError('Access denied. Admin access required.')
           }
         }
-      } catch (error) {
+      } catch {
         setError('Authentication failed')
       }
       setCheckingAuth(false)

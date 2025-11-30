@@ -3,8 +3,6 @@ import { getAccount, getPositions } from '@/lib/alpaca/client';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('📊 Fetching portfolio data...');
-
     // Fetch account and positions in parallel
     const [account, positions] = await Promise.all([
       getAccount(),
@@ -38,17 +36,9 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    console.log('✅ Portfolio data:', {
-      value: portfolioData.account.portfolio_value,
-      positions: portfolioData.positions.length,
-      daily_pl: portfolioData.performance.daily_pl,
-    });
-
     return NextResponse.json(portfolioData);
 
   } catch (error) {
-    console.error('❌ Portfolio API Error:', error);
-
     // Extract error message
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
@@ -58,26 +48,17 @@ export async function GET(request: NextRequest) {
 
     // Check for specific error types
     if (errorMessage.includes('Missing required Alpaca environment variables')) {
-      // Missing credentials - configuration error
-      statusCode = 503; // Service Unavailable
+      statusCode = 503;
       userMessage = 'Trading service is not configured. Please contact support.';
-      console.error('🔴 CONFIGURATION ERROR: Alpaca credentials missing in environment variables');
-      console.error('👉 Add ALPACA_API_KEY and ALPACA_SECRET_KEY to Vercel environment variables');
     } else if (errorMessage.includes('Unauthorized') || errorMessage.includes('authentication') || errorMessage.includes('forbidden')) {
-      // Authentication failure - invalid credentials
       statusCode = 401;
       userMessage = 'Trading API authentication failed. Please check credentials.';
-      console.error('🔴 AUTHENTICATION ERROR: Invalid Alpaca credentials');
     } else if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests')) {
-      // Rate limiting
       statusCode = 429;
       userMessage = 'Too many requests. Please try again in a moment.';
-      console.error('⚠️ RATE LIMIT: Alpaca API rate limit exceeded');
     } else if (errorMessage.includes('timeout') || errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ETIMEDOUT')) {
-      // Network/connectivity issues
       statusCode = 503;
       userMessage = 'Trading service temporarily unavailable. Please try again.';
-      console.error('🔴 NETWORK ERROR: Cannot reach Alpaca API');
     }
 
     return NextResponse.json(

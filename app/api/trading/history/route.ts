@@ -32,19 +32,15 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('❌ Database error fetching trade history:', error);
       return NextResponse.json(
         { error: 'Failed to fetch trade history' },
         { status: 500 }
       );
     }
 
-    console.log(`✅ Fetched ${data?.length || 0} trades from database`);
-
     return NextResponse.json({ trades: data || [] });
 
   } catch (error) {
-    console.error('❌ API Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

@@ -222,8 +222,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
         description: 'Your previous agent debate has been restored.',
       })
     },
-    onError: (error: Error) => {
-      console.error('Failed to restore conversation:', error)
+    onError: () => {
       // Silent fail - user can just start a new debate
     },
   })
@@ -341,7 +340,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
           setAvailableModels(data.models)
         }
       })
-      .catch(err => console.error('Failed to fetch models:', err))
+      .catch(() => { /* Silent fail */ })
   }, [])
   
   // Calculate cost estimate when parameters change
@@ -404,8 +403,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
       } else {
         throw new Error(data.message || 'No question generated')
       }
-    } catch (error) {
-      console.error('Question generation error:', error)
+    } catch {
       // Handle error - could show a toast or set an error state
     } finally {
       setIsGeneratingQuestion(false)
@@ -673,7 +671,6 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   // Store search capabilities per agent
                   setSearchCapabilities(data.agents || [])
                   setAllModelsHaveNativeSearch(data.duckDuckGoCount === 0)
-                  console.log('Search capabilities received:', data.agents)
                   setCurrentPhase(`🔍 Search analysis: ${data.nativeSearchCount} native, ${data.duckDuckGoCount} DuckDuckGo`)
                   break
 
@@ -961,7 +958,6 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   break
                   
                 case 'consensus_comparison_completed':
-                  console.log('Consensus comparison completed:', JSON.stringify(data.consensus, null, 2))
                   // Store consensus comparison data temporarily
                   if (data.consensus) {
                     (window as any).tempConsensusData = data.consensus
@@ -993,13 +989,7 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   }))
                   // Use stored consensus data if not in synthesis event
                   const consensusComparisonData = data.consensusComparison || (window as any).tempConsensusData || null
-                  
-                  console.log('Synthesis completed data:', {
-                    hasComparison: !!data.comparisonResponse,
-                    hasConsensus: !!consensusComparisonData,
-                    consensusData: JSON.stringify(consensusComparisonData, null, 2),
-                    tempConsensusData: JSON.stringify((window as any).tempConsensusData, null, 2)
-                  })
+
                   // Create debate session from collected data
                   const session = {
                     id: crypto.randomUUID(),
@@ -1064,12 +1054,6 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                       followUpQuestions: []
                     }
                   }
-                  console.log('Setting debate session with consensusComparison:', {
-                    hasConsensus: !!session.consensusComparison,
-                    consensusData: session.consensusComparison,
-                    // hasDisagreementAnalysis: removed - using simple frontend indicators
-                    // disagreementAnalysis: removed - using simple frontend indicators
-                  })
                   setDebateSession(session as any)
 
                   // Save conversation to database if user is authenticated
@@ -1092,11 +1076,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
 
                       // Enable persistence: update URL and localStorage
                       saveConversation(conversation.id)
-
-                      console.log('Debate conversation saved:', conversation.id)
                     }
-                  } catch (saveError) {
-                    console.error('Failed to save debate conversation:', saveError)
+                  } catch {
                     toast({
                       variant: "default",
                       title: "Save Warning",
@@ -1131,14 +1112,13 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
                   })
                   break
               }
-            } catch (e) {
-              console.error('Failed to parse SSE data:', e)
+            } catch {
+              // Silent fail for SSE parsing errors
             }
           }
         }
       }
     } catch (err) {
-      console.error('Debate streaming error:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
       setIsLoading(false)
       isLoadingRef.current = false
@@ -1171,7 +1151,6 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
     if (!continueRound2) {
       setDebateSession(null)
       // Switch to debate tab immediately
-      console.log('Switching to debate tab')
       setActiveTab('debate')
       
       // Initialize model statuses - all start as "thinking"
@@ -1306,11 +1285,8 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
 
             // Enable persistence: update URL and localStorage
             saveConversation(conversation.id)
-
-            console.log('Debate conversation saved:', conversation.id)
           }
-        } catch (saveError) {
-          console.error('Failed to save debate conversation:', saveError)
+        } catch {
           toast({
             variant: "default",
             title: "Save Warning",
@@ -1340,7 +1316,6 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
         throw new Error(data.error || 'Debate failed')
       }
     } catch (err) {
-      console.error('Debate error:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsLoading(false)

@@ -244,15 +244,9 @@ export async function POST(request: NextRequest) {
     const targetSymbol = body.targetSymbol;
     const researchMode = body.researchMode || 'hybrid';
 
-    const symbolText = targetSymbol ? ` on ${targetSymbol.toUpperCase()}` : '';
-    console.log('🎭 Starting agent debate for', timeframe, 'trading decision' + symbolText + '...');
-    console.log('📋 Selected models:', { analystModel, criticModel, synthesizerModel });
-
     // Step 1: Get Alpaca account info and positions
     const account = await getAccount();
     const positions = await getPositions();
-    console.log('💰 Account balance:', account.portfolio_value);
-    console.log('📊 Current positions:', positions.length);
 
     // Step 2: Validate target symbol is provided
     if (!targetSymbol) {
@@ -263,16 +257,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 3: RUN EXHAUSTIVE RESEARCH PIPELINE (4 specialized agents)
-    console.log(`\n🔬 PHASE 1: Running exhaustive research pipeline for ${targetSymbol.toUpperCase()}...`);
     const researchReport = await runResearchAgents(
       targetSymbol,
       timeframe as TradingTimeframe,
       account
     );
-    console.log(`✅ Research complete: ${researchReport.totalToolCalls} tools used, ${(researchReport.researchDuration / 1000).toFixed(1)}s duration\n`);
 
     // Step 4: Generate trading prompt WITH research findings (no tools needed)
-    console.log('🔬 PHASE 2: Debate agents analyzing research findings...');
     const date = new Date().toISOString().split('T')[0];
     const researchSection = formatResearchReportForPrompt(researchReport);
     const baseTradingPrompt = generateEnhancedTradingPromptWithData(
@@ -302,10 +293,8 @@ export async function POST(request: NextRequest) {
     };
 
     // Round 1: Initial positions
-    console.log('🔄 Round 1: Initial agent positions...');
 
     // Analyst (Dynamic model)
-    console.log(`📊 Analyst (${getModelName(analystModel)}) analyzing research...`);
     const analystPrompt = `${basePrompt}\n\n${ANALYST_PROMPT}`;
     const analystProvider = getProviderForModel(analystModel, providers);
     const analystResult = await analystProvider.query(analystPrompt, {
@@ -322,7 +311,6 @@ export async function POST(request: NextRequest) {
     analystDecision.toolCallCount = 0;
 
     // Critic (Dynamic model)
-    console.log(`🔍 Critic (${getModelName(criticModel)}) evaluating recommendation...`);
     const criticPrompt = `${basePrompt}\n\n${CRITIC_PROMPT.replace('{analystDecision}', JSON.stringify(analystDecision))}`;
     const criticProvider = getProviderForModel(criticModel, providers);
     const criticResult = await criticProvider.query(criticPrompt, {
@@ -339,7 +327,6 @@ export async function POST(request: NextRequest) {
     criticDecision.toolCallCount = 0;
 
     // Synthesizer (Dynamic model)
-    console.log(`⚖️  Synthesizer (${getModelName(synthesizerModel)}) balancing perspectives...`);
     const synthesizerPrompt = `${basePrompt}\n\n${SYNTHESIZER_PROMPT
       .replace('{analystDecision}', JSON.stringify(analystDecision))
       .replace('{criticDecision}', JSON.stringify(criticDecision))}`;
@@ -363,10 +350,7 @@ export async function POST(request: NextRequest) {
       { role: 'synthesizer' as const, name: getModelName(synthesizerModel), decision: synthesizerDecision },
     ];
 
-    console.log('✅ Round 1 complete');
-
     // Round 2: Refinement based on full debate
-    console.log('🔄 Round 2: Refining positions after debate...');
 
     const round1Summary = {
       analystDecision: JSON.stringify(analystDecision),
@@ -375,7 +359,6 @@ export async function POST(request: NextRequest) {
     };
 
     // Round 2 Analyst refinement
-    console.log(`📊 Analyst (${getModelName(analystModel)}) refining position...`);
     const analystR2Prompt = `${basePrompt}\n\n${ROUND2_REFINEMENT_PROMPT
       .replace('{role}', 'ANALYST')
       .replace('{analystDecision}', round1Summary.analystDecision)
@@ -395,7 +378,6 @@ export async function POST(request: NextRequest) {
     analystR2Decision.toolCallCount = 0;
 
     // Round 2 Critic refinement
-    console.log(`🔍 Critic (${getModelName(criticModel)}) refining evaluation...`);
     const criticR2Prompt = `${basePrompt}\n\n${ROUND2_REFINEMENT_PROMPT
       .replace('{role}', 'CRITIC')
       .replace('{analystDecision}', round1Summary.analystDecision)
@@ -415,7 +397,6 @@ export async function POST(request: NextRequest) {
     criticR2Decision.toolCallCount = 0;
 
     // Round 2 Synthesizer final decision
-    console.log(`⚖️  Synthesizer (${getModelName(synthesizerModel)}) making final decision...`);
     const synthesizerR2Prompt = `${basePrompt}\n\n${ROUND2_REFINEMENT_PROMPT
       .replace('{role}', 'SYNTHESIZER')
       .replace('{analystDecision}', round1Summary.analystDecision)
@@ -440,8 +421,6 @@ export async function POST(request: NextRequest) {
       { role: 'synthesizer' as const, name: getModelName(synthesizerModel), decision: synthesizerR2Decision },
     ];
 
-    console.log('✅ Round 2 complete');
-
     // Final decision is the Round 2 Synthesizer's decision
     const finalDecision = {
       ...synthesizerR2Decision,
@@ -453,9 +432,6 @@ export async function POST(request: NextRequest) {
       round2,
       finalDecision,
     };
-
-    console.log('🎭 Debate complete. Final decision:', finalDecision.action);
-    console.log('🔬 Research metadata: ' + researchReport.totalToolCalls + ' total tool calls\n');
 
     // Return debate results AND research metadata for transparency
     return NextResponse.json({

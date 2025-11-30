@@ -162,14 +162,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const symbolText = targetSymbol ? ` on ${targetSymbol.toUpperCase()}` : '';
-    console.log('🤝 Getting consensus from', selectedModels.length, 'models for', timeframe, 'trading' + symbolText + '...');
-
     // Step 1: Get Alpaca account info and positions
     const account = await getAccount();
     const positions = await getPositions();
-    console.log('💰 Account balance:', account.portfolio_value);
-    console.log('📊 Current positions:', positions.length);
 
     // Step 2: Validate target symbol is provided
     if (!targetSymbol) {
@@ -181,33 +176,25 @@ export async function POST(request: NextRequest) {
 
     // Step 3: RUN EXHAUSTIVE RESEARCH PIPELINE (4 specialized agents)
     // With caching: Check cache first, run fresh research if cache miss/expired
-    console.log(`\n🔬 PHASE 1: Fetching research for ${targetSymbol.toUpperCase()}...`);
-
     let researchReport: ResearchReport;
     const cached = await researchCache.get(targetSymbol, timeframe as TradingTimeframe);
 
     if (cached) {
       // Cache hit! Reuse existing research
-      console.log(`✅ Using cached research (saved 30-40 API calls!)`);
       researchReport = cached;
-      console.log(`📊 Cached research stats: ${researchReport.totalToolCalls} tools used, ${(researchReport.researchDuration / 1000).toFixed(1)}s original duration\n`);
     } else {
       // Cache miss - run fresh research
-      console.log(`💨 Cache miss - running fresh research pipeline...`);
       researchReport = await runResearchAgents(
         targetSymbol,
         timeframe as TradingTimeframe,
         account
       );
-      console.log(`✅ Research complete: ${researchReport.totalToolCalls} tools used, ${(researchReport.researchDuration / 1000).toFixed(1)}s duration`);
 
       // Cache the results for next time
       await researchCache.set(targetSymbol, timeframe as TradingTimeframe, researchReport);
-      console.log(`💾 Research cached for future queries\n`);
     }
 
     // Step 4: Generate trading prompt WITH research findings (no tools needed)
-    console.log('🔬 PHASE 2: Decision models analyzing research findings...');
     const date = new Date().toISOString().split('T')[0];
     const researchSection = formatResearchReportForPrompt(researchReport);
 
@@ -222,17 +209,10 @@ export async function POST(request: NextRequest) {
     );
 
     // Insert research findings into prompt (BEFORE the JSON format instruction)
-    console.log('🔍 DEBUG: Research section length:', researchSection.length, 'chars');
-    console.log('🔍 DEBUG: Base prompt length:', basePrompt.length, 'chars');
-
     const prompt = basePrompt.replace(
       '⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️',
       `${researchSection}\n\n⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️`
     );
-
-    console.log('🔍 DEBUG: Final prompt length:', prompt.length, 'chars');
-    console.log('🔍 DEBUG: Research injected?', prompt.length > basePrompt.length);
-    console.log('🔍 DEBUG: Prompt includes research report?', prompt.includes('EXHAUSTIVE RESEARCH REPORT'));
 
     // Step 5: Call each AI model in parallel (NO TOOLS - analyzing research)
     const decisionsPromises = selectedModels.map(async (modelId: string) => {
@@ -243,9 +223,6 @@ export async function POST(request: NextRequest) {
         }
 
         const provider = PROVIDERS[providerType];
-        const modelName = getModelDisplayName(modelId);
-
-        console.log(`📊 ${modelName}: Analyzing research findings...`);
 
         const result = await provider.query(prompt, {
           model: modelId,
@@ -259,14 +236,11 @@ export async function POST(request: NextRequest) {
 
         // Parse JSON response with robust extraction
         const cleanedResponse = extractJSON(result.response);
-        console.log(`📝 ${modelName} cleaned response (first 500 chars):`, cleanedResponse.substring(0, 500));
 
         let decision: TradeDecision = JSON.parse(cleanedResponse);
-        console.log(`📊 ${modelName} parsed decision:`, JSON.stringify(decision, null, 2).substring(0, 500));
 
         // Handle malformed responses (some models return just the reasoning object)
         if (!decision.action && (decision as any).bullishCase) {
-          console.log(`⚠️ ${modelName} returned malformed response (reasoning only), wrapping it...`);
           decision = {
             action: 'HOLD' as const,
             symbol: targetSymbol || 'UNKNOWN',
@@ -282,8 +256,6 @@ export async function POST(request: NextRequest) {
         // Mark that this decision was based on exhaustive research
         decision.toolsUsed = false; // Decision model didn't use tools
         decision.toolCallCount = 0; // But research agents used 30-40 tools
-
-        console.log(`  ✅ ${modelName} decision: ${decision.action}`);
 
         return decision;
       } catch (error) {
@@ -309,8 +281,6 @@ export async function POST(request: NextRequest) {
       HOLD: decisions.filter(d => d.action === 'HOLD').length,
     };
 
-    console.log('🗳️  Vote breakdown:', votes);
-
     // Determine consensus action (majority wins)
     let consensusAction: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
     const maxVotes = Math.max(votes.BUY, votes.SELL, votes.HOLD);
@@ -323,10 +293,7 @@ export async function POST(request: NextRequest) {
       consensusAction = 'HOLD';
     }
 
-    console.log('✅ Consensus action:', consensusAction);
-
     // Step 5: Run LLM Judge Analysis (uses Llama 3.3 70B for intelligent synthesis)
-    console.log('🧑‍⚖️  Running LLM judge analysis...');
     const judgePrompt = generateTradingJudgePrompt(decisions, votes, consensusAction);
 
     // Use Groq's Llama 3.3 70B (free) as judge
@@ -403,10 +370,6 @@ export async function POST(request: NextRequest) {
       judgeTokensUsed: judgeResult.tokenUsage, // Track judge API usage
       riskLevel: judgeResult.riskLevel, // From LLM judge risk assessment
     };
-
-    console.log('✅ Consensus result:', consensus);
-    console.log('📊 Returning individual decisions:', decisions.length);
-    console.log('🔬 Research metadata: ' + researchReport.totalToolCalls + ' total tool calls\n');
 
     // Return consensus, decisions, AND full research report for Phase 4 transparency
     return NextResponse.json({

@@ -154,10 +154,6 @@ export async function POST(request: NextRequest) {
 
           if (researchReport) {
             // Cache hit! Skip research and use cached data
-            console.log(`✅ Cache hit for ${symbol}-${timeframe}!`);
-            console.log(`📊 Age: ${Math.floor((Date.now() - new Date(researchReport.timestamp).getTime()) / 60000)}min`);
-            console.log(`💰 Saved 30-40 API calls!`);
-
             // Send cache hit event
             sendEvent({
               type: 'phase_start',
@@ -202,8 +198,6 @@ export async function POST(request: NextRequest) {
             });
           } else {
             // Cache miss - run fresh research
-            console.log(`💨 Cache miss for ${symbol}-${timeframe} - running fresh research...`);
-
             // Create progress callback that streams events
             const onProgress: ProgressCallback = (event) => {
               sendEvent(event);
@@ -219,7 +213,6 @@ export async function POST(request: NextRequest) {
 
             // Cache the results for next time
             await researchCache.set(symbol, timeframe, researchReport);
-            console.log(`💾 Research cached for ${symbol}-${timeframe}`);
           }
 
           // PHASE 2: DECISION MODELS
@@ -282,23 +275,13 @@ export async function POST(request: NextRequest) {
                 throw new Error(`Empty response from provider (possible rate limit exhaustion)`);
               }
 
-              // ORIGINAL WORKING CODE: Simple extraction and parse
-              console.log(`\n📥 [${modelName}] Raw response length: ${result.response.length} chars`);
-              console.log(`📥 [${modelName}] First 200 chars:`, result.response.substring(0, 200));
-              console.log(`📥 [${modelName}] Last 200 chars:`, result.response.substring(Math.max(0, result.response.length - 200)));
-
+              // Extract and parse JSON response
               const cleanedResponse = extractJSON(result.response);
-              console.log(`✂️  [${modelName}] Cleaned response length: ${cleanedResponse.length} chars`);
-              console.log(`✂️  [${modelName}] Cleaned first 200:`, cleanedResponse.substring(0, 200));
-              console.log(`✂️  [${modelName}] Cleaned last 200:`, cleanedResponse.substring(Math.max(0, cleanedResponse.length - 200)));
 
               let decision: TradeDecision;
               try {
                 decision = JSON.parse(cleanedResponse);
-                console.log(`✅ [${modelName}] JSON parsed successfully`);
               } catch (parseError) {
-                console.error(`❌ [${modelName}] JSON parse error:`, parseError instanceof Error ? parseError.message : 'Unknown');
-                console.error(`❌ [${modelName}] Failed JSON:`, cleanedResponse);
                 throw parseError; // Let outer catch handle it
               }
 
@@ -333,8 +316,6 @@ export async function POST(request: NextRequest) {
               return decision;
             } catch (error) {
               // Handle errors per-model (don't crash entire stream)
-              console.error(`Model ${modelName} failed:`, error);
-
               const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
               // Send error event
@@ -365,8 +346,6 @@ export async function POST(request: NextRequest) {
             controller.close();
             return;
           }
-
-          console.log(`✅ ${decisions.length}/${selectedModels.length} models succeeded`);
 
           // Calculate votes
           const votes = { BUY: 0, SELL: 0, HOLD: 0 };
@@ -461,8 +440,6 @@ export async function POST(request: NextRequest) {
           controller.close();
 
         } catch (error) {
-          console.error('SSE Stream Error:', error);
-
           // Send error event
           sendEvent({
             type: 'error',
@@ -487,7 +464,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Request parsing error:', error);
     return new Response(
       JSON.stringify({ error: 'Invalid request' }),
       { status: 400, headers: { 'Content-Type': 'application/json' } }

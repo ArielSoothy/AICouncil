@@ -156,14 +156,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const symbolText = targetSymbol ? ` on ${targetSymbol.toUpperCase()}` : '';
-    console.log('🤖 Getting trading decisions from', selectedModels.length, 'models for', timeframe, 'trading' + symbolText + '...');
-
     // Step 1: Get Alpaca account info and positions
     const account = await getAccount();
     const positions = await getPositions();
-    console.log('💰 Account balance:', account.portfolio_value);
-    console.log('📊 Current positions:', positions.length);
 
     // Step 2: Validate target symbol (required for research)
     if (!targetSymbol) {
@@ -174,16 +169,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 3: RUN EXHAUSTIVE RESEARCH PIPELINE (4 specialized agents)
-    console.log(`\n🔬 PHASE 1: Running exhaustive research pipeline for ${targetSymbol.toUpperCase()}...`);
     const researchReport = await runResearchAgents(
       targetSymbol,
       timeframe as TradingTimeframe,
       account
     );
-    console.log(`✅ Research complete: ${researchReport.totalToolCalls} tools used, ${(researchReport.researchDuration / 1000).toFixed(1)}s duration\n`);
 
     // Step 4: Generate trading prompt WITH research findings (no tools needed)
-    console.log('🔬 PHASE 2: Decision models analyzing research findings...');
     const date = new Date().toISOString().split('T')[0];
     const researchSection = formatResearchReportForPrompt(researchReport);
     const basePrompt = generateEnhancedTradingPrompt(
@@ -211,8 +203,6 @@ export async function POST(request: NextRequest) {
         const provider = PROVIDERS[providerType];
         const modelName = getModelDisplayName(modelId);
 
-        console.log(`📊 ${modelName}: Analyzing research findings...`);
-
         const result = await provider.query(prompt, {
           model: modelId,
           provider: providerType,
@@ -235,8 +225,6 @@ export async function POST(request: NextRequest) {
           toolCallCount: 0, // But research agents used 30-40 tools
         };
 
-        console.log(`  ✅ ${modelName} decision: ${decision.action}`);
-
         return decisionWithTracking;
       } catch (error) {
         const modelName = getModelDisplayName(modelId);
@@ -252,9 +240,6 @@ export async function POST(request: NextRequest) {
     });
 
     const decisions = await Promise.all(decisionsPromises);
-
-    console.log('✅ Got', decisions.length, 'trading decisions');
-    console.log('🔬 Research metadata: ' + researchReport.totalToolCalls + ' total tool calls\n');
 
     // Return decisions, context, AND research metadata for transparency
     return NextResponse.json({
