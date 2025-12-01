@@ -13,6 +13,7 @@ import { ModelConfig } from '@/types/consensus'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
 import { getModelsForPreset } from '@/lib/config/model-presets'
 import { TradeCard, type TradeRecommendation } from './trade-card'
+import { InputModeSelector, type InputMode } from './input-mode-selector'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -57,6 +58,7 @@ export function IndividualMode() {
   const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
   const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper'>('paper')
   const [showTradeCard, setShowTradeCard] = useState(true)
+  const [inputMode, setInputMode] = useState<InputMode>('research')
 
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -294,21 +296,20 @@ export function IndividualMode() {
           disabled={loading}
         />
 
+        {/* Input Mode Selector - Research/Portfolio/Position */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-muted-foreground">
-            📊 Analyze Specific Stock (Optional)
+            📊 Analysis Target
           </label>
-          <input
-            type="text"
-            value={targetSymbol}
-            onChange={(e) => setTargetSymbol(e.target.value.toUpperCase())}
-            placeholder="Enter symbol (e.g., TSLA, AAPL) or leave empty"
+          <InputModeSelector
+            onSymbolSelect={(symbol) => {
+              setTargetSymbol(symbol)
+            }}
+            onModeChange={setInputMode}
             disabled={loading}
-            className="w-full px-4 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            initialSymbol={targetSymbol}
+            showPortfolioMode={true}
           />
-          <p className="text-xs text-muted-foreground">
-            💡 Leave empty for general market analysis
-          </p>
         </div>
 
         <TimeframeSelector

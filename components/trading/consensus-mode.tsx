@@ -11,6 +11,7 @@ import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { TradingHistoryDropdown } from './trading-history-dropdown'
 import { ResearchActivityPanel } from './research-activity-panel' // Phase 4: Research transparency
 import { TradeCard, extractTradeRecommendation, type TradeRecommendation } from './trade-card'
+import { InputModeSelector, type InputMode } from './input-mode-selector'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { ModelConfig } from '@/types/consensus'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
@@ -69,6 +70,7 @@ export function ConsensusMode() {
   const [tradeRecommendation, setTradeRecommendation] = useState<TradeRecommendation | null>(null)
   const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper'>('paper')
   const [showTradeCard, setShowTradeCard] = useState(true)
+  const [inputMode, setInputMode] = useState<InputMode>('research')
 
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -321,21 +323,24 @@ export function ConsensusMode() {
           disabled={loading}
         />
 
+        {/* Input Mode Selector - Research/Portfolio/Position */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-muted-foreground">
-            📊 Analyze Specific Stock (Optional)
+            📊 Analysis Target
           </label>
-          <input
-            type="text"
-            value={targetSymbol}
-            onChange={(e) => setTargetSymbol(e.target.value.toUpperCase())}
-            placeholder="Enter symbol (e.g., TSLA, AAPL) or leave empty"
+          <InputModeSelector
+            onSymbolSelect={(symbol) => {
+              setTargetSymbol(symbol)
+              // Auto-trigger analysis for portfolio mode
+              if (symbol === '__PORTFOLIO__') {
+                // Portfolio mode selected - will be handled separately
+              }
+            }}
+            onModeChange={setInputMode}
             disabled={loading}
-            className="w-full px-4 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            initialSymbol={targetSymbol}
+            showPortfolioMode={true}
           />
-          <p className="text-xs text-muted-foreground">
-            💡 Leave empty for general market analysis
-          </p>
         </div>
 
         <TimeframeSelector
