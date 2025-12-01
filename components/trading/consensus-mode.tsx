@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Loader2, TrendingUp, TrendingDown, Minus, Users, CheckCircle, AlertCircle, XCircle, RotateCcw } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Minus, Users, CheckCircle, AlertCircle, XCircle, RotateCcw, ShoppingCart } from 'lucide-react'
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
 import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { TradingHistoryDropdown } from './trading-history-dropdown'
 import { ResearchActivityPanel } from './research-activity-panel' // Phase 4: Research transparency
+import { TradeCard, extractTradeRecommendation, type TradeRecommendation } from './trade-card'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { ModelConfig } from '@/types/consensus'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
@@ -65,6 +66,9 @@ export function ConsensusMode() {
   const [decisions, setDecisions] = useState<TradingDecision[]>([])
   const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
   const [researchData, setResearchData] = useState<any | null>(null) // Phase 4: Research pipeline data
+  const [tradeRecommendation, setTradeRecommendation] = useState<TradeRecommendation | null>(null)
+  const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper'>('paper')
+  const [showTradeCard, setShowTradeCard] = useState(true)
 
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -132,11 +136,39 @@ export function ConsensusMode() {
     setSelectedModels(presetModels)
   }, [globalTier])
 
+  // Fetch broker environment on mount
+  useEffect(() => {
+    fetch('/api/trading/portfolio')
+      .then(res => res.json())
+      .then(data => {
+        setBrokerEnv(data.broker?.environment || 'paper')
+      })
+      .catch(() => setBrokerEnv('paper'))
+  }, [])
+
+  // Execute trade via API
+  const handleExecuteTrade = async (symbol: string, action: 'buy' | 'sell', quantity: number) => {
+    const response = await fetch('/api/trading/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, action, quantity })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to execute trade')
+    }
+
+    return response.json()
+  }
+
   // Reset/clear results and start new analysis
   const handleStartNew = () => {
     setConsensus(null)
     setDecisions([])
     setProgressSteps([])
+    setTradeRecommendation(null)
+    setShowTradeCard(true)
     // Remove URL parameter
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
@@ -205,6 +237,11 @@ export function ConsensusMode() {
       setConsensus(data.consensus)
       setDecisions(data.decisions || [])
       setResearchData(data.research || null) // Phase 4: Capture research pipeline data
+
+      // Create trade recommendation from consensus
+      const recommendation = extractTradeRecommendation(data.consensus, 'consensus')
+      setTradeRecommendation(recommendation)
+      setShowTradeCard(true)
 
       // Save conversation for history and persistence (non-blocking, silent fail)
       // Fire-and-forget: 401 errors are expected for non-authenticated users
@@ -487,6 +524,22 @@ export function ConsensusMode() {
             )}
           </div>
 
+        </div>
+      )}
+
+      {/* Trade Action Card */}
+      {consensus && tradeRecommendation && showTradeCard && (
+        <div className="bg-card rounded-lg border p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <ShoppingCart className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold">Take Action</h3>
+          </div>
+          <TradeCard
+            recommendation={tradeRecommendation}
+            brokerEnvironment={brokerEnv}
+            onExecute={handleExecuteTrade}
+            onDismiss={() => setShowTradeCard(false)}
+          />
         </div>
       )}
 

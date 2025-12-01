@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Minus, Users, MessageSquare, ChevronDown, ChevronUp, RotateCcw, ShoppingCart } from 'lucide-react'
 import { DebateTranscript, createDebateMessage, type DebateMessage } from './debate-transcript'
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName } from '@/lib/trading/models-config'
@@ -12,6 +12,7 @@ import { TradingHistoryDropdown } from './trading-history-dropdown'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
 import { getDebateRolesForPreset, DEBATE_PRESETS, getDebatePresetConfig } from '@/lib/config/model-presets'
+import { TradeCard, type TradeRecommendation } from './trade-card'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -57,6 +58,9 @@ export function DebateMode() {
   const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [targetSymbol, setTargetSymbol] = useState<string>('')
+  const [tradeRecommendation, setTradeRecommendation] = useState<TradeRecommendation | null>(null)
+  const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper'>('paper')
+  const [showTradeCard, setShowTradeCard] = useState(true)
 
   // Model selection for each debate role (initialized with Pro preset)
   const [analystModel, setAnalystModel] = useState(() => getDebateRolesForPreset('pro').analyst)
@@ -95,12 +99,40 @@ export function DebateMode() {
     setSynthesizerModel(roles.synthesizer)
   }, [globalTier])
 
+  // Fetch broker environment on mount
+  useEffect(() => {
+    fetch('/api/trading/portfolio')
+      .then(res => res.json())
+      .then(data => {
+        setBrokerEnv(data.broker?.environment || 'paper')
+      })
+      .catch(() => setBrokerEnv('paper'))
+  }, [])
+
+  // Execute trade via API
+  const handleExecuteTrade = async (symbol: string, action: 'buy' | 'sell', quantity: number) => {
+    const response = await fetch('/api/trading/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, action, quantity })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to execute trade')
+    }
+
+    return response.json()
+  }
+
   // Reset/clear results and start new analysis
   const handleStartNew = () => {
     setDebate(null)
     setActiveRound(1)
     setTranscriptMessages([])
     setProgressSteps([])
+    setTradeRecommendation(null)
+    setShowTradeCard(true)
     // Remove URL parameter
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
@@ -188,6 +220,24 @@ export function DebateMode() {
       ])
 
       setDebate(data.debate)
+
+      // Create trade recommendation from final decision
+      if (data.debate?.finalDecision) {
+        const fd = data.debate.finalDecision
+        const recommendation: TradeRecommendation = {
+          symbol: fd.symbol || 'N/A',
+          action: fd.action,
+          suggestedQuantity: fd.quantity || 1,
+          currentPrice: 0, // Will be fetched from portfolio
+          rationale: typeof fd.reasoning === 'string'
+            ? fd.reasoning
+            : fd.consensus || 'Based on debate analysis',
+          confidence: fd.confidence,
+          source: 'debate'
+        }
+        setTradeRecommendation(recommendation)
+        setShowTradeCard(true)
+      }
 
       // Save conversation for history and persistence
       try {
@@ -551,6 +601,22 @@ export function DebateMode() {
               </div>
             </div>
           </div>
+
+          {/* Trade Action Card */}
+          {tradeRecommendation && showTradeCard && (
+            <div className="bg-card rounded-lg border p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <ShoppingCart className="w-5 h-5 text-primary" />
+                <h3 className="text-lg font-semibold">Take Action</h3>
+              </div>
+              <TradeCard
+                recommendation={tradeRecommendation}
+                brokerEnvironment={brokerEnv}
+                onExecute={handleExecuteTrade}
+                onDismiss={() => setShowTradeCard(false)}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

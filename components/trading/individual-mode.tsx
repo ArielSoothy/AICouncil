@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
+import { Loader2, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, RotateCcw, ShoppingCart } from 'lucide-react'
 import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
 import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
 import { TradingModelSelector } from './trading-model-selector'
@@ -12,6 +12,7 @@ import { useConversationPersistence } from '@/hooks/use-conversation-persistence
 import { ModelConfig } from '@/types/consensus'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
 import { getModelsForPreset } from '@/lib/config/model-presets'
+import { TradeCard, type TradeRecommendation } from './trade-card'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -54,6 +55,8 @@ export function IndividualMode() {
   const [showContext, setShowContext] = useState(false)
   const [contextSteps, setContextSteps] = useState<ReasoningStep[]>([])
   const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
+  const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper'>('paper')
+  const [showTradeCard, setShowTradeCard] = useState(true)
 
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -93,11 +96,59 @@ export function IndividualMode() {
     setSelectedModels(presetModels)
   }, [globalTier])
 
+  // Fetch broker environment on mount
+  useEffect(() => {
+    fetch('/api/trading/portfolio')
+      .then(res => res.json())
+      .then(data => {
+        setBrokerEnv(data.broker?.environment || 'paper')
+      })
+      .catch(() => setBrokerEnv('paper'))
+  }, [])
+
+  // Execute trade via API
+  const handleExecuteTrade = async (symbol: string, action: 'buy' | 'sell', quantity: number) => {
+    const response = await fetch('/api/trading/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, action, quantity })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to execute trade')
+    }
+
+    return response.json()
+  }
+
+  // Get best recommendation from decisions (highest confidence non-HOLD)
+  const getBestRecommendation = (): TradeRecommendation | null => {
+    const actionableDecisions = decisions.filter(d => d.action !== 'HOLD' && d.symbol)
+    if (actionableDecisions.length === 0) return null
+
+    // Sort by confidence descending
+    const best = actionableDecisions.sort((a, b) => b.confidence - a.confidence)[0]
+
+    return {
+      symbol: best.symbol!,
+      action: best.action,
+      suggestedQuantity: best.quantity || 1,
+      currentPrice: 0,
+      rationale: typeof best.reasoning === 'string'
+        ? best.reasoning
+        : best.reasoning.bullishCase || best.reasoning.bearishCase || 'Based on individual analysis',
+      confidence: best.confidence,
+      source: `individual (${getModelDisplayName(best.model)})`
+    }
+  }
+
   // Reset/clear results and start new analysis
   const handleStartNew = () => {
     setDecisions([])
     setContext(null)
     setContextSteps([])
+    setShowTradeCard(true)
     setProgressSteps([])
     // Remove URL parameter
     if (typeof window !== 'undefined') {
@@ -473,6 +524,28 @@ export function IndividualMode() {
             </div>
           ))}
           </div>
+
+          {/* Trade Action Card - Best Recommendation */}
+          {(() => {
+            const bestRec = getBestRecommendation()
+            return bestRec && showTradeCard ? (
+              <div className="bg-card rounded-lg border p-6 mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <ShoppingCart className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Best Recommendation</h3>
+                  <span className="text-sm text-muted-foreground">
+                    (Highest confidence actionable trade)
+                  </span>
+                </div>
+                <TradeCard
+                  recommendation={bestRec}
+                  brokerEnvironment={brokerEnv}
+                  onExecute={handleExecuteTrade}
+                  onDismiss={() => setShowTradeCard(false)}
+                />
+              </div>
+            ) : null
+          })()}
         </>
       )}
     </div>
