@@ -219,8 +219,8 @@ export function InputModeSelector({
                           <span className="text-muted-foreground">
                             {pos.quantity} shares
                           </span>
-                          <span className={pos.unrealizedPL >= 0 ? 'text-green-600' : 'text-red-600'}>
-                            {pos.unrealizedPL >= 0 ? '+' : ''}{pos.unrealizedPLPercent.toFixed(1)}%
+                          <span className={(pos.unrealizedPL || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {(pos.unrealizedPL || 0) >= 0 ? '+' : ''}{(pos.unrealizedPLPercent || 0).toFixed(1)}%
                           </span>
                         </div>
                       </div>
@@ -285,10 +285,10 @@ export function InputModeSelector({
                     >
                       <div className="font-mono font-bold text-sm">{pos.symbol}</div>
                       <div className="text-xs text-muted-foreground">
-                        {pos.quantity} @ ${pos.avgCost.toFixed(2)}
+                        {pos.quantity} @ ${(pos.avgCost || 0).toFixed(2)}
                       </div>
-                      <div className={`text-xs font-semibold ${pos.unrealizedPL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {pos.unrealizedPL >= 0 ? '+' : ''}${pos.unrealizedPL.toFixed(2)}
+                      <div className={`text-xs font-semibold ${(pos.unrealizedPL || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {(pos.unrealizedPL || 0) >= 0 ? '+' : ''}${(pos.unrealizedPL || 0).toFixed(2)}
                       </div>
                     </button>
                   )
