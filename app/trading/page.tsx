@@ -1,16 +1,17 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { Header } from '@/components/ui/header'
 import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
-import { TrendingUp, LineChart, Brain, Info } from 'lucide-react'
+import { TrendingUp, Brain, Info, Building2, TestTube } from 'lucide-react'
 import { ModeSelector, TradingMode } from '@/components/trading/mode-selector'
 import { ConsensusMode } from '@/components/trading/consensus-mode'
 import { DebateMode } from '@/components/trading/debate-mode'
 import { IndividualMode } from '@/components/trading/individual-mode'
 import { TradeHistory } from '@/components/trading/trade-history'
 import { PortfolioDisplay } from '@/components/trading/portfolio-display'
+import { BrokerStatusFull } from '@/components/trading/broker-status-badge'
 import { IS_PRODUCTION } from '@/lib/utils/environment'
 
 function TradingPageContent() {
@@ -18,8 +19,25 @@ function TradingPageContent() {
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
   const [selectedMode, setSelectedMode] = useState<TradingMode>('consensus')
+  const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper' | null>(null)
+  const [brokerName, setBrokerName] = useState<string | null>(null)
+
+  // Fetch broker info for dynamic header
+  useEffect(() => {
+    fetch('/api/trading/portfolio')
+      .then(res => res.json())
+      .then(data => {
+        setBrokerEnv(data.broker?.environment || 'paper')
+        setBrokerName(data.broker?.name || 'Alpaca')
+      })
+      .catch(() => {
+        setBrokerEnv('paper')
+        setBrokerName('Alpaca')
+      })
+  }, [])
 
   const effectiveUserTier = isGuestMode ? 'guest' : userTier
+  const isLive = brokerEnv === 'live'
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -28,31 +46,47 @@ function TradingPageContent() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-8">
             <div className="flex justify-center items-center gap-3 mb-4">
-              <TrendingUp className="w-10 h-10 text-green-600" />
+              {isLive ? (
+                <Building2 className="w-10 h-10 text-orange-600" />
+              ) : (
+                <TrendingUp className="w-10 h-10 text-green-600" />
+              )}
               <h1 className="text-4xl font-bold tracking-tight">
-                AI Paper Trading
+                {isLive ? 'AI Trading Analysis' : 'AI Paper Trading'}
               </h1>
             </div>
 
             <p className="text-xl text-muted-foreground mb-2">
-              Multi-Model Paper Trading Arena
+              {isLive
+                ? `Connected to ${brokerName || 'Live Broker'}`
+                : 'Multi-Model Paper Trading Arena'}
             </p>
 
             <p className="text-muted-foreground max-w-3xl mx-auto mb-4">
-              Compare how different AI models make trading decisions. Test consensus trading
-              and agent debate strategies with paper trading (no real money).
+              {isLive
+                ? 'Get AI-powered trading recommendations based on your real portfolio. No automatic execution - all decisions are yours.'
+                : 'Compare how different AI models make trading decisions. Test consensus trading and agent debate strategies with paper trading (no real money).'}
             </p>
 
             <div className="flex justify-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
-                <LineChart className="w-4 h-4" />
-                <span>$100,000 Paper Balance</span>
+                {isLive ? (
+                  <Building2 className="w-4 h-4 text-orange-600" />
+                ) : (
+                  <TestTube className="w-4 h-4 text-green-600" />
+                )}
+                <span>{isLive ? 'Real Account Data' : 'Paper Trading'}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Brain className="w-4 h-4" />
-                <span>3 Trading Modes</span>
+                <span>3 Analysis Modes</span>
               </div>
             </div>
+          </div>
+
+          {/* Broker Status - Prominent Display */}
+          <div className="mb-6 flex justify-center">
+            <BrokerStatusFull />
           </div>
 
           {/* Production Notice - Free Tier Only */}

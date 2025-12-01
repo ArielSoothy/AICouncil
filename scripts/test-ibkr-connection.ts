@@ -15,12 +15,12 @@
  *    - ./bin/run.sh root/conf.yaml
  *
  * 3. Authenticate via browser:
- *    - Open https://localhost:5000
+ *    - Open https://localhost:5050
  *    - Login with your IBKR credentials
  *    - Session lasts ~24 hours
  *
  * 4. Set environment variables:
- *    - IBKR_GATEWAY_URL=https://localhost:5000/v1/api
+ *    - IBKR_GATEWAY_URL=https://localhost:5050/v1/api
  *    - IBKR_ACCOUNT_ID=YOUR_ACCOUNT_ID (optional)
  *
  * Usage:
@@ -33,7 +33,7 @@ import * as https from 'https';
 import * as http from 'http';
 
 // Configuration
-const GATEWAY_URL = process.env.IBKR_GATEWAY_URL || 'https://localhost:5000/v1/api';
+const GATEWAY_URL = process.env.IBKR_GATEWAY_URL || 'https://localhost:5050/v1/api';
 const ACCOUNT_ID = process.env.IBKR_ACCOUNT_ID;
 
 // Colors for terminal output
@@ -136,7 +136,7 @@ async function testGatewayConnection(): Promise<boolean> {
 
     if (!status.authenticated) {
       log('\n⚠ Please authenticate:', 'yellow');
-      log('  1. Open https://localhost:5000 in your browser', 'dim');
+      log('  1. Open https://localhost:5050 in your browser', 'dim');
       log('  2. Login with your IBKR credentials', 'dim');
       log('  3. Re-run this test', 'dim');
       return false;
@@ -289,7 +289,7 @@ async function main() {
     log('\nNext steps:', 'yellow');
     log('  1. Download Client Portal Gateway from IBKR', 'dim');
     log('  2. Run: ./bin/run.sh root/conf.yaml', 'dim');
-    log('  3. Authenticate at https://localhost:5000', 'dim');
+    log('  3. Authenticate at https://localhost:5050', 'dim');
     log('  4. Re-run this test', 'dim');
     process.exit(1);
   }

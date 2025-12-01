@@ -5,6 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Loader2, DollarSign, TrendingUp, TrendingDown, Wallet, BarChart3 } from 'lucide-react'
 
 interface PortfolioData {
+  broker?: {
+    id: string
+    name: string
+    environment: string
+  }
   account: {
     portfolio_value: number
     cash: number
@@ -85,7 +90,9 @@ export function PortfolioDisplay() {
         <div>
           <h2 className="text-2xl font-bold">Portfolio Overview</h2>
           <p className="text-sm text-muted-foreground">
-            Real-time Alpaca Paper Trading Account
+            {portfolio.broker
+              ? `${portfolio.broker.name} ${portfolio.broker.environment === 'live' ? 'Live' : 'Paper'} Trading Account`
+              : 'Trading Account'}
           </p>
         </div>
         <Button onClick={fetchPortfolio} disabled={loading} variant="outline">

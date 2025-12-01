@@ -62,11 +62,11 @@ export class IBKRBroker implements IBroker {
     this.environment = environment;
 
     // IBKR Client Portal Gateway URL
-    // Default: localhost:5000 for local Gateway
+    // Default: localhost:5050 for local Gateway (port 5000 used by macOS)
     // Production: Your server running the Gateway
     this.config = {
       gatewayUrl:
-        process.env.IBKR_GATEWAY_URL || 'https://localhost:5000/v1/api',
+        process.env.IBKR_GATEWAY_URL || 'https://localhost:5050/v1/api',
       accountId: process.env.IBKR_ACCOUNT_ID,
     };
   }
@@ -153,27 +153,31 @@ export class IBKRBroker implements IBroker {
   }
 
   async getAccount(): Promise<BrokerAccount> {
+    // Auto-connect if not connected
     if (!this.accountId) {
-      throw new ConnectionError(this.id, 'Not connected. Call connect() first');
+      await this.connect();
     }
+
+    // Ensure accountId is set after connect
+    const accountId = this.accountId!;
 
     try {
       const summary = await this.request<any>(
-        `/portfolio/${this.accountId}/summary`
+        `/portfolio/${accountId}/summary`
       );
 
       return {
-        id: this.accountId,
-        accountNumber: this.accountId,
+        id: accountId,
+        accountNumber: accountId,
         brokerId: this.id,
         environment: this.environment,
         status: 'active',
         currency: summary.baseCurrency || 'USD',
         buyingPower: summary.buyingpower?.amount || 0,
-        cash: summary.availablefunds?.amount || 0,
+        cash: summary.totalcashvalue?.amount || 0, // Actual settled cash
         portfolioValue: summary.netliquidation?.amount || 0,
         equity: summary.netliquidation?.amount || 0,
-        lastEquity: summary.previousdaynlv?.amount || 0,
+        lastEquity: summary.previousdayequitywithloanvalue?.amount || 0, // Previous day equity
       };
     } catch (error) {
       throw new ConnectionError(this.id, 'Failed to get account summary', error);
@@ -181,13 +185,17 @@ export class IBKRBroker implements IBroker {
   }
 
   async getPositions(): Promise<BrokerPosition[]> {
+    // Auto-connect if not connected
     if (!this.accountId) {
-      throw new ConnectionError(this.id, 'Not connected');
+      await this.connect();
     }
+
+    // Ensure accountId is set after connect
+    const accountId = this.accountId!;
 
     try {
       const positions = await this.request<any[]>(
-        `/portfolio/${this.accountId}/positions/0`
+        `/portfolio/${accountId}/positions/0`
       );
 
       return positions.map((pos) => ({

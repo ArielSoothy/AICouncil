@@ -1,38 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAccount, getPositions } from '@/lib/alpaca/client';
+import { getActiveBroker } from '@/lib/brokers/broker-factory';
 
 export async function GET(request: NextRequest) {
   try {
+    // Get the active broker (Alpaca or IBKR based on env config)
+    const broker = getActiveBroker();
+
     // Fetch account and positions in parallel
     const [account, positions] = await Promise.all([
-      getAccount(),
-      getPositions(),
+      broker.getAccount(),
+      broker.getPositions(),
     ]);
 
+    // Calculate cost basis from positions
+    const totalCostBasis = positions.reduce((sum, pos) => {
+      return sum + (pos.avgEntryPrice * pos.quantity);
+    }, 0);
+
     const portfolioData = {
+      // Include broker info for UI display
+      broker: {
+        id: broker.id,
+        name: broker.name,
+        environment: broker.environment,
+      },
       account: {
-        portfolio_value: parseFloat(account.portfolio_value),
-        cash: parseFloat(account.cash),
-        buying_power: parseFloat(account.buying_power),
-        equity: parseFloat(account.equity),
-        last_equity: parseFloat(account.last_equity),
+        portfolio_value: account.portfolioValue,
+        cash: account.cash,
+        buying_power: account.buyingPower,
+        equity: account.equity,
+        last_equity: account.lastEquity,
       },
       positions: positions.map((pos) => ({
         symbol: pos.symbol,
-        qty: parseInt(pos.qty),
+        qty: pos.quantity,
         side: pos.side,
-        market_value: parseFloat(pos.market_value),
-        cost_basis: parseFloat(pos.cost_basis),
-        unrealized_pl: parseFloat(pos.unrealized_pl),
-        unrealized_plpc: parseFloat(pos.unrealized_plpc),
-        current_price: parseFloat(pos.current_price),
-        avg_entry_price: parseFloat(pos.avg_entry_price),
+        market_value: pos.marketValue,
+        cost_basis: pos.avgEntryPrice * pos.quantity,
+        unrealized_pl: pos.unrealizedPL,
+        unrealized_plpc: pos.unrealizedPLPercent,
+        current_price: pos.currentPrice,
+        avg_entry_price: pos.avgEntryPrice,
       })),
       performance: {
-        daily_pl: parseFloat(account.equity) - parseFloat(account.last_equity),
-        daily_pl_percent: ((parseFloat(account.equity) - parseFloat(account.last_equity)) / parseFloat(account.last_equity)) * 100,
-        total_pl: parseFloat(account.equity) - 100000, // Assuming $100k starting balance
-        total_pl_percent: ((parseFloat(account.equity) - 100000) / 100000) * 100,
+        daily_pl: account.equity - account.lastEquity,
+        daily_pl_percent: account.lastEquity > 0
+          ? ((account.equity - account.lastEquity) / account.lastEquity) * 100
+          : 0,
+        total_pl: account.equity - totalCostBasis - account.cash,
+        total_pl_percent: totalCostBasis > 0
+          ? ((account.equity - totalCostBasis - account.cash) / totalCostBasis) * 100
+          : 0,
       },
     };
 
@@ -47,10 +65,10 @@ export async function GET(request: NextRequest) {
     let userMessage = 'Failed to fetch portfolio data';
 
     // Check for specific error types
-    if (errorMessage.includes('Missing required Alpaca environment variables')) {
+    if (errorMessage.includes('Missing required') || errorMessage.includes('environment variables') || errorMessage.includes('not configured')) {
       statusCode = 503;
       userMessage = 'Trading service is not configured. Please contact support.';
-    } else if (errorMessage.includes('Unauthorized') || errorMessage.includes('authentication') || errorMessage.includes('forbidden')) {
+    } else if (errorMessage.includes('Unauthorized') || errorMessage.includes('authentication') || errorMessage.includes('forbidden') || errorMessage.includes('not authenticated')) {
       statusCode = 401;
       userMessage = 'Trading API authentication failed. Please check credentials.';
     } else if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests')) {

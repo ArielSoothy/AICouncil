@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAccount, getPositions } from '@/lib/alpaca/client';
+import { getActiveBroker } from '@/lib/brokers/broker-factory';
 import { generateEnhancedTradingPromptWithData } from '@/lib/alpaca/enhanced-prompts';
 import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
 import { runResearchAgents, type ResearchReport } from '@/lib/agents/research-agents';
@@ -244,9 +244,36 @@ export async function POST(request: NextRequest) {
     const targetSymbol = body.targetSymbol;
     const researchMode = body.researchMode || 'hybrid';
 
-    // Step 1: Get Alpaca account info and positions
-    const account = await getAccount();
-    const positions = await getPositions();
+    // Step 1: Get broker account info and positions
+    const broker = getActiveBroker();
+    const [brokerAccount, brokerPositions] = await Promise.all([
+      broker.getAccount(),
+      broker.getPositions(),
+    ]);
+
+    // Map to legacy format for compatibility with existing prompts
+    const account = {
+      id: brokerAccount.id,
+      account_number: brokerAccount.accountNumber,
+      status: brokerAccount.status,
+      currency: brokerAccount.currency,
+      portfolio_value: String(brokerAccount.portfolioValue),
+      buying_power: String(brokerAccount.buyingPower),
+      cash: String(brokerAccount.cash),
+      equity: String(brokerAccount.equity),
+      last_equity: String(brokerAccount.lastEquity),
+    };
+    const positions = brokerPositions.map(pos => ({
+      symbol: pos.symbol,
+      qty: String(pos.quantity),
+      side: pos.side,
+      market_value: String(pos.marketValue),
+      cost_basis: String(pos.avgEntryPrice * pos.quantity),
+      unrealized_pl: String(pos.unrealizedPL),
+      unrealized_plpc: String(pos.unrealizedPLPercent),
+      current_price: String(pos.currentPrice),
+      avg_entry_price: String(pos.avgEntryPrice),
+    }));
 
     // Step 2: Validate target symbol is provided
     if (!targetSymbol) {
