@@ -533,11 +533,11 @@ export function DebateMode() {
                         <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
                           <div
                             className="h-full bg-primary"
-                            style={{ width: `${agent.decision.confidence * 100}%` }}
+                            style={{ width: `${(agent.decision.confidence || 0) * 100}%` }}
                           />
                         </div>
                         <span className="text-xs font-medium">
-                          {(agent.decision.confidence * 100).toFixed(0)}%
+                          {((agent.decision.confidence || 0) * 100).toFixed(0)}%
                         </span>
                       </div>
                     </div>
@@ -591,11 +591,11 @@ export function DebateMode() {
                   <div className="w-32 h-3 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary"
-                      style={{ width: `${debate.finalDecision.confidence * 100}%` }}
+                      style={{ width: `${(debate.finalDecision.confidence || 0) * 100}%` }}
                     />
                   </div>
                   <span className="text-lg font-bold">
-                    {(debate.finalDecision.confidence * 100).toFixed(0)}%
+                    {((debate.finalDecision.confidence || 0) * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>
