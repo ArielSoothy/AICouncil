@@ -138,10 +138,20 @@ function extractJSON(text: string): string {
     cleaned = cleaned.substring(firstBrace, lastBrace + 1)
   }
 
-  // Fix common JSON issues
+  // Fix common JSON issues from LLMs
   cleaned = cleaned
+    // Remove trailing commas before closing brackets
     .replace(/,(\s*[}\]])/g, '$1')
+    // Replace single quotes with double quotes
     .replace(/'/g, '"')
+    // Fix unescaped newlines in strings (replace with space)
+    .replace(/(?<!\\)\\n/g, ' ')
+    // Remove control characters that break JSON
+    .replace(/[\x00-\x1F\x7F]/g, ' ')
+    // Fix double quotes inside strings (common LLM mistake)
+    .replace(/"([^"]*)"([^,:}\]]*)"([^"]*)"/g, '"$1\'$2\'$3"')
+    // Remove any text after closing brace
+    .replace(/}[^}]*$/, '}')
     .trim()
 
   return cleaned
