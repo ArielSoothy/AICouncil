@@ -71,6 +71,7 @@ export function ConsensusMode() {
   const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper'>('paper')
   const [showTradeCard, setShowTradeCard] = useState(true)
   const [inputMode, setInputMode] = useState<InputMode>('research')
+  const [portfolioAnalysis, setPortfolioAnalysis] = useState<any | null>(null)
 
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -176,6 +177,52 @@ export function ConsensusMode() {
       const url = new URL(window.location.href)
       url.searchParams.delete('c')
       window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }
+
+  // Portfolio Analysis - uses dedicated API
+  const getPortfolioAnalysis = async () => {
+    setLoading(true)
+    setConsensus(null)
+    setDecisions([])
+    setPortfolioAnalysis(null)
+    setProgressSteps([])
+
+    const enabledModels = selectedModels.filter(m => m.enabled)
+
+    setProgressSteps([
+      createReasoningStep('thinking', '📊 Starting portfolio analysis...'),
+      createReasoningStep('analysis', '💼 Fetching portfolio positions...'),
+    ])
+
+    try {
+      const response = await fetch('/api/trading/portfolio-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          models: enabledModels,
+          timeframe
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to analyze portfolio')
+      }
+
+      const data = await response.json()
+
+      setProgressSteps(prev => [
+        ...prev,
+        createReasoningStep('decision', `✅ Portfolio analysis complete!`),
+      ])
+
+      setPortfolioAnalysis(data)
+    } catch (error) {
+      console.error('Portfolio analysis failed:', error)
+      alert(error instanceof Error ? error.message : 'Failed to analyze portfolio')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -331,11 +378,13 @@ export function ConsensusMode() {
           <InputModeSelector
             onSymbolSelect={(symbol) => {
               if (symbol === '__PORTFOLIO__') {
-                // Portfolio mode - auto-trigger analysis
+                // Portfolio mode - use dedicated portfolio analysis API
                 setTargetSymbol('')
-                setTimeout(() => getConsensusDecision(), 100)
+                setPortfolioAnalysis(null)
+                setTimeout(() => getPortfolioAnalysis(), 100)
               } else {
                 setTargetSymbol(symbol)
+                setPortfolioAnalysis(null)
               }
             }}
             onModeChange={setInputMode}
@@ -383,6 +432,94 @@ export function ConsensusMode() {
 
       {/* Phase 4: Research Activity Panel - Show exhaustive research transparency */}
       <ResearchActivityPanel research={researchData} isLoading={loading && !consensus} />
+
+      {/* Portfolio Analysis Results */}
+      {portfolioAnalysis && (
+        <div className="bg-card rounded-lg border p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-2xl font-bold">Portfolio Analysis</h3>
+              <p className="text-sm text-muted-foreground">
+                {portfolioAnalysis.portfolio?.positionCount || 0} positions • ${(portfolioAnalysis.portfolio?.totalValue || 0).toLocaleString()}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleStartNew} className="gap-2">
+              <RotateCcw className="h-4 w-4" />
+              Start New
+            </Button>
+          </div>
+
+          {/* Portfolio Summary */}
+          {portfolioAnalysis.portfolio && (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="text-sm text-muted-foreground">Total Value</div>
+                <div className="text-2xl font-bold">${portfolioAnalysis.portfolio.totalValue.toLocaleString()}</div>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="text-sm text-muted-foreground">Cash Available</div>
+                <div className="text-2xl font-bold">${portfolioAnalysis.portfolio.cashBalance.toLocaleString()}</div>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="text-sm text-muted-foreground">Positions</div>
+                <div className="text-2xl font-bold">{portfolioAnalysis.portfolio.positionCount}</div>
+              </div>
+            </div>
+          )}
+
+          {/* AI Analysis Results */}
+          {portfolioAnalysis.analyses && portfolioAnalysis.analyses.length > 0 && (
+            <div className="space-y-4">
+              <h4 className="font-semibold">AI Analysis</h4>
+              {portfolioAnalysis.analyses.map((analysis: any, idx: number) => (
+                <div key={idx} className="bg-muted/30 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{analysis.modelName}</span>
+                    {analysis.error ? (
+                      <span className="text-xs text-red-500">{analysis.error}</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{analysis.duration}ms</span>
+                    )}
+                  </div>
+                  {analysis.analysis && (
+                    <>
+                      {/* Health & Diversification Scores */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Portfolio Health</div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-lg font-bold">{analysis.analysis.portfolioHealth?.score || 'N/A'}/10</div>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">{analysis.analysis.portfolioHealth?.summary}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Diversification</div>
+                          <div className="text-lg font-bold">{analysis.analysis.diversification?.score || 'N/A'}/10</div>
+                          <div className="text-xs text-muted-foreground mt-1">{analysis.analysis.diversification?.recommendation}</div>
+                        </div>
+                      </div>
+                      {/* Recommendations */}
+                      {analysis.analysis.recommendations?.immediate && analysis.analysis.recommendations.immediate.length > 0 && (
+                        <div>
+                          <div className="text-xs font-semibold text-orange-600 mb-1">Immediate Actions</div>
+                          <ul className="text-xs space-y-1">
+                            {analysis.analysis.recommendations.immediate.map((rec: string, i: number) => (
+                              <li key={i} className="flex items-start gap-1">
+                                <span className="text-orange-500">•</span>
+                                {rec}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Consensus Results */}
       {consensus && (
