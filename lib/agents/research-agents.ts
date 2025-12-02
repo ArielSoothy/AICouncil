@@ -34,6 +34,59 @@ import {
 import type { ResearchProgressEvent } from '@/types/research-progress';
 
 /**
+ * Research Model Tier Configuration
+ *
+ * Different tiers use different models for research agents:
+ * - Free: Groq Llama 3.3 70B (free, good tool calling)
+ * - Pro: Claude 3.5 Sonnet (balanced cost/quality)
+ * - Max: Claude 3.7 Sonnet (best quality)
+ */
+export type ResearchTier = 'free' | 'pro' | 'max';
+
+interface TierModelConfig {
+  model: string;
+  provider: 'groq' | 'anthropic' | 'openai' | 'google';
+  displayName: string;
+}
+
+const RESEARCH_TIER_MODELS: Record<ResearchTier, TierModelConfig> = {
+  free: {
+    model: 'llama-3.3-70b-versatile',
+    provider: 'groq',
+    displayName: 'Llama 3.3 70B',
+  },
+  pro: {
+    model: 'claude-3-5-sonnet-20241022',
+    provider: 'anthropic',
+    displayName: 'Claude 3.5 Sonnet',
+  },
+  max: {
+    model: 'claude-3-7-sonnet-20250219',
+    provider: 'anthropic',
+    displayName: 'Claude 3.7 Sonnet',
+  },
+};
+
+/**
+ * Get the appropriate AI provider based on tier
+ */
+function getProviderForTier(tier: ResearchTier) {
+  const config = RESEARCH_TIER_MODELS[tier];
+  switch (config.provider) {
+    case 'groq':
+      return new GroqProvider();
+    case 'anthropic':
+      return new AnthropicProvider();
+    case 'openai':
+      return new OpenAIProvider();
+    case 'google':
+      return new GoogleProvider();
+    default:
+      return new GroqProvider();
+  }
+}
+
+/**
  * OPTIONAL Progress Callback Type
  * Pass this to research functions to receive real-time progress updates
  * If not provided, functions work normally without streaming
@@ -75,10 +128,11 @@ export interface ResearchReport {
 /**
  * Technical Analyst Research Agent
  *
- * Model: Llama 3.3 70B (Berkeley #1 tool-use model, FREE)
+ * Model: Based on tier (Free: Llama 3.3 70B, Pro: Claude 3.5 Sonnet, Max: Claude 3.7 Sonnet)
  * Tools: 5-8 expected (price_bars, RSI, MACD, support/resistance, volume)
  * Focus: Price action, momentum, trend analysis
  *
+ * @param tier - Research tier (free/pro/max) determines which model to use
  * @param onProgress - OPTIONAL callback for real-time progress updates (SSE streaming)
  */
 export async function runTechnicalResearch(
@@ -86,19 +140,21 @@ export async function runTechnicalResearch(
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
   minimalData: string,
+  tier: ResearchTier = 'free',
   onProgress?: ProgressCallback
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
+  const modelConfig = RESEARCH_TIER_MODELS[tier];
 
   try {
-    console.log('🔍 Technical Analyst starting research...');
+    console.log(`🔍 Technical Analyst starting research... (${modelConfig.displayName})`);
 
     // Emit agent start event (OPTIONAL - only if callback provided)
     onProgress?.({
       type: 'agent_start',
       agent: 'technical',
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       timestamp: Date.now()
     });
 
@@ -110,12 +166,11 @@ export async function runTechnicalResearch(
       minimalData
     );
 
-    const provider = new AnthropicProvider();
+    const provider = getProviderForTier(tier);
 
-    // Use Claude 3.5 Haiku - Fast, cheap, reliable (no quota issues like Gemini/Groq)
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'claude-3-5-haiku-20241022',
-      provider: 'anthropic',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
@@ -142,8 +197,8 @@ export async function runTechnicalResearch(
 
     return {
       agent: 'technical',
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -155,8 +210,8 @@ export async function runTechnicalResearch(
     console.error('❌ Technical Analyst error:', error);
     return {
       agent: 'technical',
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       toolsUsed: false,
       toolCallCount: 0,
       toolNames: [],
@@ -171,7 +226,7 @@ export async function runTechnicalResearch(
 /**
  * Fundamental Analyst Research Agent
  *
- * Model: Gemini 2.0 Flash (free, fast, good reasoning with tools)
+ * Model: Based on tier (Free: Llama 3.3 70B, Pro: Claude 3.5 Sonnet, Max: Claude 3.7 Sonnet)
  * Tools: 4-6 expected (earnings_date, news, quote, bars for context)
  * Focus: Company fundamentals, news catalysts, earnings
  */
@@ -180,19 +235,21 @@ export async function runFundamentalResearch(
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
   minimalData: string,
+  tier: ResearchTier = 'free',
   onProgress?: ProgressCallback
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
+  const modelConfig = RESEARCH_TIER_MODELS[tier];
 
   try {
-    console.log('🔍 Fundamental Analyst starting research...');
+    console.log(`🔍 Fundamental Analyst starting research... (${modelConfig.displayName})`);
 
     // Emit agent start event (OPTIONAL - only if callback provided)
     onProgress?.({
       type: 'agent_start',
       agent: 'fundamental',
-      model: 'llama-3.1-8b-instant',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       timestamp: Date.now()
     });
 
@@ -204,12 +261,11 @@ export async function runFundamentalResearch(
       minimalData
     );
 
-    const provider = new AnthropicProvider();
+    const provider = getProviderForTier(tier);
 
-    // Use Claude 3.5 Haiku - Fast, cheap, reliable (no quota issues like Gemini/Groq)
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'claude-3-5-haiku-20241022',
-      provider: 'anthropic',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
@@ -236,8 +292,8 @@ export async function runFundamentalResearch(
 
     return {
       agent: 'fundamental',
-      model: 'llama-3.1-8b-instant',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -249,8 +305,8 @@ export async function runFundamentalResearch(
     console.error('❌ Fundamental Analyst error:', error);
     return {
       agent: 'fundamental',
-      model: 'llama-3.1-8b-instant',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       toolsUsed: false,
       toolCallCount: 0,
       toolNames: [],
@@ -265,31 +321,33 @@ export async function runFundamentalResearch(
 /**
  * Sentiment Analyst Research Agent
  *
- * Model: Llama 3.3 70B (Berkeley #1 tool-use model, FREE)
+ * Model: Based on tier (Free: Llama 3.3 70B, Pro: Claude 3.5 Sonnet, Max: Claude 3.7 Sonnet)
  * Tools: 3-5 expected (news primary, quote, bars for context)
  * Focus: News sentiment, market psychology, social signals
  *
- * NOTE: Switched from Gemini 2.0 Flash due to tool argument validation errors.
- * Llama 3.3 70B proven to work perfectly with our tool schema.
+ * @param tier - Research tier (free/pro/max) determines which model to use
+ * @param onProgress - OPTIONAL callback for real-time progress updates (SSE streaming)
  */
 export async function runSentimentResearch(
   symbol: string,
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
   minimalData: string,
+  tier: ResearchTier = 'free',
   onProgress?: ProgressCallback
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
+  const modelConfig = RESEARCH_TIER_MODELS[tier];
 
   try {
-    console.log('🔍 Sentiment Analyst starting research...');
+    console.log(`🔍 Sentiment Analyst starting research... (${modelConfig.displayName})`);
 
     // Emit agent start event (OPTIONAL - only if callback provided)
     onProgress?.({
       type: 'agent_start',
       agent: 'sentiment',
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       timestamp: Date.now()
     });
 
@@ -301,16 +359,15 @@ export async function runSentimentResearch(
       minimalData
     );
 
-    const provider = new AnthropicProvider();
+    const provider = getProviderForTier(tier);
 
-    // Use Claude 3.5 Haiku - Fast, cheap, reliable (no quota issues like Gemini/Groq)
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'claude-3-5-haiku-20241022',
-      provider: 'anthropic',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
-      useTools: true, // ✅ Proven to work with our tool schema
+      useTools: true,
       maxSteps: 10,
     });
 
@@ -333,8 +390,8 @@ export async function runSentimentResearch(
 
     return {
       agent: 'sentiment',
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -346,8 +403,8 @@ export async function runSentimentResearch(
     console.error('❌ Sentiment Analyst error:', error);
     return {
       agent: 'sentiment',
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       toolsUsed: false,
       toolCallCount: 0,
       toolNames: [],
@@ -362,28 +419,33 @@ export async function runSentimentResearch(
 /**
  * Risk Manager Research Agent
  *
- * Model: Gemini 2.0 Flash (free, good reasoning with safety focus)
+ * Model: Based on tier (Free: Llama 3.3 70B, Pro: Claude 3.5 Sonnet, Max: Claude 3.7 Sonnet)
  * Tools: 6-10 expected (most comprehensive: all technical + fundamentals)
  * Focus: Risk assessment, position sizing, stop-loss/take-profit levels
+ *
+ * @param tier - Research tier (free/pro/max) determines which model to use
+ * @param onProgress - OPTIONAL callback for real-time progress updates (SSE streaming)
  */
 export async function runRiskAnalysis(
   symbol: string,
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
   minimalData: string,
+  tier: ResearchTier = 'free',
   onProgress?: ProgressCallback
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
+  const modelConfig = RESEARCH_TIER_MODELS[tier];
 
   try {
-    console.log('🔍 Risk Manager starting research...');
+    console.log(`🔍 Risk Manager starting research... (${modelConfig.displayName})`);
 
     // Emit agent start event (OPTIONAL - only if callback provided)
     onProgress?.({
       type: 'agent_start',
       agent: 'risk',
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       timestamp: Date.now()
     });
 
@@ -395,12 +457,11 @@ export async function runRiskAnalysis(
       minimalData
     );
 
-    const provider = new AnthropicProvider();
+    const provider = getProviderForTier(tier);
 
-    // Use Claude 3.5 Haiku - Fast, cheap, reliable (no quota issues like Gemini/Groq)
     const result: ModelResponse = await provider.query(prompt, {
-      model: 'claude-3-5-haiku-20241022',
-      provider: 'anthropic',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       enabled: true,
       temperature: 0.7,
       maxTokens: 2000,
@@ -427,8 +488,8 @@ export async function runRiskAnalysis(
 
     return {
       agent: 'risk',
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -440,8 +501,8 @@ export async function runRiskAnalysis(
     console.error('❌ Risk Manager error:', error);
     return {
       agent: 'risk',
-      model: 'llama-3.3-70b-versatile',
-      provider: 'groq',
+      model: modelConfig.model,
+      provider: modelConfig.provider,
       toolsUsed: false,
       toolCallCount: 0,
       toolNames: [],
@@ -470,6 +531,7 @@ export async function runRiskAnalysis(
  * @param symbol - Stock ticker (e.g., "TSLA", "AAPL")
  * @param timeframe - Trading timeframe (day, swing, position, longterm)
  * @param account - Alpaca account for context
+ * @param tier - Research tier (free/pro/max) determines which models to use
  * @param onProgress - OPTIONAL callback for real-time progress updates (SSE streaming)
  * @returns Complete research report from all agents
  */
@@ -477,13 +539,16 @@ export async function runResearchAgents(
   symbol: string,
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
+  tier: ResearchTier = 'free',
   onProgress?: ProgressCallback
 ): Promise<ResearchReport> {
   const startTime = Date.now();
+  const modelConfig = RESEARCH_TIER_MODELS[tier];
 
   console.log(
     `\n${'='.repeat(80)}\n🔬 STARTING EXHAUSTIVE RESEARCH PIPELINE FOR ${symbol.toUpperCase()}\n${'='.repeat(80)}`
   );
+  console.log(`📊 Research Tier: ${tier.toUpperCase()} (${modelConfig.displayName})`);
 
   try {
     // Step 1: Fetch minimal shared data (just for market validation)
@@ -502,10 +567,10 @@ export async function runResearchAgents(
     console.log('🚀 Step 2: Launching 4 specialized research agents in parallel...\n');
 
     const [technical, fundamental, sentiment, risk] = await Promise.all([
-      runTechnicalResearch(symbol, timeframe, account, minimalData, onProgress),
-      runFundamentalResearch(symbol, timeframe, account, minimalData, onProgress),
-      runSentimentResearch(symbol, timeframe, account, minimalData, onProgress),
-      runRiskAnalysis(symbol, timeframe, account, minimalData, onProgress),
+      runTechnicalResearch(symbol, timeframe, account, minimalData, tier, onProgress),
+      runFundamentalResearch(symbol, timeframe, account, minimalData, tier, onProgress),
+      runSentimentResearch(symbol, timeframe, account, minimalData, tier, onProgress),
+      runRiskAnalysis(symbol, timeframe, account, minimalData, tier, onProgress),
     ]);
 
     const researchDuration = Date.now() - startTime;

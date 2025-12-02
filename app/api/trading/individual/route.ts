@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveBroker } from '@/lib/brokers/broker-factory';
 import { generateEnhancedTradingPrompt } from '@/lib/alpaca/enhanced-prompts';
-import { runResearchAgents, type ResearchReport } from '@/lib/agents/research-agents';
+import { runResearchAgents, type ResearchReport, type ResearchTier } from '@/lib/agents/research-agents';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
@@ -147,7 +147,7 @@ Synthesize all 4 research perspectives into ONE informed decision.
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { selectedModels, timeframe = 'swing', targetSymbol, researchMode = 'hybrid' } = body;
+    const { selectedModels, timeframe = 'swing', targetSymbol, researchMode = 'hybrid', researchTier = 'free' } = body;
 
     if (!selectedModels || !Array.isArray(selectedModels) || selectedModels.length < 2) {
       return NextResponse.json(
@@ -199,7 +199,8 @@ export async function POST(request: NextRequest) {
     const researchReport = await runResearchAgents(
       targetSymbol,
       timeframe as TradingTimeframe,
-      account
+      account,
+      researchTier as ResearchTier
     );
 
     // Step 4: Generate trading prompt WITH research findings (no tools needed)

@@ -53,10 +53,25 @@ export class GroqProvider implements AIProvider {
           tools: config.useTools ? alpacaTools : undefined,
           stopWhen: config.useTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
           onStepFinish: config.useTools ? (step) => {
+            console.log(`🔧 Step finished: ${step.toolCalls?.length || 0} tool calls, toolResults: ${step.toolResults?.length || 0}`);
             if (step.toolCalls && step.toolCalls.length > 0) {
               step.toolCalls.forEach((call: any) => {
-                console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
-                toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
+                // AI SDK uses 'input' not 'args' for tool call parameters
+                const args = call.args || call.input || {};
+                const argsStr = Object.keys(args).length > 0 ? JSON.stringify(args) : 'NO_ARGS';
+                console.log(`🔧 ${config.model} → ${call.toolName}(${argsStr})`);
+                toolTracker.logCall(call.toolName, args.symbol || 'N/A');
+              });
+            }
+            // Also log tool results if available
+            if (step.toolResults && step.toolResults.length > 0) {
+              step.toolResults.forEach((tr: any, i: number) => {
+                // AI SDK toolResults structure: { toolCallId, toolName, result }
+                const resultData = tr.result ?? tr;
+                const resultStr = typeof resultData === 'object'
+                  ? JSON.stringify(resultData).substring(0, 200)
+                  : String(resultData).substring(0, 200);
+                console.log(`🔧 Tool result ${i} (${tr.toolName || 'unknown'}):`, resultStr);
               });
             }
           } : undefined,
@@ -96,7 +111,7 @@ export class GroqProvider implements AIProvider {
           timestamp: new Date(),
           toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []).map((tc: any) => ({
             toolName: tc.toolName,
-            args: tc.args || {},
+            args: tc.args || tc.input || {},
             result: tc.result
           })) : undefined,
         };

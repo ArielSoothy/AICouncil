@@ -14,7 +14,7 @@
 
 import { NextRequest } from 'next/server';
 import { getAccount, getPositions } from '@/lib/alpaca/client';
-import { runResearchAgents } from '@/lib/agents/research-agents';
+import { runResearchAgents, type ResearchTier } from '@/lib/agents/research-agents';
 import type { ResearchProgressEvent, ProgressCallback } from '@/types/research-progress';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import type { TradeDecision } from '@/lib/alpaca/types';
@@ -112,7 +112,8 @@ export async function POST(request: NextRequest) {
     const {
       selectedModels = [],
       timeframe = 'swing' as TradingTimeframe,
-      targetSymbol
+      targetSymbol,
+      researchTier = 'free'
     } = body;
 
     // Validation
@@ -208,6 +209,7 @@ export async function POST(request: NextRequest) {
               symbol,
               timeframe,
               account,
+              researchTier as ResearchTier,
               onProgress  // Pass callback to stream progress
             );
 

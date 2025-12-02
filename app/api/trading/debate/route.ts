@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getActiveBroker } from '@/lib/brokers/broker-factory';
 import { generateEnhancedTradingPromptWithData } from '@/lib/alpaca/enhanced-prompts';
 import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
-import { runResearchAgents, type ResearchReport } from '@/lib/agents/research-agents';
+import { runResearchAgents, type ResearchReport, type ResearchTier } from '@/lib/agents/research-agents';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
@@ -243,6 +243,7 @@ export async function POST(request: NextRequest) {
     const timeframe = body.timeframe || 'swing';
     const targetSymbol = body.targetSymbol;
     const researchMode = body.researchMode || 'hybrid';
+    const researchTier = body.researchTier || 'free';
 
     // Step 1: Get broker account info and positions
     const broker = getActiveBroker();
@@ -287,7 +288,8 @@ export async function POST(request: NextRequest) {
     const researchReport = await runResearchAgents(
       targetSymbol,
       timeframe as TradingTimeframe,
-      account
+      account,
+      researchTier as ResearchTier
     );
 
     // Step 4: Generate trading prompt WITH research findings (no tools needed)
