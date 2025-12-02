@@ -330,10 +330,12 @@ export function ConsensusMode() {
           </label>
           <InputModeSelector
             onSymbolSelect={(symbol) => {
-              setTargetSymbol(symbol)
-              // Auto-trigger analysis for portfolio mode
               if (symbol === '__PORTFOLIO__') {
-                // Portfolio mode selected - will be handled separately
+                // Portfolio mode - auto-trigger analysis
+                setTargetSymbol('')
+                setTimeout(() => getConsensusDecision(), 100)
+              } else {
+                setTargetSymbol(symbol)
               }
             }}
             onModeChange={setInputMode}

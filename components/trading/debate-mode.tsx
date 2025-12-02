@@ -379,7 +379,13 @@ export function DebateMode() {
             </label>
             <InputModeSelector
               onSymbolSelect={(symbol) => {
-                setTargetSymbol(symbol)
+                if (symbol === '__PORTFOLIO__') {
+                  // Portfolio mode - auto-trigger analysis
+                  setTargetSymbol('')
+                  setTimeout(() => startDebate(), 100)
+                } else {
+                  setTargetSymbol(symbol)
+                }
               }}
               onModeChange={setInputMode}
               disabled={loading}
