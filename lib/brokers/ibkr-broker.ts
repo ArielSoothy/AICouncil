@@ -35,6 +35,64 @@ interface IBKRConfig {
   accountId?: string;
 }
 
+// IBKR API response types
+interface IBKRAccountSummary {
+  baseCurrency?: string;
+  buyingpower?: { amount: number };
+  totalcashvalue?: { amount: number };
+  netliquidation?: { amount: number };
+  previousdayequitywithloanvalue?: { amount: number };
+}
+
+interface IBKRPosition {
+  contractDesc?: string;
+  ticker?: string;
+  position?: number;
+  mktValue?: number;
+  avgCost?: number;
+  mktPrice?: number;
+  unrealizedPnl?: number;
+}
+
+interface IBKRContract {
+  conid: number;
+  symbol?: string;
+  secType?: string;
+}
+
+interface IBKROrderResult {
+  id?: string;
+  order_id?: string;
+  message?: string;
+}
+
+interface IBKROrder {
+  orderId?: number;
+  order_id?: string;
+  ticker?: string;
+  symbol?: string;
+  totalQuantity?: number;
+  quantity?: number;
+  filledQuantity?: number;
+  side?: string;
+  orderType?: string;
+  status?: string;
+  price?: number;
+  auxPrice?: number;
+  avgPrice?: number;
+  timeInForce?: string;
+  lastExecutionTime?: string | number;
+}
+
+interface IBKRMarketDataSnapshot {
+  '31'?: number; // Last price
+  '84'?: number; // Bid price
+  '85'?: number; // Ask size
+  '86'?: number; // Ask price
+  '87'?: number; // Last size
+  '88'?: number; // Bid size
+}
+
 export class IBKRBroker implements IBroker {
   readonly id: BrokerId = 'ibkr';
   readonly name = 'Interactive Brokers';
@@ -162,7 +220,7 @@ export class IBKRBroker implements IBroker {
     const accountId = this.accountId!;
 
     try {
-      const summary = await this.request<any>(
+      const summary = await this.request<IBKRAccountSummary>(
         `/portfolio/${accountId}/summary`
       );
 
@@ -194,24 +252,28 @@ export class IBKRBroker implements IBroker {
     const accountId = this.accountId!;
 
     try {
-      const positions = await this.request<any[]>(
+      const positions = await this.request<IBKRPosition[]>(
         `/portfolio/${accountId}/positions/0`
       );
 
-      return positions.map((pos) => ({
-        symbol: pos.contractDesc || pos.ticker,
-        quantity: Math.abs(pos.position || 0),
-        marketValue: pos.mktValue || 0,
-        avgEntryPrice: pos.avgCost || 0,
-        currentPrice: pos.mktPrice || 0,
-        unrealizedPL: pos.unrealizedPnl || 0,
-        unrealizedPLPercent:
-          pos.avgCost > 0
-            ? ((pos.mktPrice - pos.avgCost) / pos.avgCost) * 100
-            : 0,
-        side: (pos.position || 0) >= 0 ? 'long' : 'short',
-        brokerId: this.id,
-      }));
+      return positions.map((pos: IBKRPosition) => {
+        const avgCost = pos.avgCost ?? 0;
+        const mktPrice = pos.mktPrice ?? 0;
+        return {
+          symbol: pos.contractDesc || pos.ticker || 'UNKNOWN',
+          quantity: Math.abs(pos.position || 0),
+          marketValue: pos.mktValue || 0,
+          avgEntryPrice: avgCost,
+          currentPrice: mktPrice,
+          unrealizedPL: pos.unrealizedPnl || 0,
+          unrealizedPLPercent:
+            avgCost > 0
+              ? ((mktPrice - avgCost) / avgCost) * 100
+              : 0,
+          side: (pos.position || 0) >= 0 ? 'long' : 'short',
+          brokerId: this.id,
+        };
+      });
     } catch (error) {
       throw new ConnectionError(this.id, 'Failed to get positions', error);
     }
@@ -229,7 +291,7 @@ export class IBKRBroker implements IBroker {
 
     try {
       // First, get the contract ID for the symbol
-      const contracts = await this.request<any[]>(
+      const contracts = await this.request<IBKRContract[]>(
         `/iserver/secdef/search?symbol=${request.symbol}&secType=STK`
       );
 
@@ -253,7 +315,7 @@ export class IBKRBroker implements IBroker {
         outsideRTH: request.extendedHours,
       };
 
-      const result = await this.request<any[]>('/iserver/account/orders', {
+      const result = await this.request<IBKROrderResult[]>('/iserver/account/orders', {
         method: 'POST',
         body: JSON.stringify({ orders: [orderPayload] }),
       });
@@ -267,7 +329,7 @@ export class IBKRBroker implements IBroker {
         });
       }
 
-      const orderId = result[0]?.order_id || result[0]?.id;
+      const orderId = result[0]?.order_id || result[0]?.id || '';
 
       return {
         id: orderId,
@@ -304,7 +366,7 @@ export class IBKRBroker implements IBroker {
         method: 'DELETE',
       });
       return true;
-    } catch (error: any) {
+    } catch {
       // Order may not exist or already filled
       return false;
     }
@@ -317,10 +379,10 @@ export class IBKRBroker implements IBroker {
 
   async getOrders(status?: OrderStatus): Promise<BrokerOrder[]> {
     try {
-      const orders = await this.request<any[]>('/iserver/account/orders');
+      const orders = await this.request<IBKROrder[]>('/iserver/account/orders');
 
       return orders
-        .map((order) => this.mapOrder(order))
+        .map((order: IBKROrder) => this.mapOrder(order))
         .filter((o) => !status || o.status === status);
     } catch (error) {
       throw new OrderError(this.id, 'Failed to get orders', error);
@@ -330,7 +392,7 @@ export class IBKRBroker implements IBroker {
   async getQuote(symbol: string): Promise<BrokerQuote> {
     try {
       // First get contract ID
-      const contracts = await this.request<any[]>(
+      const contracts = await this.request<IBKRContract[]>(
         `/iserver/secdef/search?symbol=${symbol}&secType=STK`
       );
 
@@ -341,11 +403,11 @@ export class IBKRBroker implements IBroker {
       const conid = contracts[0].conid;
 
       // Get market data snapshot
-      const snapshot = await this.request<any>(
+      const snapshot = await this.request<IBKRMarketDataSnapshot[]>(
         `/iserver/marketdata/snapshot?conids=${conid}&fields=31,84,85,86,87,88`
       );
 
-      const data = snapshot[0] || {};
+      const data: IBKRMarketDataSnapshot = snapshot[0] || {};
 
       return {
         symbol,
@@ -368,20 +430,20 @@ export class IBKRBroker implements IBroker {
     }
   }
 
-  private mapOrder(order: any): BrokerOrder {
+  private mapOrder(order: IBKROrder): BrokerOrder {
     return {
-      id: order.orderId?.toString() || order.order_id,
+      id: order.orderId?.toString() || order.order_id || '',
       brokerId: this.id,
-      symbol: order.ticker || order.symbol,
+      symbol: order.ticker || order.symbol || 'UNKNOWN',
       quantity: Math.abs(order.totalQuantity || order.quantity || 0),
       filledQuantity: order.filledQuantity || 0,
       side: order.side?.toLowerCase() === 'buy' ? 'buy' : 'sell',
-      type: this.mapOrderTypeFromIBKR(order.orderType),
-      status: this.mapOrderStatusFromIBKR(order.status),
+      type: this.mapOrderTypeFromIBKR(order.orderType || ''),
+      status: this.mapOrderStatusFromIBKR(order.status || ''),
       limitPrice: order.price,
       stopPrice: order.auxPrice,
       filledAvgPrice: order.avgPrice,
-      timeInForce: this.mapTimeInForceFromIBKR(order.timeInForce),
+      timeInForce: this.mapTimeInForceFromIBKR(order.timeInForce || ''),
       submittedAt: order.lastExecutionTime
         ? new Date(order.lastExecutionTime)
         : new Date(),
