@@ -97,12 +97,6 @@ export function InputModeSelector({
     onModeChange?.(newMode)
   }
 
-  const handleSymbolSubmit = () => {
-    if (symbol.trim()) {
-      onSymbolSelect(symbol.trim().toUpperCase())
-    }
-  }
-
   const handlePositionSelect = (sym: string) => {
     setSelectedPosition(sym)
     onSymbolSelect(sym)
@@ -155,25 +149,21 @@ export function InputModeSelector({
             <label className="text-sm font-semibold block">
               Stock Symbol
             </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === 'Enter' && handleSymbolSubmit()}
-                placeholder="e.g., AAPL, TSLA, NVDA"
-                disabled={disabled}
-                className="flex-1 px-3 py-2 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-              <Button
-                onClick={handleSymbolSubmit}
-                disabled={disabled || !symbol.trim()}
-                size="sm"
-              >
-                <Search className="w-4 h-4 mr-1" />
-                Analyze
-              </Button>
-            </div>
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => {
+                const val = e.target.value.toUpperCase()
+                setSymbol(val)
+                // Auto-submit on valid symbol input (for live updates)
+                if (val.trim()) {
+                  onSymbolSelect(val.trim())
+                }
+              }}
+              placeholder="e.g., AAPL, TSLA, NVDA"
+              disabled={disabled}
+              className="w-full px-3 py-2 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
             <p className="text-xs text-muted-foreground">
               Enter a US stock ticker to research
             </p>
