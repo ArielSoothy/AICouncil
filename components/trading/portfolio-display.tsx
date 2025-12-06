@@ -1,22 +1,11 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Loader2, DollarSign, TrendingUp, TrendingDown, Wallet, BarChart3, Clock } from 'lucide-react'
+import { Loader2, DollarSign, TrendingUp, TrendingDown, Wallet, BarChart3 } from 'lucide-react'
 import { usePortfolio } from '@/contexts/portfolio-context'
 
 export function PortfolioDisplay() {
-  const { portfolio, loading, error, lastUpdated, refresh } = usePortfolio()
-
-  const formatLastUpdated = (date: Date) => {
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    })
-  }
+  const { portfolio, loading, error, refresh } = usePortfolio()
 
   if (loading && !portfolio.account) {
     return (
@@ -39,32 +28,11 @@ export function PortfolioDisplay() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Portfolio Overview</h2>
-          <p className="text-sm text-muted-foreground">
-            {portfolio.broker
-              ? `${portfolio.broker.name} ${portfolio.broker.environment === 'live' ? 'Live' : 'Paper'} Trading Account`
-              : 'Trading Account'}
-          </p>
-          {lastUpdated && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-              <Clock className="w-3 h-3" />
-              Last updated: {formatLastUpdated(lastUpdated)}
-            </p>
-          )}
-        </div>
-        <Button onClick={refresh} disabled={loading} variant="outline">
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            'Refresh'
-          )}
-        </Button>
+      {/* Account Info */}
+      <div className="text-sm text-muted-foreground">
+        {portfolio.broker
+          ? `${portfolio.broker.name} ${portfolio.broker.environment === 'live' ? 'Live' : 'Paper'} Trading Account`
+          : 'Trading Account'}
       </div>
 
       {/* Key Metrics Cards */}
