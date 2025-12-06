@@ -137,8 +137,10 @@ export class IBKRBroker implements IBroker {
 
     const response = await fetch(url, {
       ...options,
+      cache: 'no-store', // Disable caching - always fetch fresh data
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
         ...options.headers,
       },
     });

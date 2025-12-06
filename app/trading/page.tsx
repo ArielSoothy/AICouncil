@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState } from 'react'
 import { Header } from '@/components/ui/header'
 import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
@@ -11,82 +11,81 @@ import { DebateMode } from '@/components/trading/debate-mode'
 import { IndividualMode } from '@/components/trading/individual-mode'
 import { TradeHistory } from '@/components/trading/trade-history'
 import { PortfolioDisplay } from '@/components/trading/portfolio-display'
-import { BrokerStatusFull } from '@/components/trading/broker-status-badge'
+import { BrokerStatusFull, IBKRAuthButton } from '@/components/trading/broker-status-badge'
 import { IS_PRODUCTION } from '@/lib/utils/environment'
+import { PortfolioProvider, usePortfolio } from '@/contexts/portfolio-context'
+
+function TradingPageHeader() {
+  const { portfolio } = usePortfolio()
+  const isLive = portfolio.broker?.environment === 'live'
+  const brokerName = portfolio.broker?.name
+
+  return (
+    <div className="text-center mb-8">
+      <div className="flex justify-center items-center gap-3 mb-4">
+        {isLive ? (
+          <Building2 className="w-10 h-10 text-orange-600" />
+        ) : (
+          <TrendingUp className="w-10 h-10 text-green-600" />
+        )}
+        <h1 className="text-4xl font-bold tracking-tight">
+          {isLive ? 'AI Trading Analysis' : 'AI Paper Trading'}
+        </h1>
+      </div>
+
+      <p className="text-xl text-muted-foreground mb-2">
+        {isLive
+          ? `Connected to ${brokerName || 'Live Broker'}`
+          : 'Multi-Model Paper Trading Arena'}
+      </p>
+
+      <p className="text-muted-foreground max-w-3xl mx-auto mb-4">
+        {isLive
+          ? 'Get AI-powered trading recommendations based on your real portfolio. No automatic execution - all decisions are yours.'
+          : 'Compare how different AI models make trading decisions. Test consensus trading and agent debate strategies with paper trading (no real money).'}
+      </p>
+
+      <div className="flex justify-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1">
+          {isLive ? (
+            <Building2 className="w-4 h-4 text-orange-600" />
+          ) : (
+            <TestTube className="w-4 h-4 text-green-600" />
+          )}
+          <span>{isLive ? 'Real Account Data' : 'Paper Trading'}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Brain className="w-4 h-4" />
+          <span>3 Analysis Modes</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function TradingPageContent() {
-  const { user, userTier } = useAuth()
+  const { userTier } = useAuth()
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
   const [selectedMode, setSelectedMode] = useState<TradingMode>('consensus')
-  const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper' | null>(null)
-  const [brokerName, setBrokerName] = useState<string | null>(null)
-
-  // Fetch broker info for dynamic header
-  useEffect(() => {
-    fetch('/api/trading/portfolio')
-      .then(res => res.json())
-      .then(data => {
-        setBrokerEnv(data.broker?.environment || 'paper')
-        setBrokerName(data.broker?.name || 'Alpaca')
-      })
-      .catch(() => {
-        setBrokerEnv('paper')
-        setBrokerName('Alpaca')
-      })
-  }, [])
 
   const effectiveUserTier = isGuestMode ? 'guest' : userTier
-  const isLive = brokerEnv === 'live'
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
-            <div className="flex justify-center items-center gap-3 mb-4">
-              {isLive ? (
-                <Building2 className="w-10 h-10 text-orange-600" />
-              ) : (
-                <TrendingUp className="w-10 h-10 text-green-600" />
-              )}
-              <h1 className="text-4xl font-bold tracking-tight">
-                {isLive ? 'AI Trading Analysis' : 'AI Paper Trading'}
-              </h1>
-            </div>
-
-            <p className="text-xl text-muted-foreground mb-2">
-              {isLive
-                ? `Connected to ${brokerName || 'Live Broker'}`
-                : 'Multi-Model Paper Trading Arena'}
-            </p>
-
-            <p className="text-muted-foreground max-w-3xl mx-auto mb-4">
-              {isLive
-                ? 'Get AI-powered trading recommendations based on your real portfolio. No automatic execution - all decisions are yours.'
-                : 'Compare how different AI models make trading decisions. Test consensus trading and agent debate strategies with paper trading (no real money).'}
-            </p>
-
-            <div className="flex justify-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                {isLive ? (
-                  <Building2 className="w-4 h-4 text-orange-600" />
-                ) : (
-                  <TestTube className="w-4 h-4 text-green-600" />
-                )}
-                <span>{isLive ? 'Real Account Data' : 'Paper Trading'}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Brain className="w-4 h-4" />
-                <span>3 Analysis Modes</span>
-              </div>
-            </div>
-          </div>
+          <TradingPageHeader />
 
           {/* Broker Status - Prominent Display */}
           <div className="mb-6 flex justify-center">
             <BrokerStatusFull />
+          </div>
+
+          {/* IBKR Authentication Panel */}
+          <div className="mb-6">
+            <IBKRAuthButton />
           </div>
 
           {/* Production Notice - Free Tier Only */}
@@ -140,8 +139,10 @@ function TradingPageContent() {
 
 export default function TradingPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <TradingPageContent />
-    </Suspense>
+    <PortfolioProvider>
+      <Suspense fallback={<div>Loading...</div>}>
+        <TradingPageContent />
+      </Suspense>
+    </PortfolioProvider>
   )
 }

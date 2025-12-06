@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveBroker } from '@/lib/brokers/broker-factory';
 
+// Disable caching for this route - always fetch fresh data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     // Get the active broker (Alpaca or IBKR based on env config)
@@ -54,7 +58,13 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    return NextResponse.json(portfolioData);
+    return NextResponse.json(portfolioData, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
 
   } catch (error) {
     // Extract error message

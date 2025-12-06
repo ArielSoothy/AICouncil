@@ -1,70 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, DollarSign, TrendingUp, TrendingDown, Wallet, BarChart3 } from 'lucide-react'
-
-interface PortfolioData {
-  broker?: {
-    id: string
-    name: string
-    environment: string
-  }
-  account: {
-    portfolio_value: number
-    cash: number
-    buying_power: number
-    equity: number
-    last_equity: number
-  }
-  positions: {
-    symbol: string
-    qty: number
-    side: string
-    market_value: number
-    cost_basis: number
-    unrealized_pl: number
-    unrealized_plpc: number
-    current_price: number
-    avg_entry_price: number
-  }[]
-  performance: {
-    daily_pl: number
-    daily_pl_percent: number
-    total_pl: number
-    total_pl_percent: number
-  }
-}
+import { Loader2, DollarSign, TrendingUp, TrendingDown, Wallet, BarChart3, Clock } from 'lucide-react'
+import { usePortfolio } from '@/contexts/portfolio-context'
 
 export function PortfolioDisplay() {
-  const [portfolio, setPortfolio] = useState<PortfolioData | null>(null)
-  const [loading, setLoading] = useState(false)
+  const { portfolio, loading, error, lastUpdated, refresh } = usePortfolio()
 
-  useEffect(() => {
-    fetchPortfolio()
-  }, [])
-
-  const fetchPortfolio = async () => {
-    setLoading(true)
-
-    try {
-      const response = await fetch('/api/trading/portfolio')
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch portfolio')
-      }
-
-      const data = await response.json()
-      setPortfolio(data)
-    } catch (error) {
-      console.error('Failed to fetch portfolio:', error)
-      alert(error instanceof Error ? error.message : 'Failed to fetch portfolio')
-    } finally {
-      setLoading(false)
-    }
+  const formatLastUpdated = (date: Date) => {
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    })
   }
 
-  if (loading && !portfolio) {
+  if (loading && !portfolio.account) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -72,11 +26,11 @@ export function PortfolioDisplay() {
     )
   }
 
-  if (!portfolio) {
+  if (error || !portfolio.account) {
     return (
       <div className="text-center py-12 bg-card rounded-lg border">
         <p className="text-muted-foreground">Failed to load portfolio data</p>
-        <Button onClick={fetchPortfolio} variant="outline" className="mt-4">
+        <Button onClick={refresh} variant="outline" className="mt-4">
           Retry
         </Button>
       </div>
@@ -94,8 +48,14 @@ export function PortfolioDisplay() {
               ? `${portfolio.broker.name} ${portfolio.broker.environment === 'live' ? 'Live' : 'Paper'} Trading Account`
               : 'Trading Account'}
           </p>
+          {lastUpdated && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+              <Clock className="w-3 h-3" />
+              Last updated: {formatLastUpdated(lastUpdated)}
+            </p>
+          )}
         </div>
-        <Button onClick={fetchPortfolio} disabled={loading} variant="outline">
+        <Button onClick={refresh} disabled={loading} variant="outline">
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -128,21 +88,21 @@ export function PortfolioDisplay() {
         {/* Daily P&L */}
         <MetricCard
           title="Daily P&L"
-          value={`$${portfolio.performance.daily_pl >= 0 ? '+' : ''}${portfolio.performance.daily_pl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          subtitle={`${portfolio.performance.daily_pl_percent >= 0 ? '+' : ''}${portfolio.performance.daily_pl_percent.toFixed(2)}%`}
-          icon={portfolio.performance.daily_pl >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
-          iconColor={portfolio.performance.daily_pl >= 0 ? 'text-green-600' : 'text-red-600'}
-          valueColor={portfolio.performance.daily_pl >= 0 ? 'text-green-600' : 'text-red-600'}
+          value={`$${portfolio.performance && portfolio.performance.daily_pl >= 0 ? '+' : ''}${portfolio.performance?.daily_pl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`}
+          subtitle={`${portfolio.performance && portfolio.performance.daily_pl_percent >= 0 ? '+' : ''}${portfolio.performance?.daily_pl_percent.toFixed(2) || '0.00'}%`}
+          icon={portfolio.performance && portfolio.performance.daily_pl >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+          iconColor={portfolio.performance && portfolio.performance.daily_pl >= 0 ? 'text-green-600' : 'text-red-600'}
+          valueColor={portfolio.performance && portfolio.performance.daily_pl >= 0 ? 'text-green-600' : 'text-red-600'}
         />
 
         {/* Total P&L */}
         <MetricCard
           title="Total P&L"
-          value={`$${portfolio.performance.total_pl >= 0 ? '+' : ''}${portfolio.performance.total_pl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          subtitle={`${portfolio.performance.total_pl_percent >= 0 ? '+' : ''}${portfolio.performance.total_pl_percent.toFixed(2)}%`}
+          value={`$${portfolio.performance && portfolio.performance.total_pl >= 0 ? '+' : ''}${portfolio.performance?.total_pl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`}
+          subtitle={`${portfolio.performance && portfolio.performance.total_pl_percent >= 0 ? '+' : ''}${portfolio.performance?.total_pl_percent.toFixed(2) || '0.00'}%`}
           icon={<BarChart3 className="w-5 h-5" />}
-          iconColor={portfolio.performance.total_pl >= 0 ? 'text-green-600' : 'text-red-600'}
-          valueColor={portfolio.performance.total_pl >= 0 ? 'text-green-600' : 'text-red-600'}
+          iconColor={portfolio.performance && portfolio.performance.total_pl >= 0 ? 'text-green-600' : 'text-red-600'}
+          valueColor={portfolio.performance && portfolio.performance.total_pl >= 0 ? 'text-green-600' : 'text-red-600'}
         />
       </div>
 
@@ -191,7 +151,7 @@ export function PortfolioDisplay() {
                       ${position.unrealized_pl >= 0 ? '+' : ''}{position.unrealized_pl.toFixed(2)}
                     </td>
                     <td className={`p-3 text-right font-mono font-medium ${position.unrealized_plpc >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {position.unrealized_plpc >= 0 ? '+' : ''}{(position.unrealized_plpc * 100).toFixed(2)}%
+                      {position.unrealized_plpc >= 0 ? '+' : ''}{position.unrealized_plpc.toFixed(2)}%
                     </td>
                   </tr>
                 ))}
