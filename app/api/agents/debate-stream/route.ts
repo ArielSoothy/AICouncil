@@ -524,7 +524,7 @@ Format your response with clear sections using markdown headers (###).`
                 session: {
                   id: `debate-${Date.now()}`,
                   query,
-                  agents: agents.map((a, i) => ({
+                  agents: agents.map((a: AgentConfig, i: number) => ({
                     id: `agent-${i}`,
                     name: a.persona.name,
                     role: a.persona.role
