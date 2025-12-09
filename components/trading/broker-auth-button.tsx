@@ -315,7 +315,7 @@ export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButton
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="bg-muted rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
-                  <span>Click "Check Connection" below to verify authentication</span>
+                  <span>Click &quot;Check Connection&quot; below to verify authentication</span>
                 </li>
               </ol>
             </div>
