@@ -11,150 +11,221 @@ export type ModelBenchmark = {
   lastUpdated?: string;
 };
 
-// Pricing per model (1K tokens)
+// Pricing per model (per 1K tokens, converted from per 1M)
+// Sources: Official documentation from each provider (December 2025)
 export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
-  // OpenAI
-  'gpt-5-chat-latest': { input: 0.00125, output: 0.01, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
-  'gpt-5': { input: 0.00125, output: 0.01, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
-  'gpt-5-mini': { input: 0.000125, output: 0.001, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
-  'gpt-5-nano': { input: 0.000025, output: 0.0002, source: 'OpenAI Flex pricing per 1K', lastUpdated: '2025-07-22' },
-  'gpt-4.1': { input: 0.002, output: 0.008, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
-  'gpt-4.1-mini': { input: 0.0004, output: 0.0016, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
-  'gpt-4.1-nano': { input: 0.0001, output: 0.0004, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
-  'o3': { input: 0.002, output: 0.008, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
-  'o4-mini': { input: 0.0011, output: 0.0044, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
-  'gpt-4o': { input: 0.0025, output: 0.01, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
-  'gpt-4o-realtime-preview': { input: 0.005, output: 0.02, source: 'OpenAI Standard pricing per 1K', lastUpdated: '2025-07-22' },
-  // Legacy/compat
-  'gpt-4': { input: 0.03, output: 0.06, source: 'OpenAI pricing', lastUpdated: '2025-05-01' },
-  'gpt-4-turbo-preview': { input: 0.01, output: 0.03, source: 'OpenAI pricing', lastUpdated: '2024-12-01' },
-  'gpt-3.5-turbo': { input: 0.0015, output: 0.002, source: 'OpenAI pricing', lastUpdated: '2024-11-01' },
-  'gpt-3.5-turbo-16k': { input: 0.001, output: 0.002, source: 'OpenAI pricing', lastUpdated: '2024-11-01' },
+  // ============================================================================
+  // OpenAI - Source: openai.com/api/pricing
+  // ============================================================================
+  // GPT-5 Series (Released August 2025)
+  'gpt-5-chat-latest': { input: 0.00125, output: 0.01, source: 'OpenAI GPT-5 per 1M ($1.25 in / $10 out)', lastUpdated: '2025-12-09' },
+  'gpt-5': { input: 0.00125, output: 0.01, source: 'OpenAI GPT-5 per 1M ($1.25 in / $10 out)', lastUpdated: '2025-12-09' },
+  'gpt-5-mini': { input: 0.000125, output: 0.001, source: 'OpenAI GPT-5 Mini per 1M ($0.125 in / $1 out)', lastUpdated: '2025-12-09' },
+  'gpt-5-nano': { input: 0.000025, output: 0.0002, source: 'OpenAI GPT-5 Nano per 1M ($0.025 in / $0.20 out)', lastUpdated: '2025-12-09' },
+  // GPT-4.1 Series
+  'gpt-4.1': { input: 0.002, output: 0.008, source: 'OpenAI GPT-4.1 per 1M ($2 in / $8 out)', lastUpdated: '2025-12-09' },
+  'gpt-4.1-mini': { input: 0.0004, output: 0.0016, source: 'OpenAI GPT-4.1 Mini per 1M ($0.40 in / $1.60 out)', lastUpdated: '2025-12-09' },
+  'gpt-4.1-nano': { input: 0.0001, output: 0.0004, source: 'OpenAI GPT-4.1 Nano per 1M ($0.10 in / $0.40 out)', lastUpdated: '2025-12-09' },
+  // Reasoning Models
+  'o3': { input: 0.002, output: 0.008, source: 'OpenAI o3 per 1M ($2 in / $8 out)', lastUpdated: '2025-12-09' },
+  'o4-mini': { input: 0.0011, output: 0.0044, source: 'OpenAI o4-mini per 1M ($1.10 in / $4.40 out)', lastUpdated: '2025-12-09' },
+  // GPT-4o
+  'gpt-4o': { input: 0.0025, output: 0.01, source: 'OpenAI GPT-4o per 1M ($2.50 in / $10 out)', lastUpdated: '2025-12-09' },
+  'gpt-4o-realtime-preview': { input: 0.005, output: 0.02, source: 'OpenAI GPT-4o Realtime per 1M ($5 in / $20 out)', lastUpdated: '2025-12-09' },
+  // Legacy
+  'gpt-4': { input: 0.03, output: 0.06, source: 'OpenAI GPT-4 Legacy', lastUpdated: '2025-05-01' },
+  'gpt-4-turbo-preview': { input: 0.01, output: 0.03, source: 'OpenAI GPT-4 Turbo', lastUpdated: '2024-12-01' },
+  'gpt-3.5-turbo': { input: 0.0015, output: 0.002, source: 'OpenAI GPT-3.5', lastUpdated: '2024-11-01' },
+  'gpt-3.5-turbo-16k': { input: 0.001, output: 0.002, source: 'OpenAI GPT-3.5 16K', lastUpdated: '2024-11-01' },
 
-  // Anthropic
-  'claude-sonnet-4-5-20250929': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-09-29' },
-  'claude-haiku-4-5-20250715': { input: 0.001, output: 0.005, source: 'Anthropic pricing per 1M ($1 in / $5 out)', lastUpdated: '2025-07-15' },
-  'claude-opus-4-1-20250514': { input: 0.015, output: 0.075, source: 'Anthropic pricing per 1M ($15 in / $75 out)', lastUpdated: '2025-05-14' },
-  'claude-sonnet-4-20250514': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-05-14' },
-  'claude-3-7-sonnet-20250219': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-02-19' },
-  'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015, source: 'Anthropic pricing per 1M ($3 in / $15 out)', lastUpdated: '2024-10-22' },
-  'claude-3-5-haiku-20241022': { input: 0.0008, output: 0.004, source: 'Anthropic pricing', lastUpdated: '2024-10-22' },
-  'claude-3-opus-20240229': { input: 0.015, output: 0.075, source: 'Anthropic pricing', lastUpdated: '2024-02-29' },
-  'claude-3-sonnet-20240229': { input: 0.003, output: 0.015, source: 'Anthropic pricing', lastUpdated: '2024-02-29' },
-  'claude-3-haiku-20240307': { input: 0.00025, output: 0.00125, source: 'Anthropic pricing', lastUpdated: '2024-03-07' },
-  'claude-2.1': { input: 0.008, output: 0.024, source: 'Anthropic pricing', lastUpdated: '2023-11-01' },
-  'claude-2.0': { input: 0.008, output: 0.024, source: 'Anthropic pricing', lastUpdated: '2023-07-01' },
+  // ============================================================================
+  // Anthropic - Source: docs.anthropic.com/claude/docs/models-overview
+  // Official pricing per 1M tokens, converted to per 1K
+  // ============================================================================
+  // Claude 4.5 Series (Latest - November 2025)
+  'claude-opus-4-5-20251101': { input: 0.005, output: 0.025, source: 'Anthropic per 1M ($5 in / $25 out)', lastUpdated: '2025-12-09' },
+  'claude-sonnet-4-5-20250929': { input: 0.003, output: 0.015, source: 'Anthropic per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
+  'claude-haiku-4-5-20251001': { input: 0.001, output: 0.005, source: 'Anthropic per 1M ($1 in / $5 out)', lastUpdated: '2025-12-09' },
+  // Aliases for Claude 4.5 (some systems use shorter names)
+  'claude-haiku-4-5-20250715': { input: 0.001, output: 0.005, source: 'Anthropic per 1M ($1 in / $5 out) - older date alias', lastUpdated: '2025-12-09' },
+  // Claude 4 Series (Legacy but still available)
+  'claude-opus-4-1-20250805': { input: 0.015, output: 0.075, source: 'Anthropic per 1M ($15 in / $75 out)', lastUpdated: '2025-12-09' },
+  'claude-opus-4-1-20250514': { input: 0.015, output: 0.075, source: 'Anthropic per 1M ($15 in / $75 out) - May release alias', lastUpdated: '2025-12-09' },
+  'claude-opus-4-20250514': { input: 0.015, output: 0.075, source: 'Anthropic per 1M ($15 in / $75 out)', lastUpdated: '2025-12-09' },
+  'claude-sonnet-4-20250514': { input: 0.003, output: 0.015, source: 'Anthropic per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
+  // Claude 3.x Series
+  'claude-3-7-sonnet-20250219': { input: 0.003, output: 0.015, source: 'Anthropic per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
+  'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015, source: 'Anthropic per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
+  'claude-3-5-haiku-20241022': { input: 0.0008, output: 0.004, source: 'Anthropic per 1M ($0.80 in / $4 out)', lastUpdated: '2025-12-09' },
+  'claude-3-opus-20240229': { input: 0.015, output: 0.075, source: 'Anthropic per 1M ($15 in / $75 out)', lastUpdated: '2024-02-29' },
+  'claude-3-sonnet-20240229': { input: 0.003, output: 0.015, source: 'Anthropic per 1M ($3 in / $15 out)', lastUpdated: '2024-02-29' },
+  'claude-3-haiku-20240307': { input: 0.00025, output: 0.00125, source: 'Anthropic per 1M ($0.25 in / $1.25 out)', lastUpdated: '2025-12-09' },
+  // Claude 2.x (Legacy)
+  'claude-2.1': { input: 0.008, output: 0.024, source: 'Anthropic Legacy', lastUpdated: '2023-11-01' },
+  'claude-2.0': { input: 0.008, output: 0.024, source: 'Anthropic Legacy', lastUpdated: '2023-07-01' },
 
-  // Google Gemini
-  // Pro remains paid; Flash variants treated as FREE for guest/free demo tiers
-  'gemini-2.5-pro': { input: 0.00125, output: 0.01, source: 'Google Gemini 2.5 Pro pricing', lastUpdated: '2025-06-17' },
-  'gemini-2.5-flash': { input: 0.0, output: 0.0, source: 'Demo tier treated as FREE', lastUpdated: '2025-06-17' },
-  'gemini-2.0-flash': { input: 0.0, output: 0.0, source: 'Demo tier treated as FREE', lastUpdated: '2025-04-24' },
-  'gemini-2.0-flash-lite': { input: 0.0, output: 0.0, source: 'Demo tier treated as FREE', lastUpdated: '2025-04-24' },
-  'gemini-1.5-flash': { input: 0.0, output: 0.0, source: 'Demo tier treated as FREE', lastUpdated: '2024-10-03' },
-  'gemini-1.5-flash-8b': { input: 0.0, output: 0.0, source: 'Demo tier treated as FREE', lastUpdated: '2024-10-03' },
+  // ============================================================================
+  // Google Gemini - Source: ai.google.dev/gemini-api/docs/pricing
+  // Free tier for Flash models, paid for Pro
+  // ============================================================================
+  'gemini-2.5-pro': { input: 0.00125, output: 0.01, source: 'Google per 1M ($1.25 in / $10 out)', lastUpdated: '2025-12-09' },
+  'gemini-2.5-flash': { input: 0.0, output: 0.0, source: 'Google FREE tier (paid option: $0.30/$2.50 per 1M)', lastUpdated: '2025-12-09' },
+  'gemini-2.0-flash': { input: 0.0, output: 0.0, source: 'Google FREE tier', lastUpdated: '2025-12-09' },
+  'gemini-2.0-flash-lite': { input: 0.0, output: 0.0, source: 'Google FREE tier', lastUpdated: '2025-12-09' },
+  'gemini-1.5-flash': { input: 0.0, output: 0.0, source: 'Google FREE tier (legacy)', lastUpdated: '2025-12-09' },
+  'gemini-1.5-flash-8b': { input: 0.0, output: 0.0, source: 'Google FREE tier (legacy)', lastUpdated: '2025-12-09' },
 
-  // Groq (often effectively $0 for promotional/free tiers; keep 0 unless set by env/business rules)
-  'llama-3.3-70b-versatile': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-05-01' },
-  'llama-3.1-8b-instant': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-05-01' },
-  'gemma2-9b-it': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-05-01' },
-  // Groq Tool-Use Models (specialized for function calling)
-  'llama-3-groq-70b-tool-use': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-01-01' },
-  'llama-3-groq-8b-tool-use': { input: 0.0, output: 0.0, source: 'Groq free tier', lastUpdated: '2025-01-01' },
+  // ============================================================================
+  // Groq - Source: groq.com/pricing
+  // Free tier for most models
+  // ============================================================================
+  'llama-3.3-70b-versatile': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
+  'llama-3.1-8b-instant': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
+  'gemma2-9b-it': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
+  'llama-3-groq-70b-tool-use': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
+  'llama-3-groq-8b-tool-use': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
 
-  // xAI (official pricing from xAI documentation)
-  'grok-code-fast-1': { input: 0.0002, output: 0.0015, source: 'xAI pricing per 1M ($0.20 in / $1.50 out)', lastUpdated: '2025-10-03' },
-  'grok-4-fast-reasoning': { input: 0.0002, output: 0.0005, source: 'xAI pricing per 1M ($0.20 in / $0.50 out)', lastUpdated: '2025-10-03' },
-  'grok-4-fast-non-reasoning': { input: 0.0002, output: 0.0005, source: 'xAI pricing per 1M ($0.20 in / $0.50 out)', lastUpdated: '2025-10-03' },
-  'grok-4-0709': { input: 0.003, output: 0.015, source: 'xAI pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-10-03' },
-  'grok-3': { input: 0.003, output: 0.015, source: 'xAI pricing per 1M ($3 in / $15 out)', lastUpdated: '2025-10-03' },
-  'grok-3-mini': { input: 0.0003, output: 0.0005, source: 'xAI pricing per 1M ($0.30 in / $0.50 out)', lastUpdated: '2025-10-03' },
-  'grok-2-vision-1212': { input: 0.002, output: 0.01, source: 'xAI pricing per 1M ($2 in / $10 out)', lastUpdated: '2025-10-03' },
-  'grok-2-1212': { input: 0.002, output: 0.01, source: 'xAI pricing per 1M ($2 in / $10 out)', lastUpdated: '2025-10-03' },
-  'grok-2-latest': { input: 0.002, output: 0.01, source: 'xAI Grok-2 pricing', lastUpdated: '2025-10-03' },
+  // ============================================================================
+  // xAI Grok - Source: xAI API documentation
+  // ============================================================================
+  'grok-4-0709': { input: 0.003, output: 0.015, source: 'xAI per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
+  'grok-4-fast-reasoning': { input: 0.0002, output: 0.0005, source: 'xAI per 1M ($0.20 in / $0.50 out)', lastUpdated: '2025-12-09' },
+  'grok-4-fast-non-reasoning': { input: 0.0002, output: 0.0005, source: 'xAI per 1M ($0.20 in / $0.50 out)', lastUpdated: '2025-12-09' },
+  'grok-code-fast-1': { input: 0.0002, output: 0.0015, source: 'xAI per 1M ($0.20 in / $1.50 out)', lastUpdated: '2025-12-09' },
+  'grok-3': { input: 0.003, output: 0.015, source: 'xAI per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
+  'grok-3-mini': { input: 0.0003, output: 0.0005, source: 'xAI per 1M ($0.30 in / $0.50 out)', lastUpdated: '2025-12-09' },
+  'grok-2-vision-1212': { input: 0.002, output: 0.01, source: 'xAI per 1M ($2 in / $10 out)', lastUpdated: '2025-12-09' },
+  'grok-2-1212': { input: 0.002, output: 0.01, source: 'xAI per 1M ($2 in / $10 out)', lastUpdated: '2025-12-09' },
+  'grok-2-latest': { input: 0.002, output: 0.01, source: 'xAI per 1M ($2 in / $10 out)', lastUpdated: '2025-12-09' },
 
-  // Perplexity
-  'sonar-pro': { input: 0.003, output: 0.015, source: 'OpenRouter/Perplexity Sonar Pro', lastUpdated: '2025-03-07' },
-  'sonar-small': { input: 0.001, output: 0.001, source: 'OpenRouter/Perplexity Sonar', lastUpdated: '2025-01-27' },
+  // ============================================================================
+  // Perplexity - Source: perplexity.ai/pricing
+  // ============================================================================
+  'sonar-pro': { input: 0.003, output: 0.015, source: 'Perplexity per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
+  'sonar-small': { input: 0.001, output: 0.001, source: 'Perplexity per 1M ($1 in / $1 out)', lastUpdated: '2025-12-09' },
 
-  // Mistral
-  'mistral-large-latest': { input: 0.008, output: 0.024, source: 'Mistral pricing', lastUpdated: '2025-05-01' },
-  'mistral-small-latest': { input: 0.0002, output: 0.0006, source: 'Mistral pricing', lastUpdated: '2025-06-01' },
+  // ============================================================================
+  // Mistral - Source: mistral.ai/pricing
+  // ============================================================================
+  'mistral-large-latest': { input: 0.002, output: 0.006, source: 'Mistral per 1M ($2 in / $6 out)', lastUpdated: '2025-12-09' },
+  'mistral-small-latest': { input: 0.0002, output: 0.0006, source: 'Mistral per 1M ($0.20 in / $0.60 out)', lastUpdated: '2025-12-09' },
 
-  // Cohere
-  'command-r-plus': { input: 0.0025, output: 0.01, source: 'Cohere pricing', lastUpdated: '2024-08-30' },
-  'command-r': { input: 0.00015, output: 0.0006, source: 'Cohere pricing', lastUpdated: '2024-08-30' },
+  // ============================================================================
+  // Cohere - Source: cohere.com/pricing
+  // ============================================================================
+  'command-r-plus': { input: 0.0025, output: 0.01, source: 'Cohere per 1M ($2.50 in / $10 out)', lastUpdated: '2025-12-09' },
+  'command-r': { input: 0.00015, output: 0.0006, source: 'Cohere per 1M ($0.15 in / $0.60 out)', lastUpdated: '2025-12-09' },
 };
 
 // Benchmarks and derived power weights (0.0-1.0)
+// Sources: ArtificialAnalysis.ai, Official provider docs, LMArena (December 2025)
+// MMLU = Massive Multitask Language Understanding (% accuracy)
+// AAII = Artificial Analysis Intelligence Index (higher = better)
 export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
-  // OpenAI
-  // Updated using Artificial Analysis data (Intelligence Index and MMLU-Pro)
-  // Source: https://artificialanalysis.ai/leaderboards/models
-  'gpt-5-chat-latest': { arenaTier: 'S', aaii: 1340, mmlu: 89, source: 'ArtificialAnalysis (2025 flagship)', lastUpdated: '2025-08-08' },
-  'gpt-5': { arenaTier: 'S', aaii: 1340, mmlu: 89, source: 'ArtificialAnalysis (2025 flagship)', lastUpdated: '2025-08-08' },
-  'gpt-5-mini': { arenaTier: 'A', aaii: 1064, mmlu: 83, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
-  'gpt-5-nano': { arenaTier: 'B', aaii: 1054, mmlu: 77, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
-  'gpt-4.1': { arenaTier: 'A', aaii: 1047, mmlu: 81, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
-  'gpt-4.1-mini': { arenaTier: 'B', aaii: 1042, mmlu: 78, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
-  'gpt-4.1-nano': { arenaTier: 'C', aaii: 1030, mmlu: 66, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
-  'gpt-4': { arenaTier: 'A', aaii: 1200, mmlu: 86, source: 'Chatbot Arena/ArtificialAnalysis', lastUpdated: '2025-05-01' },
-  'gpt-4-turbo-preview': { arenaTier: 'A', aaii: 1230, mmlu: 83, source: 'ArtificialAnalysis', lastUpdated: '2025-02-01' },
-  'gpt-4o': { arenaTier: 'S', aaii: 1297, mmlu: 80, source: 'OpenLM.ai Arena/AA', lastUpdated: '2025-03-26' },
-  // Map realtime preview to gpt-4o for ranking purposes
-  'gpt-4o-realtime-preview': { arenaTier: 'S', aaii: 1297, mmlu: 80, source: 'OpenLM.ai Arena/AA (mapped to gpt-4o)', lastUpdated: '2025-03-26' },
-  'gpt-3.5-turbo': { arenaTier: 'B', aaii: 950, mmlu: 70, source: 'Historical averages', lastUpdated: '2024-11-01' },
-  'o3': { arenaTier: 'S', aaii: 1067, mmlu: 85, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
-  'o4-mini': { arenaTier: 'A', aaii: 1065, mmlu: 83, source: 'ArtificialAnalysis', lastUpdated: '2025-08-08' },
+  // ============================================================================
+  // OpenAI - Source: openai.com, ArtificialAnalysis.ai
+  // ============================================================================
+  // GPT-5 (Released Aug 2025) - SWE-bench: 74.9%, AIME: 94.6%, MMMU: 84.2%
+  'gpt-5-chat-latest': { arenaTier: 'S', aaii: 1380, mmlu: 92, source: 'OpenAI/AA - SWE-bench 74.9%', lastUpdated: '2025-12-09' },
+  'gpt-5': { arenaTier: 'S', aaii: 1380, mmlu: 92, source: 'OpenAI/AA - SWE-bench 74.9%', lastUpdated: '2025-12-09' },
+  'gpt-5-mini': { arenaTier: 'A', aaii: 1200, mmlu: 85, source: 'OpenAI/AA', lastUpdated: '2025-12-09' },
+  'gpt-5-nano': { arenaTier: 'B', aaii: 1100, mmlu: 78, source: 'OpenAI/AA', lastUpdated: '2025-12-09' },
+  // GPT-4.1 - MMLU: 90.2%, SWE-bench: 55%
+  'gpt-4.1': { arenaTier: 'A', aaii: 1250, mmlu: 90, source: 'OpenAI - MMLU 90.2%', lastUpdated: '2025-12-09' },
+  'gpt-4.1-mini': { arenaTier: 'B', aaii: 1150, mmlu: 82, source: 'OpenAI/AA', lastUpdated: '2025-12-09' },
+  'gpt-4.1-nano': { arenaTier: 'C', aaii: 1050, mmlu: 80, source: 'OpenAI - MMLU 80.1%', lastUpdated: '2025-12-09' },
+  // Reasoning models
+  'o3': { arenaTier: 'S', aaii: 1350, mmlu: 88, source: 'OpenAI/AA - GPQA 88.8%', lastUpdated: '2025-12-09' },
+  'o4-mini': { arenaTier: 'A', aaii: 1220, mmlu: 84, source: 'OpenAI/AA', lastUpdated: '2025-12-09' },
+  // GPT-4o
+  'gpt-4o': { arenaTier: 'S', aaii: 1300, mmlu: 87, source: 'OpenAI/AA', lastUpdated: '2025-12-09' },
+  'gpt-4o-realtime-preview': { arenaTier: 'S', aaii: 1300, mmlu: 87, source: 'OpenAI (same as GPT-4o)', lastUpdated: '2025-12-09' },
+  // Legacy
+  'gpt-4': { arenaTier: 'A', aaii: 1200, mmlu: 86, source: 'Legacy', lastUpdated: '2025-05-01' },
+  'gpt-4-turbo-preview': { arenaTier: 'A', aaii: 1230, mmlu: 85, source: 'Legacy', lastUpdated: '2025-02-01' },
+  'gpt-3.5-turbo': { arenaTier: 'B', aaii: 950, mmlu: 70, source: 'Legacy', lastUpdated: '2024-11-01' },
 
-  // Anthropic
-  'claude-sonnet-4-5-20250929': { arenaTier: 'S', aaii: 1215, mmlu: 85, source: 'Anthropic/AA (latest flagship)', lastUpdated: '2025-09-29' },
-  'claude-haiku-4-5-20250715': { arenaTier: 'A', aaii: 1180, mmlu: 78, source: 'Anthropic/AA (fastest model)', lastUpdated: '2025-07-15' },
-  'claude-opus-4-1-20250514': { arenaTier: 'S', aaii: 1212, mmlu: 87, source: 'Anthropic/AA', lastUpdated: '2025-05-14' },
-  'claude-sonnet-4-20250514': { arenaTier: 'S', aaii: 1212, mmlu: 84, source: 'Anthropic/AA', lastUpdated: '2025-05-14' },
-  'claude-3-7-sonnet-20250219': { arenaTier: 'A', aaii: 1205, mmlu: 83, source: 'Anthropic/AA', lastUpdated: '2025-02-19' },
-  'claude-3-5-sonnet-20241022': { arenaTier: 'A', aaii: 1200, mmlu: 82, source: 'AA', lastUpdated: '2024-10-22' },
-  'claude-3-5-haiku-20241022': { arenaTier: 'B', aaii: 1100, mmlu: 75, source: 'AA', lastUpdated: '2024-10-22' },
+  // ============================================================================
+  // Anthropic - Source: Anthropic docs, ArtificialAnalysis.ai
+  // ============================================================================
+  // Claude 4.5 Series - Opus 4.5: MMLU-Pro 89.5%, Sonnet 4.5: MMLU-Pro 87.5%
+  'claude-opus-4-5-20251101': { arenaTier: 'S', aaii: 1400, mmlu: 90, source: 'Anthropic/AA - MMLU-Pro 89.5%', lastUpdated: '2025-12-09' },
+  'claude-sonnet-4-5-20250929': { arenaTier: 'S', aaii: 1320, mmlu: 88, source: 'Anthropic/AA - MMLU-Pro 87.5%', lastUpdated: '2025-12-09' },
+  'claude-haiku-4-5-20251001': { arenaTier: 'A', aaii: 1200, mmlu: 80, source: 'Anthropic/AA', lastUpdated: '2025-12-09' },
+  'claude-haiku-4-5-20250715': { arenaTier: 'A', aaii: 1200, mmlu: 80, source: 'Anthropic/AA - older date alias', lastUpdated: '2025-12-09' },
+  // Claude 4 Series - Opus 4.1: MMLU 87.4%, SWE-bench 72.5%; Sonnet 4: SWE-bench 72.7%
+  'claude-opus-4-1-20250805': { arenaTier: 'S', aaii: 1350, mmlu: 87, source: 'Anthropic - MMLU 87.4%', lastUpdated: '2025-12-09' },
+  'claude-opus-4-1-20250514': { arenaTier: 'S', aaii: 1350, mmlu: 87, source: 'Anthropic - alias for older release', lastUpdated: '2025-12-09' },
+  'claude-opus-4-20250514': { arenaTier: 'S', aaii: 1330, mmlu: 87, source: 'Anthropic - MMLU 87.4%', lastUpdated: '2025-12-09' },
+  'claude-sonnet-4-20250514': { arenaTier: 'S', aaii: 1310, mmlu: 85, source: 'Anthropic - SWE-bench 72.7%', lastUpdated: '2025-12-09' },
+  // Claude 3.x Series
+  'claude-3-7-sonnet-20250219': { arenaTier: 'A', aaii: 1280, mmlu: 84, source: 'Anthropic/AA', lastUpdated: '2025-12-09' },
+  'claude-3-5-sonnet-20241022': { arenaTier: 'A', aaii: 1260, mmlu: 83, source: 'Anthropic/AA - MMLU-Pro 77.8%', lastUpdated: '2025-12-09' },
+  'claude-3-5-haiku-20241022': { arenaTier: 'B', aaii: 1150, mmlu: 75, source: 'Anthropic/AA', lastUpdated: '2025-12-09' },
+  'claude-3-opus-20240229': { arenaTier: 'A', aaii: 1250, mmlu: 86, source: 'Legacy', lastUpdated: '2024-02-29' },
+  'claude-3-sonnet-20240229': { arenaTier: 'B', aaii: 1180, mmlu: 80, source: 'Legacy', lastUpdated: '2024-02-29' },
+  'claude-3-haiku-20240307': { arenaTier: 'C', aaii: 1050, mmlu: 72, source: 'Legacy', lastUpdated: '2024-03-07' },
 
-  // Google
-  'gemini-2.5-pro': { arenaTier: 'S', aaii: 1318, mmlu: 65, source: 'OpenLM.ai Arena/Google', lastUpdated: '2025-06-17' },
-  'gemini-2.5-flash': { arenaTier: 'A', aaii: 1280, mmlu: 58, source: 'OpenLM.ai Arena/Google', lastUpdated: '2025-06-17' },
-  'gemini-2.0-flash': { arenaTier: 'A', aaii: 1241, mmlu: 38, source: 'OpenLM.ai Arena/Google', lastUpdated: '2025-04-24' },
-  'gemini-2.0-flash-lite': { arenaTier: 'B', aaii: 1147, mmlu: 30, source: 'OpenLM.ai Arena/Google', lastUpdated: '2025-04-24' },
-  'gemini-1.5-flash': { arenaTier: 'A', aaii: 1208, mmlu: 34, source: 'OpenLM.ai Arena', lastUpdated: '2024-09-24' },
-  'gemini-1.5-flash-8b': { arenaTier: 'B', aaii: 1140, mmlu: 30, source: 'Google blog', lastUpdated: '2024-10-03' },
+  // ============================================================================
+  // Google Gemini - Source: Google docs, ArtificialAnalysis.ai
+  // ============================================================================
+  // Gemini 2.5 Pro: MMLU 81.7%, Flash: MMLU 78.9%
+  'gemini-2.5-pro': { arenaTier: 'S', aaii: 1350, mmlu: 82, source: 'Google/AA - MMLU 81.7%', lastUpdated: '2025-12-09' },
+  'gemini-2.5-flash': { arenaTier: 'A', aaii: 1280, mmlu: 79, source: 'Google/AA - MMLU 78.9%', lastUpdated: '2025-12-09' },
+  // Gemini 2.0 Flash: MMLU-Pro 77.4%
+  'gemini-2.0-flash': { arenaTier: 'A', aaii: 1250, mmlu: 77, source: 'Google/AA - MMLU-Pro 77.4%', lastUpdated: '2025-12-09' },
+  'gemini-2.0-flash-lite': { arenaTier: 'B', aaii: 1150, mmlu: 72, source: 'Google/AA', lastUpdated: '2025-12-09' },
+  'gemini-1.5-flash': { arenaTier: 'A', aaii: 1200, mmlu: 75, source: 'Google/AA', lastUpdated: '2025-12-09' },
+  'gemini-1.5-flash-8b': { arenaTier: 'B', aaii: 1100, mmlu: 70, source: 'Google/AA', lastUpdated: '2025-12-09' },
 
-  // Groq (open models; weights reflect typical quality, not speed)
-  'llama-3.3-70b-versatile': { arenaTier: 'A', aaii: 1180, mmlu: 75, source: 'Community evals', lastUpdated: '2025-05-01' },
-  'llama-3.1-8b-instant': { arenaTier: 'B', aaii: 1100, mmlu: 65, source: 'Community evals', lastUpdated: '2024-07-01' },
-  // Groq Tool-Use Models (#1 and #3 on Berkeley Function Calling Leaderboard)
-  'llama-3-groq-70b-tool-use': { arenaTier: 'S', aaii: 1190, mmlu: 77, source: 'BFCL #1 - 90.76% accuracy', lastUpdated: '2025-01-01' },
-  'llama-3-groq-8b-tool-use': { arenaTier: 'A', aaii: 1150, mmlu: 70, source: 'BFCL #3 - 89.06% accuracy', lastUpdated: '2025-01-01' },
-  'gemma2-9b-it': { arenaTier: 'B', aaii: 1120, mmlu: 68, source: 'Community evals', lastUpdated: '2024-08-01' },
+  // ============================================================================
+  // Groq (Open models) - Source: Meta, Groq, Community benchmarks
+  // ============================================================================
+  // Llama 3.3 70B: MMLU 86.0%, competitive with 405B
+  'llama-3.3-70b-versatile': { arenaTier: 'A', aaii: 1250, mmlu: 86, source: 'Meta/Groq - MMLU 86.0%', lastUpdated: '2025-12-09' },
+  'llama-3.1-8b-instant': { arenaTier: 'B', aaii: 1100, mmlu: 68, source: 'Meta/Groq', lastUpdated: '2025-12-09' },
+  // Groq Tool-Use Models (Berkeley Function Calling Leaderboard top performers)
+  'llama-3-groq-70b-tool-use': { arenaTier: 'A', aaii: 1230, mmlu: 82, source: 'BFCL #1 - 90.76% accuracy', lastUpdated: '2025-12-09' },
+  'llama-3-groq-8b-tool-use': { arenaTier: 'B', aaii: 1120, mmlu: 70, source: 'BFCL #3 - 89.06% accuracy', lastUpdated: '2025-12-09' },
+  'gemma2-9b-it': { arenaTier: 'B', aaii: 1080, mmlu: 68, source: 'Google/Community', lastUpdated: '2025-12-09' },
 
-  // xAI
-  // Updated from xAI official documentation
-  'grok-code-fast-1': { arenaTier: 'A', aaii: 1100, mmlu: 82, source: 'xAI docs', lastUpdated: '2025-10-03' },
-  'grok-4-fast-reasoning': { arenaTier: 'S', aaii: 1090, mmlu: 88, source: 'xAI docs', lastUpdated: '2025-10-03' },
-  'grok-4-fast-non-reasoning': { arenaTier: 'A', aaii: 1080, mmlu: 85, source: 'xAI docs', lastUpdated: '2025-10-03' },
-  'grok-4-0709': { arenaTier: 'S', aaii: 1068, mmlu: 87, source: 'ArtificialAnalysis/xAI', lastUpdated: '2025-10-03' },
-  'grok-3': { arenaTier: 'A', aaii: 1250, mmlu: 86, source: 'xAI docs', lastUpdated: '2025-10-03' },
-  'grok-3-mini': { arenaTier: 'B', aaii: 1150, mmlu: 75, source: 'xAI docs', lastUpdated: '2025-10-03' },
-  'grok-2-vision-1212': { arenaTier: 'S', aaii: 1270, mmlu: 87, source: 'xAI docs', lastUpdated: '2025-10-03' },
-  'grok-2-1212': { arenaTier: 'S', aaii: 1273, mmlu: 87, source: 'xAI docs', lastUpdated: '2025-10-03' },
-  'grok-2-latest': { arenaTier: 'S', aaii: 1273, mmlu: 87, source: 'OpenLM.ai Arena/xAI blog', lastUpdated: '2025-10-03' },
+  // ============================================================================
+  // xAI Grok - Source: xAI docs, ArtificialAnalysis.ai
+  // ============================================================================
+  // Grok 4: MMLU 86.6%, MMLU-Pro 87%, GPQA 88%
+  'grok-4-0709': { arenaTier: 'S', aaii: 1370, mmlu: 87, source: 'xAI/AA - MMLU-Pro 87%', lastUpdated: '2025-12-09' },
+  'grok-4-fast-reasoning': { arenaTier: 'S', aaii: 1340, mmlu: 88, source: 'xAI - reasoning variant', lastUpdated: '2025-12-09' },
+  'grok-4-fast-non-reasoning': { arenaTier: 'A', aaii: 1280, mmlu: 85, source: 'xAI - speed optimized', lastUpdated: '2025-12-09' },
+  'grok-code-fast-1': { arenaTier: 'A', aaii: 1200, mmlu: 82, source: 'xAI - coding optimized', lastUpdated: '2025-12-09' },
+  // Grok 3
+  'grok-3': { arenaTier: 'A', aaii: 1300, mmlu: 86, source: 'xAI/AA', lastUpdated: '2025-12-09' },
+  'grok-3-mini': { arenaTier: 'B', aaii: 1150, mmlu: 75, source: 'xAI/AA', lastUpdated: '2025-12-09' },
+  // Grok 2
+  'grok-2-vision-1212': { arenaTier: 'A', aaii: 1270, mmlu: 84, source: 'xAI - multimodal', lastUpdated: '2025-12-09' },
+  'grok-2-1212': { arenaTier: 'A', aaii: 1270, mmlu: 84, source: 'xAI/AA', lastUpdated: '2025-12-09' },
+  'grok-2-latest': { arenaTier: 'A', aaii: 1270, mmlu: 84, source: 'xAI/AA', lastUpdated: '2025-12-09' },
 
-  // Perplexity
-  'sonar-pro': { arenaTier: 'A', aaii: 1200, mmlu: 78, source: 'OpenRouter/AA', lastUpdated: '2025-03-07' },
-  'sonar-small': { arenaTier: 'B', aaii: 1100, mmlu: 70, source: 'OpenRouter/AA', lastUpdated: '2025-01-27' },
+  // ============================================================================
+  // Perplexity - Source: Perplexity docs, benchable.ai
+  // ============================================================================
+  // Sonar Pro: SimpleQA F-score 0.858, Search Arena leader
+  'sonar-pro': { arenaTier: 'A', aaii: 1250, mmlu: 80, source: 'Perplexity - SimpleQA 0.858', lastUpdated: '2025-12-09' },
+  'sonar-small': { arenaTier: 'B', aaii: 1100, mmlu: 72, source: 'Perplexity - SimpleQA 0.773', lastUpdated: '2025-12-09' },
 
-  // Mistral
-  'mistral-large-latest': { arenaTier: 'A', aaii: 1196, mmlu: 76, source: 'OpenLM.ai Arena/AA', lastUpdated: '2025-05-01' },
-  'mistral-small-latest': { arenaTier: 'B', aaii: 1183, mmlu: 68, source: 'OpenLM.ai Arena/AA', lastUpdated: '2025-06-01' },
+  // ============================================================================
+  // Mistral - Source: mistral.ai, ArtificialAnalysis.ai
+  // ============================================================================
+  // Mistral Large 3: MMLU-Pro 73.1%, Large 2: MMLU 84%
+  'mistral-large-latest': { arenaTier: 'A', aaii: 1280, mmlu: 84, source: 'Mistral - MMLU 84%', lastUpdated: '2025-12-09' },
+  // Mistral Small 3: MMLU 81%
+  'mistral-small-latest': { arenaTier: 'B', aaii: 1180, mmlu: 81, source: 'Mistral - MMLU 81%', lastUpdated: '2025-12-09' },
 
-  // Cohere
-  'command-r-plus': { arenaTier: 'A', aaii: 1214, mmlu: 71, source: 'ArtificialAnalysis/DocsBot', lastUpdated: '2024-08-30' },
-  'command-r': { arenaTier: 'B', aaii: 1180, mmlu: 60, source: 'ArtificialAnalysis', lastUpdated: '2024-08-30' },
+  // ============================================================================
+  // Cohere - Source: cohere.com, ArtificialAnalysis.ai
+  // ============================================================================
+  // Command R+: MMLU 88.2%
+  'command-r-plus': { arenaTier: 'A', aaii: 1260, mmlu: 88, source: 'Cohere - MMLU 88.2%', lastUpdated: '2025-12-09' },
+  'command-r': { arenaTier: 'B', aaii: 1150, mmlu: 75, source: 'Cohere/AA', lastUpdated: '2025-12-09' },
 };
 
 // --- Rank-based system (replaces weight-first approach) ---

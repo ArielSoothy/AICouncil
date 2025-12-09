@@ -186,6 +186,69 @@ const availableModels = {
 ### Legacy Models
 Models marked with `isLegacy: true` (e.g., Claude 2.0/2.1) are kept in registry but excluded from UI selectors.
 
+### Power/Cost Display System (December 2025)
+
+**Status**: ✅ Implemented December 2025
+**Purpose**: Show model "power" (benchmark-based weight) and cost tier in all model selectors
+
+#### Grade System (Benchmark-Based)
+```
+Weight 0.95-1.0  → A+ (Top tier - flagship models)
+Weight 0.85-0.94 → A  (Premium models)
+Weight 0.75-0.84 → B+ (Balanced models)
+Weight 0.65-0.74 → B  (Budget models)
+Weight 0.55-0.64 → C+ (Economy models)
+Weight 0.50-0.54 → C  (Basic models)
+```
+
+#### Cost Tiers
+```
+FREE  → Green badge (Groq/Google free tier)
+$     → Blue badge (input + output < $0.005/1K)
+$$    → Amber badge (input + output < $0.02/1K)
+$$$   → Rose badge (input + output >= $0.02/1K)
+```
+
+#### Helper Functions
+```typescript
+import {
+  getModelGrade,      // Returns { grade: 'A+', weight: 0.98, display: 'A+(0.98)' }
+  getModelCostTier,   // Returns 'FREE' | '$' | '$$' | '$$$'
+  getSelectableModels // Returns only working, non-legacy models
+} from '@/lib/models/model-registry'
+```
+
+#### Shared UI Components
+```typescript
+import { ModelBadge, ModelDropdownItem } from '@/components/shared/model-badge'
+
+// Badge with power/cost display
+<ModelBadge
+  modelId="claude-sonnet-4-5-20250929"
+  showPower={true}   // Shows A+(0.98)
+  showCost={true}    // Shows $$$ badge
+/>
+
+// Dropdown item with power/cost
+<ModelDropdownItem
+  modelId="gemini-2.0-flash"
+  selected={true}
+  showPower={true}
+  showCost={true}
+/>
+```
+
+#### Files Updated
+- `lib/models/model-registry.ts` - Added helper functions + types
+- `components/shared/model-badge.tsx` - NEW: Shared components
+- `components/consensus/ultra-model-badge-selector.tsx` - Uses shared components
+- `components/trading/single-model-badge-selector.tsx` - Uses shared components
+
+#### Protected Feature
+- **Feature #40** in `docs/workflow/FEATURES.md`
+- DO NOT remove power/cost display from model selectors
+- DO NOT modify grade thresholds without user approval
+
 ## 🚀 MANDATORY SESSION START PROTOCOL:
 **EVERY NEW CONVERSATION MUST START WITH THESE STEPS IN ORDER:**
 

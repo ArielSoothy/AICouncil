@@ -2,11 +2,9 @@
 
 import { ModelConfig } from '@/types/consensus'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel
@@ -14,13 +12,41 @@ import {
 import { Plus, X, ChevronDown } from 'lucide-react'
 import { PROVIDER_COLORS } from '@/lib/brand-colors'
 import { useState } from 'react'
-import { MODEL_REGISTRY, Provider } from '@/lib/models/model-registry'
+import {
+  MODEL_REGISTRY,
+  Provider,
+  PROVIDER_NAMES,
+  getModelInfo,
+  getModelGrade,
+  getModelCostTier
+} from '@/lib/models/model-registry'
 import { IS_PRODUCTION } from '@/lib/utils/environment'
+import { ModelDropdownItem } from '@/components/shared/model-badge'
+import { cn } from '@/lib/utils'
 
 interface UltraModelBadgeSelectorProps {
   models: ModelConfig[]
   onChange: (models: ModelConfig[]) => void
+  showPower?: boolean
+  showCost?: boolean
 }
+
+// Cost tier styling (duplicated here for inline badge styling)
+const COST_TIER_STYLES = {
+  'FREE': { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
+  '$': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
+  '$$': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300' },
+  '$$$': { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300' }
+} as const
+
+const GRADE_STYLES = {
+  'A+': { text: 'text-emerald-600 dark:text-emerald-400' },
+  'A': { text: 'text-green-600 dark:text-green-400' },
+  'B+': { text: 'text-blue-600 dark:text-blue-400' },
+  'B': { text: 'text-sky-600 dark:text-sky-400' },
+  'C+': { text: 'text-amber-600 dark:text-amber-400' },
+  'C': { text: 'text-orange-600 dark:text-orange-400' }
+} as const
 
 // 🔒 PRODUCTION LOCK: Only free models in production
 // Generate available models from registry (only working models, excluding legacy)
@@ -38,26 +64,12 @@ const availableModels = Object.entries(MODEL_REGISTRY).reduce((acc, [provider, m
   return acc
 }, {} as Record<Provider, string[]>)
 
-// Generate model display names from registry
-const modelDisplayNames: Record<string, string> = Object.values(MODEL_REGISTRY)
-  .flat()
-  .reduce((acc, model) => {
-    acc[model.id] = model.name
-    return acc
-  }, {} as Record<string, string>)
-
-const providerNames = {
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  google: 'Google',
-  groq: 'Groq',
-  xai: 'xAI',
-  perplexity: 'Perplexity',
-  mistral: 'Mistral',
-  cohere: 'Cohere'
-} as const
-
-export function UltraModelBadgeSelector({ models, onChange }: UltraModelBadgeSelectorProps) {
+export function UltraModelBadgeSelector({
+  models,
+  onChange,
+  showPower = true,
+  showCost = true
+}: UltraModelBadgeSelectorProps) {
   const [isAddingModel, setIsAddingModel] = useState(false)
 
   const enabledModels = models.filter(m => m.enabled)
@@ -107,31 +119,56 @@ export function UltraModelBadgeSelector({ models, onChange }: UltraModelBadgeSel
     <div className="flex flex-wrap gap-2 items-center">
       {enabledModels.map((model, index) => {
         const colorClass = PROVIDER_COLORS[model.provider as keyof typeof PROVIDER_COLORS] || PROVIDER_COLORS.openai
-        const displayName = modelDisplayNames[model.model] || model.model
+        const modelInfo = getModelInfo(model.model)
+        const displayName = modelInfo?.name || model.model
+        const { grade, weight } = getModelGrade(model.model)
+        const costTier = getModelCostTier(model.model)
+        const costStyle = COST_TIER_STYLES[costTier]
+        const gradeStyle = GRADE_STYLES[grade]
 
         return (
           <div key={`${model.provider}-${index}`} className="flex items-center gap-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className={`${colorClass} transition-colors cursor-pointer px-3 py-1 h-auto text-sm font-medium rounded-full flex items-center gap-1.5 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
+                  className={cn(
+                    colorClass,
+                    'transition-colors cursor-pointer px-3 py-1 h-auto text-sm font-medium rounded-full',
+                    'flex items-center gap-1.5 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary'
+                  )}
                 >
                   {displayName}
+                  {showPower && (
+                    <span className={cn('font-semibold text-xs', gradeStyle.text)}>
+                      {grade}({weight.toFixed(2)})
+                    </span>
+                  )}
+                  {showCost && (
+                    <span className={cn(
+                      'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
+                      costStyle.bg,
+                      costStyle.text
+                    )}>
+                      {costTier}
+                    </span>
+                  )}
                   <ChevronDown className="h-3 w-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel>{providerNames[model.provider as keyof typeof providerNames]} Models</DropdownMenuLabel>
+              <DropdownMenuContent align="start" className="w-72 max-h-[400px] overflow-y-auto">
+                <DropdownMenuLabel>
+                  {PROVIDER_NAMES[model.provider as Provider]} Models
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {availableModels[model.provider as keyof typeof availableModels]?.map((availableModel) => (
-                  <DropdownMenuItem
+                  <ModelDropdownItem
                     key={availableModel}
+                    modelId={availableModel}
+                    selected={model.model === availableModel}
+                    showPower={showPower}
+                    showCost={showCost}
                     onClick={() => swapModel(index, availableModel)}
-                    className={model.model === availableModel ? 'bg-accent' : ''}
-                  >
-                    {modelDisplayNames[availableModel] || availableModel}
-                    {model.model === availableModel && ' ✓'}
-                  </DropdownMenuItem>
+                  />
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -164,14 +201,17 @@ export function UltraModelBadgeSelector({ models, onChange }: UltraModelBadgeSel
         <DropdownMenuContent align="start" className="w-48">
           <DropdownMenuLabel>Select Provider</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {Object.keys(availableModels).map((provider) => (
-            <DropdownMenuItem
-              key={provider}
-              onClick={() => addModel(provider as keyof typeof availableModels)}
-            >
-              {providerNames[provider as keyof typeof providerNames]}
-            </DropdownMenuItem>
-          ))}
+          {Object.entries(availableModels)
+            .filter(([_, models]) => models.length > 0)
+            .map(([provider]) => (
+              <button
+                key={provider}
+                onClick={() => addModel(provider as Provider)}
+                className="w-full flex items-center px-3 py-2 text-sm hover:bg-accent rounded-md transition-colors"
+              >
+                {PROVIDER_NAMES[provider as Provider]}
+              </button>
+            ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

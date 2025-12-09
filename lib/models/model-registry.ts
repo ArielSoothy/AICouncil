@@ -29,7 +29,7 @@
  * ============================================================================
  */
 
-import { MODEL_COSTS_PER_1K, MODEL_BENCHMARKS, MODEL_POWER } from '../model-metadata'
+import { MODEL_COSTS_PER_1K, MODEL_BENCHMARKS, MODEL_POWER, getModelRank, getMaxRank } from '../model-metadata'
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -444,3 +444,112 @@ export const ALL_MODELS: Record<Provider, string[]> = Object.entries(MODEL_REGIS
   },
   {} as Record<Provider, string[]>
 )
+
+// ============================================================================
+// POWER/WEIGHT & COST DISPLAY HELPERS
+// ============================================================================
+
+export type ModelGrade = 'A+' | 'A' | 'B+' | 'B' | 'C+' | 'C'
+export type ModelCostTier = 'FREE' | '$' | '$$' | '$$$'
+
+/**
+ * Convert weight (0.5-1.0) to letter grade
+ */
+function weightToGrade(weight: number): ModelGrade {
+  if (weight >= 0.95) return 'A+'
+  if (weight >= 0.85) return 'A'
+  if (weight >= 0.75) return 'B+'
+  if (weight >= 0.65) return 'B'
+  if (weight >= 0.55) return 'C+'
+  return 'C'
+}
+
+/**
+ * Get model grade with both letter and numeric weight
+ * Format: "A+ (0.98)" or "B (0.72)"
+ */
+export function getModelGrade(modelId: string): { grade: ModelGrade; weight: number; display: string } {
+  const weight = MODEL_POWER[modelId] || 0.7
+  const grade = weightToGrade(weight)
+  return {
+    grade,
+    weight,
+    display: `${grade} (${weight.toFixed(2)})`
+  }
+}
+
+/**
+ * Get model cost tier (FREE, $, $$, $$$)
+ */
+export function getModelCostTier(modelId: string): ModelCostTier {
+  const cost = MODEL_COSTS_PER_1K[modelId]
+  if (!cost || (cost.input === 0 && cost.output === 0)) return 'FREE'
+  const total = cost.input + cost.output // per 1K tokens
+  if (total < 0.005) return '$'      // Budget: <$5/M
+  if (total < 0.02) return '$$'      // Balanced: <$20/M
+  return '$$$'                        // Premium: >$20/M
+}
+
+/**
+ * Get full model metadata for display (grade, cost, provider info)
+ */
+export function getModelDisplayMetadata(modelId: string): {
+  name: string
+  provider: Provider | null
+  grade: ModelGrade
+  weight: number
+  gradeDisplay: string
+  costTier: ModelCostTier
+  hasInternet: boolean
+  status: ModelInfo['status']
+} | null {
+  const model = getModelInfo(modelId)
+  if (!model) return null
+
+  const { grade, weight, display: gradeDisplay } = getModelGrade(modelId)
+  const costTier = getModelCostTier(modelId)
+
+  return {
+    name: model.name,
+    provider: model.provider,
+    grade,
+    weight,
+    gradeDisplay,
+    costTier,
+    hasInternet: model.hasInternet || false,
+    status: model.status
+  }
+}
+
+/**
+ * Get only selectable models (working, non-legacy)
+ */
+export function getSelectableModels(): ModelInfo[] {
+  return Object.values(MODEL_REGISTRY)
+    .flat()
+    .filter(m => m.status === 'working' && !m.isLegacy)
+}
+
+/**
+ * Get selectable models grouped by provider
+ */
+export function getSelectableModelsByProvider(): Record<Provider, ModelInfo[]> {
+  const result: Partial<Record<Provider, ModelInfo[]>> = {}
+
+  for (const [provider, models] of Object.entries(MODEL_REGISTRY)) {
+    const selectable = models.filter(m => m.status === 'working' && !m.isLegacy)
+    if (selectable.length > 0) {
+      result[provider as Provider] = selectable
+    }
+  }
+
+  return result as Record<Provider, ModelInfo[]>
+}
+
+/**
+ * Check if a model is selectable (working + not legacy)
+ */
+export function isModelSelectable(modelId: string): boolean {
+  const model = getModelInfo(modelId)
+  return model !== null && model.status === 'working' && !model.isLegacy
+}

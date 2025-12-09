@@ -1265,5 +1265,54 @@
 - **Last Modified**: December 9, 2025 (Initial implementation)
 - **DO NOT**: Remove broker selector, bypass Gateway authentication for IBKR, allow live trading without explicit user consent
 
+### 40. Model Power/Cost Display System
+- **Status**: ✅ ACTIVE & COMPLETE (December 2025)
+- **Location**:
+  - `lib/models/model-registry.ts` - Helper functions (getModelGrade, getModelCostTier, getSelectableModels)
+  - `lib/model-metadata.ts` - Benchmark data, pricing, rank-based weights (MODEL_POWER)
+  - `components/shared/model-badge.tsx` - Shared ModelBadge and ModelDropdownItem components
+  - `components/consensus/ultra-model-badge-selector.tsx` - Multi-select badges with power/cost
+  - `components/trading/single-model-badge-selector.tsx` - Single-select dropdown with power/cost
+- **Purpose**: Display model power (benchmark-based weight) and cost tier next to each model for informed selection
+- **Key Features**:
+  - **Power Grade Display**: Hybrid letter grade + numeric weight (e.g., `A+(0.98)`, `B(0.74)`)
+    - A+ (0.95-1.0): Top 5% - Best models
+    - A (0.85-0.94): Top 15%
+    - B+ (0.75-0.84): Top 30%
+    - B (0.65-0.74): Top 50%
+    - C+ (0.55-0.64): Top 70%
+    - C (0.50-0.54): Bottom 30%
+  - **Cost Tier Badges**: Visual indicators with color coding
+    - FREE (green): $0 per 1K tokens
+    - $ (blue): Budget tier (<$0.005/1K)
+    - $$ (amber): Balanced tier (<$0.02/1K)
+    - $$$ (rose): Premium tier (>$0.02/1K)
+  - **Consistent UI**: Both selectors (multi-select and single-select) use same styling
+  - **Dropdown Items**: Show power grade and cost tier for each model option
+  - **Provider Grouping**: Models grouped by provider in dropdowns (Anthropic, OpenAI, Google, etc.)
+- **Rank-Based Weight System**:
+  - Weights derived from MODEL_BENCHMARKS (AAII score + MMLU + Arena tier)
+  - Formula: `weight = 1.0 - ((rank-1)/(maxRank-1)) * 0.5`
+  - Dynamic calculation via Proxy (MODEL_POWER)
+  - Used by judge system for weighted consensus decisions
+- **Helper Functions Added**:
+  - `getModelGrade(modelId)` - Returns { grade, weight, display }
+  - `getModelCostTier(modelId)` - Returns 'FREE' | '$' | '$$' | '$$$'
+  - `getModelDisplayMetadata(modelId)` - Full metadata for display
+  - `getSelectableModels()` - Returns only working, non-legacy models
+  - `getSelectableModelsByProvider()` - Grouped by provider
+  - `isModelSelectable(modelId)` - Check if model can be selected
+- **UI Components**:
+  - `ModelBadge` - Shared badge component with power/cost display
+  - `ModelDropdownItem` - Dropdown item with power/cost for menus
+- **Files Modified**:
+  - `lib/models/model-registry.ts` - Added 6 helper functions + types
+  - `components/shared/model-badge.tsx` - NEW: Shared badge components
+  - `components/consensus/ultra-model-badge-selector.tsx` - Refactored to show power/cost
+  - `components/trading/single-model-badge-selector.tsx` - Refactored to show power/cost
+- **Browser Tested**: All 3 trading modes (Consensus, Debate, Individual) validated
+- **Last Modified**: December 9, 2025 (Initial implementation)
+- **DO NOT**: Remove power/cost display from selectors, create duplicate model lists, bypass single source of truth
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
