@@ -12,9 +12,17 @@
  * Note: IBKR Web API requires the Gateway to be running and authenticated.
  * This is different from TWS API which requires TWS/IB Gateway desktop app.
  *
+ * CRITICAL: Uses Node.js built-in 'https' module instead of fetch().
+ * Reason: IBKR Gateway uses self-signed SSL certificates.
+ * - Native fetch() doesn't support rejectUnauthorized option
+ * - Node's https module handles self-signed certs with rejectUnauthorized: false
+ *
+ * DO NOT change to fetch() without testing self-signed cert handling!
+ *
  * Documentation: https://interactivebrokers.github.io/cpwebapi/
  */
 
+import https from 'https';
 import {
   IBroker,
   BrokerId,
@@ -129,29 +137,74 @@ export class IBKRBroker implements IBroker {
     };
   }
 
+  /**
+   * Make HTTP request to IBKR Gateway
+   * Uses Node.js https module to handle self-signed certificates
+   */
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: { method?: string; body?: string } = {}
   ): Promise<T> {
-    const url = `${this.config.gatewayUrl}${endpoint}`;
+    const fullUrl = `${this.config.gatewayUrl}${endpoint}`;
+    const url = new URL(fullUrl);
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+    return new Promise((resolve, reject) => {
+      const requestOptions: https.RequestOptions = {
+        // Force IPv4 (127.0.0.1) instead of IPv6 (::1) - IBKR Gateway only allows 127.0.0.1
+        hostname: url.hostname === 'localhost' ? '127.0.0.1' : url.hostname,
+        port: url.port || 5050,
+        path: url.pathname + url.search,
+        method: options.method || 'GET',
+        rejectUnauthorized: false, // Accept self-signed certs from IBKR Gateway
+        headers: {
+          'User-Agent': 'Mozilla/5.0 VerdictAI/1.0', // Required - IBKR rejects empty User-Agent
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      };
+
+      const req = https.request(requestOptions, (res) => {
+        let body = '';
+        res.on('data', (chunk) => (body += chunk));
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              resolve(JSON.parse(body));
+            } catch {
+              reject(new ConnectionError(this.id, 'Invalid JSON response from IBKR Gateway'));
+            }
+          } else {
+            reject(
+              new ConnectionError(
+                this.id,
+                `API request failed: ${res.statusCode} - ${body}`
+              )
+            );
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        reject(
+          new ConnectionError(
+            this.id,
+            `IBKR Gateway connection failed: ${error.message}`,
+            error
+          )
+        );
+      });
+
+      req.setTimeout(15000, () => {
+        req.destroy();
+        reject(new ConnectionError(this.id, 'IBKR Gateway request timeout'));
+      });
+
+      if (options.body) {
+        req.write(options.body);
+      }
+
+      req.end();
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new ConnectionError(
-        this.id,
-        `API request failed: ${response.status} - ${errorText}`
-      );
-    }
-
-    return response.json();
   }
 
   async isConnected(): Promise<boolean> {
