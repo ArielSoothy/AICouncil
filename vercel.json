@@ -1,0 +1,30 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/consensus/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/models/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/arena/execute/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/arena/cron/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/arena/cron",
+      "schedule": "0 9 * * *"
+    }
+  ],
+  "build": {
+    "env": {
+      "NEXT_TELEMETRY_DISABLED": "1"
+    }
+  }
+}

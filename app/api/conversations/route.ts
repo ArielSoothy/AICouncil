@@ -1,0 +1,235 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { Database } from '@/types/database'
+
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
+
+type ConversationInsert = Database['public']['Tables']['conversations']['Insert']
+
+export async function GET(request: NextRequest) {
+  try {
+    console.log('Conversations API - Starting request')
+    console.log('Conversations API - Request headers:', {
+      authorization: request.headers.get('authorization'),
+      cookie: request.headers.get('cookie')?.substring(0, 100) + '...',
+      userAgent: request.headers.get('user-agent')
+    })
+
+    const supabase = await createClient()
+
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    console.log('Conversations API - Auth check:', {
+      userId: user?.id,
+      userEmail: user?.email,
+      authError: authError?.message,
+      hasUser: !!user
+    })
+
+    if (authError) {
+      console.log('Conversations API - Auth error:', authError)
+      return NextResponse.json({
+        error: 'Authentication error',
+        details: authError.message
+      }, { status: 401 })
+    }
+
+    if (!user) {
+      console.log('Conversations API - No user found (guest mode), returning empty array')
+      // Guests use localStorage only, no cloud history
+      return NextResponse.json([])
+    }
+
+    // Check if user exists in public.users table
+    console.log('Conversations API - Checking if user exists in public.users...')
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .single()
+
+    console.log('Conversations API - User profile check:', {
+      userProfile: userProfile?.id,
+      profileError: profileError?.message
+    })
+
+    if (profileError && profileError.code === 'PGRST116') {
+      // User doesn't exist in public.users, create them
+      console.log('Conversations API - Creating user in public.users table')
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          id: user.id,
+          email: user.email || ''
+        })
+
+      if (insertError) {
+        console.error('Conversations API - Failed to create user:', insertError)
+        return NextResponse.json({
+          error: 'Failed to create user profile',
+          details: insertError.message
+        }, { status: 500 })
+      }
+    }
+
+    // Get mode filter from query params (e.g., ?mode=trading-individual)
+    const { searchParams } = new URL(request.url)
+    const modeFilter = searchParams.get('mode')
+
+    // Get conversations for the user
+    console.log('Conversations API - Querying conversations for user:', user.id, 'with mode filter:', modeFilter)
+
+    let query = supabase
+      .from('conversations')
+      .select('*')
+      .eq('user_id', user.id)
+
+    // Filter by mode if provided (mode is stored in evaluation_data->mode)
+    if (modeFilter) {
+      query = query.contains('evaluation_data', { mode: modeFilter })
+    }
+
+    const { data: conversations, error } = await query
+      .order('created_at', { ascending: false })
+
+    console.log('Conversations API - Query result:', { 
+      conversationsCount: conversations?.length || 0, 
+      error: error?.message,
+      conversations: conversations 
+    })
+
+    if (error) {
+      console.error('Conversations API - Database error:', error)
+      return NextResponse.json({ 
+        error: 'Database error', 
+        details: error.message 
+      }, { status: 500 })
+    }
+
+    console.log('Conversations API - Returning conversations:', conversations?.length || 0)
+    return NextResponse.json(conversations || [])
+  } catch (error) {
+    console.error('Conversations API - Unexpected error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Parse request body first to check for guest mode
+    const body = await request.json()
+    const { query, responses, isGuestMode = false, mode, metadata } = body
+
+    const supabase = await createClient()
+
+    // Get the authenticated user (optional for guest mode)
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    // For non-guest mode, require authentication
+    if (!isGuestMode && (authError || !user)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!query || !responses) {
+      return NextResponse.json(
+        { error: 'Query and responses are required' },
+        { status: 400 }
+      )
+    }
+
+    // GUEST MODE: Save anonymously for analytics (user_id = NULL)
+    // Guests can't retrieve via API (GET returns empty), but admin can analyze
+    // This enables product insights and ML training while protecting guest privacy
+    if (isGuestMode) {
+      console.log('📊 Guest mode: Saving anonymously for analytics (user_id = NULL)')
+    }
+
+    // Create evaluation data structure
+    let evaluationData = null
+
+    // Trading conversations (mode starts with 'trading-')
+    if (mode && mode.startsWith('trading-')) {
+      evaluationData = {
+        query_type: 'trading',
+        mode: mode, // 'trading-individual', 'trading-consensus', 'trading-debate'
+        timeframe: metadata?.timeframe || 'swing',
+        target_symbol: metadata?.targetSymbol || null,
+        selected_models: metadata?.selectedModels || [],
+        metadata: {
+          timestamp: new Date().toISOString(),
+          is_guest_session: isGuestMode,
+          ...metadata
+        },
+        ground_truth: null,
+        training_ready: true
+      }
+    }
+    // Regular consensus results (vs debate result which has its own logic)
+    else if (responses && !responses.rounds) { // Consensus doesn't have rounds, debates do
+      evaluationData = {
+        query_type: 'consensus', // Could be enhanced with auto-classification
+        mode: mode || 'consensus',
+        model_verdicts: responses.models?.map((model: any) => ({
+          model: model.model || 'unknown',
+          verdict: model.response || '',
+          confidence: model.confidence || 0.5,
+          provider: model.provider || 'unknown'
+        })) || [],
+        consensus_verdict: responses.consensus || 'No consensus reached',
+        confidence_scores: {
+          overall: responses.consensusScore || 0.5,
+          agreement_level: responses.consensusScore || 0.5,
+          certainty: responses.confidence || 0.5
+        },
+        reasoning_chain: responses.models?.map((model: any) => model.response || '').filter(Boolean) || [],
+        disagreement_points: responses.models?.map((model: any) => model.disagreements || []).flat().filter(Boolean) || [],
+        metadata: {
+          models_used: responses.models?.map((model: any) => model.model) || [],
+          providers_used: responses.models?.map((model: any) => model.provider) || [],
+          total_cost: responses.totalCost || 0,
+          response_time_ms: (responses.responseTime || 0) * 1000, // Convert seconds to ms
+          consensus_score: responses.consensusScore || 0.5,
+          judge_model: responses.judgeModel || 'unknown',
+          web_search_enabled: responses.webSearchContext ? true : false,
+          timestamp: new Date().toISOString(),
+          is_guest_session: isGuestMode
+        },
+        ground_truth: null, // For future manual validation
+        training_ready: true
+      }
+    }
+
+    // Insert new conversation
+    const conversationData: ConversationInsert = {
+      user_id: user?.id || null, // Allow null for guest mode
+      query,
+      responses,
+      evaluation_data: evaluationData,
+    }
+
+    const { data: conversation, error } = await supabase
+      .from('conversations')
+      .insert(conversationData)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('❌ Conversation insert error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    console.log('✅ Conversation saved:', conversation.id)
+    return NextResponse.json(conversation, { status: 201 })
+  } catch (error) {
+    console.error('❌ Conversation API error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
