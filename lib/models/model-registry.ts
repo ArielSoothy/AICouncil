@@ -175,14 +175,14 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
   // ===== GOOGLE (Updated Nov 2025 from official docs) =====
   google: [
     // Gemini 3 Series (Flagship - Nov 2025)
-    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'untested', lastTested: '2025-11-22T00:00:00.000Z', notes: 'Flagship. $2/M input (≤200k), $12/M output. #1 on LMArena' },
+    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'unreleased', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Model not found via API (404). Not yet released.' },
     // Gemini 2.5 Series (Stable - Available)
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'untested', lastTested: '2025-11-22T00:00:00.000Z', notes: 'Flagship. $1.25/M input, $10/M output. Best reasoning' },
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'untested', lastTested: '2025-11-22T00:00:00.000Z', notes: 'Free tier available. Paid: $0.30/M input, $2.50/M output' },
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'google', tier: 'budget', badge: '💰', hasInternet: true, status: 'untested', lastTested: '2025-11-22T00:00:00.000Z', notes: 'CHEAPEST PAID: $0.10/M input, $0.40/M output. High throughput' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'rate_limited', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Quota exceeded on free tier (429). Works with paid API key. $1.25/M input, $10/M output' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Tested and working. Free tier available.' },
+    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Tested and working. Free tier available.' },
     // Gemini 2.0 Series (Free)
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Free tier. Tested and working' },
-    { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'untested', lastTested: '2025-11-22T00:00:00.000Z', notes: 'Free tier. Paid: $0.075/M input, $0.30/M output' },
+    { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'rate_limited', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Quota exceeded on free tier (429). Free tier available with limits.' },
     // Gemini 1.5 Series (Legacy)
     { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'google', tier: 'free', badge: '🎁', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Deprecated - use 2.0 or 2.5', isLegacy: true }
   ],
