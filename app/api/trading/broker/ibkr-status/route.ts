@@ -24,13 +24,15 @@ export async function GET() {
       const url = new URL(`${gatewayUrl}/iserver/auth/status`)
 
       const req = https.request({
-        hostname: url.hostname,
+        // Force IPv4 (127.0.0.1) instead of IPv6 (::1) - IBKR Gateway only allows 127.0.0.1
+        hostname: url.hostname === 'localhost' ? '127.0.0.1' : url.hostname,
         port: url.port || 5050,
         path: url.pathname,
         method: 'GET',
         rejectUnauthorized: false, // Accept self-signed certs from IBKR Gateway
         headers: {
-          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 VerdictAI/1.0', // Required - IBKR rejects empty User-Agent
+          'Accept': '*/*',
         },
       }, (res) => {
         let body = ''
