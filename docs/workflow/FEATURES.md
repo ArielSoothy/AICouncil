@@ -1262,8 +1262,22 @@
   ```
 - **Test Script**: `scripts/test-ibkr-connection.ts` - Validates Gateway connection
 - **Playwright Tested**: Dropdown menu, IBKR dialog, setup steps all verified working
-- **Last Modified**: December 9, 2025 (Initial implementation)
-- **DO NOT**: Remove broker selector, bypass Gateway authentication for IBKR, allow live trading without explicit user consent
+- **Last Modified**: December 9, 2025 (Fixed self-signed cert handling)
+- **CRITICAL IMPLEMENTATION NOTE**:
+  ```
+  ⚠️ IBKR Gateway uses SELF-SIGNED SSL certificates!
+
+  The ibkr-status/route.ts MUST use Node.js built-in 'https' module,
+  NOT fetch() or external packages like undici.
+
+  Why:
+  - Native fetch() doesn't support rejectUnauthorized option
+  - undici caused "Module not found" errors when not in package.json
+  - Node's https module is built-in and handles self-signed certs
+
+  DO NOT change to fetch() without testing self-signed cert handling!
+  ```
+- **DO NOT**: Remove broker selector, bypass Gateway authentication for IBKR, change ibkr-status to use fetch(), allow live trading without explicit user consent
 
 ### 40. Model Power/Cost Display System
 - **Status**: ✅ ACTIVE & COMPLETE (December 2025)
