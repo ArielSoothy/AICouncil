@@ -1263,19 +1263,26 @@
 - **Test Script**: `scripts/test-ibkr-connection.ts` - Validates Gateway connection
 - **Playwright Tested**: Dropdown menu, IBKR dialog, setup steps all verified working
 - **Last Modified**: December 9, 2025 (Fixed self-signed cert handling)
-- **CRITICAL IMPLEMENTATION NOTE**:
+- **CRITICAL IMPLEMENTATION NOTES**:
   ```
-  ⚠️ IBKR Gateway uses SELF-SIGNED SSL certificates!
+  ⚠️ IBKR Gateway has THREE critical requirements:
 
-  The ibkr-status/route.ts MUST use Node.js built-in 'https' module,
-  NOT fetch() or external packages like undici.
+  1. SELF-SIGNED SSL CERTIFICATES
+     - Must use Node.js built-in 'https' module, NOT fetch()/undici
+     - Set rejectUnauthorized: false in https.request options
+     - Native fetch() doesn't support this option
 
-  Why:
-  - Native fetch() doesn't support rejectUnauthorized option
-  - undici caused "Module not found" errors when not in package.json
-  - Node's https module is built-in and handles self-signed certs
+  2. USER-AGENT HEADER REQUIRED
+     - Gateway returns 403 "Access Denied" without User-Agent
+     - Must include: 'User-Agent': 'Mozilla/5.0 VerdictAI/1.0'
+     - Empty User-Agent = instant rejection
 
-  DO NOT change to fetch() without testing self-signed cert handling!
+  3. IPv4 ONLY (127.0.0.1, not ::1)
+     - Gateway IP whitelist typically only allows 127.0.0.1
+     - Convert 'localhost' to '127.0.0.1' to avoid IPv6 resolution
+     - Node.js may prefer IPv6 (::1) which gets rejected
+
+  DO NOT change to fetch() or remove User-Agent header!
   ```
 - **DO NOT**: Remove broker selector, bypass Gateway authentication for IBKR, change ibkr-status to use fetch(), allow live trading without explicit user consent
 
