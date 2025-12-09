@@ -17,30 +17,30 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ Multi-Broker Support & IBKR Auth (December 9, 2025)
-**Goal:** Add broker selector with IBKR authentication dialog for live trading
+**Current Session:** ✅ Model Registry Fixes & Power Sorting (December 9, 2025)
+**Goal:** Fix Grok models showing "FREE" incorrectly + sort models by power
 
 **Progress:**
-- ✅ Created `components/trading/broker-auth-button.tsx` - Broker selector dropdown + IBKR auth dialog
-- ✅ Created `app/api/trading/broker/ibkr-status/route.ts` - IBKR Gateway status API
-- ✅ Created `app/api/trading/broker/switch/route.ts` - Broker switching API
-- ✅ Created `components/ui/dialog.tsx` - shadcn/ui Dialog component
-- ✅ Integrated into `/trading` page
-- ✅ Playwright tested: Dropdown, IBKR dialog, setup steps all working
+- ✅ Added missing Grok model costs (grok-4-1-fast-reasoning, grok-3-beta, grok-3-mini-beta, grok-2-image-1212)
+- ✅ Added missing Grok benchmarks for power ranking
+- ✅ Expanded Google Gemini models (3 → 5 available)
+- ✅ Power-sorted model dropdowns (highest power first)
 - ✅ TypeScript: 0 errors
-- ✅ Documentation: FEATURES.md updated (Feature #39)
+- ✅ Documentation: FEATURES.md updated (Feature #41)
 
-**Files Created/Modified:**
+**Files Modified:**
 ```
-components/trading/broker-auth-button.tsx    # NEW: Broker selector + auth dialog
-app/api/trading/broker/ibkr-status/route.ts  # NEW: IBKR status endpoint
-app/api/trading/broker/switch/route.ts       # NEW: Broker switch endpoint
-components/ui/dialog.tsx                     # NEW: Dialog component
-app/trading/page.tsx                         # MODIFIED: Added BrokerAuthButton
-docs/workflow/FEATURES.md                    # MODIFIED: Added Feature #39
+lib/model-metadata.ts                              # MODIFIED: Added Grok costs + benchmarks
+lib/models/model-registry.ts                       # MODIFIED: Gemini status updates
+components/consensus/ultra-model-badge-selector.tsx # MODIFIED: Sort by power
+components/trading/single-model-badge-selector.tsx  # MODIFIED: Sort by power
+docs/workflow/FEATURES.md                          # MODIFIED: Added Feature #41
 ```
 
-**Previous Session:** Model Fallback System (December 7, 2025)
+**Previous Session:** Multi-Broker Support & IBKR Auth (December 9, 2025)
+- ✅ Created broker selector dropdown + IBKR auth dialog (Features #39-40)
+
+**Earlier Session:** Model Fallback System (December 7, 2025)
 - ✅ Created `lib/models/model-fallback.ts` - Comprehensive fallback service
 - ✅ Browser tested: Google Gemini hit quota → fell back to Groq → debate completed
 

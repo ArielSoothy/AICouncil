@@ -86,17 +86,27 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   'llama-3-groq-8b-tool-use': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
 
   // ============================================================================
-  // xAI Grok - Source: xAI API documentation
+  // xAI Grok - Source: xAI API documentation (https://x.ai/api)
+  // All Grok models are PAID - no free tier
   // ============================================================================
+  // Grok 4.1 Series (Newest)
+  'grok-4-1-fast-reasoning': { input: 0.0002, output: 0.0005, source: 'xAI per 1M ($0.20 in / $0.50 out)', lastUpdated: '2025-12-09' },
+  // Grok 4 Series
   'grok-4-0709': { input: 0.003, output: 0.015, source: 'xAI per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
   'grok-4-fast-reasoning': { input: 0.0002, output: 0.0005, source: 'xAI per 1M ($0.20 in / $0.50 out)', lastUpdated: '2025-12-09' },
   'grok-4-fast-non-reasoning': { input: 0.0002, output: 0.0005, source: 'xAI per 1M ($0.20 in / $0.50 out)', lastUpdated: '2025-12-09' },
-  'grok-code-fast-1': { input: 0.0002, output: 0.0015, source: 'xAI per 1M ($0.20 in / $1.50 out)', lastUpdated: '2025-12-09' },
+  // Grok 3 Series
+  'grok-3-beta': { input: 0.003, output: 0.015, source: 'xAI per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
+  'grok-3-mini-beta': { input: 0.0003, output: 0.0005, source: 'xAI per 1M ($0.30 in / $0.50 out)', lastUpdated: '2025-12-09' },
   'grok-3': { input: 0.003, output: 0.015, source: 'xAI per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
   'grok-3-mini': { input: 0.0003, output: 0.0005, source: 'xAI per 1M ($0.30 in / $0.50 out)', lastUpdated: '2025-12-09' },
+  // Grok 2 Series
+  'grok-2-image-1212': { input: 0.002, output: 0.01, source: 'xAI per 1M ($2 in / $10 out)', lastUpdated: '2025-12-09' },
   'grok-2-vision-1212': { input: 0.002, output: 0.01, source: 'xAI per 1M ($2 in / $10 out)', lastUpdated: '2025-12-09' },
   'grok-2-1212': { input: 0.002, output: 0.01, source: 'xAI per 1M ($2 in / $10 out)', lastUpdated: '2025-12-09' },
   'grok-2-latest': { input: 0.002, output: 0.01, source: 'xAI per 1M ($2 in / $10 out)', lastUpdated: '2025-12-09' },
+  // Grok Code
+  'grok-code-fast-1': { input: 0.0002, output: 0.0015, source: 'xAI per 1M ($0.20 in / $1.50 out)', lastUpdated: '2025-12-09' },
 
   // ============================================================================
   // Perplexity - Source: perplexity.ai/pricing
@@ -172,6 +182,7 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // Gemini 2.5 Pro: MMLU 81.7%, Flash: MMLU 78.9%
   'gemini-2.5-pro': { arenaTier: 'S', aaii: 1350, mmlu: 82, source: 'Google/AA - MMLU 81.7%', lastUpdated: '2025-12-09' },
   'gemini-2.5-flash': { arenaTier: 'A', aaii: 1280, mmlu: 79, source: 'Google/AA - MMLU 78.9%', lastUpdated: '2025-12-09' },
+  'gemini-2.5-flash-lite': { arenaTier: 'B', aaii: 1200, mmlu: 75, source: 'Google - lite variant', lastUpdated: '2025-12-09' },
   // Gemini 2.0 Flash: MMLU-Pro 77.4%
   'gemini-2.0-flash': { arenaTier: 'A', aaii: 1250, mmlu: 77, source: 'Google/AA - MMLU-Pro 77.4%', lastUpdated: '2025-12-09' },
   'gemini-2.0-flash-lite': { arenaTier: 'B', aaii: 1150, mmlu: 72, source: 'Google/AA', lastUpdated: '2025-12-09' },
@@ -192,15 +203,21 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // ============================================================================
   // xAI Grok - Source: xAI docs, ArtificialAnalysis.ai
   // ============================================================================
+  // Grok 4.1 (Newest - Nov 2025)
+  'grok-4-1-fast-reasoning': { arenaTier: 'S', aaii: 1380, mmlu: 89, source: 'xAI - Nov 2025, best tool-calling', lastUpdated: '2025-12-09' },
   // Grok 4: MMLU 86.6%, MMLU-Pro 87%, GPQA 88%
   'grok-4-0709': { arenaTier: 'S', aaii: 1370, mmlu: 87, source: 'xAI/AA - MMLU-Pro 87%', lastUpdated: '2025-12-09' },
   'grok-4-fast-reasoning': { arenaTier: 'S', aaii: 1340, mmlu: 88, source: 'xAI - reasoning variant', lastUpdated: '2025-12-09' },
   'grok-4-fast-non-reasoning': { arenaTier: 'A', aaii: 1280, mmlu: 85, source: 'xAI - speed optimized', lastUpdated: '2025-12-09' },
-  'grok-code-fast-1': { arenaTier: 'A', aaii: 1200, mmlu: 82, source: 'xAI - coding optimized', lastUpdated: '2025-12-09' },
   // Grok 3
+  'grok-3-beta': { arenaTier: 'A', aaii: 1300, mmlu: 86, source: 'xAI - 131K context', lastUpdated: '2025-12-09' },
+  'grok-3-mini-beta': { arenaTier: 'B', aaii: 1150, mmlu: 75, source: 'xAI - fast, efficient', lastUpdated: '2025-12-09' },
   'grok-3': { arenaTier: 'A', aaii: 1300, mmlu: 86, source: 'xAI/AA', lastUpdated: '2025-12-09' },
   'grok-3-mini': { arenaTier: 'B', aaii: 1150, mmlu: 75, source: 'xAI/AA', lastUpdated: '2025-12-09' },
+  // Grok Code
+  'grok-code-fast-1': { arenaTier: 'A', aaii: 1200, mmlu: 82, source: 'xAI - 256K context, coding optimized', lastUpdated: '2025-12-09' },
   // Grok 2
+  'grok-2-image-1212': { arenaTier: 'A', aaii: 1270, mmlu: 84, source: 'xAI - text-to-image', lastUpdated: '2025-12-09' },
   'grok-2-vision-1212': { arenaTier: 'A', aaii: 1270, mmlu: 84, source: 'xAI - multimodal', lastUpdated: '2025-12-09' },
   'grok-2-1212': { arenaTier: 'A', aaii: 1270, mmlu: 84, source: 'xAI/AA', lastUpdated: '2025-12-09' },
   'grok-2-latest': { arenaTier: 'A', aaii: 1270, mmlu: 84, source: 'xAI/AA', lastUpdated: '2025-12-09' },

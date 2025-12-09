@@ -50,6 +50,7 @@ const GRADE_STYLES = {
 
 // 🔒 PRODUCTION LOCK: Only free models in production
 // Generate available models from registry (only working models, excluding legacy)
+// Sort by power (weight) - highest power first
 const availableModels = Object.entries(MODEL_REGISTRY).reduce((acc, [provider, models]) => {
   acc[provider as Provider] = models
     .filter(m => !m.isLegacy && m.status === 'working')
@@ -60,6 +61,8 @@ const availableModels = Object.entries(MODEL_REGISTRY).reduce((acc, [provider, m
       }
       return true
     })
+    .map(m => ({ id: m.id, weight: getModelGrade(m.id).weight }))
+    .sort((a, b) => b.weight - a.weight) // Sort by power (highest first)
     .map(m => m.id)
   return acc
 }, {} as Record<Provider, string[]>)

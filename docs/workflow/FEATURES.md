@@ -1314,5 +1314,31 @@
 - **Last Modified**: December 9, 2025 (Initial implementation)
 - **DO NOT**: Remove power/cost display from selectors, create duplicate model lists, bypass single source of truth
 
+### 41. Model Registry & Metadata Completeness
+- **Status**: ✅ ACTIVE & COMPLETE (December 2025)
+- **Location**:
+  - `lib/model-metadata.ts` - Complete cost/benchmark data for all models
+  - `lib/models/model-registry.ts` - Model status and availability
+  - `components/consensus/ultra-model-badge-selector.tsx` - Sorted model display
+  - `components/trading/single-model-badge-selector.tsx` - Sorted model display
+- **Purpose**: Ensure all models have proper cost/benchmark data and are sorted by power
+- **Key Features**:
+  - **Complete xAI Grok Costs**: All Grok models now have pricing data (no false "FREE" display)
+    - `grok-4-1-fast-reasoning`, `grok-3-beta`, `grok-3-mini-beta`, `grok-2-image-1212` added
+  - **Complete Grok Benchmarks**: All Grok models have AAII/MMLU scores for proper ranking
+  - **Expanded Google Models**: 5 Gemini models now available (was 3)
+    - `gemini-2.5-pro` status changed from `rate_limited` to `working`
+    - `gemini-2.0-flash-lite` status changed from `rate_limited` to `working`
+    - `gemini-2.5-flash-lite` benchmark data added
+  - **Power-Sorted Dropdowns**: Models in all dropdowns sorted by power weight (highest first)
+- **Files Modified**:
+  - `lib/model-metadata.ts` - Added 4 Grok cost entries, 4 Grok benchmarks, 1 Gemini benchmark
+  - `lib/models/model-registry.ts` - Updated 2 Gemini models from rate_limited to working
+  - `components/consensus/ultra-model-badge-selector.tsx` - Sort by power weight
+  - `components/trading/single-model-badge-selector.tsx` - Sort by power weight
+- **Browser Tested**: Verified Grok models no longer show "FREE", models sorted by power
+- **Last Modified**: December 9, 2025 (Fixed Grok cost display + power sorting)
+- **DO NOT**: Remove model costs from metadata, change sorting logic without reason
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
