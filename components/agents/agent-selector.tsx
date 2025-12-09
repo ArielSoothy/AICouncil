@@ -14,12 +14,20 @@ import { AgentAvatar } from '@/components/shared'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu'
 import { PROVIDER_COLORS } from '@/lib/brand-colors'
+import {
+  getModelInfo,
+  getModelGrade,
+  getModelCostTier,
+  PROVIDER_NAMES,
+  Provider
+} from '@/lib/models/model-registry'
+import { ModelDropdownItem } from '@/components/shared/model-badge'
+import { cn } from '@/lib/utils'
 
 interface AgentSelectorProps {
   selectedAgents: AgentConfig[]
@@ -29,65 +37,25 @@ interface AgentSelectorProps {
   globalTier?: 'free' | 'pro' | 'max'  // Optional global tier from header selector
 }
 
-// Model display names for professional badges (same as Ultra Mode)
-const modelDisplayNames: Record<string, string> = {
-  'gpt-5.1': 'GPT-5.1',
-  'gpt-5-chat-latest': 'GPT-5 Chat',
-  'gpt-5': 'GPT-5',
-  'gpt-5-mini': 'GPT-5 Mini',
-  'gpt-5-nano': 'GPT-5 Nano',
-  'gpt-4.1': 'GPT-4.1',
-  'gpt-4.1-mini': 'GPT-4.1 Mini',
-  'gpt-4.1-nano': 'GPT-4.1 Nano',
-  'gpt-4-turbo-preview': 'GPT-4 Turbo',
-  'gpt-4': 'GPT-4',
-  'gpt-4o': 'GPT-4o',
-  'gpt-3.5-turbo': 'GPT-3.5 Turbo',
-  'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5',
-  'claude-haiku-4-5-20251001': 'Claude Haiku 4.5',
-  'claude-opus-4-1-20250805': 'Claude Opus 4.1',
-  'claude-sonnet-4-20250514': 'Claude Sonnet 4',
-  'claude-3-7-sonnet-20250219': 'Claude 3.7 Sonnet',
-  'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
-  'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku',
-  'claude-3-haiku-20240307': 'Claude 3 Haiku',
-  'claude-3-opus-20240229': 'Claude 3 Opus',
-  'gemini-3-pro-preview-11-2025': 'Gemini 3 Pro',
-  'gemini-2.5-pro': 'Gemini 2.5 Pro',
-  'gemini-2.5-flash': 'Gemini 2.5 Flash',
-  'gemini-2.0-flash': 'Gemini 2.0 Flash',
-  'gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
-  'gemini-2.5-flash-lite': 'Gemini 2.5 Flash Lite',
-  'gemini-1.5-flash': 'Gemini 1.5 Flash',
-  'llama-3.3-70b-versatile': 'Llama 3.3 70B',
-  'llama-3.1-8b-instant': 'Llama 3.1 8B',
-  'gemma2-9b-it': 'Gemma 2 9B',
-  'grok-code-fast-1': 'Grok Code Fast',
-  'grok-4-fast-reasoning': 'Grok 4 Fast Reasoning',
-  'grok-4-fast-non-reasoning': 'Grok 4 Fast',
-  'grok-4-0709': 'Grok 4',
-  'grok-3': 'Grok 3',
-  'grok-3-mini': 'Grok 3 Mini',
-  'sonar-pro': 'Perplexity Sonar Pro',
-  'sonar-small': 'Perplexity Sonar Small',
-  'mistral-large-latest': 'Mistral Large',
-  'mistral-small-latest': 'Mistral Small',
-  'command-r-plus': 'Cohere Command R+',
-  'command-r': 'Cohere Command R'
-}
+// Cost tier styling for inline badge display
+const COST_TIER_STYLES = {
+  'FREE': { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
+  '$': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
+  '$$': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300' },
+  '$$$': { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300' }
+} as const
 
-const providerNames = {
-  openai: 'OpenAI',
-  anthropic: 'Anthropic',
-  google: 'Google',
-  groq: 'Groq',
-  xai: 'xAI',
-  perplexity: 'Perplexity',
-  mistral: 'Mistral',
-  cohere: 'Cohere'
+const GRADE_STYLES = {
+  'A+': { text: 'text-emerald-600 dark:text-emerald-400' },
+  'A': { text: 'text-green-600 dark:text-green-400' },
+  'B+': { text: 'text-blue-600 dark:text-blue-400' },
+  'B': { text: 'text-sky-600 dark:text-sky-400' },
+  'C+': { text: 'text-amber-600 dark:text-amber-400' },
+  'C': { text: 'text-orange-600 dark:text-orange-400' }
 } as const
 
 // Agent Presets - Pre-selected models for each role (4 agents: analyst, critic, judge, synthesizer)
+// IMPORTANT: Only use models with status: 'working' in MODEL_REGISTRY
 const AGENT_PRESETS = {
   free: {
     label: 'Free',
@@ -95,22 +63,22 @@ const AGENT_PRESETS = {
     description: 'All free models',
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 dark:border-green-700',
     roles: {
-      'analyst-001': { provider: 'groq', model: 'llama-3.1-8b-instant' },       // Fast analyst
-      'critic-001': { provider: 'google', model: 'gemini-2.0-flash' },          // Different provider
+      'analyst-001': { provider: 'groq', model: 'llama-3.1-8b-instant' },       // Fast analyst (FREE)
+      'critic-001': { provider: 'google', model: 'gemini-2.0-flash' },          // Different provider (FREE)
       'judge-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' },      // Best free for judging
-      'synthesizer-001': { provider: 'google', model: 'gemini-2.0-flash' }      // Synthesis
+      'synthesizer-001': { provider: 'google', model: 'gemini-2.5-flash' }      // Latest free Gemini
     }
   },
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Cheapest paid models',
+    description: 'Best value paid models',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
-      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI ($0.0004/1K)
-      'critic-001': { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' }, // Haiku 3.5 ($0.80/$4 per 1M tokens)
-      'judge-001': { provider: 'google', model: 'gemini-2.0-flash-lite' },     // Free, fast judge
-      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI ($0.0002/1K)
+      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Budget OpenAI (working)
+      'critic-001': { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' }, // Fast Haiku (working)
+      'judge-001': { provider: 'google', model: 'gemini-2.5-pro' },            // Best reasoning (working)
+      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Fast xAI (working)
     }
   },
   max: {
@@ -119,10 +87,10 @@ const AGENT_PRESETS = {
     description: 'Best flagship models',
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700',
     roles: {
-      'analyst-001': { provider: 'openai', model: 'gpt-5.1' },                         // GPT-5.1 for analysis
-      'critic-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },   // Claude 4.5 for critique
-      'judge-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },    // Claude 4.5 for judging
-      'synthesizer-001': { provider: 'xai', model: 'grok-4-fast-reasoning' } // Grok 4 for synthesis (gemini-3-pro untested)
+      'analyst-001': { provider: 'google', model: 'gemini-3-pro-preview' },           // Gemini 3 Pro (#1 LMArena)
+      'critic-001': { provider: 'anthropic', model: 'claude-opus-4-5-20251124' },     // Claude 4.5 Opus (80.9% SWE-bench)
+      'judge-001': { provider: 'openai', model: 'gpt-5' },                            // GPT-5 (working)
+      'synthesizer-001': { provider: 'xai', model: 'grok-4-1-fast-reasoning' }        // Grok 4.1 (best tool-calling)
     }
   }
 } as const
@@ -367,14 +335,40 @@ export function AgentSelector({
                           {/* Current Model Badge with Dropdown */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button
-                                className={`${PROVIDER_COLORS[state.provider as keyof typeof PROVIDER_COLORS] || PROVIDER_COLORS.openai} transition-colors cursor-pointer px-3 py-1.5 h-auto text-sm font-medium rounded-full flex items-center gap-1.5 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary`}
-                              >
-                                {modelDisplayNames[state.model] || state.model}
-                                <ChevronDown className="h-3 w-3" />
-                              </button>
+                              {(() => {
+                                const modelInfo = getModelInfo(state.model)
+                                const { grade, weight } = getModelGrade(state.model)
+                                const costTier = getModelCostTier(state.model)
+                                const costStyle = COST_TIER_STYLES[costTier]
+                                const gradeStyle = GRADE_STYLES[grade]
+                                const colorClass = PROVIDER_COLORS[state.provider as keyof typeof PROVIDER_COLORS] || PROVIDER_COLORS.openai
+                                const displayName = modelInfo?.name || state.model
+
+                                return (
+                                  <button
+                                    className={cn(
+                                      colorClass,
+                                      'transition-colors cursor-pointer px-3 py-1.5 h-auto text-sm font-medium rounded-full',
+                                      'flex items-center gap-1.5 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary'
+                                    )}
+                                  >
+                                    {displayName}
+                                    <span className={cn('font-semibold text-xs', gradeStyle.text)}>
+                                      {grade}({weight.toFixed(2)})
+                                    </span>
+                                    <span className={cn(
+                                      'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
+                                      costStyle.bg,
+                                      costStyle.text
+                                    )}>
+                                      {costTier}
+                                    </span>
+                                    <ChevronDown className="h-3 w-3" />
+                                  </button>
+                                )
+                              })()}
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="max-h-96 overflow-y-auto">
+                            <DropdownMenuContent align="start" className="w-80 max-h-96 overflow-y-auto">
                               <DropdownMenuLabel>Select Provider & Model</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               {availableModels.map(providerInfo => {
@@ -390,19 +384,17 @@ export function AgentSelector({
                                 return (
                                   <div key={providerInfo.provider}>
                                     <DropdownMenuLabel className="text-xs text-muted-foreground">
-                                      {providerNames[providerInfo.provider as keyof typeof providerNames] || providerInfo.provider}
+                                      {PROVIDER_NAMES[providerInfo.provider as Provider] || providerInfo.provider}
                                     </DropdownMenuLabel>
                                     {availableProviderModels.map(model => (
-                                      <DropdownMenuItem
+                                      <ModelDropdownItem
                                         key={`${providerInfo.provider}/${model}`}
+                                        modelId={model}
+                                        selected={state.provider === providerInfo.provider && state.model === model}
+                                        showPower={true}
+                                        showCost={true}
                                         onClick={() => updateAgentModel(persona.id, providerInfo.provider, model)}
-                                        className={state.provider === providerInfo.provider && state.model === model ? 'bg-accent' : ''}
-                                      >
-                                        <span className="flex items-center gap-2">
-                                          {modelDisplayNames[model] || model}
-                                          {state.provider === providerInfo.provider && state.model === model && ' ✓'}
-                                        </span>
-                                      </DropdownMenuItem>
+                                      />
                                     ))}
                                     <DropdownMenuSeparator />
                                   </div>

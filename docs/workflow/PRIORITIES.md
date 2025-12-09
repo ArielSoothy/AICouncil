@@ -17,27 +17,33 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ Model Registry Fixes & Power Sorting (December 9, 2025)
-**Goal:** Fix Grok models showing "FREE" incorrectly + sort models by power
+**Current Session:** ✅ Model Registry Consistency & New Flagship Models (December 9, 2025)
+**Goal:** Fix agent debate failures + add Claude 4.5 Opus + Gemini 3 Pro + consistent selectors
 
 **Progress:**
-- ✅ Added missing Grok model costs (grok-4-1-fast-reasoning, grok-3-beta, grok-3-mini-beta, grok-2-image-1212)
-- ✅ Added missing Grok benchmarks for power ranking
-- ✅ Expanded Google Gemini models (3 → 5 available)
-- ✅ Power-sorted model dropdowns (highest power first)
-- ✅ TypeScript: 0 errors
-- ✅ Documentation: FEATURES.md updated (Feature #41)
+- ✅ Added Claude 4.5 Opus (`claude-opus-4-5-20251124`) - Released Nov 24, 2025
+- ✅ Added Gemini 3 Pro Image (`gemini-3-pro-image-preview`) - NEW model
+- ✅ Updated Gemini 3 Pro status to `working` (was `unreleased`)
+- ✅ Rewrote agent-selector.tsx to use MODEL_REGISTRY (removed 44 hardcoded model names)
+- ✅ Fixed agent presets to use only working models (Max preset now uses Gemini 3, Opus 4.5, GPT-5, Grok 4.1)
+- ✅ Added power/cost badges to agent selector dropdowns
+- ✅ TypeScript: 0 errors (build successful)
+- ✅ Documentation: FEATURES.md updated (Feature #42)
 
 **Files Modified:**
 ```
-lib/model-metadata.ts                              # MODIFIED: Added Grok costs + benchmarks
-lib/models/model-registry.ts                       # MODIFIED: Gemini status updates
-components/consensus/ultra-model-badge-selector.tsx # MODIFIED: Sort by power
-components/trading/single-model-badge-selector.tsx  # MODIFIED: Sort by power
-docs/workflow/FEATURES.md                          # MODIFIED: Added Feature #41
+lib/models/model-registry.ts                       # MODIFIED: Added 3 new models, updated Gemini 3 status
+lib/model-metadata.ts                              # MODIFIED: Added costs + benchmarks for new models
+components/agents/agent-selector.tsx               # REWRITTEN: Uses MODEL_REGISTRY, power/cost badges
+docs/workflow/FEATURES.md                          # MODIFIED: Added Feature #42
+docs/workflow/PRIORITIES.md                        # MODIFIED: Session context
 ```
 
-**Previous Session:** Multi-Broker Support & IBKR Auth (December 9, 2025)
+**Previous Session:** Model Registry Fixes & Power Sorting (December 9, 2025)
+- ✅ Fixed Grok models showing "FREE" incorrectly
+- ✅ Power-sorted model dropdowns (Feature #41)
+
+**Earlier Session:** Multi-Broker Support & IBKR Auth (December 9, 2025)
 - ✅ Created broker selector dropdown + IBKR auth dialog (Features #39-40)
 
 **Earlier Session:** Model Fallback System (December 7, 2025)

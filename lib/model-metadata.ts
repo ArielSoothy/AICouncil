@@ -43,7 +43,7 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   // Official pricing per 1M tokens, converted to per 1K
   // ============================================================================
   // Claude 4.5 Series (Latest - November 2025)
-  'claude-opus-4-5-20251101': { input: 0.005, output: 0.025, source: 'Anthropic per 1M ($5 in / $25 out)', lastUpdated: '2025-12-09' },
+  'claude-opus-4-5-20251124': { input: 0.005, output: 0.025, source: 'Anthropic per 1M ($5 in / $25 out)', lastUpdated: '2025-12-09' },
   'claude-sonnet-4-5-20250929': { input: 0.003, output: 0.015, source: 'Anthropic per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
   'claude-haiku-4-5-20251001': { input: 0.001, output: 0.005, source: 'Anthropic per 1M ($1 in / $5 out)', lastUpdated: '2025-12-09' },
   // Aliases for Claude 4.5 (some systems use shorter names)
@@ -68,6 +68,10 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   // Google Gemini - Source: ai.google.dev/gemini-api/docs/pricing
   // Free tier for Flash models, paid for Pro
   // ============================================================================
+  // Gemini 3 Series (Flagship - Dec 2025)
+  'gemini-3-pro-preview': { input: 0.002, output: 0.012, source: 'Google per 1M ($2 in / $12 out)', lastUpdated: '2025-12-09' },
+  'gemini-3-pro-image-preview': { input: 0.002, output: 0.012, source: 'Google per 1M ($2 in / $12 out) - image generation', lastUpdated: '2025-12-09' },
+  // Gemini 2.5 Series
   'gemini-2.5-pro': { input: 0.00125, output: 0.01, source: 'Google per 1M ($1.25 in / $10 out)', lastUpdated: '2025-12-09' },
   'gemini-2.5-flash': { input: 0.0, output: 0.0, source: 'Google FREE tier (paid option: $0.30/$2.50 per 1M)', lastUpdated: '2025-12-09' },
   'gemini-2.0-flash': { input: 0.0, output: 0.0, source: 'Google FREE tier', lastUpdated: '2025-12-09' },
@@ -158,8 +162,8 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // ============================================================================
   // Anthropic - Source: Anthropic docs, ArtificialAnalysis.ai
   // ============================================================================
-  // Claude 4.5 Series - Opus 4.5: MMLU-Pro 89.5%, Sonnet 4.5: MMLU-Pro 87.5%
-  'claude-opus-4-5-20251101': { arenaTier: 'S', aaii: 1400, mmlu: 90, source: 'Anthropic/AA - MMLU-Pro 89.5%', lastUpdated: '2025-12-09' },
+  // Claude 4.5 Series - Opus 4.5: MMLU-Pro 89.5%, 80.9% SWE-bench; Sonnet 4.5: MMLU-Pro 87.5%
+  'claude-opus-4-5-20251124': { arenaTier: 'S', aaii: 1450, mmlu: 92, source: 'Anthropic - 80.9% SWE-bench, best coding model Nov 2025', lastUpdated: '2025-12-09' },
   'claude-sonnet-4-5-20250929': { arenaTier: 'S', aaii: 1320, mmlu: 88, source: 'Anthropic/AA - MMLU-Pro 87.5%', lastUpdated: '2025-12-09' },
   'claude-haiku-4-5-20251001': { arenaTier: 'A', aaii: 1200, mmlu: 80, source: 'Anthropic/AA', lastUpdated: '2025-12-09' },
   'claude-haiku-4-5-20250715': { arenaTier: 'A', aaii: 1200, mmlu: 80, source: 'Anthropic/AA - older date alias', lastUpdated: '2025-12-09' },
@@ -179,6 +183,9 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // ============================================================================
   // Google Gemini - Source: Google docs, ArtificialAnalysis.ai
   // ============================================================================
+  // Gemini 3 Pro: #1 on LMArena, most intelligent Gemini
+  'gemini-3-pro-preview': { arenaTier: 'S', aaii: 1420, mmlu: 91, source: 'Google - #1 LMArena, most intelligent model', lastUpdated: '2025-12-09' },
+  'gemini-3-pro-image-preview': { arenaTier: 'A', aaii: 1350, mmlu: 88, source: 'Google - image generation with reasoning', lastUpdated: '2025-12-09' },
   // Gemini 2.5 Pro: MMLU 81.7%, Flash: MMLU 78.9%
   'gemini-2.5-pro': { arenaTier: 'S', aaii: 1350, mmlu: 82, source: 'Google/AA - MMLU 81.7%', lastUpdated: '2025-12-09' },
   'gemini-2.5-flash': { arenaTier: 'A', aaii: 1280, mmlu: 79, source: 'Google/AA - MMLU 78.9%', lastUpdated: '2025-12-09' },

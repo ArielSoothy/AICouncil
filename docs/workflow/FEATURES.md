@@ -1340,5 +1340,31 @@
 - **Last Modified**: December 9, 2025 (Fixed Grok cost display + power sorting)
 - **DO NOT**: Remove model costs from metadata, change sorting logic without reason
 
+### 42. Model Registry Consistency & New Flagship Models
+- **Status**: ✅ ACTIVE & COMPLETE (December 2025)
+- **Location**:
+  - `lib/models/model-registry.ts` - Single source of truth for all models
+  - `lib/model-metadata.ts` - Costs and benchmarks
+  - `components/agents/agent-selector.tsx` - Agent debate model selector
+- **Purpose**: Ensure all model selectors use MODEL_REGISTRY as single source of truth + add newest flagship models
+- **Key Features**:
+  - **NEW Claude 4.5 Opus** (`claude-opus-4-5-20251124`): Released Nov 24, 2025, 80.9% SWE-bench, $5/$25 per M tokens
+  - **Gemini 3 Pro** (`gemini-3-pro-preview`): Status changed to `working`, #1 on LMArena
+  - **NEW Gemini 3 Pro Image** (`gemini-3-pro-image-preview`): Image generation with reasoning
+  - **Agent Selector Rewrite**: Removed 44 hardcoded model names, now uses `getModelInfo()` from registry
+  - **Preset Models Fixed**: Max preset now uses working models (Gemini 3 Pro, Claude 4.5 Opus, GPT-5, Grok 4.1)
+  - **Power/Cost Badges**: Agent selector now shows power grades and cost tiers like other selectors
+- **Files Modified**:
+  - `lib/models/model-registry.ts` - Added 3 new models (Opus 4.5, Gemini 3 Pro, Gemini 3 Image)
+  - `lib/model-metadata.ts` - Added costs/benchmarks for new models
+  - `components/agents/agent-selector.tsx` - Full rewrite to use MODEL_REGISTRY
+- **Problem Solved**:
+  - Agent debate was failing due to presets using untested models (`gpt-5.1`)
+  - Model selectors showed different models in different places
+  - Claude 4.5 Opus and Gemini 3 Pro were missing from registry
+- **Browser Tested**: Agent debate mode, model dropdowns show power/cost badges
+- **Last Modified**: December 9, 2025 (Registry consistency + new models)
+- **DO NOT**: Add hardcoded model lists to components, use presets with untested models
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

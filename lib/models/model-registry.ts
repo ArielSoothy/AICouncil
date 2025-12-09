@@ -98,11 +98,11 @@ const MODELS_WITH_INTERNET = new Set([
   'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
   'gpt-4o', 'gpt-4-turbo-preview', 'gpt-4',
   // Anthropic - Claude has web search since March 2025 (FIXED Nov 2025)
-  'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001',
+  'claude-opus-4-5-20251124', 'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001',
   'claude-opus-4-1-20250805', 'claude-opus-4-20250514', 'claude-sonnet-4-20250514',
   'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022',
   // Google - Gemini has Google Search grounding
-  'gemini-3-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite',
+  'gemini-3-pro-preview', 'gemini-3-pro-image-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite',
   'gemini-2.0-flash', 'gemini-2.0-flash-lite',
   // xAI - Grok 4 has Live Search API
   'grok-4-1-fast-reasoning', 'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning', 'grok-4-0709',
@@ -151,6 +151,7 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
   // ===== ANTHROPIC (Web search available since March 2025) =====
   anthropic: [
     // Claude 4.5 Series (2025 Flagship) - All have web search
+    { id: 'claude-opus-4-5-20251124', name: 'Claude 4.5 Opus', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Released Nov 24, 2025. Best coding model (80.9% SWE-bench). $5/$25 per M tokens' },
     { id: 'claude-sonnet-4-5-20250929', name: 'Claude 4.5 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has web search capability' },
     { id: 'claude-haiku-4-5-20251001', name: 'Claude 4.5 Haiku', provider: 'anthropic', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: 'Fast, cost-effective model released October 2025. $1/$5 per million tokens' },
     // Claude 4.1 Series - Opus 4.1 (August 2025)
@@ -172,10 +173,11 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'claude-2.0', name: 'Claude 2.0', provider: 'anthropic', tier: 'budget', badge: '💰', isLegacy: true, status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Claude 2.x is deprecated - no longer available via API' }
   ],
 
-  // ===== GOOGLE (Updated Nov 2025 from official docs) =====
+  // ===== GOOGLE (Updated Dec 2025 from official docs) =====
   google: [
     // Gemini 3 Series (Flagship - Nov 2025)
-    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'unreleased', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Model not found via API (404). Not yet released.' },
+    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Google\'s most intelligent model. Available via AI Studio API. $2/M input, $12/M output' },
+    { id: 'gemini-3-pro-image-preview', name: 'Gemini 3 Pro Image', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'High-fidelity image generation with reasoning-enhanced composition and text rendering' },
     // Gemini 2.5 Series (Stable - Available)
     { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Works with paid API key. $1.25/M input, $10/M output. May hit quota on free tier.' },
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Tested and working. Free tier available.' },
