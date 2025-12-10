@@ -82,6 +82,17 @@ export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButton
   })
   const [showIBKRDialog, setShowIBKRDialog] = useState(false)
   const [checkingIBKR, setCheckingIBKR] = useState(false)
+  // User-configurable Gateway URL
+  const [gatewayUrl, setGatewayUrl] = useState<string>('https://localhost:5050')
+  const [ibkrAccountId, setIbkrAccountId] = useState<string>('')
+
+  // Load saved Gateway URL from localStorage on mount
+  useEffect(() => {
+    const savedUrl = localStorage.getItem('ibkr_gateway_url')
+    const savedAccountId = localStorage.getItem('ibkr_account_id')
+    if (savedUrl) setGatewayUrl(savedUrl)
+    if (savedAccountId) setIbkrAccountId(savedAccountId)
+  }, [])
 
   // Check current broker status on mount
   useEffect(() => {
@@ -125,8 +136,14 @@ export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButton
     setCheckingIBKR(true)
 
     try {
-      // Call our API to check IBKR status
-      const response = await fetch('/api/trading/broker/ibkr-status')
+      // Save Gateway URL and Account ID to localStorage
+      localStorage.setItem('ibkr_gateway_url', gatewayUrl)
+      if (ibkrAccountId) localStorage.setItem('ibkr_account_id', ibkrAccountId)
+
+      // Call our API to check IBKR status with user's Gateway URL
+      const params = new URLSearchParams({ gatewayUrl })
+      if (ibkrAccountId) params.append('accountId', ibkrAccountId)
+      const response = await fetch(`/api/trading/broker/ibkr-status?${params}`)
 
       if (response.ok) {
         const data = await response.json()
@@ -301,6 +318,36 @@ export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButton
               </div>
             </div>
 
+            {/* Gateway URL Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Gateway URL</label>
+              <input
+                type="text"
+                value={gatewayUrl}
+                onChange={(e) => setGatewayUrl(e.target.value)}
+                placeholder="https://localhost:5050"
+                className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+              <p className="text-xs text-muted-foreground">
+                URL where your IBKR Client Portal Gateway is running
+              </p>
+            </div>
+
+            {/* Account ID Input (Optional) */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Account ID <span className="text-muted-foreground">(optional)</span></label>
+              <input
+                type="text"
+                value={ibkrAccountId}
+                onChange={(e) => setIbkrAccountId(e.target.value)}
+                placeholder="e.g., U1234567"
+                className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+              <p className="text-xs text-muted-foreground">
+                Your IBKR account ID (auto-detected if not provided)
+              </p>
+            </div>
+
             {/* Steps */}
             <div className="space-y-3">
               <h4 className="font-medium text-sm">Setup Steps:</h4>
@@ -324,7 +371,7 @@ export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButton
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
-              onClick={() => window.open('https://localhost:5050', '_blank')}
+              onClick={() => window.open(gatewayUrl, '_blank')}
               className="gap-2"
             >
               <ExternalLink className="w-4 h-4" />

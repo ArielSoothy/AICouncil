@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import https from 'https'
 
 /**
  * Check IBKR Gateway authentication status
- * GET /api/trading/broker/ibkr-status
+ * GET /api/trading/broker/ibkr-status?gatewayUrl=https://localhost:5050
+ *
+ * Query Parameters:
+ * - gatewayUrl: User's IBKR Gateway URL (optional, defaults to env or localhost:5050)
+ * - accountId: User's IBKR Account ID (optional, for future use)
  *
  * IMPORTANT: This endpoint uses Node.js built-in 'https' module instead of fetch/undici.
  * Reason: IBKR Client Portal Gateway uses self-signed SSL certificates.
@@ -15,8 +19,16 @@ import https from 'https'
  *
  * @see https://interactivebrokers.github.io/cpwebapi/ - IBKR Client Portal API docs
  */
-export async function GET() {
-  const gatewayUrl = process.env.IBKR_GATEWAY_URL || 'https://localhost:5050/v1/api'
+export async function GET(request: NextRequest) {
+  // Accept Gateway URL from query params (user-configurable) or fall back to env/default
+  const searchParams = request.nextUrl.searchParams
+  const userGatewayUrl = searchParams.get('gatewayUrl')
+
+  // Ensure the URL includes the API path
+  let gatewayUrl = userGatewayUrl || process.env.IBKR_GATEWAY_URL || 'https://localhost:5050'
+  if (!gatewayUrl.includes('/v1/api')) {
+    gatewayUrl = gatewayUrl.replace(/\/$/, '') + '/v1/api'
+  }
 
   try {
     // Check IBKR Gateway auth status using https module (handles self-signed certs)
