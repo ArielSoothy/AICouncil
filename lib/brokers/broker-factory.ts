@@ -87,6 +87,9 @@ class BrokerFactoryClass {
   /**
    * Get the active broker (configured via ACTIVE_BROKER env var)
    * Defaults to Alpaca paper trading
+   *
+   * NOTE: On production (Vercel), IBKR is not available because it requires
+   * a local Gateway. Only Alpaca works on production.
    */
   getActiveBroker(): IBroker {
     if (this.activeBrokerId) {
@@ -98,6 +101,14 @@ class BrokerFactoryClass {
     const activeEnvironment = process.env.BROKER_ENVIRONMENT as
       | BrokerEnvironment
       | undefined;
+
+    // On production (Vercel), force Alpaca - IBKR requires local Gateway
+    const isProduction = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+    if (isProduction && activeBrokerEnv === 'ibkr') {
+      console.warn('IBKR not available on production (requires local Gateway). Falling back to Alpaca.');
+      this.activeBrokerId = 'alpaca';
+      return this.getBroker('alpaca', 'paper');
+    }
 
     // Default to Alpaca paper trading
     this.activeBrokerId = activeBrokerEnv || 'alpaca';

@@ -44,6 +44,10 @@ interface BrokerOption {
   gatewayUrl?: string
 }
 
+// Check if running in production (Vercel) or local development
+const isProduction = process.env.NODE_ENV === 'production' ||
+  (typeof window !== 'undefined' && !window.location.hostname.includes('localhost'))
+
 const BROKER_OPTIONS: BrokerOption[] = [
   {
     id: 'alpaca',
@@ -52,15 +56,16 @@ const BROKER_OPTIONS: BrokerOption[] = [
     icon: <TestTube className="w-4 h-4 text-green-600" />,
     description: 'Paper trading with simulated $100k account',
   },
-  {
-    id: 'ibkr',
+  // IBKR only available in local development (requires local Gateway)
+  ...(!isProduction ? [{
+    id: 'ibkr' as BrokerId,
     name: 'Interactive Brokers',
-    environment: 'live',
+    environment: 'live' as const,
     icon: <Building2 className="w-4 h-4 text-orange-600" />,
-    description: 'Live trading with real IBKR account',
+    description: 'Live trading with real IBKR account (local only)',
     requiresGateway: true,
     gatewayUrl: 'https://localhost:5050',
-  },
+  }] : []),
 ]
 
 interface BrokerAuthButtonProps {
