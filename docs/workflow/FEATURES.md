@@ -1262,7 +1262,24 @@
   ```
 - **Test Script**: `scripts/test-ibkr-connection.ts` - Validates Gateway connection
 - **Playwright Tested**: Dropdown menu, IBKR dialog, setup steps all verified working
-- **Last Modified**: December 9, 2025 (Fixed self-signed cert handling)
+- **Last Modified**: December 10, 2025 (IBKR hidden on production, local-only)
+- **PRODUCTION vs LOCAL**:
+  ```
+  🌐 PRODUCTION (Vercel):
+  - IBKR option is HIDDEN (not available)
+  - Only Alpaca paper trading shown
+  - Reason: IBKR Gateway runs on localhost, Vercel can't access it
+
+  💻 LOCAL DEVELOPMENT:
+  - Both Alpaca and IBKR available
+  - IBKR requires Gateway running on localhost:5050
+  - User can configure custom Gateway URL in dialog
+  ```
+- **User-Configurable Gateway** (December 10, 2025):
+  - Users can enter their own Gateway URL in IBKR dialog
+  - Gateway URL saved to localStorage (`ibkr_gateway_url`)
+  - Account ID optionally configurable (`ibkr_account_id`)
+  - Enables each user to connect their own local Gateway
 - **CRITICAL IMPLEMENTATION NOTES**:
   ```
   ⚠️ IBKR Gateway has THREE critical requirements:
