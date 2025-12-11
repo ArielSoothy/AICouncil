@@ -1,8 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, DollarSign, TrendingUp, TrendingDown, Wallet, BarChart3 } from 'lucide-react'
+import { Loader2, DollarSign, TrendingUp, TrendingDown, Wallet, BarChart3, Clock } from 'lucide-react'
+
+// Auto-refresh interval: 30 seconds
+const PORTFOLIO_REFRESH_INTERVAL = 30000
 
 interface PortfolioData {
   broker?: {
@@ -39,13 +42,14 @@ interface PortfolioData {
 export function PortfolioDisplay() {
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  useEffect(() => {
-    fetchPortfolio()
-  }, [])
-
-  const fetchPortfolio = async () => {
-    setLoading(true)
+  const fetchPortfolio = useCallback(async (showLoadingSpinner = true) => {
+    // Only show loading spinner for manual refreshes, not background polling
+    if (showLoadingSpinner) {
+      setLoading(true)
+    }
 
     try {
       const response = await fetch('/api/trading/portfolio')
@@ -56,13 +60,61 @@ export function PortfolioDisplay() {
 
       const data = await response.json()
       setPortfolio(data)
+      setLastUpdated(new Date())
     } catch (error) {
       console.error('Failed to fetch portfolio:', error)
-      alert(error instanceof Error ? error.message : 'Failed to fetch portfolio')
+      // Only show alert for manual refreshes
+      if (showLoadingSpinner) {
+        alert(error instanceof Error ? error.message : 'Failed to fetch portfolio')
+      }
     } finally {
-      setLoading(false)
+      if (showLoadingSpinner) {
+        setLoading(false)
+      }
     }
-  }
+  }, [])
+
+  // Auto-refresh with visibility handling
+  useEffect(() => {
+    // Initial fetch
+    fetchPortfolio(true)
+
+    const startPolling = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      intervalRef.current = setInterval(() => {
+        fetchPortfolio(false) // Background refresh - no loading spinner
+      }, PORTFOLIO_REFRESH_INTERVAL)
+    }
+
+    const stopPolling = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPolling()
+      } else {
+        // Refresh immediately when tab becomes visible, then resume polling
+        fetchPortfolio(false)
+        startPolling()
+      }
+    }
+
+    // Start polling
+    startPolling()
+
+    // Listen for tab visibility changes
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    // Cleanup
+    return () => {
+      stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [fetchPortfolio])
 
   if (loading && !portfolio) {
     return (
@@ -76,7 +128,7 @@ export function PortfolioDisplay() {
     return (
       <div className="text-center py-12 bg-card rounded-lg border">
         <p className="text-muted-foreground">Failed to load portfolio data</p>
-        <Button onClick={fetchPortfolio} variant="outline" className="mt-4">
+        <Button onClick={() => fetchPortfolio(true)} variant="outline" className="mt-4">
           Retry
         </Button>
       </div>
@@ -95,16 +147,24 @@ export function PortfolioDisplay() {
               : 'Trading Account'}
           </p>
         </div>
-        <Button onClick={fetchPortfolio} disabled={loading} variant="outline">
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            'Refresh'
+        <div className="flex items-center gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              Updated {formatTimeAgo(lastUpdated)}
+            </span>
           )}
-        </Button>
+          <Button onClick={() => fetchPortfolio(true)} disabled={loading} variant="outline">
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              'Refresh'
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Key Metrics Cards */}
@@ -202,6 +262,20 @@ export function PortfolioDisplay() {
       </div>
     </div>
   )
+}
+
+// Helper function to format time ago
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
+
+  if (seconds < 5) return 'just now'
+  if (seconds < 60) return `${seconds}s ago`
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+
+  const hours = Math.floor(minutes / 60)
+  return `${hours}h ago`
 }
 
 function MetricCard({

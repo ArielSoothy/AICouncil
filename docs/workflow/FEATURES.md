@@ -1477,5 +1477,274 @@
 - **Last Modified**: December 11, 2025
 - **DO NOT**: Remove fundamental data fetching, change scoring weights without user approval
 
+### 44. Scoring Engine Integration & Low Temperature Trading
+- **Status**: ✅ ACTIVE & COMPLETE (December 11, 2025)
+- **Location**:
+  - `app/api/trading/consensus/route.ts` - Consensus mode integration
+  - `app/api/trading/individual/route.ts` - Individual mode integration
+  - `app/api/trading/debate/route.ts` - Debate mode integration
+  - `lib/trading/scoring-engine.ts` - Core deterministic scoring
+- **Purpose**: Integrate deterministic scoring into ALL trading routes + reduce LLM randomness for consistent decisions
+- **Key Features**:
+  - **Deterministic Score Pre-Calculation**: Score calculated BEFORE AI analysis
+  - **Score in Prompt**: AI models receive score to explain/validate (not override)
+  - **Low Temperature (0.2)**: All trading decisions use temperature 0.2 (was 0.7)
+  - **Score in API Response**: Full score breakdown returned to frontend
+  - **Input Hash**: For audit trail and reproducibility verification
+- **Implementation Pattern**:
+  ```typescript
+  // Step 2.5: CALCULATE DETERMINISTIC SCORE (before AI analysis)
+  const sharedData = await fetchSharedTradingData(targetSymbol);
+  const deterministicScore = calculateTradingScore(sharedData, timeframe);
+  // Score added to prompt, AI explains WHY score recommends this action
+  ```
+- **Temperature Changes**:
+  - Consensus: 1 change (provider.query temperature)
+  - Individual: 1 change (provider.query temperature)
+  - Debate: 7 changes (Round 1: Analyst, Critic, Synthesizer + Round 2: all three + setup)
+- **API Response Structure**:
+  ```typescript
+  deterministicScore: {
+    recommendation: 'STRONG_BUY' | 'BUY' | 'HOLD' | 'SELL' | 'STRONG_SELL',
+    weightedScore: number,     // -1 to +1
+    confidence: number,        // 0 to 1
+    inputHash: string,         // For audit trail
+    technical: number,         // -1 to +1
+    fundamental: number,       // -1 to +1
+    sentiment: number,         // -1 to +1
+    trend: number,             // -1 to +1
+    bullishFactors: string[],
+    bearishFactors: string[],
+    suggestedStopLoss: number,
+    suggestedTakeProfit: number,
+    riskRewardRatio: string
+  }
+  ```
+- **Files Modified**:
+  - `app/api/trading/consensus/route.ts` - imports, score calc, prompt, temp 0.2, response
+  - `app/api/trading/individual/route.ts` - imports, score calc, prompt, temp 0.2, response
+  - `app/api/trading/debate/route.ts` - imports, score calc, prompt, temp 0.2 (7 locations)
+- **TypeScript**: 0 errors after changes
+- **Last Modified**: December 11, 2025
+- **DO NOT**: Remove deterministic scoring, increase temperature above 0.3 for trading, remove score from response
+
+### 45. Advanced Math Methods - Kelly Criterion & Risk Metrics
+- **Status**: ✅ ACTIVE & COMPLETE (December 11, 2025)
+- **Location**:
+  - `lib/trading/position-sizing.ts` - Kelly Criterion and position sizing methods
+  - `lib/trading/risk-metrics.ts` - ATR, Std Dev, VaR, Sharpe, Sortino, Max Drawdown
+- **Purpose**: Professional position sizing and risk measurement for trading system
+- **Key Features**:
+  - **Position Sizing Methods** (`position-sizing.ts`):
+    - `kellyPositionSize()` - Kelly Criterion: f* = (p * b - q) / b
+    - `halfKelly()` - Safer 50% Kelly for reduced volatility
+    - `quarterKelly()` - Conservative 25% Kelly
+    - `fixedFractionalSize()` - Fixed percentage of portfolio
+    - `volatilityAdjustedSize()` - Size based on ATR
+    - `calculateOptimalPosition()` - Combined method with multiple strategies
+  - **Risk Metrics** (`risk-metrics.ts`):
+    - `calculateATR()` - Average True Range (volatility)
+    - `atrStopLoss()` - Stop-loss based on ATR × multiplier
+    - `atrTakeProfit()` - Take-profit based on ATR × multiplier
+    - `standardDeviation()` - Price volatility measurement
+    - `valueAtRisk()` - VaR at 95% confidence
+    - `maxDrawdown()` - Maximum peak-to-trough decline
+    - `sharpeRatio()` - Risk-adjusted return
+    - `sortinoRatio()` - Downside risk-adjusted return
+    - `calculateRiskRewardRatio()` - Entry/Stop/Target ratio
+    - `calculateRiskMetrics()` - Complete analysis bundle
+- **Kelly Criterion Formula**:
+  ```typescript
+  // f* = (p * b - q) / b
+  // p = win probability, b = win/loss ratio, q = 1-p
+  function kellyPositionSize(winRate: number, avgWin: number, avgLoss: number) {
+    const b = avgWin / avgLoss;
+    const kelly = (winRate * b - (1 - winRate)) / b;
+    return Math.max(0, Math.min(0.25, kelly)); // Cap at 25%
+  }
+  ```
+- **ATR Stop-Loss Calculation**:
+  ```typescript
+  // Stop = Entry - (ATR × multiplier)
+  function atrStopLoss(entryPrice: number, atr: number, multiplier = 2) {
+    return entryPrice - (atr * multiplier);
+  }
+  ```
+- **Timeframe-Adjusted Parameters**:
+  - Day Trading: 1.0× ATR multiplier, risk 0.5-1%
+  - Swing Trading: 2.0× ATR multiplier, risk 1-2%
+  - Position Trading: 3.0× ATR multiplier, risk 2-3%
+  - Long-term: 4.0× ATR multiplier, risk 3-5%
+- **Files Created**:
+  - `lib/trading/position-sizing.ts` - Complete position sizing module
+  - `lib/trading/risk-metrics.ts` - Complete risk metrics module
+- **TypeScript**: 0 errors, fully typed interfaces
+- **Last Modified**: December 11, 2025
+- **DO NOT**: Remove Kelly Criterion capping (25% max), change ATR multiplier defaults without data
+
+### 46. Research Progress UI Components
+- **Status**: ✅ ACTIVE & COMPLETE (December 11, 2025)
+- **Location**:
+  - `components/trading/research-progress.tsx` - Research pipeline visualization
+  - `components/trading/deterministic-score-card.tsx` - Score visualization card
+- **Purpose**: Visual display of research agents, tools used, and deterministic score during trading analysis
+- **Key Features**:
+  - **Research Progress Component** (`research-progress.tsx`):
+    - Expandable pipeline view showing all 4 research agents
+    - Per-agent cards: Technical, Fundamental, Sentiment, Risk
+    - Tool count badges per agent
+    - Status indicators: pending (gray), active (blue spinner), complete (green), error (red)
+    - Expandable details showing tool names used
+    - Duration tracking per agent
+    - Summary stats: total tools used, research duration
+    - Compact variant for inline display
+    - Custom hook `useResearchProgress()` for real-time updates
+  - **Deterministic Score Card** (`deterministic-score-card.tsx`):
+    - Color-coded recommendation badges (STRONG_BUY green to STRONG_SELL red)
+    - Weighted score display with +/- percentage
+    - Confidence percentage
+    - Risk:Reward ratio
+    - Category breakdown with score bars (Technical, Fundamental, Sentiment, Trend)
+    - Expandable bullish/bearish factors list
+    - Stop-loss and take-profit levels
+    - Input hash for audit trail
+    - Compact variant for inline display
+- **Component Exports**:
+  ```typescript
+  // Research Progress
+  export { ResearchProgress, ResearchProgressCompact, useResearchProgress }
+  export type { ResearchProgressData, ResearchAgentProgress }
+
+  // Score Card
+  export { DeterministicScoreCard, DeterministicScoreCompact }
+  export type { DeterministicScoreData }
+  ```
+- **Design Principles**:
+  - Modular & reusable components
+  - Expandable/collapsible for space efficiency
+  - Color-coded status indicators
+  - Professional trading UI patterns
+  - TypeScript interfaces for type safety
+- **Files Created**:
+  - `components/trading/research-progress.tsx` (~426 lines)
+  - `components/trading/deterministic-score-card.tsx` (~422 lines)
+- **TypeScript**: 0 errors, full type exports
+- **Last Modified**: December 11, 2025
+- **DO NOT**: Remove expandable functionality, change status color scheme, remove compact variants
+
+### 47. LLM Seed Parameter for Reproducibility
+- **Status**: ✅ ACTIVE & COMPLETE (December 11, 2025)
+- **Location**:
+  - `lib/trading/scoring-engine.ts` - `hashToSeed()` and `generateTradingSeed()` utilities
+  - `lib/ai-providers/openai.ts` - Seed parameter passed via `experimental_providerMetadata`
+  - `lib/ai-providers/google.ts` - Seed logging (limited support)
+  - `types/consensus.ts` - `seed?: number` added to ModelConfig interface
+  - `app/api/trading/consensus/route.ts` - Seed from deterministic score
+  - `app/api/trading/individual/route.ts` - Seed from deterministic score
+  - `app/api/trading/debate/route.ts` - Seed from deterministic score (6 calls)
+- **Purpose**: Enable reproducible AI outputs for trading decisions using seed parameter
+- **Key Features**:
+  - **Hash to Seed Conversion**: `hashToSeed()` converts inputHash (hex) to numeric seed
+  - **OpenAI Support**: Uses `experimental_providerMetadata: { openai: { seed } }` in Vercel AI SDK
+  - **Deterministic Flow**: Score inputHash → seed → passed to all AI provider calls
+  - **Trading Routes**: All 3 routes (consensus, individual, debate) pass seed to providers
+  - **Google Logging**: Logs seed value (Gemini has limited seed support)
+- **Implementation Details**:
+  ```typescript
+  // Seed generation from input hash
+  export function hashToSeed(inputHash: string): number {
+    const seed = parseInt(inputHash, 16);
+    return Math.abs(seed) % Number.MAX_SAFE_INTEGER;
+  }
+
+  // Usage in trading routes
+  const seed = deterministicScore ? hashToSeed(deterministicScore.inputHash) : undefined;
+  const result = await provider.query(prompt, { ...config, seed });
+  ```
+- **OpenAI Documentation Quote**: "If specified, our system will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result."
+- **Provider Support**:
+  - OpenAI: ✅ Full support (GPT models)
+  - Google Gemini: ⚠️ Limited support (logged but not enforced)
+  - Anthropic Claude: ❌ Not supported (no seed parameter)
+  - Groq/Llama: ❌ Not supported
+- **Combined with Low Temperature**: seed + temperature=0.2 for maximum reproducibility
+- **Files Modified**:
+  - `lib/trading/scoring-engine.ts` - Added `hashToSeed()`, `generateTradingSeed()`
+  - `types/consensus.ts` - Added `seed?: number` to ModelConfig
+  - `lib/ai-providers/openai.ts` - Added seed via `experimental_providerMetadata`
+  - All 3 trading routes - Added seed generation and passing
+- **TypeScript**: 0 errors after changes
+- **Last Modified**: December 11, 2025
+- **DO NOT**: Remove seed parameter support, change hash-to-seed algorithm without testing
+
+### 48. Trading Audit Trail Logging System
+- **Status**: ✅ ACTIVE & COMPLETE (December 11, 2025)
+- **Location**: `lib/trading/audit-logger.ts`
+- **Purpose**: Log all trading decisions for reproducibility verification and compliance
+- **Key Features**:
+  - **Immutable Audit Records**: Complete decision context capture with timestamps
+  - **Verification Hash**: Tamper detection via hash of entire record
+  - **Input Hash Tracking**: Same inputs = same hash for reproducibility verification
+  - **Query Interface**: Filter by symbol, timeframe, mode, date range
+  - **Export Capabilities**: JSON and CSV export for compliance reporting
+  - **Statistics**: Decision distribution, confidence metrics, date ranges
+  - **localStorage Persistence**: Client-side storage (expandable to database)
+- **AuditRecord Interface**:
+  ```typescript
+  interface AuditRecord {
+    id: string;
+    timestamp: string;
+    inputHash: string;           // From scoring engine
+    symbol: string;
+    timeframe: 'day' | 'swing' | 'position' | 'longterm';
+    mode: 'consensus' | 'individual' | 'debate';
+    marketData: { price, rsi, macd, trend };
+    deterministicScore: { recommendation, weightedScore, confidence, ... };
+    aiDecision: { action, confidence, reasoning, models[], temperature, seed };
+    riskParameters: { suggestedStopLoss, suggestedTakeProfit, riskRewardRatio };
+    researchMetadata?: { totalToolCalls, researchDuration, agentRoles };
+    execution?: { executed, orderId, executedPrice, slippage };
+    verificationHash: string;    // Tamper detection
+  }
+  ```
+- **API Methods**:
+  - `auditLogger.log(record)` - Log a trading decision
+  - `auditLogger.query(params)` - Query records with filters
+  - `auditLogger.getById(id)` - Get specific record
+  - `auditLogger.getByInputHash(hash)` - Find records by input hash
+  - `auditLogger.verifyRecord(record)` - Verify tamper detection hash
+  - `auditLogger.getStats()` - Get audit statistics
+  - `auditLogger.exportJSON()` / `auditLogger.exportCSV()` - Export data
+- **Helper Functions**:
+  - `createAuditRecord()` - Create record from trading route data
+  - `checkReproducibility()` - Verify same inputs produce same outputs
+- **Storage**: localStorage with MAX_RECORDS=1000 limit
+- **TypeScript**: 0 errors, full type exports
+- **Last Modified**: December 11, 2025
+- **DO NOT**: Remove verification hash, reduce MAX_RECORDS below 500, delete records without logging
+
+### 49. Portfolio Auto-Refresh System
+- **Status**: ✅ ACTIVE & IMPLEMENTED
+- **Location**: `components/trading/portfolio-display.tsx`
+- **Purpose**: Automatically refresh portfolio data every 30 seconds to show current stock prices
+- **Key Features**:
+  - **30-second polling interval**: Fetches fresh data from broker API every 30 seconds
+  - **"Updated X ago" timestamp**: Shows data freshness next to Refresh button with Clock icon
+  - **Tab visibility handling**: Pauses polling when browser tab is hidden, resumes when visible
+  - **Immediate refresh on tab focus**: When user returns to tab, immediately fetches fresh data
+  - **Non-blocking background refresh**: No loading spinner during auto-refresh (only manual refresh shows spinner)
+  - **Memory leak prevention**: Properly cleans up interval and event listeners on unmount
+- **Implementation Details**:
+  - `PORTFOLIO_REFRESH_INTERVAL = 30000` (30 seconds)
+  - Uses `useRef` for interval tracking
+  - Uses `document.visibilitychange` event for tab handling
+  - `formatTimeAgo()` helper for "just now", "Xs ago", "Xm ago" display
+- **Dependencies**:
+  - `/api/trading/portfolio` endpoint (Alpaca or IBKR)
+  - `lucide-react` Clock icon
+- **TypeScript**: 0 errors
+- **Last Modified**: December 11, 2025
+- **DO NOT**: Remove auto-refresh, reduce interval below 15 seconds (API rate limits), remove visibility handling
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
