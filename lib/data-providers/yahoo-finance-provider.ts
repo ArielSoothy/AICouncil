@@ -33,7 +33,8 @@ import type {
 } from './types';
 import YahooFinance from 'yahoo-finance2';
 // Instantiate YahooFinance client (required since v3.x)
-const yahooFinance = new YahooFinance();
+// Suppress survey notices to prevent URL popup loops
+const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
 
 // Types from yahoo-finance2 for quoteSummary result
 interface YF2SummaryDetail {
