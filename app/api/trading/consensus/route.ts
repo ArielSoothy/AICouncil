@@ -16,6 +16,9 @@ import { getModelDisplayName, getProviderForModel as getProviderType } from '@/l
 import { getModelInfo } from '@/lib/models/model-registry';
 import type { TradeDecision } from '@/lib/alpaca/types';
 import { generateTradingJudgePrompt, parseTradingJudgeResponse } from '@/lib/trading/judge-system';
+// Deterministic scoring engine imports
+import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
+import { calculateTradingScore, formatTradingScoreForPrompt, hashToSeed, type TradingScore } from '@/lib/trading/scoring-engine';
 
 // Initialize all providers
 const PROVIDERS = {
@@ -201,6 +204,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Step 2.5: CALCULATE DETERMINISTIC SCORE (before AI analysis)
+    // This score is REPRODUCIBLE - same inputs = same outputs
+    let deterministicScore: TradingScore | null = null;
+    try {
+      const sharedData = await fetchSharedTradingData(targetSymbol);
+      deterministicScore = calculateTradingScore(sharedData, timeframe as TradingTimeframe);
+      console.log(`✅ Deterministic score for ${targetSymbol}: ${deterministicScore.recommendation} (${deterministicScore.weightedScore.toFixed(2)})`);
+    } catch (scoreError) {
+      console.warn(`⚠️ Could not calculate deterministic score: ${scoreError}`);
+      // Continue without deterministic score - AI will still analyze research
+    }
+
     // Step 3: RUN EXHAUSTIVE RESEARCH PIPELINE (4 specialized agents)
     // With caching: Check cache first, run fresh research if cache miss/expired
     let researchReport: ResearchReport;
@@ -222,9 +237,14 @@ export async function POST(request: NextRequest) {
       await researchCache.set(targetSymbol, timeframe as TradingTimeframe, researchReport);
     }
 
-    // Step 4: Generate trading prompt WITH research findings (no tools needed)
+    // Step 4: Generate trading prompt WITH research findings AND deterministic score
     const date = new Date().toISOString().split('T')[0];
     const researchSection = formatResearchReportForPrompt(researchReport);
+
+    // Format deterministic score for prompt (if available)
+    const scoreSection = deterministicScore
+      ? formatTradingScoreForPrompt(deterministicScore)
+      : '';
 
     // Use generateEnhancedTradingPrompt WITHOUT shared data
     // (research report already contains all market data)
@@ -236,10 +256,11 @@ export async function POST(request: NextRequest) {
       targetSymbol
     );
 
-    // Insert research findings into prompt (BEFORE the JSON format instruction)
+    // Insert research findings AND deterministic score into prompt
+    // Score comes FIRST so AI can explain the deterministic recommendation
     const prompt = basePrompt.replace(
       '⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️',
-      `${researchSection}\n\n⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️`
+      `${scoreSection}\n\n${researchSection}\n\n⚠️ YOUR TASK: Analyze the deterministic score above and research findings. Explain WHY the score recommends ${deterministicScore?.recommendation || 'this action'} based on the research data. Your reasoning should validate, refine, or challenge the algorithmic score.\n\n⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️`
     );
 
     // Step 5: Call each AI model in parallel (NO TOOLS - analyzing research)
@@ -251,19 +272,42 @@ export async function POST(request: NextRequest) {
         }
 
         const provider = PROVIDERS[providerType];
+        const modelName = getModelDisplayName(modelId);
+
+        // Generate seed from deterministic score for reproducibility (OpenAI supports this)
+        const seed = deterministicScore ? hashToSeed(deterministicScore.inputHash) : undefined;
 
         const result = await provider.query(prompt, {
           model: modelId,
           provider: providerType,
-          temperature: 0.7,
+          temperature: 0.2, // Low temperature for deterministic trading decisions
           maxTokens: 2000, // Sufficient for analyzing research
           enabled: true,
           useTools: false, // ❌ NO TOOLS - decision models analyze research, don't conduct it
           maxSteps: 1,
+          seed, // For reproducibility (OpenAI supports this)
         });
+
+        // ✅ Check for error response BEFORE parsing
+        if (result.error) {
+          console.error(`❌ ${modelName} returned error:`, result.error);
+          throw new Error(result.error);
+        }
+
+        // ✅ Check for empty response BEFORE parsing
+        if (!result.response || result.response.trim().length === 0) {
+          console.error(`❌ ${modelName} returned empty response`);
+          throw new Error(`${modelName} returned empty response`);
+        }
 
         // Parse JSON response with robust extraction
         const cleanedResponse = extractJSON(result.response);
+
+        // ✅ Check if we got valid JSON-like content
+        if (!cleanedResponse || cleanedResponse.trim().length === 0 || !cleanedResponse.includes('{')) {
+          console.error(`❌ ${modelName} response not valid JSON:`, result.response.substring(0, 200));
+          throw new Error(`${modelName} response was not valid JSON format`);
+        }
 
         let decision: TradeDecision = JSON.parse(cleanedResponse);
 
@@ -399,11 +443,26 @@ export async function POST(request: NextRequest) {
       riskLevel: judgeResult.riskLevel, // From LLM judge risk assessment
     };
 
-    // Return consensus, decisions, AND full research report for Phase 4 transparency
+    // Return consensus, decisions, deterministic score, AND full research report
     return NextResponse.json({
       consensus,
       decisions, // Individual model decisions for transparency
       research: researchReport, // Full research report with all agent details
+      deterministicScore: deterministicScore ? {
+        recommendation: deterministicScore.recommendation,
+        weightedScore: deterministicScore.weightedScore,
+        confidence: deterministicScore.confidence,
+        inputHash: deterministicScore.inputHash, // For audit trail
+        technical: deterministicScore.technical.score,
+        fundamental: deterministicScore.fundamental.score,
+        sentiment: deterministicScore.sentiment.score,
+        trend: deterministicScore.trend.score,
+        bullishFactors: deterministicScore.bullishFactors,
+        bearishFactors: deterministicScore.bearishFactors,
+        suggestedStopLoss: deterministicScore.suggestedStopLoss,
+        suggestedTakeProfit: deterministicScore.suggestedTakeProfit,
+        riskRewardRatio: deterministicScore.riskRewardRatio,
+      } : null,
     });
 
   } catch (error) {

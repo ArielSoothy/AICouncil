@@ -12,6 +12,7 @@ import { IndividualMode } from '@/components/trading/individual-mode'
 import { TradeHistory } from '@/components/trading/trade-history'
 import { PortfolioDisplay } from '@/components/trading/portfolio-display'
 import { IBKRAuthButton } from '@/components/trading/broker-status-badge'
+import { ModelTester } from '@/components/trading/model-tester'
 import { IS_PRODUCTION } from '@/lib/utils/environment'
 
 function TradingPageContent() {
@@ -122,6 +123,11 @@ function TradingPageContent() {
           {/* Portfolio Overview - key forces remount on broker change */}
           <div className="mb-8">
             <PortfolioDisplay key={`portfolio-${brokerRefreshKey}`} />
+          </div>
+
+          {/* Model Health Check - Test individual models before consensus */}
+          <div className="mb-8">
+            <ModelTester />
           </div>
 
           {/* Mode selector tabs */}

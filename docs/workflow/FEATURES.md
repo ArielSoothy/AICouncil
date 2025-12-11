@@ -1746,5 +1746,28 @@
 - **Last Modified**: December 11, 2025
 - **DO NOT**: Remove auto-refresh, reduce interval below 15 seconds (API rate limits), remove visibility handling
 
+### 50. Model Health Check / Tester
+- **Status**: ✅ ACTIVE & IMPLEMENTED
+- **Location**:
+  - API: `app/api/trading/test-model/route.ts`
+  - UI: `components/trading/model-tester.tsx`
+- **Purpose**: Test individual AI models before running full consensus to catch JSON/API errors early
+- **Key Features**:
+  - **Single model test**: Select any model from dropdown, test with simple trading prompt
+  - **Test all models**: Batch test all configured models, see pass/fail summary
+  - **Error diagnosis**: Shows raw response, cleaned JSON, error messages for debugging
+  - **Response time tracking**: Shows latency for each model
+  - **Token usage**: Displays prompt/completion/total tokens used
+- **Test Prompt**: Simple AAPL analysis with JSON output format requirement
+- **Architecture**: Uses SAME provider infrastructure as consensus mode (no duplicate code)
+- **UI Features**:
+  - Green checkmark for passed models
+  - Red X for failed models
+  - Expandable raw response view
+  - Failed models list summary
+- **TypeScript**: 0 errors
+- **Last Modified**: December 11, 2025
+- **DO NOT**: Change test prompt format (models are trained on it), remove error details from response
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
