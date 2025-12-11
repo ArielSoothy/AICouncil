@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -11,21 +11,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
   Building2,
   TestTube,
   ChevronDown,
   ExternalLink,
   RefreshCw,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   Wifi,
   WifiOff,
@@ -48,6 +39,8 @@ interface BrokerOption {
 const isProduction = process.env.NODE_ENV === 'production' ||
   (typeof window !== 'undefined' && !window.location.hostname.includes('localhost'))
 
+const DEFAULT_GATEWAY_URL = 'https://localhost:5050'
+
 const BROKER_OPTIONS: BrokerOption[] = [
   {
     id: 'alpaca',
@@ -64,7 +57,7 @@ const BROKER_OPTIONS: BrokerOption[] = [
     icon: <Building2 className="w-4 h-4 text-orange-600" />,
     description: 'Live trading with real IBKR account (local only)',
     requiresGateway: true,
-    gatewayUrl: 'https://localhost:5050',
+    gatewayUrl: DEFAULT_GATEWAY_URL,
   }] : []),
 ]
 
@@ -85,26 +78,18 @@ export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButton
     authenticated: false,
     loading: true,
   })
-  const [showIBKRDialog, setShowIBKRDialog] = useState(false)
   const [checkingIBKR, setCheckingIBKR] = useState(false)
-  // User-configurable Gateway URL
-  const [gatewayUrl, setGatewayUrl] = useState<string>('https://localhost:5050')
-  const [ibkrAccountId, setIbkrAccountId] = useState<string>('')
+  // Gateway URL from localStorage or default
+  const [gatewayUrl, setGatewayUrl] = useState<string>(DEFAULT_GATEWAY_URL)
 
   // Load saved Gateway URL from localStorage on mount
   useEffect(() => {
     const savedUrl = localStorage.getItem('ibkr_gateway_url')
-    const savedAccountId = localStorage.getItem('ibkr_account_id')
     if (savedUrl) setGatewayUrl(savedUrl)
-    if (savedAccountId) setIbkrAccountId(savedAccountId)
   }, [])
 
-  // Check current broker status on mount
-  useEffect(() => {
-    checkBrokerStatus()
-  }, [activeBroker])
-
-  const checkBrokerStatus = async () => {
+  // Check current broker status on mount and when activeBroker changes
+  const checkBrokerStatus = useCallback(async () => {
     setBrokerStatus(prev => ({ ...prev, loading: true, error: undefined }))
 
     try {
@@ -119,6 +104,8 @@ export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButton
           authenticated: true,
           loading: false,
         })
+        // Notify parent of broker change
+        onBrokerChange?.(currentBroker)
       } else {
         setBrokerStatus({
           connected: false,
@@ -135,58 +122,14 @@ export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButton
         error: error instanceof Error ? error.message : 'Connection failed',
       })
     }
-  }
+  }, [onBrokerChange])
 
-  const checkIBKRGateway = async () => {
-    setCheckingIBKR(true)
+  useEffect(() => {
+    checkBrokerStatus()
+  }, [checkBrokerStatus])
 
-    try {
-      // Save Gateway URL and Account ID to localStorage
-      localStorage.setItem('ibkr_gateway_url', gatewayUrl)
-      if (ibkrAccountId) localStorage.setItem('ibkr_account_id', ibkrAccountId)
-
-      // Call our API to check IBKR status with user's Gateway URL
-      const params = new URLSearchParams({ gatewayUrl })
-      if (ibkrAccountId) params.append('accountId', ibkrAccountId)
-      const response = await fetch(`/api/trading/broker/ibkr-status?${params}`)
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.authenticated) {
-          // IBKR is authenticated, we can switch
-          await switchToBroker('ibkr')
-          setShowIBKRDialog(false)
-        } else {
-          // Not authenticated - keep dialog open
-          setBrokerStatus(prev => ({
-            ...prev,
-            error: 'IBKR Gateway not authenticated. Please login via the Gateway web interface.',
-          }))
-        }
-      } else {
-        setBrokerStatus(prev => ({
-          ...prev,
-          error: 'IBKR Gateway not reachable. Ensure it is running.',
-        }))
-      }
-    } catch {
-      setBrokerStatus(prev => ({
-        ...prev,
-        error: 'Could not connect to IBKR Gateway',
-      }))
-    } finally {
-      setCheckingIBKR(false)
-    }
-  }
-
-  const switchToBroker = async (brokerId: BrokerId) => {
-    if (brokerId === 'ibkr') {
-      // Show IBKR auth dialog
-      setShowIBKRDialog(true)
-      return
-    }
-
-    // For Alpaca, just switch directly
+  // Actually perform the broker switch via API
+  const performBrokerSwitch = async (brokerId: BrokerId): Promise<boolean> => {
     try {
       const response = await fetch('/api/trading/broker/switch', {
         method: 'POST',
@@ -198,9 +141,85 @@ export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButton
         setActiveBroker(brokerId)
         onBrokerChange?.(brokerId)
         await checkBrokerStatus()
+        return true
+      } else {
+        const data = await response.json()
+        setBrokerStatus(prev => ({
+          ...prev,
+          error: data.error || 'Failed to switch broker',
+        }))
+        return false
       }
     } catch (error) {
       console.error('Failed to switch broker:', error)
+      setBrokerStatus(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to switch broker',
+      }))
+      return false
+    }
+  }
+
+  // Check IBKR Gateway and switch if authenticated
+  const checkAndSwitchToIBKR = async () => {
+    setCheckingIBKR(true)
+    setBrokerStatus(prev => ({ ...prev, error: undefined }))
+
+    try {
+      // Save Gateway URL to localStorage
+      localStorage.setItem('ibkr_gateway_url', gatewayUrl)
+
+      // Call our API to check IBKR status
+      const params = new URLSearchParams({ gatewayUrl })
+      const response = await fetch(`/api/trading/broker/ibkr-status?${params}`)
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.authenticated) {
+          // IBKR is authenticated, switch to it
+          const switched = await performBrokerSwitch('ibkr')
+          if (switched) {
+            setBrokerStatus({
+              connected: true,
+              authenticated: true,
+              loading: false,
+            })
+          }
+        } else {
+          // Not authenticated - open Gateway for login
+          setBrokerStatus(prev => ({
+            ...prev,
+            error: 'IBKR Gateway not authenticated. Opening login page...',
+          }))
+          window.open(gatewayUrl, '_blank')
+        }
+      } else {
+        // Gateway not reachable - open it anyway
+        setBrokerStatus(prev => ({
+          ...prev,
+          error: 'IBKR Gateway not reachable. Opening Gateway URL...',
+        }))
+        window.open(gatewayUrl, '_blank')
+      }
+    } catch {
+      // On any error, try opening the Gateway
+      setBrokerStatus(prev => ({
+        ...prev,
+        error: 'Could not connect to IBKR Gateway. Opening Gateway URL...',
+      }))
+      window.open(gatewayUrl, '_blank')
+    } finally {
+      setCheckingIBKR(false)
+    }
+  }
+
+  const handleBrokerSelect = async (brokerId: BrokerId) => {
+    if (brokerId === 'ibkr') {
+      // For IBKR: Check auth status first, open Gateway if needed
+      await checkAndSwitchToIBKR()
+    } else {
+      // For Alpaca: Just switch directly
+      await performBrokerSwitch(brokerId)
     }
   }
 
@@ -208,200 +227,101 @@ export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButton
   const isLive = currentBroker.environment === 'live'
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            'gap-2',
+            isLive
+              ? 'border-orange-300 bg-orange-50 hover:bg-orange-100 dark:bg-orange-950 dark:border-orange-700'
+              : 'border-green-300 bg-green-50 hover:bg-green-100 dark:bg-green-950 dark:border-green-700',
+            className
+          )}
+        >
+          {brokerStatus.loading || checkingIBKR ? (
+            <RefreshCw className="w-4 h-4 animate-spin" />
+          ) : brokerStatus.connected ? (
+            <Wifi className="w-4 h-4 text-green-500" />
+          ) : (
+            <WifiOff className="w-4 h-4 text-red-500" />
+          )}
+          {currentBroker.icon}
+          <span className="font-medium">{currentBroker.name}</span>
+          <span className={cn(
+            'text-xs px-1.5 py-0.5 rounded font-bold uppercase',
+            isLive
+              ? 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-100'
+              : 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100'
+          )}>
+            {currentBroker.environment}
+          </span>
+          <ChevronDown className="w-4 h-4 ml-1" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel>Select Broker</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+
+        {BROKER_OPTIONS.map((broker) => (
+          <DropdownMenuItem
+            key={broker.id}
+            onClick={() => handleBrokerSelect(broker.id)}
             className={cn(
-              'gap-2',
-              isLive
-                ? 'border-orange-300 bg-orange-50 hover:bg-orange-100 dark:bg-orange-950 dark:border-orange-700'
-                : 'border-green-300 bg-green-50 hover:bg-green-100 dark:bg-green-950 dark:border-green-700',
-              className
+              'flex items-start gap-3 p-3 cursor-pointer',
+              activeBroker === broker.id && 'bg-accent'
             )}
           >
-            {brokerStatus.loading ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : brokerStatus.connected ? (
-              <Wifi className="w-4 h-4 text-green-500" />
-            ) : (
-              <WifiOff className="w-4 h-4 text-red-500" />
-            )}
-            {currentBroker.icon}
-            <span className="font-medium">{currentBroker.name}</span>
-            <span className={cn(
-              'text-xs px-1.5 py-0.5 rounded font-bold uppercase',
-              isLive
-                ? 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-100'
-                : 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100'
-            )}>
-              {currentBroker.environment}
-            </span>
-            <ChevronDown className="w-4 h-4 ml-1" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-72">
-          <DropdownMenuLabel>Select Broker</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-
-          {BROKER_OPTIONS.map((broker) => (
-            <DropdownMenuItem
-              key={broker.id}
-              onClick={() => switchToBroker(broker.id)}
-              className={cn(
-                'flex items-start gap-3 p-3 cursor-pointer',
-                activeBroker === broker.id && 'bg-accent'
-              )}
-            >
-              <div className="mt-0.5">{broker.icon}</div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{broker.name}</span>
-                  <span className={cn(
-                    'text-xs px-1.5 py-0.5 rounded font-bold uppercase',
-                    broker.environment === 'live'
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
-                      : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                  )}>
-                    {broker.environment}
-                  </span>
-                  {activeBroker === broker.id && (
-                    <CheckCircle2 className="w-4 h-4 text-green-500 ml-auto" />
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {broker.description}
-                </p>
-                {broker.requiresGateway && (
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    Requires Client Portal Gateway
-                  </p>
+            <div className="mt-0.5">{broker.icon}</div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{broker.name}</span>
+                <span className={cn(
+                  'text-xs px-1.5 py-0.5 rounded font-bold uppercase',
+                  broker.environment === 'live'
+                    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
+                    : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                )}>
+                  {broker.environment}
+                </span>
+                {activeBroker === broker.id && (
+                  <CheckCircle2 className="w-4 h-4 text-green-500 ml-auto" />
                 )}
               </div>
-            </DropdownMenuItem>
-          ))}
-
-          <DropdownMenuSeparator />
-
-          <DropdownMenuItem onClick={checkBrokerStatus} className="gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Refresh Connection
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* IBKR Authentication Dialog */}
-      <Dialog open={showIBKRDialog} onOpenChange={setShowIBKRDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-orange-600" />
-              Connect to Interactive Brokers
-            </DialogTitle>
-            <DialogDescription>
-              IBKR requires authentication through the Client Portal Gateway.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Status indicator */}
-            <div className={cn(
-              'p-3 rounded-lg border flex items-start gap-3',
-              brokerStatus.error
-                ? 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-                : 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
-            )}>
-              {brokerStatus.error ? (
-                <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              ) : (
-                <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {broker.description}
+              </p>
+              {broker.requiresGateway && (
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  Requires Client Portal Gateway
+                </p>
               )}
-              <div className="text-sm">
-                {brokerStatus.error || 'To use IBKR, you need to authenticate through the Gateway web interface first.'}
-              </div>
             </div>
+          </DropdownMenuItem>
+        ))}
 
-            {/* Gateway URL Input */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Gateway URL</label>
-              <input
-                type="text"
-                value={gatewayUrl}
-                onChange={(e) => setGatewayUrl(e.target.value)}
-                placeholder="https://localhost:5050"
-                className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-              <p className="text-xs text-muted-foreground">
-                URL where your IBKR Client Portal Gateway is running
-              </p>
-            </div>
+        <DropdownMenuSeparator />
 
-            {/* Account ID Input (Optional) */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Account ID <span className="text-muted-foreground">(optional)</span></label>
-              <input
-                type="text"
-                value={ibkrAccountId}
-                onChange={(e) => setIbkrAccountId(e.target.value)}
-                placeholder="e.g., U1234567"
-                className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-              <p className="text-xs text-muted-foreground">
-                Your IBKR account ID (auto-detected if not provided)
-              </p>
-            </div>
-
-            {/* Steps */}
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm">Setup Steps:</h4>
-              <ol className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <span className="bg-muted rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
-                  <span>Ensure Client Portal Gateway is running on your machine</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="bg-muted rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
-                  <span>Open the Gateway login page and authenticate with your IBKR credentials</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="bg-muted rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
-                  <span>Click &quot;Check Connection&quot; below to verify authentication</span>
-                </li>
-              </ol>
-            </div>
-          </div>
-
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
+        {/* If IBKR is active, show option to open Gateway */}
+        {activeBroker === 'ibkr' && (
+          <>
+            <DropdownMenuItem
               onClick={() => window.open(gatewayUrl, '_blank')}
               className="gap-2"
             >
               <ExternalLink className="w-4 h-4" />
-              Open Gateway Login
-            </Button>
-            <Button
-              onClick={checkIBKRGateway}
-              disabled={checkingIBKR}
-              className="gap-2"
-            >
-              {checkingIBKR ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Checking...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  Check Connection
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+              Open IBKR Gateway
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+
+        <DropdownMenuItem onClick={checkBrokerStatus} className="gap-2">
+          <RefreshCw className="w-4 h-4" />
+          Refresh Connection
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

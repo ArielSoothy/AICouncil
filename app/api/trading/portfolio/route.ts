@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveBroker } from '@/lib/brokers/broker-factory';
+import { BrokerFactory } from '@/lib/brokers/broker-factory';
+import { cookies } from 'next/headers';
+
+// Cookie name must match the one in broker/switch/route.ts
+const ACTIVE_BROKER_COOKIE = 'active_broker';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get the active broker (Alpaca or IBKR based on env config)
-    const broker = getActiveBroker();
+    // Read broker selection from cookie (persisted across serverless function restarts)
+    const cookieStore = cookies();
+    const brokerCookie = cookieStore.get(ACTIVE_BROKER_COOKIE);
+    const cookieBrokerId = brokerCookie?.value;
+
+    // If cookie specifies a valid broker, use it
+    if (cookieBrokerId && ['alpaca', 'ibkr'].includes(cookieBrokerId)) {
+      const environment = cookieBrokerId === 'ibkr' ? 'live' : 'paper';
+      BrokerFactory.setActiveBroker(cookieBrokerId as 'alpaca' | 'ibkr', environment);
+    }
+
+    // Get the active broker
+    const broker = BrokerFactory.getActiveBroker();
 
     // Fetch account and positions in parallel
     const [account, positions] = await Promise.all([

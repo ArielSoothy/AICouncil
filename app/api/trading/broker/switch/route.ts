@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { BrokerFactory } from '@/lib/brokers/broker-factory'
+import { cookies } from 'next/headers'
 
 type BrokerId = 'alpaca' | 'ibkr'
+
+// Cookie name for storing active broker
+const ACTIVE_BROKER_COOKIE = 'active_broker'
 
 /**
  * Switch active broker
  * POST /api/trading/broker/switch
  * Body: { brokerId: 'alpaca' | 'ibkr' }
+ *
+ * Persists broker selection in a cookie to survive serverless function restarts.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +43,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Set the active broker
+    // Set the active broker in memory
     const environment = brokerId === 'ibkr' ? 'live' : 'paper'
     BrokerFactory.setActiveBroker(brokerId, environment)
 
@@ -47,7 +53,8 @@ export async function POST(request: NextRequest) {
     try {
       await broker.connect()
 
-      return NextResponse.json({
+      // Create response with broker info
+      const response = NextResponse.json({
         success: true,
         broker: {
           id: broker.id,
@@ -56,6 +63,18 @@ export async function POST(request: NextRequest) {
         },
         message: `Successfully switched to ${broker.name}`,
       })
+
+      // Set cookie to persist broker selection across requests
+      // Cookie lasts for 30 days
+      response.cookies.set(ACTIVE_BROKER_COOKIE, brokerId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: '/',
+      })
+
+      return response
     } catch (connectError) {
       // For IBKR, connection may fail if not authenticated
       if (brokerId === 'ibkr') {
