@@ -293,6 +293,10 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
   // Use ref to track active broker without causing re-renders
   const activeBrokerRef = useRef<'ibkr' | 'alpaca' | null>(null)
 
+  // Use ref for callback to avoid infinite loop (callback changes every render)
+  const onAuthChangeRef = useRef(onAuthChange)
+  onAuthChangeRef.current = onAuthChange
+
   // Load saved Gateway URL from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -334,7 +338,7 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
       if (response.ok) {
         setActiveBroker(brokerId)
         activeBrokerRef.current = brokerId
-        onAuthChange?.(brokerId === 'ibkr')
+        onAuthChangeRef.current?.(brokerId === 'ibkr')
         return true
       }
     } catch (err) {
@@ -343,9 +347,9 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
       setSwitching(false)
     }
     return false
-  }, [onAuthChange])
+  }, []) // No dependencies - uses refs
 
-  // Check auth status - uses ref to avoid dependency loop
+  // Check auth status - uses refs to avoid dependency loop
   const checkAuthStatus = useCallback(async () => {
     try {
       const params = new URLSearchParams({ gatewayUrl })
@@ -364,21 +368,18 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
       // Skip auto-switch if activeBroker hasn't been loaded yet (null) to avoid race condition
       if (data.authenticated && activeBrokerRef.current !== null && activeBrokerRef.current !== 'ibkr') {
         await switchBroker('ibkr')
-      } else {
-        // Just notify parent of current auth state
-        onAuthChange?.(data.authenticated || false)
       }
+      // Note: Don't call onAuthChange on every poll - only on actual broker switch
     } catch {
       setAuthStatus({
         connected: false,
         authenticated: false,
         error: 'Failed to check IBKR status',
       })
-      onAuthChange?.(false)
     } finally {
       setLoading(false)
     }
-  }, [gatewayUrl, onAuthChange, switchBroker])
+  }, [gatewayUrl, switchBroker]) // Removed onAuthChange - uses ref via switchBroker
 
   // Check status on mount and poll every 15 seconds
   useEffect(() => {
