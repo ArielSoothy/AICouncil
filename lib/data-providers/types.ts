@@ -91,6 +91,67 @@ export interface TrendAnalysis {
 }
 
 /**
+ * Fundamental data for valuation analysis
+ * Source: Yahoo Finance (free)
+ *
+ * These metrics are CRITICAL for:
+ * - Position trading (medium-term)
+ * - Long-term investing
+ * - Valuation-based decisions
+ */
+export interface FundamentalData {
+  // Valuation Metrics
+  pe: number | null;              // Price/Earnings ratio (trailing 12 months)
+  forwardPe: number | null;       // Forward P/E (based on estimates)
+  pegRatio: number | null;        // PEG ratio (P/E / growth rate)
+  priceToBook: number | null;     // Price/Book ratio
+
+  // Earnings & Profitability
+  eps: number | null;             // Earnings per share (trailing 12 months)
+  epsForward: number | null;      // Forward EPS estimate
+
+  // Company Size & Liquidity
+  marketCap: number | null;       // Market capitalization
+  avgVolume: number | null;       // Average volume (3 month)
+  sharesOutstanding: number | null; // Total shares outstanding
+
+  // Dividends
+  dividendYield: number | null;   // Annual dividend yield (%)
+  dividendRate: number | null;    // Annual dividend per share ($)
+
+  // Risk Metrics
+  beta: number | null;            // Market correlation (1.0 = market average)
+
+  // Events
+  earningsDate: string | null;    // Next earnings date (ISO string)
+  exDividendDate: string | null;  // Ex-dividend date (ISO string)
+
+  // 52-week performance
+  fiftyTwoWeekHigh: number | null;   // 52-week high price
+  fiftyTwoWeekLow: number | null;    // 52-week low price
+  fiftyTwoWeekChange: number | null; // 52-week price change (%)
+
+  // Analyst data (if available)
+  targetPrice: number | null;     // Mean analyst target price
+  recommendationKey: string | null; // 'buy', 'hold', 'sell', etc.
+}
+
+/**
+ * Fundamental signal interpretation
+ */
+export interface FundamentalSignal {
+  signal: 'Bullish' | 'Bearish' | 'Neutral';
+  confidence: number; // 0-1
+  factors: {
+    valuation: 'Undervalued' | 'Overvalued' | 'Fair';
+    earnings: 'Growing' | 'Declining' | 'Stable';
+    dividend: 'Attractive' | 'None' | 'Low';
+    risk: 'High' | 'Medium' | 'Low';
+  };
+  summary: string;
+}
+
+/**
  * Complete market data package for a stock
  * This is what gets shared across all AI models
  */
@@ -103,6 +164,7 @@ export interface SharedTradingData {
   news: NewsArticle[];            // Recent news articles
   bars: PriceBar[];               // Historical price bars (last 30 days)
   trend: TrendAnalysis;           // Trend analysis
+  fundamentals?: FundamentalData; // Fundamental data (P/E, EPS, etc.) - NEW
 }
 
 /**

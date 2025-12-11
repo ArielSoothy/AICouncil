@@ -531,6 +531,24 @@ ${roleConfig.specialty === 'fundamental analysis' ? `
 - Identify competitive position and industry headwinds/tailwinds
 - Connect fundamentals to valuation (P/E, growth rate, etc.)
 
+📊 FUNDAMENTAL DATA AVAILABLE (Pre-Fetched):
+The system has already fetched key fundamental metrics. Look for these in the market context:
+- P/E Ratio (trailing & forward) - is it above/below sector average?
+- EPS (earnings per share) - is it growing?
+- Market Cap - what size category is this company?
+- Beta - is this stock more/less volatile than market?
+- Dividend Yield - is there income potential?
+- Earnings Date - when is the next earnings catalyst?
+- Analyst Target Price - what do analysts think it's worth?
+- Analyst Recommendation - Buy/Hold/Sell consensus
+
+🔑 KEY FUNDAMENTAL QUESTIONS TO ANSWER:
+1. Is the stock undervalued or overvalued based on P/E vs sector?
+2. Is EPS growing, declining, or stable?
+3. Is there earnings risk (earnings date coming soon)?
+4. What do analysts think? (target price vs current price gap)
+5. Are fundamentals improving or deteriorating based on news?
+
 🎯 YOUR GOAL: Determine if company fundamentals support the trade
 ` : ''}
 

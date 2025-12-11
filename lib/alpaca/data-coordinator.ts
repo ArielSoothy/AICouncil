@@ -110,6 +110,16 @@ PRICE ACTION (Last 30 Days):
 - Lowest: $${Math.min(...data.bars.map(b => b.low)).toFixed(2)}
 - Current vs 30-day avg: ${((data.quote.price - (data.bars.reduce((sum, b) => sum + b.close, 0) / data.bars.length)) / (data.bars.reduce((sum, b) => sum + b.close, 0) / data.bars.length) * 100).toFixed(1)}%
 
+${data.fundamentals ? `FUNDAMENTAL DATA:
+- P/E Ratio: ${data.fundamentals.pe?.toFixed(2) ?? 'N/A'} ${data.fundamentals.forwardPe ? `(Forward: ${data.fundamentals.forwardPe.toFixed(2)})` : ''}
+- EPS: $${data.fundamentals.eps?.toFixed(2) ?? 'N/A'} ${data.fundamentals.epsForward ? `(Forward: $${data.fundamentals.epsForward.toFixed(2)})` : ''}
+- Market Cap: $${data.fundamentals.marketCap ? (data.fundamentals.marketCap / 1e9).toFixed(2) + 'B' : 'N/A'}
+- Beta: ${data.fundamentals.beta?.toFixed(2) ?? 'N/A'} ${data.fundamentals.beta ? (data.fundamentals.beta > 1.2 ? '(High volatility)' : data.fundamentals.beta < 0.8 ? '(Low volatility)' : '(Market average)') : ''}
+- Dividend Yield: ${data.fundamentals.dividendYield ? data.fundamentals.dividendYield.toFixed(2) + '%' : 'N/A'}
+- 52-Week Change: ${data.fundamentals.fiftyTwoWeekChange ? data.fundamentals.fiftyTwoWeekChange.toFixed(1) + '%' : 'N/A'}
+- Next Earnings: ${data.fundamentals.earningsDate ? new Date(data.fundamentals.earningsDate).toLocaleDateString() : 'N/A'}
+- Analyst Target: ${data.fundamentals.targetPrice ? '$' + data.fundamentals.targetPrice.toFixed(2) : 'N/A'} ${data.fundamentals.recommendationKey ? `(${data.fundamentals.recommendationKey.toUpperCase()})` : ''}
+` : ''}
 ⚠️ CRITICAL INSTRUCTIONS:
 - You MUST use the real-time data provided above in your analysis
 - Do NOT say "Without recent trend data" or "Unable to retrieve indicators"
@@ -136,6 +146,13 @@ CURRENT MARKET STATUS:
 - Current Price: $${data.quote.price.toFixed(2)}
 - Market is OPEN and trading
 - Last updated: ${new Date(data.quote.timestamp).toLocaleString()}
+${data.fundamentals ? `
+FUNDAMENTAL SNAPSHOT:
+- P/E: ${data.fundamentals.pe?.toFixed(2) ?? 'N/A'} | EPS: $${data.fundamentals.eps?.toFixed(2) ?? 'N/A'}
+- Market Cap: $${data.fundamentals.marketCap ? (data.fundamentals.marketCap / 1e9).toFixed(1) + 'B' : 'N/A'}
+- Beta: ${data.fundamentals.beta?.toFixed(2) ?? 'N/A'}
+- Next Earnings: ${data.fundamentals.earningsDate ? new Date(data.fundamentals.earningsDate).toLocaleDateString() : 'N/A'}
+` : ''}
 
 ⚠️ RESEARCH MANDATE:
 You have been provided with MINIMAL data intentionally. This is a REAL MONEY trading decision.

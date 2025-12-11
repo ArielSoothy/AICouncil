@@ -1,12 +1,12 @@
 /**
  * Yahoo Finance Data Provider
  *
- * FREE real-time market data provider using Yahoo Finance's public API
+ * FREE real-time market data provider using Yahoo Finance
  *
  * Pros:
  * - ✅ Completely free, no API key required
  * - ✅ Real-time data (15-min delay for some exchanges)
- * - ✅ Comprehensive data: quotes, historical prices, news
+ * - ✅ Comprehensive data: quotes, historical prices, news, fundamentals
  * - ✅ Easy to use, no account setup
  * - ✅ Generous rate limits for our use case
  *
@@ -15,8 +15,9 @@
  * - ⚠️ 15-minute delay on some intraday data (EOD is real-time)
  *
  * Data Sources:
- * - Quote & Bars: query1.finance.yahoo.com/v8/finance/chart
- * - News: query2.finance.yahoo.com/v1/finance/search
+ * - Quote & Bars: query1.finance.yahoo.com/v8/finance/chart (direct API)
+ * - News: query2.finance.yahoo.com/v1/finance/search (direct API)
+ * - Fundamentals: yahoo-finance2 npm package (handles crumb auth automatically)
  *
  * Rate Limits: ~2,000 requests/hour (generous for our use case)
  */
@@ -28,7 +29,49 @@ import type {
   PriceBar,
   NewsArticle,
   DataProviderError,
+  FundamentalData,
 } from './types';
+import YahooFinance from 'yahoo-finance2';
+// Instantiate YahooFinance client (required since v3.x)
+const yahooFinance = new YahooFinance();
+
+// Types from yahoo-finance2 for quoteSummary result
+interface YF2SummaryDetail {
+  trailingPE?: number;
+  forwardPE?: number;
+  pegRatio?: number;
+  priceToBook?: number;
+  dividendYield?: number;
+  dividendRate?: number;
+  exDividendDate?: Date;
+  beta?: number;
+  marketCap?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  fiftyTwoWeekChange?: number;
+  averageVolume?: number;
+}
+interface YF2DefaultKeyStatistics {
+  trailingEps?: number;
+  forwardEps?: number;
+  sharesOutstanding?: number;
+  pegRatio?: number;
+  beta?: number;
+}
+interface YF2FinancialData {
+  targetMeanPrice?: number;
+  recommendationKey?: string;
+}
+interface YF2CalendarEvents {
+  earnings?: { earningsDate?: Date[] };
+  exDividendDate?: Date;
+}
+interface YF2QuoteSummaryResult {
+  summaryDetail?: YF2SummaryDetail;
+  defaultKeyStatistics?: YF2DefaultKeyStatistics;
+  financialData?: YF2FinancialData;
+  calendarEvents?: YF2CalendarEvents;
+}
 
 /**
  * Yahoo Finance API response types
@@ -66,6 +109,9 @@ interface YahooNewsResponse {
   }>;
 }
 
+// Note: YahooQuoteSummaryResponse was removed - we now use yahoo-finance2 package
+// which handles crumb authentication automatically and provides its own types
+
 export class YahooFinanceProvider extends BaseDataProvider {
   readonly name = 'Yahoo Finance';
   private readonly baseUrl = 'https://query1.finance.yahoo.com';
@@ -82,10 +128,11 @@ export class YahooFinanceProvider extends BaseDataProvider {
     this.log(`Fetching market data for ${symbolUpper}...`);
 
     try {
-      // Fetch quote and historical bars in parallel
-      const [chartData, newsData] = await Promise.all([
+      // Fetch quote, historical bars, news, and fundamentals in parallel
+      const [chartData, newsData, fundamentals] = await Promise.all([
         this.fetchChartData(symbolUpper),
         this.fetchNews(symbolUpper),
+        this.fetchFundamentals(symbolUpper),
       ]);
 
       // Extract quote from chart data
@@ -114,7 +161,7 @@ export class YahooFinanceProvider extends BaseDataProvider {
       this.log(
         `✅ Data fetched: $${currentPrice.toFixed(2)}, RSI ${technical.rsi.toFixed(
           2
-        )}, ${newsData.length} news articles`
+        )}, ${newsData.length} news articles, Fundamentals: ${fundamentals ? 'Yes' : 'No'}`
       );
 
       return {
@@ -126,6 +173,7 @@ export class YahooFinanceProvider extends BaseDataProvider {
         news: newsData,
         bars: last30Bars,
         trend,
+        fundamentals: fundamentals ?? undefined, // Include fundamentals if available
       };
     } catch (error) {
       this.logError(`Failed to fetch data for ${symbolUpper}`, error as Error);
@@ -211,6 +259,95 @@ export class YahooFinanceProvider extends BaseDataProvider {
     } catch (error) {
       this.logError('News fetch failed (non-critical)', error as Error);
       return []; // Return empty array - news is not critical
+    }
+  }
+
+  /**
+   * Fetch fundamental data using yahoo-finance2 npm package
+   *
+   * This package handles the crumb/cookie authentication automatically,
+   * which is required since Yahoo Finance added authentication in late 2024.
+   *
+   * Data includes: P/E, EPS, Market Cap, Dividend, Beta, Analyst Targets, etc.
+   *
+   * @param symbol - Stock ticker
+   * @returns Fundamental data or null if unavailable
+   */
+  private async fetchFundamentals(symbol: string): Promise<FundamentalData | null> {
+    try {
+      // Use yahoo-finance2 package which handles crumb authentication automatically
+      const result = await yahooFinance.quoteSummary(symbol, {
+        modules: ['summaryDetail', 'defaultKeyStatistics', 'financialData', 'calendarEvents'],
+      });
+
+      if (!result) {
+        this.logError('No fundamental data returned from yahoo-finance2');
+        return null;
+      }
+
+      // Cast to our interface types for type safety
+      const summary = result.summaryDetail as YF2SummaryDetail | undefined;
+      const stats = result.defaultKeyStatistics as YF2DefaultKeyStatistics | undefined;
+      const financial = result.financialData as YF2FinancialData | undefined;
+      const calendar = result.calendarEvents as YF2CalendarEvents | undefined;
+
+      // Extract earnings date (take first if array)
+      let earningsDate: string | null = null;
+      const earningsDates = calendar?.earnings?.earningsDate;
+      if (earningsDates && earningsDates.length > 0) {
+        earningsDate = earningsDates[0].toISOString();
+      }
+
+      // Extract ex-dividend date
+      let exDividendDate: string | null = null;
+      const exDivDate = summary?.exDividendDate || calendar?.exDividendDate;
+      if (exDivDate) {
+        exDividendDate = exDivDate.toISOString();
+      }
+
+      const fundamentals: FundamentalData = {
+        // Valuation Metrics
+        pe: summary?.trailingPE ?? null,
+        forwardPe: summary?.forwardPE ?? null,
+        pegRatio: summary?.pegRatio ?? stats?.pegRatio ?? null,
+        priceToBook: summary?.priceToBook ?? null,
+
+        // Earnings & Profitability
+        eps: stats?.trailingEps ?? null,
+        epsForward: stats?.forwardEps ?? null,
+
+        // Company Size & Liquidity
+        marketCap: summary?.marketCap ?? null,
+        avgVolume: summary?.averageVolume ?? null,
+        sharesOutstanding: stats?.sharesOutstanding ?? null,
+
+        // Dividends
+        dividendYield: summary?.dividendYield ? summary.dividendYield * 100 : null, // Convert to %
+        dividendRate: summary?.dividendRate ?? null,
+
+        // Risk Metrics
+        beta: summary?.beta ?? stats?.beta ?? null,
+
+        // Events
+        earningsDate,
+        exDividendDate,
+
+        // 52-week performance
+        fiftyTwoWeekHigh: summary?.fiftyTwoWeekHigh ?? null,
+        fiftyTwoWeekLow: summary?.fiftyTwoWeekLow ?? null,
+        fiftyTwoWeekChange: summary?.fiftyTwoWeekChange ? summary.fiftyTwoWeekChange * 100 : null, // Convert to %
+
+        // Analyst data
+        targetPrice: financial?.targetMeanPrice ?? null,
+        recommendationKey: financial?.recommendationKey ?? null,
+      };
+
+      this.log(`✅ Fundamentals (yahoo-finance2): P/E ${fundamentals.pe?.toFixed(2) ?? 'N/A'}, EPS $${fundamentals.eps?.toFixed(2) ?? 'N/A'}, Beta ${fundamentals.beta?.toFixed(2) ?? 'N/A'}`);
+
+      return fundamentals;
+    } catch (error) {
+      this.logError('Fundamentals fetch failed (yahoo-finance2)', error as Error);
+      return null; // Return null - fundamentals are valuable but not critical
     }
   }
 

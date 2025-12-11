@@ -1404,5 +1404,45 @@
 - **Last Modified**: December 9, 2025 (Registry consistency + new models)
 - **DO NOT**: Add hardcoded model lists to components, use presets with untested models
 
+### 43. Trading Data Taxonomy & Deterministic Scoring Engine
+- **Status**: ✅ ACTIVE & COMPLETE (December 2025)
+- **Location**:
+  - `lib/data-providers/types.ts` - FundamentalData interface (25+ fields)
+  - `lib/data-providers/yahoo-finance-provider.ts` - Fundamental data fetching
+  - `lib/trading/scoring-engine.ts` - Deterministic signal scoring
+  - `lib/alpaca/data-coordinator.ts` - Shared data with fundamentals
+  - `docs/architecture/TRADING_DATA_TAXONOMY.md` - Complete documentation
+- **Purpose**: Add comprehensive fundamental data + deterministic scoring for trading decisions
+- **Key Features**:
+  - **Fundamental Data (FREE via Yahoo Finance)**:
+    - P/E Ratio (trailing & forward)
+    - EPS (earnings per share)
+    - Market Cap, Beta, Dividend Yield
+    - Analyst Target Price & Recommendation
+    - Earnings Date, 52-week performance
+  - **Deterministic Scoring Engine**:
+    - Technical scoring (RSI, MACD, MAs, Bollinger, S/R)
+    - Fundamental scoring (P/E, EPS, Analyst targets)
+    - Trend scoring (Direction, Strength)
+    - Sentiment scoring (News keyword analysis)
+    - Timeframe-adjusted weights (Day/Swing/Position/Long-term)
+    - Input hash for reproducibility audit
+  - **Academic Foundation**:
+    - Hybrid ML-LLM optimal weight: 0.40-0.45 (PMC 2025)
+    - Multi-agent debate: 13.2% improvement (ACL 2025)
+- **Problem Solved**:
+  - Trading prompts referenced P/E, EPS but system didn't fetch them
+  - AI decisions were not reproducible (same inputs, different outputs)
+  - No formal weighting system for combining signals
+- **Files Created/Modified**:
+  - `lib/data-providers/types.ts` - Added FundamentalData, FundamentalSignal interfaces
+  - `lib/data-providers/yahoo-finance-provider.ts` - Added fetchFundamentals method
+  - `lib/trading/scoring-engine.ts` - NEW: Complete scoring system (500+ lines)
+  - `lib/alpaca/data-coordinator.ts` - Updated format functions with fundamentals
+  - `lib/alpaca/enhanced-prompts.ts` - Updated fundamental analysis guidance
+- **Build Tested**: ✅ TypeScript compiles, Next.js build succeeds
+- **Last Modified**: December 11, 2025
+- **DO NOT**: Remove fundamental data fetching, change scoring weights without user approval
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
