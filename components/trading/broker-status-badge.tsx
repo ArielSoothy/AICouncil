@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   AlertTriangle,
   Shield,
@@ -18,10 +18,13 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Check if running in production (Vercel) or local development
-const isProduction = typeof window !== 'undefined' && !window.location.hostname.includes('localhost')
+// Check if running in production
+const isProduction =
+  typeof window !== 'undefined' && !window.location.hostname.includes('localhost')
 
-const DEFAULT_GATEWAY_URL = 'https://localhost:5050'
+// =============================================================================
+// BrokerStatusBadge - Shows current broker status
+// =============================================================================
 
 interface BrokerInfo {
   id: string
@@ -40,7 +43,7 @@ interface BrokerStatusBadgeProps {
 export function BrokerStatusBadge({
   className,
   showBalance = true,
-  size = 'md'
+  size = 'md',
 }: BrokerStatusBadgeProps) {
   const [brokerInfo, setBrokerInfo] = useState<BrokerInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -62,7 +65,7 @@ export function BrokerStatusBadge({
         name: data.broker?.name || 'Unknown Broker',
         environment: data.broker?.environment || 'paper',
         connected: true,
-        portfolioValue: data.account?.portfolio_value
+        portfolioValue: data.account?.portfolio_value,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connection failed')
@@ -82,22 +85,24 @@ export function BrokerStatusBadge({
   const sizeClasses = {
     sm: 'px-2 py-1 text-xs gap-1.5',
     md: 'px-3 py-2 text-sm gap-2',
-    lg: 'px-4 py-3 text-base gap-3'
+    lg: 'px-4 py-3 text-base gap-3',
   }
 
   const iconSizes = {
     sm: 'w-3 h-3',
     md: 'w-4 h-4',
-    lg: 'w-5 h-5'
+    lg: 'w-5 h-5',
   }
 
   if (loading) {
     return (
-      <div className={cn(
-        'inline-flex items-center rounded-lg border bg-muted/50 animate-pulse',
-        sizeClasses[size],
-        className
-      )}>
+      <div
+        className={cn(
+          'inline-flex items-center rounded-lg border bg-muted/50 animate-pulse',
+          sizeClasses[size],
+          className
+        )}
+      >
         <RefreshCw className={cn(iconSizes[size], 'animate-spin text-muted-foreground')} />
         <span className="text-muted-foreground">Connecting to broker...</span>
       </div>
@@ -106,15 +111,15 @@ export function BrokerStatusBadge({
 
   if (error || !brokerInfo) {
     return (
-      <div className={cn(
-        'inline-flex items-center rounded-lg border border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800',
-        sizeClasses[size],
-        className
-      )}>
+      <div
+        className={cn(
+          'inline-flex items-center rounded-lg border border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800',
+          sizeClasses[size],
+          className
+        )}
+      >
         <WifiOff className={cn(iconSizes[size], 'text-red-600')} />
-        <span className="text-red-700 dark:text-red-300 font-medium">
-          Broker Disconnected
-        </span>
+        <span className="text-red-700 dark:text-red-300 font-medium">Broker Disconnected</span>
         <button
           onClick={fetchBrokerInfo}
           className="ml-2 text-red-600 hover:text-red-800 underline text-xs"
@@ -126,42 +131,41 @@ export function BrokerStatusBadge({
   }
 
   return (
-    <div className={cn(
-      'inline-flex items-center rounded-lg border',
-      isLive
-        ? 'border-orange-300 bg-orange-50 dark:bg-orange-950 dark:border-orange-700'
-        : 'border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-700',
-      sizeClasses[size],
-      className
-    )}>
-      {/* Broker Icon */}
+    <div
+      className={cn(
+        'inline-flex items-center rounded-lg border',
+        isLive
+          ? 'border-orange-300 bg-orange-50 dark:bg-orange-950 dark:border-orange-700'
+          : 'border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-700',
+        sizeClasses[size],
+        className
+      )}
+    >
       {isIBKR ? (
-        <Building2 className={cn(
-          iconSizes[size],
-          isLive ? 'text-orange-600' : 'text-green-600'
-        )} />
+        <Building2
+          className={cn(iconSizes[size], isLive ? 'text-orange-600' : 'text-green-600')}
+        />
       ) : (
-        <TestTube className={cn(
-          iconSizes[size],
-          'text-green-600'
-        )} />
+        <TestTube className={cn(iconSizes[size], 'text-green-600')} />
       )}
 
-      {/* Broker Name */}
-      <span className={cn(
-        'font-semibold',
-        isLive ? 'text-orange-800 dark:text-orange-200' : 'text-green-800 dark:text-green-200'
-      )}>
+      <span
+        className={cn(
+          'font-semibold',
+          isLive ? 'text-orange-800 dark:text-orange-200' : 'text-green-800 dark:text-green-200'
+        )}
+      >
         {brokerInfo.name}
       </span>
 
-      {/* Environment Badge */}
-      <span className={cn(
-        'px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide',
-        isLive
-          ? 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-100'
-          : 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100'
-      )}>
+      <span
+        className={cn(
+          'px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide',
+          isLive
+            ? 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-100'
+            : 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100'
+        )}
+      >
         {isLive ? (
           <span className="flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" />
@@ -175,21 +179,21 @@ export function BrokerStatusBadge({
         )}
       </span>
 
-      {/* Connection Status */}
       <Wifi className={cn(iconSizes[size], 'text-green-500')} />
 
-      {/* Portfolio Value */}
       {showBalance && brokerInfo.portfolioValue !== undefined && (
-        <span className={cn(
-          'font-mono font-medium border-l pl-2 ml-1',
-          isLive
-            ? 'text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700'
-            : 'text-green-700 dark:text-green-300 border-green-300 dark:border-green-700'
-        )}>
+        <span
+          className={cn(
+            'font-mono font-medium border-l pl-2 ml-1',
+            isLive
+              ? 'text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700'
+              : 'text-green-700 dark:text-green-300 border-green-300 dark:border-green-700'
+          )}
+        >
           <DollarSign className={cn(iconSizes[size], 'inline -mt-0.5')} />
           {brokerInfo.portfolioValue.toLocaleString('en-US', {
             minimumFractionDigits: 2,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 2,
           })}
         </span>
       )}
@@ -197,78 +201,22 @@ export function BrokerStatusBadge({
   )
 }
 
-// Compact version for headers
 export function BrokerStatusCompact({ className }: { className?: string }) {
   return <BrokerStatusBadge className={className} showBalance={false} size="sm" />
 }
 
-// Full version with warning for live trading
-export function BrokerStatusFull({ className }: { className?: string }) {
-  const [brokerInfo, setBrokerInfo] = useState<BrokerInfo | null>(null)
-
-  useEffect(() => {
-    fetch('/api/trading/portfolio')
-      .then(res => res.json())
-      .then(data => {
-        setBrokerInfo({
-          id: data.broker?.id || 'unknown',
-          name: data.broker?.name || 'Unknown Broker',
-          environment: data.broker?.environment || 'paper',
-          connected: true,
-          portfolioValue: data.account?.portfolio_value
-        })
-      })
-      .catch(() => setBrokerInfo(null))
-  }, [])
-
-  const isLive = brokerInfo?.environment === 'live'
-
-  return (
-    <div className={cn('space-y-2', className)}>
-      <BrokerStatusBadge size="lg" />
-
-      {isLive && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-orange-100 dark:bg-orange-900/50 border border-orange-300 dark:border-orange-700">
-          <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-orange-800 dark:text-orange-200 text-sm">
-              Live Trading Mode
-            </p>
-            <p className="text-xs text-orange-700 dark:text-orange-300">
-              Connected to your real brokerage account. AI recommendations are for analysis only.
-              No automatic trade execution.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!isLive && brokerInfo && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-green-100 dark:bg-green-900/50 border border-green-300 dark:border-green-700">
-          <Shield className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-green-800 dark:text-green-200 text-sm">
-              Paper Trading Mode
-            </p>
-            <p className="text-xs text-green-700 dark:text-green-300">
-              Using simulated paper money. Safe for testing strategies without real financial risk.
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // =============================================================================
-// IBKRAuthButton - Simple IBKR authentication button (local development only)
+// IBKRAuthButton - Simple IBKR authentication (local development only)
+// Clean rebuild with auto phone 2FA detection
 // =============================================================================
 
 interface IBKRAuthStatus {
-  connected: boolean
+  configured: boolean
   authenticated: boolean
+  gatewayRunning: boolean
   competing?: boolean
-  message?: string
-  error?: string
+  message: string
+  loginUrl: string
 }
 
 interface IBKRAuthButtonProps {
@@ -278,168 +226,129 @@ interface IBKRAuthButtonProps {
 
 /**
  * Simple IBKR authentication button for local development.
- * Shows Gateway status and provides login button.
- * Auto-polls to detect authentication changes.
- *
- * Hidden on production (IBKR Gateway only works locally).
+ * - Polls /api/trading/ibkr-auth every 10 seconds
+ * - Auto-detects phone 2FA completion (competing=true)
+ * - Shows Gateway status + login button
+ * - Hidden on production
  */
 export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps) {
-  const [authStatus, setAuthStatus] = useState<IBKRAuthStatus | null>(null)
+  const [status, setStatus] = useState<IBKRAuthStatus | null>(null)
   const [loading, setLoading] = useState(true)
-  const [gatewayUrl, setGatewayUrl] = useState(DEFAULT_GATEWAY_URL)
-  const [activeBroker, setActiveBroker] = useState<'ibkr' | 'alpaca' | null>(null)
-  const [switching, setSwitching] = useState(false)
+  const [prevAuth, setPrevAuth] = useState<boolean | null>(null)
 
-  // Use ref to track active broker without causing re-renders
-  const activeBrokerRef = useRef<'ibkr' | 'alpaca' | null>(null)
-
-  // Use ref for callback to avoid infinite loop (callback changes every render)
-  const onAuthChangeRef = useRef(onAuthChange)
-  onAuthChangeRef.current = onAuthChange
-
-  // Load saved Gateway URL from localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedUrl = localStorage.getItem('ibkr_gateway_url')
-      if (savedUrl) setGatewayUrl(savedUrl)
-    }
-  }, [])
-
-  // Check current active broker on mount (once only)
-  useEffect(() => {
-    let mounted = true
-    fetch('/api/trading/portfolio')
-      .then(res => res.json())
-      .then(data => {
-        if (mounted) {
-          const broker = data.broker?.id || 'alpaca'
-          setActiveBroker(broker)
-          activeBrokerRef.current = broker
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setActiveBroker('alpaca')
-          activeBrokerRef.current = 'alpaca'
-        }
-      })
-    return () => { mounted = false }
-  }, [])
-
-  // Switch broker helper (doesn't depend on activeBroker state)
-  const switchBroker = useCallback(async (brokerId: 'ibkr' | 'alpaca') => {
-    setSwitching(true)
+  // Check auth status
+  const checkStatus = async () => {
     try {
-      const response = await fetch('/api/trading/broker/switch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brokerId }),
-      })
-      if (response.ok) {
-        setActiveBroker(brokerId)
-        activeBrokerRef.current = brokerId
-        onAuthChangeRef.current?.(brokerId === 'ibkr')
-        return true
+      const response = await fetch(`/api/trading/ibkr-auth?t=${Date.now()}`)
+      const data: IBKRAuthStatus = await response.json()
+      setStatus(data)
+
+      // Notify parent if auth state changed
+      if (prevAuth !== null && data.authenticated !== prevAuth) {
+        onAuthChange?.(data.authenticated)
       }
-    } catch (err) {
-      console.error('Failed to switch broker:', err)
-    } finally {
-      setSwitching(false)
-    }
-    return false
-  }, []) // No dependencies - uses refs
-
-  // Check auth status - uses refs to avoid dependency loop
-  const checkAuthStatus = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({ gatewayUrl })
-      const response = await fetch(`/api/trading/broker/ibkr-status?${params}`)
-      const data = await response.json()
-
-      setAuthStatus({
-        connected: data.connected || false,
-        authenticated: data.authenticated || false,
-        competing: data.competing || false,
-        message: data.message,
-        error: data.error,
-      })
-
-      // Auto-switch to IBKR when authenticated (only if we know current broker)
-      // Skip auto-switch if activeBroker hasn't been loaded yet (null) to avoid race condition
-      if (data.authenticated && activeBrokerRef.current !== null && activeBrokerRef.current !== 'ibkr') {
-        await switchBroker('ibkr')
-      }
-      // Note: Don't call onAuthChange on every poll - only on actual broker switch
+      setPrevAuth(data.authenticated)
     } catch {
-      setAuthStatus({
-        connected: false,
+      setStatus({
+        configured: false,
         authenticated: false,
-        error: 'Failed to check IBKR status',
+        gatewayRunning: false,
+        message: 'Failed to check IBKR status',
+        loginUrl: 'https://localhost:5050',
       })
     } finally {
       setLoading(false)
     }
-  }, [gatewayUrl, switchBroker]) // Removed onAuthChange - uses ref via switchBroker
-
-  // Check status on mount and poll every 15 seconds
-  useEffect(() => {
-    checkAuthStatus()
-    const interval = setInterval(checkAuthStatus, 15000)
-    return () => clearInterval(interval)
-  }, [checkAuthStatus])
-
-  const openGatewayLogin = () => {
-    // Save URL to localStorage
-    localStorage.setItem('ibkr_gateway_url', gatewayUrl)
-    window.open(gatewayUrl, '_blank', 'noopener,noreferrer')
   }
 
-  // Hide on production - IBKR Gateway only works locally
+  // Poll on mount + every 10 seconds
+  useEffect(() => {
+    checkStatus()
+    const interval = setInterval(checkStatus, 10000)
+    return () => clearInterval(interval)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Open Gateway login page
+  const openLogin = () => {
+    if (status?.loginUrl) {
+      window.open(status.loginUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  // Manual reauthenticate (backup)
+  const manualReauth = async () => {
+    setLoading(true)
+    try {
+      await fetch('/api/trading/ibkr-auth', { method: 'POST' })
+      setTimeout(checkStatus, 1000)
+    } catch {
+      console.error('Manual reauthenticate failed')
+    }
+  }
+
+  // Hide on production
   if (isProduction) {
     return null
   }
 
-  if (loading) {
+  // Loading state
+  if (loading && !status) {
     return (
-      <div className={cn(
-        'flex items-center gap-2 p-4 rounded-lg border bg-muted/50',
-        className
-      )}>
+      <div className={cn('flex items-center gap-2 p-4 rounded-lg border bg-muted/50', className)}>
         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
         <span className="text-muted-foreground">Checking IBKR Gateway...</span>
       </div>
     )
   }
 
-  const isAuthenticated = authStatus?.authenticated
-  const isConnected = authStatus?.connected
+  // Not configured
+  if (!status?.configured) {
+    return (
+      <div
+        className={cn(
+          'flex items-center gap-3 p-4 rounded-lg border border-gray-300 bg-gray-50 dark:bg-gray-900 dark:border-gray-700',
+          className
+        )}
+      >
+        <Building2 className="w-6 h-6 text-gray-500" />
+        <div>
+          <p className="font-semibold text-gray-700 dark:text-gray-300">IBKR Not Configured</p>
+          <p className="text-xs text-gray-500">Set IBKR_GATEWAY_URL in .env.local</p>
+        </div>
+      </div>
+    )
+  }
+
+  const isAuth = status.authenticated
+  const gatewayUp = status.gatewayRunning
 
   return (
-    <div className={cn(
-      'flex flex-col gap-3 p-4 rounded-lg border',
-      isAuthenticated
-        ? 'border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-700'
-        : 'border-orange-300 bg-orange-50 dark:bg-orange-950 dark:border-orange-700',
-      className
-    )}>
-      {/* Status Header */}
+    <div
+      className={cn(
+        'flex flex-col gap-3 p-4 rounded-lg border',
+        isAuth
+          ? 'border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-700'
+          : 'border-orange-300 bg-orange-50 dark:bg-orange-950 dark:border-orange-700',
+        className
+      )}
+    >
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Building2 className={cn(
-            'w-6 h-6',
-            isAuthenticated ? 'text-green-600' : 'text-orange-600'
-          )} />
+          <Building2 className={cn('w-6 h-6', isAuth ? 'text-green-600' : 'text-orange-600')} />
           <div>
-            <p className={cn(
-              'font-semibold',
-              isAuthenticated
-                ? 'text-green-800 dark:text-green-200'
-                : 'text-orange-800 dark:text-orange-200'
-            )}>
+            <p
+              className={cn(
+                'font-semibold',
+                isAuth
+                  ? 'text-green-800 dark:text-green-200'
+                  : 'text-orange-800 dark:text-orange-200'
+              )}
+            >
               Interactive Brokers
             </p>
             <div className="flex items-center gap-2 text-xs">
-              {isConnected ? (
+              {gatewayUp ? (
                 <span className="flex items-center gap-1 text-green-600">
                   <CheckCircle2 className="w-3 h-3" />
                   Gateway Running
@@ -451,7 +360,7 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
                 </span>
               )}
               <span className="text-muted-foreground">•</span>
-              {isAuthenticated ? (
+              {isAuth ? (
                 <span className="flex items-center gap-1 text-green-600">
                   <CheckCircle2 className="w-3 h-3" />
                   Authenticated
@@ -466,128 +375,70 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
           </div>
         </div>
 
-        {/* Status Badge */}
-        <div className={cn(
-          'px-2 py-1 rounded-full text-xs font-bold',
-          isAuthenticated
-            ? 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100'
-            : 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-100'
-        )}>
-          {isAuthenticated ? 'CONNECTED' : 'DISCONNECTED'}
+        {/* Badge */}
+        <div
+          className={cn(
+            'px-2 py-1 rounded-full text-xs font-bold',
+            isAuth
+              ? 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100'
+              : 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-100'
+          )}
+        >
+          {isAuth ? 'CONNECTED' : 'DISCONNECTED'}
         </div>
       </div>
 
-      {/* Active Broker Indicator */}
-      {activeBroker && (
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-muted-foreground">Active:</span>
-          <span className={cn(
-            'px-2 py-0.5 rounded font-semibold',
-            activeBroker === 'ibkr'
-              ? 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-100'
-              : 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100'
-          )}>
-            {activeBroker === 'ibkr' ? 'IBKR (Live)' : 'Alpaca (Paper)'}
-          </span>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex flex-wrap items-center gap-2">
-        {!isAuthenticated && (
+      {/* Buttons */}
+      <div className="flex items-center gap-2">
+        {!isAuth && (
           <button
-            onClick={openGatewayLogin}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors',
-              'bg-blue-600 text-white hover:bg-blue-700',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-            )}
+            onClick={openLogin}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
           >
             <LogIn className="w-4 h-4" />
-            Login to IBKR Gateway
+            Login to Gateway
             <ExternalLink className="w-3 h-3" />
           </button>
         )}
 
         <button
-          onClick={checkAuthStatus}
-          disabled={switching}
-          className={cn(
-            'flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors',
-            'border border-gray-300 dark:border-gray-600',
-            'hover:bg-gray-100 dark:hover:bg-gray-800',
-            'focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2',
-            'disabled:opacity-50'
-          )}
+          onClick={manualReauth}
+          disabled={loading || !gatewayUp}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
         >
-          <RefreshCw className={cn('w-4 h-4', switching && 'animate-spin')} />
-          {switching ? 'Switching...' : 'Check Status'}
+          <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+          {loading ? 'Checking...' : 'Refresh'}
         </button>
-
-        {/* Broker Toggle Button */}
-        {isAuthenticated && activeBroker === 'ibkr' && (
-          <button
-            onClick={() => switchBroker('alpaca')}
-            disabled={switching}
-            className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors',
-              'bg-green-100 text-green-800 hover:bg-green-200',
-              'dark:bg-green-900 dark:text-green-100 dark:hover:bg-green-800',
-              'focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2',
-              'disabled:opacity-50'
-            )}
-          >
-            <TestTube className="w-4 h-4" />
-            Use Alpaca Paper
-          </button>
-        )}
-
-        {activeBroker === 'alpaca' && (
-          <button
-            onClick={() => isAuthenticated ? switchBroker('ibkr') : openGatewayLogin()}
-            disabled={switching}
-            className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors',
-              'bg-orange-100 text-orange-800 hover:bg-orange-200',
-              'dark:bg-orange-900 dark:text-orange-100 dark:hover:bg-orange-800',
-              'focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2',
-              'disabled:opacity-50'
-            )}
-          >
-            <Building2 className="w-4 h-4" />
-            {isAuthenticated ? 'Use IBKR Live' : 'Connect IBKR'}
-          </button>
-        )}
       </div>
 
-      {/* Help Text */}
-      {!isConnected && (
+      {/* Help text */}
+      {!gatewayUp && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-red-100 dark:bg-red-900/50 border border-red-300 dark:border-red-700">
           <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
           <div className="text-xs text-red-700 dark:text-red-300">
-            <p className="font-semibold">Client Portal Gateway Not Running</p>
-            <p>Start the IBKR Client Portal Gateway on your machine:</p>
-            <code className="block mt-1 p-1 bg-red-200 dark:bg-red-800 rounded text-xs">
+            <p className="font-semibold">Gateway Not Running</p>
+            <code className="block mt-1 p-1 bg-red-200 dark:bg-red-800 rounded">
               cd ~/clientportal.gw && bin/run.sh root/conf.yaml
             </code>
           </div>
         </div>
       )}
 
-      {isConnected && !isAuthenticated && (
+      {gatewayUp && !isAuth && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-100 dark:bg-blue-900/50 border border-blue-300 dark:border-blue-700">
           <LogIn className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="text-xs text-blue-700 dark:text-blue-300">
             <p className="font-semibold">Authentication Required</p>
-            <p>Click &quot;Login to IBKR Gateway&quot; to open the login page.</p>
-            <p className="mt-1">After logging in, click &quot;Check Status&quot; or wait for auto-refresh.</p>
+            <p>1. Click &quot;Login to Gateway&quot;</p>
+            <p>2. Complete phone 2FA</p>
+            <p>3. Status will auto-update</p>
           </div>
         </div>
       )}
 
-      {isAuthenticated && (
-        <p className="text-xs text-muted-foreground">
-          ✅ IBKR Gateway connected. Portfolio data will load from your real account.
+      {isAuth && (
+        <p className="text-xs text-green-700 dark:text-green-300">
+          ✅ Connected to IBKR. Portfolio data loads from your real account.
         </p>
       )}
     </div>

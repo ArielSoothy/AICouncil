@@ -765,42 +765,42 @@
 - **DO NOT**: Delete paper trading feature, remove Alpaca integration, modify database schema without migration, skip test validation steps
 
 ### 19a. Global Model Tier Selector (Trading)
-- **Status**: ✅ ACTIVE & COMPLETE (October 28, 2025)
-- **Location**: `lib/trading/preset-configs.ts` + `contexts/trading-preset-context.tsx` + `components/trading/global-preset-selector.tsx`
+- **Status**: ✅ ACTIVE & COMPLETE (Updated December 11, 2025)
+- **Location**: `lib/config/model-presets.ts` + `contexts/trading-preset-context.tsx` + `components/trading/global-preset-selector.tsx`
 - **Purpose**: Single centralized control for Free/Pro/Max model tier selection across ALL trading modes
 - **Key Features**:
   - ✅ **Global Tier Selector**: One control affects Consensus, Debate modes simultaneously
-  - ✅ **Three Tiers**:
-    * Free: 6 free models (Gemini Flash, Llama 3.3 70B, Gemma)
-    * Pro: 8 balanced models (Claude 3.5 Sonnet, GPT-4o, Gemini Pro, Grok, Mistral, etc.)
-    * Max: 8 flagship models (Claude 4.5 Sonnet, GPT-5, Gemini 2.5 Pro, Grok 4, etc.)
+  - ✅ **Three Tiers** (Updated December 2025):
+    * Free: 4 free models (gemini-2.0-flash, llama-3.3-70b-versatile, llama-3.1-8b-instant, gpt-3.5-turbo)
+    * Pro: 7 balanced models (claude-3-7-sonnet, claude-3-5-haiku, gpt-4o, gpt-5-mini, gemini-2.0-flash, llama-3.3-70b, grok-code-fast-1)
+    * Max: 8 flagship models (claude-sonnet-4-5, gpt-5-chat-latest, gpt-5, grok-4 variants, llama-3.3-70b, gemini-2.0-flash)
   - ✅ **Smart Defaults**: Auto-syncs with user subscription tier (free → Free, pro → Pro, enterprise → Max)
   - ✅ **Visual Indicators**: Each mode shows current tier with badge (Free 🎁 / Pro ⚡ / Max ✨)
   - ✅ **React Context**: `TradingPresetProvider` with `useTradingPreset()` hook
-  - ✅ **Centralized Config**: All preset definitions in `lib/trading/preset-configs.ts` (single source of truth)
+  - ✅ **Centralized Config**: All preset definitions in `lib/config/model-presets.ts` (single source of truth)
 - **UI Placement**: Between portfolio display and mode tabs on `/trading` page
 - **Behavior**:
   - Switching tier updates all modes instantly via `useEffect` hooks
   - Consensus Mode: Updates multi-model selection
   - Debate Mode: Updates Analyst/Critic/Synthesizer role assignments
   - User can still customize individual model selection after preset applied
-- **Files Modified** (8 total):
-  - NEW: `lib/trading/preset-configs.ts` (centralized presets)
-  - NEW: `contexts/trading-preset-context.tsx` (global state)
-  - NEW: `components/trading/global-preset-selector.tsx` (UI component)
-  - UPDATED: `app/trading/page.tsx` (provider + selector)
-  - UPDATED: `components/trading/consensus-mode.tsx` (connect to global)
-  - UPDATED: `components/trading/debate-mode.tsx` (connect to global)
-  - UPDATED: `components/trading/trading-model-selector.tsx` (show tier indicator)
+- **Files** (7 total):
+  - `lib/config/model-presets.ts` (centralized presets - SINGLE SOURCE OF TRUTH)
+  - `contexts/trading-preset-context.tsx` (global state)
+  - `components/trading/global-preset-selector.tsx` (UI component)
+  - `app/trading/page.tsx` (provider + selector)
+  - `components/trading/consensus-mode.tsx` (connect to global)
+  - `components/trading/debate-mode.tsx` (connect to global)
+  - `components/trading/trading-model-selector.tsx` (show tier indicator)
 - **Benefits**:
   - ✅ Eliminates duplicate Free/Pro/Max buttons in each mode
   - ✅ Better UX: One decision affects all modes (matches user mental model)
   - ✅ DRY Code: Single preset config instead of 3 duplicates
   - ✅ Mobile-friendly: Less UI clutter
   - ✅ Scalable: Prepares for subscription-based model access
-- **Last Modified**: October 28, 2025
+- **Last Modified**: December 11, 2025 (cleaned up orphaned duplicate, updated model lists)
 - **Tested**: Browser validated - switching tiers updates Consensus & Debate modes correctly
-- **DO NOT**: Remove global preset selector, revert to per-mode presets, duplicate preset configs
+- **DO NOT**: Remove global preset selector, revert to per-mode presets, create duplicate preset configs (DELETED lib/trading/preset-configs.ts on Dec 11, 2025)
 
 ### 20. AI Tool Use - Real-Time Market Research
 - **Status**: ✅ ACTIVE & PHASE 2 COMPLETE (October 25, 2025)
@@ -1277,7 +1277,7 @@
   ```
 - **Test Script**: `scripts/test-ibkr-connection.ts` - Validates Gateway connection
 - **Playwright Tested**: Simple auth button, auto-switch, broker toggle verified working
-- **Last Modified**: December 11, 2025 (Simplified to IBKRAuthButton, fixed infinite loop with refs)
+- **Last Modified**: December 11, 2025 (Complete rebuild - fixed phone 2FA auto-reauthenticate)
 - **PRODUCTION vs LOCAL** (Environment-Based Defaults):
   ```
   🌐 PRODUCTION (Vercel):
@@ -1316,7 +1316,25 @@
 
   DO NOT change to fetch() or remove User-Agent header!
   ```
-- **DO NOT**: Remove broker selector, bypass Gateway authentication for IBKR, change ibkr-status to use fetch(), allow live trading without explicit user consent
+- **December 11, 2025 Phone 2FA Fix** (Complete Rebuild):
+  ```
+  ROOT CAUSE: Two duplicate APIs existed - frontend used broken one
+  - OLD: /api/trading/ibkr-auth (fetch() - can't handle self-signed SSL)
+  - NEW: /api/trading/broker/ibkr-status (https module - worked but unused)
+
+  SOLUTION: Deleted duplicate, rebuilt single clean API
+  - Deleted: /api/trading/broker/ibkr-status/
+  - Rewrote: /api/trading/ibkr-auth/route.ts with:
+    • Node.js https module (rejectUnauthorized: false)
+    • Auto-reauthenticate when competing=true (phone 2FA)
+    • POST method for /iserver/auth/status per IBKR API
+    • Force IPv4 (127.0.0.1) - Gateway blocks IPv6
+  - Simplified: IBKRAuthButton with clean 10-second polling
+
+  KEY INSIGHT: After phone 2FA, IBKR returns competing=true.
+  Must call /iserver/reauthenticate to complete the handshake.
+  ```
+- **DO NOT**: Remove broker selector, bypass Gateway authentication for IBKR, change ibkr-auth to use fetch(), allow live trading without explicit user consent
 
 ### 40. Model Power/Cost Display System
 - **Status**: ✅ ACTIVE & COMPLETE (December 2025)

@@ -77,71 +77,70 @@ export interface DebatePresetConfig {
 /**
  * Multi-model presets for modes that query multiple models in parallel
  *
- * DESIGN PHILOSOPHY:
- * - Free: 6 models, all free (Google Gemini + Groq Llama)
- * - Pro: 8 models, mix of premium + free (Anthropic + OpenAI + Google + Groq + xAI + Mistral)
- * - Max: 8 models, flagship only (Claude 4.5, GPT-5, Gemini 2.5, Grok 4, Llama 3.3, Sonar Pro)
+ * DESIGN PHILOSOPHY (December 2025 - Data-Driven Rebuild):
+ * - Free: Only $0 cost models (Google Gemini + Groq Llama)
+ * - Pro: One mid-tier per working provider (best value models)
+ * - Max: One flagship per working provider (highest AAII scores)
  *
  * MODEL SELECTION CRITERIA:
- * - Provider diversity (avoid single-provider bias)
- * - Quality vs cost balance per tier
- * - Include at least one free model in Pro/Max for accessibility
+ * - Based on MODEL_COSTS_PER_1K and MODEL_BENCHMARKS (AAII scores)
+ * - Provider diversity: one model per provider per tier
+ * - Working providers only: OpenAI, Anthropic, Google, Groq, xAI
+ * - NOT WORKING: Perplexity, Mistral, Cohere (no_api_key status)
+ *
+ * @see lib/model-metadata.ts - MODEL_COSTS_PER_1K, MODEL_BENCHMARKS
  */
 export const PRESET_CONFIGS: Record<PresetTier, PresetConfig> = {
   free: {
     label: 'Free',
     icon: Gift,
-    description: 'All free models (4 models)',
+    description: 'Free models only (4 models)',
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300',
     modelIds: [
-      // Google free models - excellent quality for free tier
+      // Google FREE - Best free model (AAII 1280, A-tier)
+      'gemini-2.5-flash',
+      // Google FREE - Fallback (AAII 1250, A-tier)
       'gemini-2.0-flash',
-      // Groq free models - fast inference, good quality
+      // Groq FREE - Best Groq (AAII 1250, 86% MMLU)
       'llama-3.3-70b-versatile',
+      // Groq FREE - Fast option (AAII 1100)
       'llama-3.1-8b-instant',
-      // OpenAI budget - reliable
-      'gpt-3.5-turbo',
     ]
   },
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Balanced/Budget tier models (7 models)',
+    description: 'One mid-tier per provider (5 models)',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300',
     modelIds: [
-      // Anthropic balanced tier - strong reasoning
-      'claude-3-7-sonnet-20250219',
-      'claude-3-5-haiku-20241022',
-      // OpenAI balanced tier - reliable performance
-      'gpt-4o',
+      // Anthropic - Claude 4.5 Haiku ($0.006/1K, AAII 1200)
+      'claude-haiku-4-5-20251001',
+      // OpenAI - GPT-5 Mini ($0.000125/1K, AAII 1200) - INSANE value
       'gpt-5-mini',
-      // Google free - good value for money
-      'gemini-2.0-flash',
-      // Groq best free - excellent free option
+      // Google - Gemini 2.5 Pro ($0.01125/1K, AAII 1350, S-tier)
+      'gemini-2.5-pro',
+      // Groq - Their best (FREE, AAII 1250)
       'llama-3.3-70b-versatile',
-      // xAI balanced - unique perspective
-      'grok-code-fast-1',
+      // xAI - Grok 4.1 Fast ($0.00025/1K, AAII 1380, S-tier!) - INSANE value
+      'grok-4-1-fast-reasoning',
     ]
   },
   max: {
     label: 'Max',
     icon: Sparkles,
-    description: 'Best flagship models (8 models)',
+    description: 'One flagship per provider (5 models)',
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
     modelIds: [
-      // Anthropic flagship - best overall reasoning (Sep 2025)
+      // Anthropic - Claude 4.5 Sonnet ($0.018/1K, AAII 1320) - Same price as 3.7, newer!
       'claude-sonnet-4-5-20250929',
-      // OpenAI flagship - best general purpose (Aug 2025)
+      // OpenAI - GPT-5 Chat Latest ($0.01125/1K, AAII 1380)
       'gpt-5-chat-latest',
-      'gpt-5',
-      // xAI flagship models - unique reasoning approaches
-      'grok-4-fast-reasoning',
-      'grok-4-fast-non-reasoning',
-      'grok-4-0709',
-      // Groq best free - still excellent quality
+      // Google - Gemini 3 Pro ($0.014/1K, AAII 1420, #1 on LMArena)
+      'gemini-3-pro-preview',
+      // Groq - Their best (FREE, AAII 1250)
       'llama-3.3-70b-versatile',
-      // Google free - good for web/current events
-      'gemini-2.0-flash',
+      // xAI - Grok 4 0709 ($0.018/1K, AAII 1370, S-tier)
+      'grok-4-0709',
     ]
   }
 }
@@ -167,34 +166,37 @@ export const DEBATE_PRESETS: Record<PresetTier, DebatePresetConfig> = {
   free: {
     label: 'Free',
     icon: Gift,
-    description: 'All free models',
+    description: 'Free models only',
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300',
     roles: {
-      analyst: 'gemini-2.0-flash',       // Google free (good reasoning, structured output)
-      critic: 'llama-3.3-70b-versatile', // Groq free (best free model, critical analysis)
-      synthesizer: 'llama-3.1-8b-instant', // Groq free (fast synthesis)
+      // All free models with best AAII scores
+      analyst: 'gemini-2.5-flash',        // Google FREE (AAII 1280, A-tier) - Best free for analysis
+      critic: 'llama-3.3-70b-versatile',  // Groq FREE (AAII 1250, 86% MMLU) - Best free critic
+      synthesizer: 'gemini-2.0-flash',    // Google FREE (AAII 1250) - Good synthesis
     }
   },
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Balanced tier models',
+    description: 'Mid-tier models (best value)',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300',
     roles: {
-      analyst: 'claude-3-7-sonnet-20250219',  // Anthropic (strong analytical reasoning)
-      critic: 'gpt-4o',                        // OpenAI balanced (excellent critical thinking)
-      synthesizer: 'llama-3.3-70b-versatile', // Groq free (good synthesis, cost-effective)
+      // One mid-tier per provider - best price/performance ratio
+      analyst: 'grok-4-1-fast-reasoning',     // xAI ($0.00025/1K, AAII 1380, S-tier!) - INSANE value
+      critic: 'gemini-2.5-pro',               // Google ($0.01125/1K, AAII 1350, S-tier) - Strong critic
+      synthesizer: 'claude-haiku-4-5-20251001', // Anthropic ($0.006/1K, AAII 1200) - Good balance
     }
   },
   max: {
     label: 'Max',
     icon: Sparkles,
-    description: 'Best flagship models',
+    description: 'Flagship models',
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
     roles: {
-      analyst: 'claude-sonnet-4-5-20250929', // Anthropic flagship (best analytical depth)
-      critic: 'gpt-5-chat-latest',            // OpenAI flagship (superior reasoning)
-      synthesizer: 'grok-4-fast-reasoning',   // xAI flagship (comprehensive synthesis)
+      // One flagship per provider - highest AAII scores
+      analyst: 'gemini-3-pro-preview',        // Google ($0.014/1K, AAII 1420, #1 LMArena!) - Best analyst
+      critic: 'gpt-5-chat-latest',            // OpenAI ($0.01125/1K, AAII 1380) - Strong reasoning
+      synthesizer: 'claude-sonnet-4-5-20250929', // Anthropic ($0.018/1K, AAII 1320) - Best synthesis
     }
   }
 }

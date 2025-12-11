@@ -56,41 +56,52 @@ const GRADE_STYLES = {
 
 // Agent Presets - Pre-selected models for each role (4 agents: analyst, critic, judge, synthesizer)
 // IMPORTANT: Only use models with status: 'working' in MODEL_REGISTRY
+/**
+ * Agent Presets - Synchronized with lib/config/model-presets.ts DEBATE_PRESETS
+ *
+ * TIER PHILOSOPHY (December 2025 Data-Driven Rebuild):
+ * - Free: Only $0 cost models (Google Gemini + Groq Llama)
+ * - Pro: One mid-tier per provider (best value models)
+ * - Max: One flagship per provider (highest AAII scores)
+ */
 const AGENT_PRESETS = {
   free: {
     label: 'Free',
     icon: Gift,
-    description: 'All free models',
+    description: 'Free models only',
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 dark:border-green-700',
     roles: {
-      'analyst-001': { provider: 'groq', model: 'llama-3.1-8b-instant' },       // Fast analyst (FREE)
-      'critic-001': { provider: 'google', model: 'gemini-2.0-flash' },          // Different provider (FREE)
-      'judge-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' },      // Best free for judging
-      'synthesizer-001': { provider: 'google', model: 'gemini-2.5-flash' }      // Latest free Gemini
+      // All free models with best AAII scores
+      'analyst-001': { provider: 'google', model: 'gemini-2.5-flash' },        // AAII 1280, A-tier (best free)
+      'critic-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' },    // AAII 1250, 86% MMLU
+      'judge-001': { provider: 'google', model: 'gemini-2.0-flash' },          // AAII 1250 (good judgment)
+      'synthesizer-001': { provider: 'groq', model: 'llama-3.1-8b-instant' }   // AAII 1100 (fast synthesis)
     }
   },
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Best value paid models',
+    description: 'Mid-tier models (best value)',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
-      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Budget OpenAI (working)
-      'critic-001': { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' }, // Fast Haiku (working)
-      'judge-001': { provider: 'google', model: 'gemini-2.5-pro' },            // Best reasoning (working)
-      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Fast xAI (working)
+      // One mid-tier per provider - best price/performance ratio
+      'analyst-001': { provider: 'xai', model: 'grok-4-1-fast-reasoning' },      // AAII 1380, S-tier, $0.00025/1K - INSANE value!
+      'critic-001': { provider: 'google', model: 'gemini-2.5-pro' },             // AAII 1350, S-tier
+      'judge-001': { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' }, // AAII 1200, good judgment
+      'synthesizer-001': { provider: 'openai', model: 'gpt-5-mini' }             // AAII 1200, good synthesis
     }
   },
   max: {
     label: 'Max',
     icon: Sparkles,
-    description: 'Best flagship models',
+    description: 'Flagship models',
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700',
     roles: {
-      'analyst-001': { provider: 'google', model: 'gemini-3-pro-preview' },           // Gemini 3 Pro (#1 LMArena)
-      'critic-001': { provider: 'anthropic', model: 'claude-opus-4-5-20251124' },     // Claude 4.5 Opus (80.9% SWE-bench)
-      'judge-001': { provider: 'openai', model: 'gpt-5' },                            // GPT-5 (working)
-      'synthesizer-001': { provider: 'xai', model: 'grok-4-1-fast-reasoning' }        // Grok 4.1 (best tool-calling)
+      // One flagship per provider - highest AAII scores
+      'analyst-001': { provider: 'google', model: 'gemini-3-pro-preview' },       // AAII 1420, #1 LMArena
+      'critic-001': { provider: 'openai', model: 'gpt-5-chat-latest' },           // AAII 1380, flagship
+      'judge-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' }, // AAII 1320, best reasoning
+      'synthesizer-001': { provider: 'xai', model: 'grok-4-0709' }                // AAII 1370, S-tier flagship
     }
   }
 } as const
@@ -231,21 +242,8 @@ export function AgentSelector({
     }))
   }
 
-  // Apply preset function
-  const applyPreset = (presetKey: 'free' | 'pro' | 'max') => {
-    const preset = AGENT_PRESETS[presetKey]
-    const newStates = { ...agentStates }
-
-    Object.entries(preset.roles).forEach(([agentId, config]) => {
-      newStates[agentId] = {
-        enabled: true,
-        provider: config.provider,
-        model: config.model
-      }
-    })
-
-    setAgentStates(newStates)
-  }
+  // Note: applyPreset removed - Use global tier selector in header instead
+  // Agent models are updated automatically via useEffect when globalTier changes
 
   return (
     <div className="space-y-4">
@@ -256,33 +254,7 @@ export function AgentSelector({
         </Badge>
       </div>
 
-      {/* Preset Buttons */}
-      <div className="mb-4">
-        <label className="text-sm font-medium text-muted-foreground block mb-3">
-          Quick Presets
-        </label>
-        <div className="grid grid-cols-3 gap-3">
-          {(Object.keys(AGENT_PRESETS) as Array<keyof typeof AGENT_PRESETS>).map((key) => {
-            const preset = AGENT_PRESETS[key]
-            const Icon = preset.icon
-
-            return (
-              <Button
-                key={key}
-                onClick={() => applyPreset(key)}
-                variant="outline"
-                className={`flex flex-col items-center gap-2 h-auto py-4 border-2 ${preset.color} transition-all`}
-              >
-                <Icon className="w-5 h-5" />
-                <div className="text-center">
-                  <div className="font-semibold">{preset.label}</div>
-                  <div className="text-xs opacity-80 mt-1">{preset.description}</div>
-                </div>
-              </Button>
-            )
-          })}
-        </div>
-      </div>
+      {/* Preset Buttons removed - Use global tier selector in header instead */}
 
       <div className="grid gap-4">
         {Object.values(AGENT_PERSONAS).map(persona => {

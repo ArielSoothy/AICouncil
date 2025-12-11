@@ -41,38 +41,49 @@ interface AgentDebateInterfaceProps {
 }
 
 // Agent Debate Presets - Pre-selected models for each role
+/**
+ * Agent Presets - Synchronized with lib/config/model-presets.ts DEBATE_PRESETS
+ *
+ * TIER PHILOSOPHY (December 2025 Data-Driven Rebuild):
+ * - Free: Only $0 cost models (Google Gemini + Groq Llama)
+ * - Pro: One mid-tier per provider (best value models)
+ * - Max: One flagship per provider (highest AAII scores)
+ */
 const AGENT_PRESETS = {
   free: {
     label: 'Free',
     icon: Gift,
-    description: 'All free models',
+    description: 'Free models only',
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 dark:border-green-700',
     roles: {
-      'analyst-001': { provider: 'groq', model: 'llama-3.1-8b-instant' },       // Fast analyst
-      'critic-001': { provider: 'google', model: 'gemini-2.0-flash-lite' },      // Different provider
-      'synthesizer-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' }  // Best free model
+      // All free models with best AAII scores
+      'analyst-001': { provider: 'google', model: 'gemini-2.5-flash' },        // AAII 1280, A-tier (best free)
+      'critic-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' },    // AAII 1250, 86% MMLU
+      'synthesizer-001': { provider: 'google', model: 'gemini-2.0-flash' }     // AAII 1250 (good synthesis)
     }
   },
   pro: {
     label: 'Pro',
     icon: Zap,
-    description: 'Cheapest paid models',
+    description: 'Mid-tier models (best value)',
     color: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
     roles: {
-      'analyst-001': { provider: 'openai', model: 'gpt-4.1-mini' },            // Cheapest OpenAI ($0.0004/1K)
-      'critic-001': { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' }, // Haiku 3.5 ($0.80/$4 per 1M tokens)
-      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }        // Cheapest xAI ($0.0002/1K)
+      // One mid-tier per provider - best price/performance ratio
+      'analyst-001': { provider: 'xai', model: 'grok-4-1-fast-reasoning' },      // AAII 1380, S-tier, $0.00025/1K - INSANE value!
+      'critic-001': { provider: 'google', model: 'gemini-2.5-pro' },             // AAII 1350, S-tier
+      'synthesizer-001': { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' } // AAII 1200, good balance
     }
   },
   max: {
     label: 'Max',
     icon: Sparkles,
-    description: 'Best flagship models',
+    description: 'Flagship models',
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700',
     roles: {
-      'analyst-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },  // Flagship analysis
-      'critic-001': { provider: 'openai', model: 'gpt-5-chat-latest' },               // Flagship reasoning
-      'synthesizer-001': { provider: 'google', model: 'gemini-2.5-pro' }              // Comprehensive synthesis
+      // One flagship per provider - highest AAII scores
+      'analyst-001': { provider: 'google', model: 'gemini-3-pro-preview' },       // AAII 1420, #1 LMArena
+      'critic-001': { provider: 'openai', model: 'gpt-5-chat-latest' },           // AAII 1380, flagship
+      'synthesizer-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' } // AAII 1320, best reasoning
     }
   }
 } as const

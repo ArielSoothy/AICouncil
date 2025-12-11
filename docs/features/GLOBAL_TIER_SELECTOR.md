@@ -43,66 +43,69 @@ Model selection automatically updates
 
 ## Tier Definitions
 
+**December 2025 Data-Driven Rebuild Philosophy:**
+- **Free:** Only $0 cost models (Google Gemini + Groq Llama)
+- **Pro:** One mid-tier per working provider (best value models)
+- **Max:** One flagship per working provider (highest AAII scores)
+
+**Working Providers:** OpenAI, Anthropic, Google, Groq, xAI
+**Data Sources:** MODEL_COSTS_PER_1K, MODEL_BENCHMARKS (AAII scores) from lib/model-metadata.ts
+
 ### Free Tier (🎁 Gift Icon)
-- **Models:** 6 free models (Google Gemini + Groq Llama)
+- **Models:** 4 free models only ($0 cost)
 - **Cost:** $0.00 per query
 - **Use Case:** Testing, experimentation, unlimited usage
-- **Quality:** Excellent for free tier
+- **Quality:** Excellent for free tier (AAII 1100-1280)
 
-**Multi-Model Modes:**
-- gemini-2.5-flash
-- gemini-2.0-flash
-- gemini-1.5-flash
-- llama-3.3-70b-versatile
-- llama-3.1-8b-instant
-- gemma2-9b-it
+**Multi-Model Modes (Consensus):**
+- gemini-2.5-flash (Google FREE, AAII 1280, A-tier)
+- gemini-2.0-flash (Google FREE, AAII 1250)
+- llama-3.3-70b-versatile (Groq FREE, AAII 1250, 86% MMLU)
+- llama-3.1-8b-instant (Groq FREE, AAII 1100)
 
-**Debate Roles:**
-- Analyst: gemini-2.0-flash
-- Critic: llama-3.3-70b-versatile
-- Synthesizer: gemini-1.5-flash
+**Debate Roles (Agents):**
+- Analyst: gemini-2.5-flash (AAII 1280)
+- Critic: llama-3.3-70b-versatile (AAII 1250)
+- Judge: gemini-2.0-flash (AAII 1250)
+- Synthesizer: llama-3.1-8b-instant (AAII 1100)
 
 ### Pro Tier (⚡ Zap Icon)
-- **Models:** 8 balanced/budget tier models
-- **Cost:** ~$0.01-0.05 per query
-- **Use Case:** Production use, good quality-to-cost ratio
-- **Quality:** Professional-grade analysis
+- **Models:** 5 mid-tier models (one per provider, best value)
+- **Cost:** ~$0.00025-0.01 per query
+- **Use Case:** Production use, excellent quality-to-cost ratio
+- **Quality:** Professional-grade analysis (AAII 1200-1380)
 
-**Multi-Model Modes:**
-- claude-3-5-sonnet-20241022
-- claude-3-5-haiku-20241022
-- gpt-4o
-- gpt-5-mini
-- gemini-2.5-pro
-- llama-3.3-70b-versatile (free)
-- grok-3
-- mistral-large-latest
+**Multi-Model Modes (Consensus):**
+- claude-haiku-4-5-20251001 (Anthropic $0.006/1K, AAII 1200)
+- gpt-5-mini (OpenAI $0.000125/1K, AAII 1200) - INSANE value
+- gemini-2.5-pro (Google $0.01125/1K, AAII 1350, S-tier)
+- llama-3.3-70b-versatile (Groq FREE, AAII 1250)
+- grok-4-1-fast-reasoning (xAI $0.00025/1K, AAII 1380, S-tier!) - INSANE value
 
-**Debate Roles:**
-- Analyst: claude-3-5-sonnet-20241022
-- Critic: gpt-4o
-- Synthesizer: llama-3.3-70b-versatile
+**Debate Roles (Agents):**
+- Analyst: grok-4-1-fast-reasoning (AAII 1380, S-tier, nearly free!)
+- Critic: gemini-2.5-pro (AAII 1350, S-tier)
+- Judge: claude-haiku-4-5-20251001 (AAII 1200)
+- Synthesizer: gpt-5-mini (AAII 1200)
 
 ### Max Tier (✨ Sparkles Icon)
-- **Models:** 8 flagship models (2025 releases)
-- **Cost:** ~$0.05-0.15 per query
+- **Models:** 5 flagship models (one per provider, highest quality)
+- **Cost:** ~$0.01-0.02 per query
 - **Use Case:** Critical decisions, highest quality needed
-- **Quality:** Best available AI models
+- **Quality:** Best available AI models (AAII 1250-1420)
 
-**Multi-Model Modes:**
-- claude-sonnet-4-5-20250929 (Sep 2025)
-- gpt-5-chat-latest (Aug 2025)
-- gemini-2.5-pro
-- grok-4-fast-reasoning
-- grok-4-fast-non-reasoning
-- grok-4-0709
-- llama-3.3-70b-versatile (free)
-- sonar-pro
+**Multi-Model Modes (Consensus):**
+- claude-sonnet-4-5-20250929 (Anthropic $0.018/1K, AAII 1320)
+- gpt-5-chat-latest (OpenAI $0.01125/1K, AAII 1380)
+- gemini-3-pro-preview (Google $0.014/1K, AAII 1420, #1 LMArena!)
+- llama-3.3-70b-versatile (Groq FREE, AAII 1250)
+- grok-4-0709 (xAI $0.018/1K, AAII 1370, S-tier)
 
-**Debate Roles:**
-- Analyst: claude-sonnet-4-5-20250929
-- Critic: gpt-5-chat-latest
-- Synthesizer: gemini-2.5-pro
+**Debate Roles (Agents):**
+- Analyst: gemini-3-pro-preview (AAII 1420, #1 LMArena)
+- Critic: gpt-5-chat-latest (AAII 1380)
+- Judge: claude-sonnet-4-5-20250929 (AAII 1320)
+- Synthesizer: grok-4-0709 (AAII 1370, S-tier)
 
 ## Connected Modes
 
@@ -247,9 +250,7 @@ This prevents UI clutter on pages that don't need model tier selection.
 ```
 lib/
   config/
-    model-presets.ts          # ✅ NEW: App-wide preset definitions
-  trading/
-    preset-configs.ts         # ❌ DEPRECATED: Use lib/config/model-presets.ts
+    model-presets.ts          # ✅ App-wide preset definitions (SINGLE SOURCE OF TRUTH)
 
 contexts/
   trading-preset-context.tsx  # Global tier state management
@@ -276,6 +277,25 @@ app/
 ```
 
 ## Migration Notes
+
+### December 11, 2025 - Data-Driven Tier Rebuild
+- **Philosophy:** Complete tier rebuild based on actual pricing (MODEL_COSTS_PER_1K) and benchmarks (AAII scores)
+- **Free Tier:** Only $0 cost models - removed gpt-3.5-turbo, kept only Google Gemini + Groq Llama (4 models)
+- **Pro Tier:** One mid-tier per working provider - grok-4-1-fast-reasoning discovered as INSANE value ($0.00025/1K, S-tier!) (5 models)
+- **Max Tier:** One flagship per working provider - gemini-3-pro-preview is #1 LMArena (5 models)
+- **Agent Presets:** Updated debate-interface.tsx and agent-selector.tsx to match new tier configuration
+- **UI Cleanup:** Removed redundant inline preset buttons from Agents page (single source of truth via header)
+- **Files Updated:**
+  - `lib/config/model-presets.ts` - PRESET_CONFIGS and DEBATE_PRESETS
+  - `components/agents/debate-interface.tsx` - AGENT_PRESETS (3 agents)
+  - `components/agents/agent-selector.tsx` - AGENT_PRESETS (4 agents)
+- **Status:** ✅ Complete, TypeScript compilation passes, all tiers tested in browser
+
+### December 11, 2025 - Deprecated File Cleanup
+- **Deleted:** `lib/trading/preset-configs.ts` (was orphaned, unused, contained deprecated models)
+- **Kept:** `lib/config/model-presets.ts` (SINGLE SOURCE OF TRUTH)
+- **Models Updated:** Removed gemma2-9b-it (decommissioned), gemini-1.5-flash (legacy)
+- **Status:** ✅ Complete, TypeScript compilation passes
 
 ### October 28, 2025 - File Renaming
 - **Old:** `lib/trading/preset-configs.ts`
@@ -322,6 +342,8 @@ export const useTradingPreset = useGlobalModelTier
 ## Related Documentation
 
 - **Model Registry:** `lib/models/model-registry.ts` - All 46+ models defined
+- **Model Metadata:** `lib/model-metadata.ts` - MODEL_COSTS_PER_1K, MODEL_BENCHMARKS (AAII scores)
+- **Tier Presets:** `lib/config/model-presets.ts` - SINGLE SOURCE OF TRUTH for tiers
 - **User Tiers:** `lib/user-tiers.ts` - Subscription tier definitions
 - **Trading Config:** `lib/trading/models-config.ts` - Trading-specific model metadata
 - **Context Pattern:** `contexts/trading-preset-context.tsx` - State management
@@ -336,6 +358,6 @@ For questions or issues with the global tier selector:
 
 ---
 
-**Last Updated:** October 28, 2025
+**Last Updated:** December 11, 2025
 **Maintainer:** Ariel Soothy
 **Status:** Production Ready
