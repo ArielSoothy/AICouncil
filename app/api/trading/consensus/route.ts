@@ -66,7 +66,8 @@ function extractJSON(text: string): string {
   // Pattern 3: Try to fix common JSON issues
   cleaned = cleaned
     .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
-    .replace(/'/g, '"') // Replace single quotes with double quotes
+    // NOTE: Do NOT replace all single quotes with double quotes!
+    // This breaks apostrophes in text like "AAPL's" → "AAPL"s"
     .trim();
 
   // Pattern 4: If still not valid, try to find complete JSON
