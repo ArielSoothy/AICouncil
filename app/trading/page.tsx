@@ -22,6 +22,8 @@ function TradingPageContent() {
   const [selectedMode, setSelectedMode] = useState<TradingMode>('consensus')
   const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper' | null>(null)
   const [brokerName, setBrokerName] = useState<string | null>(null)
+  // Key to force child components to remount and refetch when broker changes
+  const [brokerRefreshKey, setBrokerRefreshKey] = useState(0)
 
   // Fetch broker info for dynamic header
   useEffect(() => {
@@ -35,7 +37,7 @@ function TradingPageContent() {
         setBrokerEnv('paper')
         setBrokerName('Alpaca')
       })
-  }, [])
+  }, [brokerRefreshKey]) // Refetch when broker changes
 
   const effectiveUserTier = isGuestMode ? 'guest' : userTier
   const isLive = brokerEnv === 'live'
@@ -89,22 +91,13 @@ function TradingPageContent() {
           <div className="mb-6 flex flex-col items-center gap-4">
             {/* Broker Auth/Switch Button */}
             <BrokerAuthButton
-              onBrokerChange={(brokerId) => {
-                // Refresh broker info when broker changes
-                fetch('/api/trading/portfolio')
-                  .then(res => res.json())
-                  .then(data => {
-                    setBrokerEnv(data.broker?.environment || 'paper')
-                    setBrokerName(data.broker?.name || 'Alpaca')
-                  })
-                  .catch(() => {
-                    setBrokerEnv('paper')
-                    setBrokerName('Alpaca')
-                  })
+              onBrokerChange={() => {
+                // Increment key to force all broker-dependent components to remount and refetch
+                setBrokerRefreshKey(prev => prev + 1)
               }}
             />
-            {/* Broker Status Details */}
-            <BrokerStatusFull />
+            {/* Broker Status Details - key forces remount on broker change */}
+            <BrokerStatusFull key={`broker-status-${brokerRefreshKey}`} />
           </div>
 
           {/* Production Notice - Free Tier Only */}
@@ -128,9 +121,9 @@ function TradingPageContent() {
             </div>
           )}
 
-          {/* Portfolio Overview */}
+          {/* Portfolio Overview - key forces remount on broker change */}
           <div className="mb-8">
-            <PortfolioDisplay />
+            <PortfolioDisplay key={`portfolio-${brokerRefreshKey}`} />
           </div>
 
           {/* Mode selector tabs */}

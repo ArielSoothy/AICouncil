@@ -5,6 +5,9 @@ import { cookies } from 'next/headers';
 // Cookie name must match the one in broker/switch/route.ts
 const ACTIVE_BROKER_COOKIE = 'active_broker';
 
+// Check if running in production (Vercel) or local development
+const isProduction = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+
 export async function GET(request: NextRequest) {
   try {
     // Read broker selection from cookie (persisted across serverless function restarts)
@@ -12,11 +15,20 @@ export async function GET(request: NextRequest) {
     const brokerCookie = cookieStore.get(ACTIVE_BROKER_COOKIE);
     const cookieBrokerId = brokerCookie?.value;
 
-    // If cookie specifies a valid broker, use it
+    // Determine which broker to use:
+    // 1. If cookie is set, use that
+    // 2. Otherwise: Local → IBKR default, Production → Alpaca default
+    let brokerId: 'alpaca' | 'ibkr';
+
     if (cookieBrokerId && ['alpaca', 'ibkr'].includes(cookieBrokerId)) {
-      const environment = cookieBrokerId === 'ibkr' ? 'live' : 'paper';
-      BrokerFactory.setActiveBroker(cookieBrokerId as 'alpaca' | 'ibkr', environment);
+      brokerId = cookieBrokerId as 'alpaca' | 'ibkr';
+    } else {
+      // Default based on environment: Local = IBKR, Production = Alpaca
+      brokerId = isProduction ? 'alpaca' : 'ibkr';
     }
+
+    const environment = brokerId === 'ibkr' ? 'live' : 'paper';
+    BrokerFactory.setActiveBroker(brokerId, environment);
 
     // Get the active broker
     const broker = BrokerFactory.getActiveBroker();

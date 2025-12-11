@@ -1219,26 +1219,35 @@
 ### 39. Multi-Broker Support & IBKR Authentication
 - **Status**: ✅ ACTIVE & COMPLETE (December 2025)
 - **Location**:
-  - `components/trading/broker-auth-button.tsx` - Broker selector & auth dialog
+  - `components/trading/broker-auth-button.tsx` - Broker selector & direct auth
   - `app/api/trading/broker/ibkr-status/route.ts` - IBKR Gateway status API
-  - `app/api/trading/broker/switch/route.ts` - Broker switching API
+  - `app/api/trading/broker/switch/route.ts` - Broker switching API with cookie persistence
+  - `app/api/trading/portfolio/route.ts` - Portfolio API with cookie-based broker detection
+  - `app/trading/page.tsx` - Trading page with seamless broker refresh
   - `lib/brokers/ibkr-broker.ts` - IBKR broker implementation
   - `lib/brokers/broker-factory.ts` - Multi-broker factory pattern
-  - `components/ui/dialog.tsx` - Dialog component (shadcn/ui)
 - **Purpose**: Enable switching between Alpaca (paper trading) and Interactive Brokers (live trading) with proper authentication flow
 - **Key Features**:
   - **Broker Selector Dropdown** on trading page:
     - Alpaca Markets (Paper) - $100k simulated account, no auth required
     - Interactive Brokers (Live) - Real IBKR account, Gateway auth required
     - Refresh Connection option
-  - **IBKR Authentication Dialog**:
-    - Step-by-step instructions for Gateway setup
-    - "Open Gateway Login" button (opens https://localhost:5050)
-    - "Check Connection" button to verify auth status
-    - Error messages when Gateway not reachable/authenticated
+  - **Direct IBKR Authentication** (December 2025):
+    - Click IBKR → checks Gateway auth status → opens Gateway if needed
+    - NO popup dialog - streamlined direct flow
+    - If authenticated, switches broker immediately
+    - If not authenticated, opens Gateway URL in new tab
+  - **Cookie-Based State Persistence** (December 2025):
+    - Broker selection stored in HTTP cookie (`active_broker`)
+    - Survives serverless function cold starts
+    - 30-day expiration, httpOnly, secure in production
+  - **Seamless UI Updates** (December 2025):
+    - `brokerRefreshKey` state in trading page
+    - React `key` prop forces component remount on broker change
+    - Portfolio, status badge auto-refresh without manual reload
   - **API Endpoints**:
     - `GET /api/trading/broker/ibkr-status` - Check IBKR Gateway auth status
-    - `POST /api/trading/broker/switch` - Switch active broker
+    - `POST /api/trading/broker/switch` - Switch active broker (sets cookie)
     - `GET /api/trading/broker/switch` - Get current broker info
   - **Visual Indicators**:
     - Green badge for Paper trading mode
@@ -1251,34 +1260,33 @@
   4. Set `IBKR_GATEWAY_URL=https://localhost:5050/v1/api` in .env.local
 - **Environment Variables**:
   ```
-  # Alpaca (default - paper trading)
+  # Alpaca (default on production)
   ALPACA_API_KEY=<your_key>
   ALPACA_SECRET_KEY=<your_secret>
 
-  # IBKR (optional - live trading)
+  # IBKR (default on local - live trading)
   IBKR_GATEWAY_URL=https://localhost:5050/v1/api
   IBKR_ACCOUNT_ID=<optional_account_id>
-  ACTIVE_BROKER=alpaca  # or ibkr
   ```
 - **Test Script**: `scripts/test-ibkr-connection.ts` - Validates Gateway connection
-- **Playwright Tested**: Dropdown menu, IBKR dialog, setup steps all verified working
-- **Last Modified**: December 10, 2025 (IBKR hidden on production, local-only)
-- **PRODUCTION vs LOCAL**:
+- **Playwright Tested**: Dropdown menu, direct auth flow verified working
+- **Last Modified**: December 11, 2025 (Direct auth flow, cookie persistence, seamless UI)
+- **PRODUCTION vs LOCAL** (Environment-Based Defaults):
   ```
   🌐 PRODUCTION (Vercel):
+  - DEFAULT BROKER: Alpaca (paper trading)
   - IBKR option is HIDDEN (not available)
-  - Only Alpaca paper trading shown
   - Reason: IBKR Gateway runs on localhost, Vercel can't access it
 
   💻 LOCAL DEVELOPMENT:
+  - DEFAULT BROKER: IBKR (live trading)
   - Both Alpaca and IBKR available
   - IBKR requires Gateway running on localhost:5050
-  - User can configure custom Gateway URL in dialog
+  - Switching to Alpaca opens Gateway URL if not authenticated
   ```
 - **User-Configurable Gateway** (December 10, 2025):
-  - Users can enter their own Gateway URL in IBKR dialog
   - Gateway URL saved to localStorage (`ibkr_gateway_url`)
-  - Account ID optionally configurable (`ibkr_account_id`)
+  - Default: `https://localhost:5050`
   - Enables each user to connect their own local Gateway
 - **CRITICAL IMPLEMENTATION NOTES**:
   ```

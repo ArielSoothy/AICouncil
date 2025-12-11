@@ -67,7 +67,9 @@ interface BrokerAuthButtonProps {
 }
 
 export function BrokerAuthButton({ className, onBrokerChange }: BrokerAuthButtonProps) {
-  const [activeBroker, setActiveBroker] = useState<BrokerId>('alpaca')
+  // Default broker based on environment: Local = IBKR, Production = Alpaca
+  const defaultBroker: BrokerId = isProduction ? 'alpaca' : 'ibkr'
+  const [activeBroker, setActiveBroker] = useState<BrokerId>(defaultBroker)
   const [brokerStatus, setBrokerStatus] = useState<{
     connected: boolean
     authenticated: boolean
