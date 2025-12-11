@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   AlertTriangle,
   Shield,
@@ -14,7 +14,7 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
-  Loader2
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -287,6 +287,11 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
   const [authStatus, setAuthStatus] = useState<IBKRAuthStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [gatewayUrl, setGatewayUrl] = useState(DEFAULT_GATEWAY_URL)
+  const [activeBroker, setActiveBroker] = useState<'ibkr' | 'alpaca' | null>(null)
+  const [switching, setSwitching] = useState(false)
+
+  // Use ref to track active broker without causing re-renders
+  const activeBrokerRef = useRef<'ibkr' | 'alpaca' | null>(null)
 
   // Load saved Gateway URL from localStorage
   useEffect(() => {
@@ -296,6 +301,51 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
     }
   }, [])
 
+  // Check current active broker on mount (once only)
+  useEffect(() => {
+    let mounted = true
+    fetch('/api/trading/portfolio')
+      .then(res => res.json())
+      .then(data => {
+        if (mounted) {
+          const broker = data.broker?.id || 'alpaca'
+          setActiveBroker(broker)
+          activeBrokerRef.current = broker
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setActiveBroker('alpaca')
+          activeBrokerRef.current = 'alpaca'
+        }
+      })
+    return () => { mounted = false }
+  }, [])
+
+  // Switch broker helper (doesn't depend on activeBroker state)
+  const switchBroker = useCallback(async (brokerId: 'ibkr' | 'alpaca') => {
+    setSwitching(true)
+    try {
+      const response = await fetch('/api/trading/broker/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brokerId }),
+      })
+      if (response.ok) {
+        setActiveBroker(brokerId)
+        activeBrokerRef.current = brokerId
+        onAuthChange?.(brokerId === 'ibkr')
+        return true
+      }
+    } catch (err) {
+      console.error('Failed to switch broker:', err)
+    } finally {
+      setSwitching(false)
+    }
+    return false
+  }, [onAuthChange])
+
+  // Check auth status - uses ref to avoid dependency loop
   const checkAuthStatus = useCallback(async () => {
     try {
       const params = new URLSearchParams({ gatewayUrl })
@@ -310,8 +360,14 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
         error: data.error,
       })
 
-      // Notify parent of auth change
-      onAuthChange?.(data.authenticated || false)
+      // Auto-switch to IBKR when authenticated (only if we know current broker)
+      // Skip auto-switch if activeBroker hasn't been loaded yet (null) to avoid race condition
+      if (data.authenticated && activeBrokerRef.current !== null && activeBrokerRef.current !== 'ibkr') {
+        await switchBroker('ibkr')
+      } else {
+        // Just notify parent of current auth state
+        onAuthChange?.(data.authenticated || false)
+      }
     } catch {
       setAuthStatus({
         connected: false,
@@ -322,7 +378,7 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
     } finally {
       setLoading(false)
     }
-  }, [gatewayUrl, onAuthChange])
+  }, [gatewayUrl, onAuthChange, switchBroker])
 
   // Check status on mount and poll every 15 seconds
   useEffect(() => {
@@ -420,8 +476,23 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
         </div>
       </div>
 
+      {/* Active Broker Indicator */}
+      {activeBroker && (
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground">Active:</span>
+          <span className={cn(
+            'px-2 py-0.5 rounded font-semibold',
+            activeBroker === 'ibkr'
+              ? 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-100'
+              : 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100'
+          )}>
+            {activeBroker === 'ibkr' ? 'IBKR (Live)' : 'Alpaca (Paper)'}
+          </span>
+        </div>
+      )}
+
       {/* Action Buttons */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {!isAuthenticated && (
           <button
             onClick={openGatewayLogin}
@@ -439,16 +510,53 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
 
         <button
           onClick={checkAuthStatus}
+          disabled={switching}
           className={cn(
             'flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors',
             'border border-gray-300 dark:border-gray-600',
             'hover:bg-gray-100 dark:hover:bg-gray-800',
-            'focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2'
+            'focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2',
+            'disabled:opacity-50'
           )}
         >
-          <RefreshCw className="w-4 h-4" />
-          Check Status
+          <RefreshCw className={cn('w-4 h-4', switching && 'animate-spin')} />
+          {switching ? 'Switching...' : 'Check Status'}
         </button>
+
+        {/* Broker Toggle Button */}
+        {isAuthenticated && activeBroker === 'ibkr' && (
+          <button
+            onClick={() => switchBroker('alpaca')}
+            disabled={switching}
+            className={cn(
+              'flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors',
+              'bg-green-100 text-green-800 hover:bg-green-200',
+              'dark:bg-green-900 dark:text-green-100 dark:hover:bg-green-800',
+              'focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2',
+              'disabled:opacity-50'
+            )}
+          >
+            <TestTube className="w-4 h-4" />
+            Use Alpaca Paper
+          </button>
+        )}
+
+        {activeBroker === 'alpaca' && (
+          <button
+            onClick={() => isAuthenticated ? switchBroker('ibkr') : openGatewayLogin()}
+            disabled={switching}
+            className={cn(
+              'flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors',
+              'bg-orange-100 text-orange-800 hover:bg-orange-200',
+              'dark:bg-orange-900 dark:text-orange-100 dark:hover:bg-orange-800',
+              'focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2',
+              'disabled:opacity-50'
+            )}
+          >
+            <Building2 className="w-4 h-4" />
+            {isAuthenticated ? 'Use IBKR Live' : 'Connect IBKR'}
+          </button>
+        )}
       </div>
 
       {/* Help Text */}
