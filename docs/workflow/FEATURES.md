@@ -1219,7 +1219,7 @@
 ### 39. Multi-Broker Support & IBKR Authentication
 - **Status**: ✅ ACTIVE & COMPLETE (December 2025)
 - **Location**:
-  - `components/trading/broker-auth-button.tsx` - Broker selector & direct auth
+  - `components/trading/broker-status-badge.tsx` - IBKRAuthButton component (simple auth button)
   - `app/api/trading/broker/ibkr-status/route.ts` - IBKR Gateway status API
   - `app/api/trading/broker/switch/route.ts` - Broker switching API with cookie persistence
   - `app/api/trading/portfolio/route.ts` - Portfolio API with cookie-based broker detection
@@ -1228,15 +1228,22 @@
   - `lib/brokers/broker-factory.ts` - Multi-broker factory pattern
 - **Purpose**: Enable switching between Alpaca (paper trading) and Interactive Brokers (live trading) with proper authentication flow
 - **Key Features**:
-  - **Broker Selector Dropdown** on trading page:
-    - Alpaca Markets (Paper) - $100k simulated account, no auth required
-    - Interactive Brokers (Live) - Real IBKR account, Gateway auth required
-    - Refresh Connection option
-  - **Direct IBKR Authentication** (December 2025):
-    - Click IBKR → checks Gateway auth status → opens Gateway if needed
-    - NO popup dialog - streamlined direct flow
-    - If authenticated, switches broker immediately
-    - If not authenticated, opens Gateway URL in new tab
+  - **Simple IBKR Auth Button** (December 2025 - Simplified):
+    - Shows Gateway status: Running/Offline, Authenticated/Not Authenticated
+    - CONNECTED/DISCONNECTED badge
+    - "Active: IBKR (Live)" or "Active: Alpaca (Paper)" indicator
+    - "Login to IBKR Gateway" button (opens Gateway URL)
+    - "Use Alpaca Paper" / "Use IBKR Live" toggle buttons
+    - Auto-polls every 15 seconds for auth changes
+    - Hidden on production (IBKR Gateway only works locally)
+  - **Auto-Switch on Authentication** (December 2025):
+    - When IBKR Gateway becomes authenticated, auto-switches broker
+    - Calls `/api/trading/broker/switch` to set cookie
+    - Portfolio data automatically loads from IBKR
+  - **Ref-Based Callback Pattern** (December 2025 - Critical):
+    - Uses `useRef` for `onAuthChange` callback to prevent infinite render loops
+    - Inline arrow function props cause dependency chain issues
+    - Only notifies parent on actual broker switch, not every poll
   - **Cookie-Based State Persistence** (December 2025):
     - Broker selection stored in HTTP cookie (`active_broker`)
     - Survives serverless function cold starts
@@ -1250,9 +1257,9 @@
     - `POST /api/trading/broker/switch` - Switch active broker (sets cookie)
     - `GET /api/trading/broker/switch` - Get current broker info
   - **Visual Indicators**:
-    - Green badge for Paper trading mode
-    - Orange badge for Live trading mode
-    - Connection status icons (connected/disconnected)
+    - Green badge for Paper trading mode (Alpaca)
+    - Orange badge for Live trading mode (IBKR)
+    - Connection status icons (Gateway Running/Offline, Authenticated/Not)
 - **IBKR Client Portal Gateway Requirements**:
   1. Download Client Portal Gateway from IBKR
   2. Run Gateway: `./bin/run.sh root/conf.yaml`
@@ -1269,8 +1276,8 @@
   IBKR_ACCOUNT_ID=<optional_account_id>
   ```
 - **Test Script**: `scripts/test-ibkr-connection.ts` - Validates Gateway connection
-- **Playwright Tested**: Dropdown menu, direct auth flow verified working
-- **Last Modified**: December 11, 2025 (Direct auth flow, cookie persistence, seamless UI)
+- **Playwright Tested**: Simple auth button, auto-switch, broker toggle verified working
+- **Last Modified**: December 11, 2025 (Simplified to IBKRAuthButton, fixed infinite loop with refs)
 - **PRODUCTION vs LOCAL** (Environment-Based Defaults):
   ```
   🌐 PRODUCTION (Vercel):
