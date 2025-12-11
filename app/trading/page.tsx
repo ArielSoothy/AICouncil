@@ -11,8 +11,7 @@ import { DebateMode } from '@/components/trading/debate-mode'
 import { IndividualMode } from '@/components/trading/individual-mode'
 import { TradeHistory } from '@/components/trading/trade-history'
 import { PortfolioDisplay } from '@/components/trading/portfolio-display'
-import { BrokerStatusFull } from '@/components/trading/broker-status-badge'
-import { BrokerAuthButton } from '@/components/trading/broker-auth-button'
+import { IBKRAuthButton } from '@/components/trading/broker-status-badge'
 import { IS_PRODUCTION } from '@/lib/utils/environment'
 
 function TradingPageContent() {
@@ -87,17 +86,16 @@ function TradingPageContent() {
             </div>
           </div>
 
-          {/* Broker Selector & Status */}
-          <div className="mb-6 flex flex-col items-center gap-4">
-            {/* Broker Auth/Switch Button */}
-            <BrokerAuthButton
-              onBrokerChange={() => {
-                // Increment key to force all broker-dependent components to remount and refetch
-                setBrokerRefreshKey(prev => prev + 1)
+          {/* IBKR Auth Button - Only shows on local development */}
+          <div className="mb-6 flex justify-center">
+            <IBKRAuthButton
+              onAuthChange={(authenticated) => {
+                if (authenticated) {
+                  // Refresh all broker-dependent components when IBKR authenticates
+                  setBrokerRefreshKey(prev => prev + 1)
+                }
               }}
             />
-            {/* Broker Status Details - key forces remount on broker change */}
-            <BrokerStatusFull key={`broker-status-${brokerRefreshKey}`} />
           </div>
 
           {/* Production Notice - Free Tier Only */}

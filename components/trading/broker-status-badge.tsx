@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   AlertTriangle,
   Shield,
@@ -9,9 +9,19 @@ import {
   Building2,
   TestTube,
   DollarSign,
-  RefreshCw
+  RefreshCw,
+  LogIn,
+  ExternalLink,
+  CheckCircle2,
+  XCircle,
+  Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+// Check if running in production (Vercel) or local development
+const isProduction = typeof window !== 'undefined' && !window.location.hostname.includes('localhost')
+
+const DEFAULT_GATEWAY_URL = 'https://localhost:5050'
 
 interface BrokerInfo {
   id: string
@@ -244,6 +254,232 @@ export function BrokerStatusFull({ className }: { className?: string }) {
             </p>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// IBKRAuthButton - Simple IBKR authentication button (local development only)
+// =============================================================================
+
+interface IBKRAuthStatus {
+  connected: boolean
+  authenticated: boolean
+  competing?: boolean
+  message?: string
+  error?: string
+}
+
+interface IBKRAuthButtonProps {
+  className?: string
+  onAuthChange?: (authenticated: boolean) => void
+}
+
+/**
+ * Simple IBKR authentication button for local development.
+ * Shows Gateway status and provides login button.
+ * Auto-polls to detect authentication changes.
+ *
+ * Hidden on production (IBKR Gateway only works locally).
+ */
+export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps) {
+  const [authStatus, setAuthStatus] = useState<IBKRAuthStatus | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [gatewayUrl, setGatewayUrl] = useState(DEFAULT_GATEWAY_URL)
+
+  // Load saved Gateway URL from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedUrl = localStorage.getItem('ibkr_gateway_url')
+      if (savedUrl) setGatewayUrl(savedUrl)
+    }
+  }, [])
+
+  const checkAuthStatus = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({ gatewayUrl })
+      const response = await fetch(`/api/trading/broker/ibkr-status?${params}`)
+      const data = await response.json()
+
+      setAuthStatus({
+        connected: data.connected || false,
+        authenticated: data.authenticated || false,
+        competing: data.competing || false,
+        message: data.message,
+        error: data.error,
+      })
+
+      // Notify parent of auth change
+      onAuthChange?.(data.authenticated || false)
+    } catch {
+      setAuthStatus({
+        connected: false,
+        authenticated: false,
+        error: 'Failed to check IBKR status',
+      })
+      onAuthChange?.(false)
+    } finally {
+      setLoading(false)
+    }
+  }, [gatewayUrl, onAuthChange])
+
+  // Check status on mount and poll every 15 seconds
+  useEffect(() => {
+    checkAuthStatus()
+    const interval = setInterval(checkAuthStatus, 15000)
+    return () => clearInterval(interval)
+  }, [checkAuthStatus])
+
+  const openGatewayLogin = () => {
+    // Save URL to localStorage
+    localStorage.setItem('ibkr_gateway_url', gatewayUrl)
+    window.open(gatewayUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  // Hide on production - IBKR Gateway only works locally
+  if (isProduction) {
+    return null
+  }
+
+  if (loading) {
+    return (
+      <div className={cn(
+        'flex items-center gap-2 p-4 rounded-lg border bg-muted/50',
+        className
+      )}>
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        <span className="text-muted-foreground">Checking IBKR Gateway...</span>
+      </div>
+    )
+  }
+
+  const isAuthenticated = authStatus?.authenticated
+  const isConnected = authStatus?.connected
+
+  return (
+    <div className={cn(
+      'flex flex-col gap-3 p-4 rounded-lg border',
+      isAuthenticated
+        ? 'border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-700'
+        : 'border-orange-300 bg-orange-50 dark:bg-orange-950 dark:border-orange-700',
+      className
+    )}>
+      {/* Status Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Building2 className={cn(
+            'w-6 h-6',
+            isAuthenticated ? 'text-green-600' : 'text-orange-600'
+          )} />
+          <div>
+            <p className={cn(
+              'font-semibold',
+              isAuthenticated
+                ? 'text-green-800 dark:text-green-200'
+                : 'text-orange-800 dark:text-orange-200'
+            )}>
+              Interactive Brokers
+            </p>
+            <div className="flex items-center gap-2 text-xs">
+              {isConnected ? (
+                <span className="flex items-center gap-1 text-green-600">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Gateway Running
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-red-600">
+                  <XCircle className="w-3 h-3" />
+                  Gateway Offline
+                </span>
+              )}
+              <span className="text-muted-foreground">•</span>
+              {isAuthenticated ? (
+                <span className="flex items-center gap-1 text-green-600">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Authenticated
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-orange-600">
+                  <XCircle className="w-3 h-3" />
+                  Not Authenticated
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Status Badge */}
+        <div className={cn(
+          'px-2 py-1 rounded-full text-xs font-bold',
+          isAuthenticated
+            ? 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100'
+            : 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-100'
+        )}>
+          {isAuthenticated ? 'CONNECTED' : 'DISCONNECTED'}
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex items-center gap-2">
+        {!isAuthenticated && (
+          <button
+            onClick={openGatewayLogin}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors',
+              'bg-blue-600 text-white hover:bg-blue-700',
+              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+            )}
+          >
+            <LogIn className="w-4 h-4" />
+            Login to IBKR Gateway
+            <ExternalLink className="w-3 h-3" />
+          </button>
+        )}
+
+        <button
+          onClick={checkAuthStatus}
+          className={cn(
+            'flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors',
+            'border border-gray-300 dark:border-gray-600',
+            'hover:bg-gray-100 dark:hover:bg-gray-800',
+            'focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2'
+          )}
+        >
+          <RefreshCw className="w-4 h-4" />
+          Check Status
+        </button>
+      </div>
+
+      {/* Help Text */}
+      {!isConnected && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-100 dark:bg-red-900/50 border border-red-300 dark:border-red-700">
+          <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-red-700 dark:text-red-300">
+            <p className="font-semibold">Client Portal Gateway Not Running</p>
+            <p>Start the IBKR Client Portal Gateway on your machine:</p>
+            <code className="block mt-1 p-1 bg-red-200 dark:bg-red-800 rounded text-xs">
+              cd ~/clientportal.gw && bin/run.sh root/conf.yaml
+            </code>
+          </div>
+        </div>
+      )}
+
+      {isConnected && !isAuthenticated && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-100 dark:bg-blue-900/50 border border-blue-300 dark:border-blue-700">
+          <LogIn className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-blue-700 dark:text-blue-300">
+            <p className="font-semibold">Authentication Required</p>
+            <p>Click &quot;Login to IBKR Gateway&quot; to open the login page.</p>
+            <p className="mt-1">After logging in, click &quot;Check Status&quot; or wait for auto-refresh.</p>
+          </div>
+        </div>
+      )}
+
+      {isAuthenticated && (
+        <p className="text-xs text-muted-foreground">
+          ✅ IBKR Gateway connected. Portfolio data will load from your real account.
+        </p>
       )}
     </div>
   )
