@@ -50,7 +50,11 @@ export class GroqProvider implements AIProvider {
           topP: config.topP || 1,
 
           // ✅ Tool use integration
+          // toolChoice: 'required' forces model to call at least one tool
+          // llama-3.3-70b-versatile supports tool calling per Groq docs (Jan 2025)
+          // CRITICAL: Research agents NEED tool data, 'auto' lets model skip tools
           tools: config.useTools ? alpacaTools : undefined,
+          toolChoice: config.useTools ? 'required' : undefined,
           stopWhen: config.useTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
           onStepFinish: config.useTools ? (step) => {
             console.log(`🔧 Step finished: ${step.toolCalls?.length || 0} tool calls, toolResults: ${step.toolResults?.length || 0}`);

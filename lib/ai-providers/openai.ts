@@ -36,6 +36,9 @@ export class OpenAIProvider implements AIProvider {
         ? { temperature: 1 } // GPT-5 requires explicit temperature=1
         : { temperature: config.temperature || 0.7 };
 
+      // Seed for reproducibility (OpenAI supports seed parameter)
+      const seedConfig = config.seed ? { seed: config.seed } : {};
+
       // 🔍 DEBUG: Log tool configuration
       console.log('=== OPENAI DEBUG ===');
       console.log('Model:', config.model);
@@ -43,6 +46,7 @@ export class OpenAIProvider implements AIProvider {
       console.log('Token param:', isGPT5 ? 'maxCompletionTokens' : 'maxTokens');
       console.log('Token value:', config.maxTokens || 1000);
       console.log('Temperature:', isGPT5 ? '1 (default only)' : (config.temperature || 0.7));
+      console.log('Seed:', config.seed || 'none');
       console.log('useTools:', config.useTools);
       console.log('useWebSearch:', config.useWebSearch);
       console.log('maxSteps:', config.maxSteps);
@@ -71,6 +75,12 @@ export class OpenAIProvider implements AIProvider {
         ...temperatureConfig,
         ...tokenConfig,
         topP: config.topP || 1,
+        // Pass seed for reproducible outputs (OpenAI API supports this)
+        ...(config.seed ? {
+          experimental_providerMetadata: {
+            openai: { seed: config.seed }
+          }
+        } : {}),
 
         // ✅ Tool use integration (Alpaca + Web Search)
         tools: hasTools ? tools : undefined,

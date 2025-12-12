@@ -17,6 +17,9 @@ interface TestResult {
     confidence: number
     reasoning: string
   }
+  // Tool test results
+  toolCalls?: number
+  toolNames?: string[]
   rawResponse?: string
   responseTime: number
   tokens?: {
@@ -35,24 +38,26 @@ export function ModelTester() {
 
   // Get all selectable models grouped by provider
   const models = getSelectableModels()
+  const [testType, setTestType] = useState<'json' | 'tools'>('json')
 
-  const testModel = async (modelId: string): Promise<TestResult> => {
+  const testModel = async (modelId: string, testTools: boolean = false): Promise<TestResult> => {
     const response = await fetch('/api/trading/test-model', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modelId }),
+      body: JSON.stringify({ modelId, testTools }),
     })
     return response.json()
   }
 
-  const handleTestSingle = async () => {
+  const handleTestSingle = async (useTools: boolean = false) => {
     if (!selectedModel) return
 
     setTesting(true)
     setResult(null)
+    setTestType(useTools ? 'tools' : 'json')
 
     try {
-      const testResult = await testModel(selectedModel)
+      const testResult = await testModel(selectedModel, useTools)
       setResult(testResult)
     } catch (error) {
       setResult({
@@ -129,17 +134,34 @@ export function ModelTester() {
           })}
         </select>
         <Button
-          onClick={handleTestSingle}
+          onClick={() => handleTestSingle(false)}
           disabled={!selectedModel || testing || testingAll}
           variant="outline"
+          title="Test JSON response format"
         >
-          {testing ? (
+          {testing && testType === 'json' ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Testing...
             </>
           ) : (
-            'Test'
+            'Test JSON'
+          )}
+        </Button>
+        <Button
+          onClick={() => handleTestSingle(true)}
+          disabled={!selectedModel || testing || testingAll}
+          variant="outline"
+          title="Test tool calling capability"
+          className="bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40"
+        >
+          {testing && testType === 'tools' ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Testing...
+            </>
+          ) : (
+            'Test Tools'
           )}
         </Button>
       </div>
@@ -158,6 +180,28 @@ export function ModelTester() {
             <span className="text-xs text-muted-foreground ml-auto">{result.responseTime}ms</span>
           </div>
 
+          {/* Tool test results */}
+          {result.success && result.toolCalls !== undefined && (
+            <div className="text-sm space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-200">
+                  {result.toolCalls} tool{result.toolCalls !== 1 ? 's' : ''} called
+                </span>
+              </div>
+              {result.toolNames && result.toolNames.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Tools: {result.toolNames.join(', ')}
+                </div>
+              )}
+              {result.tokens && (
+                <div className="text-xs text-muted-foreground">
+                  Tokens: {result.tokens.total} (prompt: {result.tokens.prompt}, completion: {result.tokens.completion})
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* JSON test results */}
           {result.success && result.decision && (
             <div className="text-sm space-y-1">
               <div className="flex items-center gap-2">

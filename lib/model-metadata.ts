@@ -22,6 +22,11 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   'gpt-5': { input: 0.00125, output: 0.01, source: 'OpenAI GPT-5 per 1M ($1.25 in / $10 out)', lastUpdated: '2025-12-09' },
   'gpt-5-mini': { input: 0.000125, output: 0.001, source: 'OpenAI GPT-5 Mini per 1M ($0.125 in / $1 out)', lastUpdated: '2025-12-09' },
   'gpt-5-nano': { input: 0.000025, output: 0.0002, source: 'OpenAI GPT-5 Nano per 1M ($0.025 in / $0.20 out)', lastUpdated: '2025-12-09' },
+  // GPT-5 Codex Series (Code-optimized)
+  'gpt-5-codex': { input: 0.00125, output: 0.01, source: 'OpenAI GPT-5 Codex - same price as GPT-5', lastUpdated: '2025-12-12' },
+  'gpt-5-codex-mini': { input: 0.000125, output: 0.001, source: 'OpenAI Codex Mini - same price as GPT-5 Mini', lastUpdated: '2025-12-12' },
+  'codex-mini-latest': { input: 0.0015, output: 0.006, source: 'OpenAI Codex Mini Latest per 1M ($1.50 in / $6 out)', lastUpdated: '2025-12-12' },
+  'gpt-5.1-codex-max': { input: 0.002, output: 0.008, source: 'OpenAI GPT-5.1 Codex Max - premium subscription tier', lastUpdated: '2025-12-12' },
   // GPT-4.1 Series
   'gpt-4.1': { input: 0.002, output: 0.008, source: 'OpenAI GPT-4.1 per 1M ($2 in / $8 out)', lastUpdated: '2025-12-09' },
   'gpt-4.1-mini': { input: 0.0004, output: 0.0016, source: 'OpenAI GPT-4.1 Mini per 1M ($0.40 in / $1.60 out)', lastUpdated: '2025-12-09' },
@@ -144,6 +149,11 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   'gpt-5': { arenaTier: 'S', aaii: 1380, mmlu: 92, source: 'OpenAI/AA - SWE-bench 74.9%', lastUpdated: '2025-12-09' },
   'gpt-5-mini': { arenaTier: 'A', aaii: 1200, mmlu: 85, source: 'OpenAI/AA', lastUpdated: '2025-12-09' },
   'gpt-5-nano': { arenaTier: 'B', aaii: 1100, mmlu: 78, source: 'OpenAI/AA', lastUpdated: '2025-12-09' },
+  // GPT-5 Codex Series (Code-optimized)
+  'gpt-5-codex': { arenaTier: 'S', aaii: 1380, mmlu: 92, source: 'OpenAI - Code-optimized GPT-5', lastUpdated: '2025-12-12' },
+  'gpt-5-codex-mini': { arenaTier: 'A', aaii: 1200, mmlu: 85, source: 'OpenAI - Code-optimized mini', lastUpdated: '2025-12-12' },
+  'codex-mini-latest': { arenaTier: 'A', aaii: 1200, mmlu: 85, source: 'OpenAI - Latest codex mini', lastUpdated: '2025-12-12' },
+  'gpt-5.1-codex-max': { arenaTier: 'S', aaii: 1420, mmlu: 93, source: 'OpenAI - Flagship Codex, multi-million token context', lastUpdated: '2025-12-12' },
   // GPT-4.1 - MMLU: 90.2%, SWE-bench: 55%
   'gpt-4.1': { arenaTier: 'A', aaii: 1250, mmlu: 90, source: 'OpenAI - MMLU 90.2%', lastUpdated: '2025-12-09' },
   'gpt-4.1-mini': { arenaTier: 'B', aaii: 1150, mmlu: 82, source: 'OpenAI/AA', lastUpdated: '2025-12-09' },

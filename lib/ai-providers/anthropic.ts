@@ -66,6 +66,9 @@ export class AnthropicProvider implements AIProvider {
 
       const hasTools = Object.keys(tools).length > 0;
 
+      // DEBUG: Log tool configuration
+      console.log(`🔧 Anthropic ${config.model}: useTools=${config.useTools}, hasTools=${hasTools}, toolCount=${Object.keys(tools).length}, toolNames=${Object.keys(tools).join(', ')}`);
+
       const result = await generateText({
         model: anthropic(config.model),
         prompt,
@@ -75,14 +78,17 @@ export class AnthropicProvider implements AIProvider {
         // topP: config.topP || 1,
 
         // ✅ Tool use integration (Alpaca + Web Search)
+        // toolChoice: 'required' forces model to call at least one tool
+        // This ensures research agents always fetch live data
         tools: hasTools ? tools : undefined,
+        toolChoice: hasTools ? 'required' : undefined,
         stopWhen: hasTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
         onStepFinish: hasTools ? (step) => {
           // Track tool usage for analytics (non-debug)
           if (step.toolCalls && step.toolCalls.length > 0) {
             step.toolCalls.forEach((call: any) => {
               if (call.toolName !== 'web_search') {
-                toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
+                toolTracker.logCall(call.toolName, call.args?.symbol || 'N/A');
               }
             });
           }
@@ -90,6 +96,10 @@ export class AnthropicProvider implements AIProvider {
       });
 
       const responseTime = Date.now() - startTime;
+
+      // DEBUG: Log result structure
+      const extractedToolCalls = config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : [];
+      console.log(`🔧 Anthropic ${config.model} RESULT: steps=${result.steps?.length || 0}, toolCalls=${extractedToolCalls?.length || 0}, text=${result.text?.substring(0, 100)}...`);
 
       return {
         id: `anthropic-${Date.now()}`,

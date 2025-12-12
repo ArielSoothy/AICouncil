@@ -51,22 +51,32 @@ Model selection automatically updates
 **Working Providers:** OpenAI, Anthropic, Google, Groq, xAI
 **Data Sources:** MODEL_COSTS_PER_1K, MODEL_BENCHMARKS (AAII scores) from lib/model-metadata.ts
 
+### ⚠️ Known Gemini Issues (December 11, 2025)
+
+The following Gemini models have been removed due to known API issues:
+
+| Model | Issue | Status | Source |
+|-------|-------|--------|--------|
+| gemini-2.5-flash | Truncated responses, malformed JSON even under token limits | Removed from Free tier | [Google Forum](https://discuss.ai.google.dev/t/truncated-response-issue-with-gemini-2-5-flash-preview/81258) |
+| gemini-3-pro-preview | Fails after tool calls, requires temperature=1.0 | Removed from Max tier | [GitHub Issue](https://github.com/zed-industries/zed/issues/43024) |
+
+**Workaround Applied:** Added `topP: 0.5` to all Gemini API calls to reduce premature stopping.
+
 ### Free Tier (🎁 Gift Icon)
-- **Models:** 4 free models only ($0 cost)
+- **Models:** 3 free models only ($0 cost)
 - **Cost:** $0.00 per query
 - **Use Case:** Testing, experimentation, unlimited usage
-- **Quality:** Excellent for free tier (AAII 1100-1280)
+- **Quality:** Good for free tier (AAII 1100-1250)
 
 **Multi-Model Modes (Consensus):**
-- gemini-2.5-flash (Google FREE, AAII 1280, A-tier)
-- gemini-2.0-flash (Google FREE, AAII 1250)
+- gemini-2.0-flash (Google FREE, AAII 1250) - Most stable free option
 - llama-3.3-70b-versatile (Groq FREE, AAII 1250, 86% MMLU)
 - llama-3.1-8b-instant (Groq FREE, AAII 1100)
 
 **Debate Roles (Agents):**
-- Analyst: gemini-2.5-flash (AAII 1280)
+- Analyst: gemini-2.0-flash (AAII 1250)
 - Critic: llama-3.3-70b-versatile (AAII 1250)
-- Judge: gemini-2.0-flash (AAII 1250)
+- Judge: llama-3.3-70b-versatile (AAII 1250)
 - Synthesizer: llama-3.1-8b-instant (AAII 1100)
 
 ### Pro Tier (⚡ Zap Icon)
@@ -92,17 +102,17 @@ Model selection automatically updates
 - **Models:** 5 flagship models (one per provider, highest quality)
 - **Cost:** ~$0.01-0.02 per query
 - **Use Case:** Critical decisions, highest quality needed
-- **Quality:** Best available AI models (AAII 1250-1420)
+- **Quality:** Best available AI models (AAII 1250-1380)
 
 **Multi-Model Modes (Consensus):**
 - claude-sonnet-4-5-20250929 (Anthropic $0.018/1K, AAII 1320)
 - gpt-5-chat-latest (OpenAI $0.01125/1K, AAII 1380)
-- gemini-3-pro-preview (Google $0.014/1K, AAII 1420, #1 LMArena!)
+- gemini-2.5-pro (Google $0.01125/1K, AAII 1350, S-tier) - Most stable flagship
 - llama-3.3-70b-versatile (Groq FREE, AAII 1250)
 - grok-4-0709 (xAI $0.018/1K, AAII 1370, S-tier)
 
 **Debate Roles (Agents):**
-- Analyst: gemini-3-pro-preview (AAII 1420, #1 LMArena)
+- Analyst: gemini-2.5-pro (AAII 1350, S-tier)
 - Critic: gpt-5-chat-latest (AAII 1380)
 - Judge: claude-sonnet-4-5-20250929 (AAII 1320)
 - Synthesizer: grok-4-0709 (AAII 1370, S-tier)

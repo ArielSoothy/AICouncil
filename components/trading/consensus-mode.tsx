@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Loader2, TrendingUp, TrendingDown, Minus, Users, CheckCircle, AlertCircle, XCircle, RotateCcw, ShoppingCart } from 'lucide-react'
@@ -9,7 +9,8 @@ import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config
 import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { TradingHistoryDropdown } from './trading-history-dropdown'
-import { ResearchActivityPanel } from './research-activity-panel' // Phase 4: Research transparency
+import { ResearchActivityPanel } from './research-activity-panel' // Phase 4: Research transparency (static)
+import { ResearchProgressPanel, ResearchProgressPanelHandle } from './research-progress-panel' // Feature #51: Real-time streaming
 import { TradeCard, extractTradeRecommendation, type TradeRecommendation } from './trade-card'
 import { InputModeSelector, type InputMode } from './input-mode-selector'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
@@ -72,6 +73,10 @@ export function ConsensusMode() {
   const [showTradeCard, setShowTradeCard] = useState(true)
   const [inputMode, setInputMode] = useState<InputMode>('research')
   const [portfolioAnalysis, setPortfolioAnalysis] = useState<any | null>(null)
+
+  // Feature #51: Real-time research progress streaming
+  const progressPanelRef = useRef<ResearchProgressPanelHandle>(null)
+  const [isStreaming, setIsStreaming] = useState(false)
 
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -228,124 +233,137 @@ export function ConsensusMode() {
 
   const getConsensusDecision = async () => {
     setLoading(true)
+    setIsStreaming(true)
     setConsensus(null)
     setDecisions([])
     setProgressSteps([])
+    setResearchData(null)
 
     // Extract enabled model IDs for API
     const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
-    const enabledModels = selectedModels.filter(m => m.enabled)
-
-    // Show initial progress
-    const initialSteps: ReasoningStep[] = [
-      createReasoningStep('thinking', '🔄 Starting consensus analysis...'),
-    ]
-    setProgressSteps(initialSteps)
-
-    await new Promise(resolve => setTimeout(resolve, 150))
-
-    // Add models being queried
-    const modelSteps = [
-      ...initialSteps,
-      createReasoningStep('analysis', `💰 Fetching account data...`),
-      createReasoningStep('thinking', `🤖 Querying ${modelIds.length} AI models for consensus:`),
-    ]
-    enabledModels.forEach(m => {
-      modelSteps.push(createReasoningStep('analysis', `   • ${getModelDisplayName(m.model)}`))
-    })
-    setProgressSteps(modelSteps)
-
-    await new Promise(resolve => setTimeout(resolve, 150))
-
-    setProgressSteps([
-      ...modelSteps,
-      createReasoningStep('thinking', '⏳ Building consensus from all models...')
-    ])
 
     try {
-      const response = await fetch('/api/trading/consensus', {
+      // Feature #51: Use SSE streaming endpoint for real-time progress
+      const response = await fetch('/api/trading/consensus/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedModels: modelIds, timeframe, targetSymbol: targetSymbol.trim() || undefined }),
+        body: JSON.stringify({
+          selectedModels: modelIds,
+          timeframe,
+          targetSymbol: targetSymbol.trim() || undefined,
+          researchTier: globalTier  // Pass global tier to control research model
+        }),
       })
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Failed to get consensus decision')
+        throw new Error(error.error || 'Failed to start consensus analysis')
       }
 
-      const data = await response.json()
+      // Read SSE stream
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('No stream reader available')
+      }
 
-      // Show completion
-      setProgressSteps(prev => [
-        ...prev,
-        createReasoningStep('decision', `✅ Consensus reached!`),
-        createReasoningStep('analysis', '📊 Processing final decision...')
-      ])
+      const decoder = new TextDecoder()
+      let buffer = ''
 
-      setConsensus(data.consensus)
-      setDecisions(data.decisions || [])
-      setResearchData(data.research || null) // Phase 4: Capture research pipeline data
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-      // Create trade recommendation from consensus
-      const recommendation = extractTradeRecommendation(data.consensus, 'consensus')
-      setTradeRecommendation(recommendation)
-      setShowTradeCard(true)
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
 
-      // Save conversation for history and persistence (non-blocking, silent fail)
-      // Fire-and-forget: 401 errors are expected for non-authenticated users
-      fetch('/api/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: 'Consensus Trading Analysis',
-          responses: {
-            consensus: data.consensus,
-            decisions: data.decisions
-          },
-          mode: 'trading-consensus',
-          metadata: {
-            timeframe,
-            targetSymbol: targetSymbol.trim() || null,
-            selectedModels: modelIds,
-            modelCount: modelIds.length
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const eventData = line.slice(6)
+            try {
+              const event = JSON.parse(eventData)
+
+              // Send event to ResearchProgressPanel for real-time display
+              progressPanelRef.current?.processEvent(event)
+
+              // Handle final_result event to set state
+              if (event.type === 'final_result') {
+                const data = event
+
+                setConsensus(data.consensus)
+                setDecisions(data.decisions || [])
+                setResearchData(data.research || null)
+
+                // Create trade recommendation from consensus
+                const recommendation = extractTradeRecommendation(data.consensus, 'consensus')
+                setTradeRecommendation(recommendation)
+                setShowTradeCard(true)
+
+                // Save conversation for history and persistence (non-blocking, silent fail)
+                fetch('/api/conversations', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    query: 'Consensus Trading Analysis',
+                    responses: {
+                      consensus: data.consensus,
+                      decisions: data.decisions
+                    },
+                    mode: 'trading-consensus',
+                    metadata: {
+                      timeframe,
+                      targetSymbol: targetSymbol.trim() || null,
+                      selectedModels: modelIds,
+                      modelCount: modelIds.length
+                    }
+                  })
+                }).then(res => {
+                  if (res.ok) {
+                    return res.json().then(saved => {
+                      saveConversation(saved.id)
+                      console.log('✅ Consensus analysis saved:', saved.id)
+                    })
+                  } else {
+                    // Guest mode: persist locally only
+                    const clientId = `local-${Date.now()}`
+                    console.log('👤 Guest mode: persisting locally with ID:', clientId)
+
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
+                        consensus: data.consensus,
+                        decisions: data.decisions,
+                        metadata: {
+                          timeframe,
+                          targetSymbol: targetSymbol.trim() || null,
+                          selectedModels: modelIds,
+                          modelCount: modelIds.length
+                        },
+                        timestamp: new Date().toISOString()
+                      }))
+                    }
+                    saveConversation(clientId)
+                  }
+                }).catch(() => {
+                  console.log('💾 Local-only mode (save failed)')
+                })
+              }
+
+              // Handle error events
+              if (event.type === 'error') {
+                console.error('Streaming error:', event.message)
+              }
+            } catch (parseError) {
+              console.error('Failed to parse SSE event:', parseError)
+            }
           }
-        })
-      }).then(res => {
-        if (res.ok) {
-          return res.json().then(saved => {
-            saveConversation(saved.id)
-            console.log('✅ Consensus analysis saved:', saved.id)
-          })
-        } else {
-          // Guest mode: persist locally only
-          const clientId = `local-${Date.now()}`
-          console.log('👤 Guest mode: persisting locally with ID:', clientId)
-
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
-              consensus: data.consensus,
-              decisions: data.decisions,
-              metadata: {
-                timeframe,
-                targetSymbol: targetSymbol.trim() || null,
-                selectedModels: modelIds,
-                modelCount: modelIds.length
-              },
-              timestamp: new Date().toISOString()
-            }))
-          }
-          saveConversation(clientId)
         }
-      }).catch(() => {
-        // Silent fail - expected for unauthenticated users
-        console.log('💾 Local-only mode (save failed)')
-      })
+      }
     } catch (error) {
       console.error('Failed to get consensus decision:', error)
       alert(error instanceof Error ? error.message : 'Failed to get consensus decision')
     } finally {
       setLoading(false)
+      setIsStreaming(false)
     }
   }
 
@@ -387,6 +405,7 @@ export function ConsensusMode() {
                 setPortfolioAnalysis(null)
               }
             }}
+            onInputChange={(symbol) => setTargetSymbol(symbol)}  // Real-time sync
             onModeChange={setInputMode}
             disabled={loading}
             initialSymbol={targetSymbol}
@@ -420,18 +439,18 @@ export function ConsensusMode() {
         </Button>
       </div>
 
-      {/* Real-time Progress */}
-      {loading && progressSteps.length > 0 && (
-        <ReasoningStream
-          steps={progressSteps}
-          isStreaming={true}
-          title="Consensus Progress"
-          modelName="Trading System"
+      {/* Feature #51: Real-time Research Progress Panel - Shows streaming tool calls, agents, phases */}
+      {(isStreaming || loading) && (
+        <ResearchProgressPanel
+          ref={progressPanelRef}
+          onError={(error) => console.error('Research progress error:', error)}
         />
       )}
 
-      {/* Phase 4: Research Activity Panel - Show exhaustive research transparency */}
-      <ResearchActivityPanel research={researchData} isLoading={loading && !consensus} />
+      {/* Phase 4: Research Activity Panel - Shows final summary after completion */}
+      {!isStreaming && !loading && researchData && (
+        <ResearchActivityPanel research={researchData} isLoading={false} />
+      )}
 
       {/* Portfolio Analysis Results */}
       {portfolioAnalysis && (

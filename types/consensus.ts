@@ -57,6 +57,7 @@ export interface ModelConfig {
   useWebSearch?: boolean; // Enable native AI provider web search (GPT, Claude, Gemini, Grok)
   useTools?: boolean; // Enable tool use (Alpaca trading tools)
   maxSteps?: number; // Max steps for multi-step tool use
+  seed?: number; // Seed for reproducible outputs (OpenAI, Google support)
 }
 
 export interface QueryRequest {

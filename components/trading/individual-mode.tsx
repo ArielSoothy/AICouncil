@@ -202,7 +202,12 @@ export function IndividualMode() {
       const response = await fetch('/api/trading/individual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedModels: modelIds, timeframe, targetSymbol: targetSymbol.trim() || undefined }),
+        body: JSON.stringify({
+          selectedModels: modelIds,
+          timeframe,
+          targetSymbol: targetSymbol.trim() || undefined,
+          researchTier: globalTier  // Pass global tier to control research model
+        }),
       })
 
       if (!response.ok) {

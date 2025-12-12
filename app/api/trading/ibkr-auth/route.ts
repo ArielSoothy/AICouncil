@@ -1,12 +1,14 @@
 /**
- * IBKR Authentication API - Clean Rebuild
+ * IBKR Authentication API
  *
- * Single endpoint for IBKR Gateway authentication:
- * - GET: Check status + AUTO-reauthenticate if phone 2FA completed
- * - POST: Manual reauthenticate trigger (backup)
+ * CRITICAL FIXES:
+ * 1. Uses GET method for /iserver/auth/status (POST returns "Bad Request")
+ * 2. Calls ssodh/init to complete 2FA handshake after phone authentication
  *
- * CRITICAL: Uses Node.js https module because IBKR Gateway uses self-signed SSL certs.
- * fetch() cannot handle self-signed certs (no rejectUnauthorized option).
+ * The flow after user completes phone 2FA:
+ * 1. GET /iserver/auth/status - may still show authenticated:false
+ * 2. POST /iserver/auth/ssodh/init - completes the 2FA handshake
+ * 3. GET /iserver/auth/status - now shows authenticated:true
  *
  * @see https://interactivebrokers.github.io/cpwebapi/
  */
@@ -19,48 +21,46 @@ const DEFAULT_GATEWAY_URL = 'https://localhost:5050'
 // Get Gateway URL from env or default
 function getGatewayUrl(): string {
   const url = process.env.IBKR_GATEWAY_URL || DEFAULT_GATEWAY_URL
-  // Remove /v1/api suffix if present (we add it per-request)
   return url.replace('/v1/api', '').replace(/\/$/, '')
 }
 
 /**
  * Make HTTPS request to IBKR Gateway with self-signed cert support
+ * DEFAULT: GET method (IBKR Gateway returns "Bad Request" for POST on auth/status)
  */
 function makeGatewayRequest<T>(
   endpoint: string,
-  method: 'GET' | 'POST' = 'POST'
+  method: 'GET' | 'POST' = 'GET',
+  body?: string
 ): Promise<T> {
   return new Promise((resolve, reject) => {
-    const gatewayUrl = getGatewayUrl()
     const fullPath = `/v1/api${endpoint}`
 
     const req = https.request(
       {
-        // Force IPv4 - IBKR Gateway only allows 127.0.0.1, not ::1
         hostname: '127.0.0.1',
         port: 5050,
         path: fullPath,
         method,
-        rejectUnauthorized: false, // CRITICAL: Accept self-signed certs
+        rejectUnauthorized: false,
         headers: {
-          'User-Agent': 'Mozilla/5.0 VerdictAI/1.0', // Required by IBKR
+          'User-Agent': 'Mozilla/5.0 VerdictAI/1.0',
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
       },
       (res) => {
-        let body = ''
-        res.on('data', (chunk) => (body += chunk))
+        let responseBody = ''
+        res.on('data', (chunk) => (responseBody += chunk))
         res.on('end', () => {
           if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
             try {
-              resolve(body ? JSON.parse(body) : ({} as T))
+              resolve(responseBody ? JSON.parse(responseBody) : ({} as T))
             } catch {
-              // Some endpoints return empty or non-JSON
               resolve({} as T)
             }
           } else {
-            reject(new Error(`Gateway returned ${res.statusCode}: ${body}`))
+            reject(new Error(`Gateway returned ${res.statusCode}: ${responseBody}`))
           }
         })
       }
@@ -75,6 +75,9 @@ function makeGatewayRequest<T>(
       reject(new Error('Gateway request timeout'))
     })
 
+    if (body) {
+      req.write(body)
+    }
     req.end()
   })
 }
@@ -83,19 +86,23 @@ interface AuthStatus {
   authenticated: boolean
   connected: boolean
   competing?: boolean
-  message?: string
+}
+
+interface SsodhInitResponse {
+  passed?: boolean
+  authenticated?: boolean
+  connected?: boolean
 }
 
 /**
  * GET /api/trading/ibkr-auth
  *
- * Check IBKR Gateway authentication status.
- * AUTO-HANDLES phone 2FA by calling /iserver/reauthenticate when competing=true.
+ * Check auth status and attempt to complete 2FA if Gateway is running but not authenticated.
+ * This handles the case where user completed phone 2FA but Gateway page didn't update.
  */
 export async function GET() {
   const gatewayUrl = getGatewayUrl()
 
-  // Check if configured
   if (!process.env.IBKR_GATEWAY_URL) {
     return NextResponse.json({
       configured: false,
@@ -107,27 +114,30 @@ export async function GET() {
   }
 
   try {
-    // 1. Check auth status (POST method per IBKR API)
-    let status = await makeGatewayRequest<AuthStatus>(
-      '/iserver/auth/status',
-      'POST'
-    )
+    // First check current status
+    let status = await makeGatewayRequest<AuthStatus>('/iserver/auth/status', 'GET')
+    console.log('[IBKR] Initial status:', JSON.stringify(status))
 
-    // 2. AUTO-HANDLE phone 2FA completion
-    // When user completes 2FA on phone, Gateway returns competing=true
-    // We must call /iserver/reauthenticate to complete the handshake
-    if (status.competing && !status.authenticated) {
-      console.log('[IBKR] Phone 2FA detected (competing=true) - completing handshake...')
+    // If Gateway is running but not authenticated, try ssodh/init to complete 2FA
+    // This handles the case where user completed phone 2FA but page didn't update
+    if (!status.authenticated) {
       try {
-        await makeGatewayRequest('/iserver/reauthenticate', 'POST')
-        // Re-check status after handshake
-        status = await makeGatewayRequest<AuthStatus>(
-          '/iserver/auth/status',
-          'POST'
+        console.log('[IBKR] Not authenticated, trying ssodh/init to complete 2FA...')
+        const initResult = await makeGatewayRequest<SsodhInitResponse>(
+          '/iserver/auth/ssodh/init',
+          'POST',
+          JSON.stringify({ publish: true, compete: true })
         )
-        console.log('[IBKR] After reauthenticate:', status.authenticated ? 'SUCCESS' : 'STILL NOT AUTH')
-      } catch (reauthErr) {
-        console.error('[IBKR] Reauthenticate failed:', reauthErr)
+        console.log('[IBKR] ssodh/init result:', JSON.stringify(initResult))
+
+        // If init succeeded, check status again
+        if (initResult.authenticated || initResult.passed) {
+          status = await makeGatewayRequest<AuthStatus>('/iserver/auth/status', 'GET')
+          console.log('[IBKR] Status after ssodh/init:', JSON.stringify(status))
+        }
+      } catch (initError) {
+        // ssodh/init may fail if user hasn't completed 2FA yet - that's OK
+        console.log('[IBKR] ssodh/init failed (normal if 2FA not done):', initError)
       }
     }
 
@@ -139,13 +149,10 @@ export async function GET() {
       gatewayRunning: true,
       message: status.authenticated
         ? 'IBKR Gateway authenticated'
-        : status.competing
-          ? 'Phone 2FA detected - completing...'
-          : 'Not authenticated - login required',
+        : 'Not authenticated - login required',
       loginUrl: gatewayUrl,
     })
   } catch (error) {
-    // Gateway not reachable
     const errorMsg = error instanceof Error ? error.message : 'Unknown error'
     console.error('[IBKR] Gateway error:', errorMsg)
 
@@ -162,7 +169,7 @@ export async function GET() {
 /**
  * POST /api/trading/ibkr-auth
  *
- * Manually trigger reauthentication (backup if auto doesn't work).
+ * Manual refresh trigger - just re-check status.
  */
 export async function POST() {
   const gatewayUrl = getGatewayUrl()
@@ -175,30 +182,26 @@ export async function POST() {
   }
 
   try {
-    console.log('[IBKR] Manual reauthenticate triggered')
-    await makeGatewayRequest('/iserver/reauthenticate', 'POST')
-
-    // Check new status
-    const status = await makeGatewayRequest<AuthStatus>(
-      '/iserver/auth/status',
-      'POST'
-    )
+    const status = await makeGatewayRequest<AuthStatus>('/iserver/auth/status', 'GET')
+    console.log('[IBKR] Manual check:', JSON.stringify(status))
 
     return NextResponse.json({
-      success: true,
+      success: status.authenticated || false,
       authenticated: status.authenticated || false,
+      connected: status.connected || false,
+      competing: status.competing || false,
       message: status.authenticated
-        ? 'Reauthentication successful'
-        : 'Reauthentication sent - check status',
+        ? 'Authenticated'
+        : 'Not authenticated - please login via Gateway',
       loginUrl: gatewayUrl,
     })
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[IBKR] Manual reauthenticate failed:', errorMsg)
+    console.error('[IBKR] Manual check failed:', errorMsg)
 
     return NextResponse.json({
       success: false,
-      message: `Reauthentication failed: ${errorMsg}`,
+      message: `Gateway offline: ${errorMsg}`,
       loginUrl: gatewayUrl,
     })
   }

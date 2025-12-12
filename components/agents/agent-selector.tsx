@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Brain, Target, Shield, Users, ChevronDown, Gift, Zap, Sparkles } from 'lucide-react'
+import { Brain, Target, Shield, Users, ChevronDown, Gift, Zap, Sparkles, Terminal, Crown } from 'lucide-react'
 import { canUseModel } from '@/lib/user-tiers'
 import { IS_PRODUCTION } from '@/lib/utils/environment'
 import { AgentAvatar } from '@/components/shared'
@@ -34,7 +34,7 @@ interface AgentSelectorProps {
   onAgentsChange: (agents: AgentConfig[]) => void
   availableModels: { provider: string; models: string[] }[]
   userTier: 'guest' | 'free' | 'pro' | 'enterprise'
-  globalTier?: 'free' | 'pro' | 'max'  // Optional global tier from header selector
+  globalTier?: 'free' | 'pro' | 'max' | 'sub-pro' | 'sub-max'  // Optional global tier from header selector
 }
 
 // Cost tier styling for inline badge display
@@ -72,9 +72,10 @@ const AGENT_PRESETS = {
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-300 dark:border-green-700',
     roles: {
       // All free models with best AAII scores
-      'analyst-001': { provider: 'google', model: 'gemini-2.5-flash' },        // AAII 1280, A-tier (best free)
+      // NOTE: gemini-2.5-flash removed due to known truncation/JSON bugs
+      'analyst-001': { provider: 'google', model: 'gemini-2.0-flash' },        // AAII 1250 - Most stable free
       'critic-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' },    // AAII 1250, 86% MMLU
-      'judge-001': { provider: 'google', model: 'gemini-2.0-flash' },          // AAII 1250 (good judgment)
+      'judge-001': { provider: 'groq', model: 'llama-3.3-70b-versatile' },     // AAII 1250 (best free for judgment)
       'synthesizer-001': { provider: 'groq', model: 'llama-3.1-8b-instant' }   // AAII 1100 (fast synthesis)
     }
   },
@@ -98,10 +99,37 @@ const AGENT_PRESETS = {
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700',
     roles: {
       // One flagship per provider - highest AAII scores
-      'analyst-001': { provider: 'google', model: 'gemini-3-pro-preview' },       // AAII 1420, #1 LMArena
+      // NOTE: gemini-3-pro-preview removed due to tool call failures and temperature issues
+      'analyst-001': { provider: 'google', model: 'gemini-2.5-pro' },             // AAII 1350, S-tier - Most stable flagship
       'critic-001': { provider: 'openai', model: 'gpt-5-chat-latest' },           // AAII 1380, flagship
       'judge-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' }, // AAII 1320, best reasoning
       'synthesizer-001': { provider: 'xai', model: 'grok-4-0709' }                // AAII 1370, S-tier flagship
+    }
+  },
+  'sub-pro': {
+    label: 'Sub Pro',
+    icon: Terminal,
+    description: 'Subscription CLI models',
+    color: 'bg-cyan-100 hover:bg-cyan-200 text-cyan-700 border-cyan-300 dark:bg-cyan-900/20 dark:hover:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-700',
+    roles: {
+      // Subscription-based CLI models
+      'analyst-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
+      'critic-001': { provider: 'openai', model: 'gpt-5-codex' },
+      'judge-001': { provider: 'google', model: 'gemini-2.5-pro' },
+      'synthesizer-001': { provider: 'xai', model: 'grok-code-fast-1' }
+    }
+  },
+  'sub-max': {
+    label: 'Sub Max',
+    icon: Crown,
+    description: 'Flagship subscription CLI models',
+    color: 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700',
+    roles: {
+      // Top-tier subscription models
+      'analyst-001': { provider: 'anthropic', model: 'claude-opus-4-5-20251124' },
+      'critic-001': { provider: 'openai', model: 'gpt-5.1-codex-max' },
+      'judge-001': { provider: 'google', model: 'gemini-3-pro-preview' },
+      'synthesizer-001': { provider: 'xai', model: 'grok-4-0709' }
     }
   }
 } as const

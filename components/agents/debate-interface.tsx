@@ -25,7 +25,7 @@ import { ShareButtons } from '@/components/conversation/share-buttons'
 import { SaveDecisionButton } from '@/components/decisions'
 import { SavedConversation } from '@/lib/types/conversation'
 import { useAuth } from '@/contexts/auth-context'
-import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles, Gift, HelpCircle, Search } from 'lucide-react'
+import { Send, Loader2, Settings, Users, MessageSquare, DollarSign, AlertTriangle, Zap, Brain, GitCompare, Globe, Sparkles, Gift, HelpCircle, Search, Terminal, Crown } from 'lucide-react'
 import { DebateFlowchart, createDebateSteps, updateStepStatus as updateFlowchartStep, DebateStepProgress, PreDebateQuestions } from '@/components/debate'
 import { useGlobalModelTier } from '@/contexts/trading-preset-context'
 import {
@@ -84,6 +84,30 @@ const AGENT_PRESETS = {
       'analyst-001': { provider: 'google', model: 'gemini-3-pro-preview' },       // AAII 1420, #1 LMArena
       'critic-001': { provider: 'openai', model: 'gpt-5-chat-latest' },           // AAII 1380, flagship
       'synthesizer-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' } // AAII 1320, best reasoning
+    }
+  },
+  'sub-pro': {
+    label: 'Sub Pro',
+    icon: Terminal,
+    description: 'Subscription CLI models',
+    color: 'bg-cyan-100 hover:bg-cyan-200 text-cyan-700 border-cyan-300 dark:bg-cyan-900/20 dark:hover:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-700',
+    roles: {
+      // Subscription-based CLI models
+      'analyst-001': { provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
+      'critic-001': { provider: 'openai', model: 'gpt-5-codex' },
+      'synthesizer-001': { provider: 'google', model: 'gemini-2.5-pro' }
+    }
+  },
+  'sub-max': {
+    label: 'Sub Max',
+    icon: Crown,
+    description: 'Flagship subscription CLI models',
+    color: 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700',
+    roles: {
+      // Top-tier subscription models
+      'analyst-001': { provider: 'anthropic', model: 'claude-opus-4-5-20251124' },
+      'critic-001': { provider: 'openai', model: 'gpt-5.1-codex-max' },
+      'synthesizer-001': { provider: 'google', model: 'gemini-3-pro-preview' }
     }
   }
 } as const

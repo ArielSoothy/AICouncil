@@ -26,6 +26,7 @@ export class GoogleProvider implements AIProvider {
       console.log('Google AI: Attempting query with model:', config.model);
       console.log('Google AI: API key configured:', !!process.env.GOOGLE_GENERATIVE_AI_API_KEY);
       console.log('Google AI: Web search enabled:', config.useWebSearch || false);
+      console.log('Google AI: Seed:', config.seed || 'none (Gemini seed support limited)');
 
       // Build tools object - combine alpaca tools with Google Search if needed
       const tools: Record<string, any> = {};
@@ -58,6 +59,9 @@ export class GoogleProvider implements AIProvider {
         prompt,
         temperature: config.temperature || 0.7,
         maxOutputTokens: config.maxTokens || 1000,
+        // ✅ Reduced top_p to prevent premature stopping and truncation
+        // @see https://discuss.ai.google.dev/t/truncated-response-issue-with-gemini-2-5-flash-preview/81258
+        topP: 0.5,
 
         // ✅ Tool use integration (Alpaca + Google Search)
         tools: hasTools ? tools : undefined,

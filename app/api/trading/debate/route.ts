@@ -15,6 +15,8 @@ import { XAIProvider } from '@/lib/ai-providers/xai';
 import { getModelDisplayName as getModelName, getProviderForModel as getProviderFromConfig } from '@/lib/trading/models-config';
 import { getModelInfo } from '@/lib/models/model-registry';
 import type { TradeDecision } from '@/lib/alpaca/types';
+// Deterministic scoring engine imports
+import { calculateTradingScore, formatTradingScoreForPrompt, hashToSeed, type TradingScore } from '@/lib/trading/scoring-engine';
 
 /**
  * Robust JSON extraction from model responses
@@ -284,6 +286,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Step 2.5: CALCULATE DETERMINISTIC SCORE (before AI analysis)
+    // This score is REPRODUCIBLE - same inputs = same outputs
+    let deterministicScore: TradingScore | null = null;
+    let sharedData: Awaited<ReturnType<typeof fetchSharedTradingData>> | null = null;
+    try {
+      sharedData = await fetchSharedTradingData(targetSymbol);
+      deterministicScore = calculateTradingScore(sharedData, timeframe as TradingTimeframe);
+      console.log(`✅ Deterministic score for ${targetSymbol}: ${deterministicScore.recommendation} (${deterministicScore.weightedScore.toFixed(2)})`);
+    } catch (scoreError) {
+      console.warn(`⚠️ Could not calculate deterministic score: ${scoreError}`);
+      // Continue without deterministic score - AI will still analyze research
+    }
+
     // Step 3: RUN EXHAUSTIVE RESEARCH PIPELINE (4 specialized agents)
     const researchReport = await runResearchAgents(
       targetSymbol,
@@ -292,21 +307,29 @@ export async function POST(request: NextRequest) {
       researchTier as ResearchTier
     );
 
-    // Step 4: Generate trading prompt WITH research findings (no tools needed)
+    // Step 4: Generate trading prompt WITH research findings AND deterministic score
     const date = new Date().toISOString().split('T')[0];
     const researchSection = formatResearchReportForPrompt(researchReport);
+
+    // Format deterministic score for prompt (if available)
+    const scoreSection = deterministicScore
+      ? formatTradingScoreForPrompt(deterministicScore)
+      : '';
+
+    // Use actual shared data if available, otherwise minimal placeholder
+    const dataForPrompt = sharedData || { symbol: targetSymbol, quote: { price: 0 } } as any;
     const baseTradingPrompt = generateEnhancedTradingPromptWithData(
       account,
       positions,
-      { symbol: targetSymbol, quote: { price: 0 } } as any, // Minimal data, research has real data
+      dataForPrompt,
       date,
       timeframe as TradingTimeframe
     );
 
-    // Insert research findings into base prompt
+    // Insert research findings AND deterministic score into base prompt
     const basePrompt = baseTradingPrompt.replace(
       '⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️',
-      `${researchSection}\n\n⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️`
+      `${scoreSection}\n\n${researchSection}\n\n⚠️ DEBATE CONTEXT: The deterministic score recommends ${deterministicScore?.recommendation || 'N/A'}. Your role is to debate this recommendation.\n\n⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️`
     );
 
     // Initialize all AI providers
@@ -323,17 +346,21 @@ export async function POST(request: NextRequest) {
 
     // Round 1: Initial positions
 
+    // Generate seed from deterministic score for reproducibility (OpenAI supports this)
+    const seed = deterministicScore ? hashToSeed(deterministicScore.inputHash) : undefined;
+
     // Analyst (Dynamic model)
     const analystPrompt = `${basePrompt}\n\n${ANALYST_PROMPT}`;
     const analystProvider = getProviderForModel(analystModel, providers);
     const analystResult = await analystProvider.query(analystPrompt, {
       model: analystModel,
       provider: getProviderName(analystModel),
-      temperature: 0.7,
+      temperature: 0.2, // Low temperature for deterministic trading decisions
       maxTokens: 2000, // Sufficient for analyzing research
       enabled: true,
       useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
       maxSteps: 1,
+      seed, // For reproducibility (OpenAI supports this)
     });
     const analystDecision: TradeDecision = JSON.parse(extractJSON(analystResult.response));
     analystDecision.toolsUsed = false; // Analyst didn't use tools (research agents did)
@@ -345,11 +372,12 @@ export async function POST(request: NextRequest) {
     const criticResult = await criticProvider.query(criticPrompt, {
       model: criticModel,
       provider: getProviderName(criticModel),
-      temperature: 0.7,
+      temperature: 0.2, // Low temperature for deterministic trading decisions
       maxTokens: 2000,
       enabled: true,
       useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
       maxSteps: 1,
+      seed, // For reproducibility (OpenAI supports this)
     });
     const criticDecision: TradeDecision = JSON.parse(extractJSON(criticResult.response));
     criticDecision.toolsUsed = false;
@@ -363,11 +391,12 @@ export async function POST(request: NextRequest) {
     const synthesizerResult = await synthesizerProvider.query(synthesizerPrompt, {
       model: synthesizerModel,
       provider: getProviderName(synthesizerModel),
-      temperature: 0.7,
+      temperature: 0.2, // Low temperature for deterministic trading decisions
       maxTokens: 2000,
       enabled: true,
       useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
       maxSteps: 1,
+      seed, // For reproducibility (OpenAI supports this)
     });
     const synthesizerDecision: TradeDecision = JSON.parse(extractJSON(synthesizerResult.response));
     synthesizerDecision.toolsUsed = false;
@@ -396,11 +425,12 @@ export async function POST(request: NextRequest) {
     const analystR2Result = await analystProvider.query(analystR2Prompt, {
       model: analystModel,
       provider: getProviderName(analystModel),
-      temperature: 0.7,
+      temperature: 0.2, // Low temperature for deterministic trading decisions
       maxTokens: 2000,
       enabled: true,
       useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
       maxSteps: 1,
+      seed, // For reproducibility (OpenAI supports this)
     });
     const analystR2Decision: TradeDecision = JSON.parse(extractJSON(analystR2Result.response));
     analystR2Decision.toolsUsed = false;
@@ -415,11 +445,12 @@ export async function POST(request: NextRequest) {
     const criticR2Result = await criticProvider.query(criticR2Prompt, {
       model: criticModel,
       provider: getProviderName(criticModel),
-      temperature: 0.7,
+      temperature: 0.2, // Low temperature for deterministic trading decisions
       maxTokens: 2000,
       enabled: true,
       useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
       maxSteps: 1,
+      seed, // For reproducibility (OpenAI supports this)
     });
     const criticR2Decision: TradeDecision = JSON.parse(extractJSON(criticR2Result.response));
     criticR2Decision.toolsUsed = false;
@@ -434,11 +465,12 @@ export async function POST(request: NextRequest) {
     const synthesizerR2Result = await synthesizerProvider.query(synthesizerR2Prompt, {
       model: synthesizerModel,
       provider: getProviderName(synthesizerModel),
-      temperature: 0.7,
+      temperature: 0.2, // Low temperature for deterministic trading decisions
       maxTokens: 2000,
       enabled: true,
       useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
       maxSteps: 1,
+      seed, // For reproducibility (OpenAI supports this)
     });
     const synthesizerR2Decision: TradeDecision = JSON.parse(extractJSON(synthesizerR2Result.response));
     synthesizerR2Decision.toolsUsed = false;
@@ -462,7 +494,7 @@ export async function POST(request: NextRequest) {
       finalDecision,
     };
 
-    // Return debate results AND research metadata for transparency
+    // Return debate results, deterministic score, AND research metadata
     return NextResponse.json({
       debate,
       research: {
@@ -496,6 +528,21 @@ export async function POST(request: NextRequest) {
           },
         ],
       },
+      deterministicScore: deterministicScore ? {
+        recommendation: deterministicScore.recommendation,
+        weightedScore: deterministicScore.weightedScore,
+        confidence: deterministicScore.confidence,
+        inputHash: deterministicScore.inputHash,
+        technical: deterministicScore.technical.score,
+        fundamental: deterministicScore.fundamental.score,
+        sentiment: deterministicScore.sentiment.score,
+        trend: deterministicScore.trend.score,
+        bullishFactors: deterministicScore.bullishFactors,
+        bearishFactors: deterministicScore.bearishFactors,
+        suggestedStopLoss: deterministicScore.suggestedStopLoss,
+        suggestedTakeProfit: deterministicScore.suggestedTakeProfit,
+        riskRewardRatio: deterministicScore.riskRewardRatio,
+      } : null,
     });
 
   } catch (error) {

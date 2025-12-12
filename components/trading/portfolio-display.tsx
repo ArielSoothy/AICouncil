@@ -76,8 +76,8 @@ export function PortfolioDisplay() {
 
   // Auto-refresh with visibility handling
   useEffect(() => {
-    // Initial fetch
-    fetchPortfolio(true)
+    // Initial fetch - silent (no alert on failure)
+    fetchPortfolio(false)
 
     const startPolling = () => {
       if (intervalRef.current) clearInterval(intervalRef.current)

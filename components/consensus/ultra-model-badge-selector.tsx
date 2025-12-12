@@ -29,6 +29,7 @@ interface UltraModelBadgeSelectorProps {
   onChange: (models: ModelConfig[]) => void
   showPower?: boolean
   showCost?: boolean
+  isSubscriptionMode?: boolean  // When true, show SUB badge instead of cost tier
 }
 
 // Cost tier styling (duplicated here for inline badge styling)
@@ -71,7 +72,8 @@ export function UltraModelBadgeSelector({
   models,
   onChange,
   showPower = true,
-  showCost = true
+  showCost = true,
+  isSubscriptionMode = false
 }: UltraModelBadgeSelectorProps) {
   const [isAddingModel, setIsAddingModel] = useState(false)
 
@@ -146,14 +148,21 @@ export function UltraModelBadgeSelector({
                       {grade}({weight.toFixed(2)})
                     </span>
                   )}
+                  {/* Show SUB badge if in subscription mode, otherwise show cost tier */}
                   {showCost && (
-                    <span className={cn(
-                      'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
-                      costStyle.bg,
-                      costStyle.text
-                    )}>
-                      {costTier}
-                    </span>
+                    isSubscriptionMode ? (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white shadow-sm">
+                        SUB
+                      </span>
+                    ) : (
+                      <span className={cn(
+                        'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
+                        costStyle.bg,
+                        costStyle.text
+                      )}>
+                        {costTier}
+                      </span>
+                    )
                   )}
                   <ChevronDown className="h-3 w-3" />
                 </button>
@@ -170,6 +179,7 @@ export function UltraModelBadgeSelector({
                     selected={model.model === availableModel}
                     showPower={showPower}
                     showCost={showCost}
+                    isSubscriptionMode={isSubscriptionMode}
                     onClick={() => swapModel(index, availableModel)}
                   />
                 ))}

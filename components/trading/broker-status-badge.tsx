@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   AlertTriangle,
   Shield,
@@ -207,13 +207,14 @@ export function BrokerStatusCompact({ className }: { className?: string }) {
 
 // =============================================================================
 // IBKRAuthButton - Simple IBKR authentication (local development only)
-// Clean rebuild with auto phone 2FA detection
+// Original simple pattern restored - just check status and show login button
 // =============================================================================
 
 interface IBKRAuthStatus {
   configured: boolean
   authenticated: boolean
   gatewayRunning: boolean
+  connected?: boolean
   competing?: boolean
   message: string
   loginUrl: string
@@ -227,7 +228,6 @@ interface IBKRAuthButtonProps {
 /**
  * Simple IBKR authentication button for local development.
  * - Polls /api/trading/ibkr-auth every 10 seconds
- * - Auto-detects phone 2FA completion (competing=true)
  * - Shows Gateway status + login button
  * - Hidden on production
  */
@@ -236,8 +236,7 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
   const [loading, setLoading] = useState(true)
   const [prevAuth, setPrevAuth] = useState<boolean | null>(null)
 
-  // Check auth status
-  const checkStatus = async () => {
+  const checkStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/trading/ibkr-auth?t=${Date.now()}`)
       const data: IBKRAuthStatus = await response.json()
@@ -259,30 +258,19 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
     } finally {
       setLoading(false)
     }
-  }
+  }, [prevAuth, onAuthChange])
 
-  // Poll on mount + every 10 seconds
+  // Poll on mount and every 10 seconds
   useEffect(() => {
     checkStatus()
     const interval = setInterval(checkStatus, 10000)
     return () => clearInterval(interval)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [checkStatus])
 
   // Open Gateway login page
   const openLogin = () => {
     if (status?.loginUrl) {
       window.open(status.loginUrl, '_blank', 'noopener,noreferrer')
-    }
-  }
-
-  // Manual reauthenticate (backup)
-  const manualReauth = async () => {
-    setLoading(true)
-    try {
-      await fetch('/api/trading/ibkr-auth', { method: 'POST' })
-      setTimeout(checkStatus, 1000)
-    } catch {
-      console.error('Manual reauthenticate failed')
     }
   }
 
@@ -402,12 +390,12 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
         )}
 
         <button
-          onClick={manualReauth}
-          disabled={loading || !gatewayUp}
+          onClick={checkStatus}
+          disabled={loading}
           className="flex items-center gap-2 px-3 py-2 rounded-lg font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
         >
           <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-          {loading ? 'Checking...' : 'Refresh'}
+          Check Status
         </button>
       </div>
 
@@ -430,8 +418,8 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
           <div className="text-xs text-blue-700 dark:text-blue-300">
             <p className="font-semibold">Authentication Required</p>
             <p>1. Click &quot;Login to Gateway&quot;</p>
-            <p>2. Complete phone 2FA</p>
-            <p>3. Status will auto-update</p>
+            <p>2. Complete login + phone 2FA</p>
+            <p>3. Click &quot;Check Status&quot; to verify</p>
           </div>
         </div>
       )}

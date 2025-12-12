@@ -46,6 +46,7 @@ export function TradingModelSelector({ models, onChange, disabled }: TradingMode
         <UltraModelBadgeSelector
           models={models}
           onChange={onChange}
+          isSubscriptionMode={globalTier === 'sub-pro' || globalTier === 'sub-max'}
         />
       </div>
     </div>

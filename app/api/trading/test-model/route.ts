@@ -36,6 +36,15 @@ Respond ONLY with a valid JSON object in this exact format:
 
 Important: Return ONLY the JSON object, no markdown, no explanation before or after.`;
 
+// Tool test prompt - requires model to use market data tools
+const TOOL_TEST_PROMPT = `You are a trading research assistant with access to market data tools.
+
+Your task:
+1. Use the get_quote tool to get the current price of AAPL
+2. Report the price you found
+
+You MUST call the get_quote tool first before responding. Start by calling get_quote with symbol "AAPL".`;
+
 /**
  * Extract JSON from model response (same as consensus route)
  */
@@ -77,7 +86,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { modelId } = body;
+    const { modelId, testTools = false } = body;
 
     if (!modelId) {
       return NextResponse.json(
@@ -97,7 +106,7 @@ export async function POST(request: NextRequest) {
     const provider = PROVIDERS[providerType];
     const modelName = getModelDisplayName(modelId);
 
-    console.log(`🧪 Testing model: ${modelName} (${modelId})`);
+    console.log(`🧪 Testing model: ${modelName} (${modelId}) - testTools=${testTools}`);
 
     // Check if provider is configured
     if (!provider.isConfigured()) {
@@ -111,15 +120,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Select prompt based on test type
+    const prompt = testTools ? TOOL_TEST_PROMPT : TEST_PROMPT;
+
     // Call the model
-    const result = await provider.query(TEST_PROMPT, {
+    const result = await provider.query(prompt, {
       model: modelId,
       provider: providerType,
       temperature: 0.2,
-      maxTokens: 500,
+      maxTokens: testTools ? 1000 : 500,
       enabled: true,
-      useTools: false,
-      maxSteps: 1,
+      useTools: testTools,  // Enable tools for tool test
+      maxSteps: testTools ? 5 : 1,
     });
 
     // Check for API errors
@@ -135,7 +147,43 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check for empty response
+    // For tool tests, check tool calls instead of JSON response
+    if (testTools) {
+      const toolCalls = result.toolCalls || [];
+      const toolCallCount = toolCalls.length;
+      const toolNames = toolCalls.map((tc: { toolName: string }) => tc.toolName);
+
+      console.log(`🔧 ${modelName} tool test: ${toolCallCount} tools called (${toolNames.join(', ')})`);
+
+      if (toolCallCount === 0) {
+        return NextResponse.json({
+          success: false,
+          modelId,
+          modelName,
+          provider: providerType,
+          error: 'Model did not call any tools (expected at least 1 tool call)',
+          toolCalls: 0,
+          toolNames: [],
+          rawResponse: result.response?.substring(0, 500) || '',
+          responseTime: Date.now() - startTime,
+          tokens: result.tokens,
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        modelId,
+        modelName,
+        provider: providerType,
+        toolCalls: toolCallCount,
+        toolNames,
+        rawResponse: result.response?.substring(0, 500) || '',
+        responseTime: Date.now() - startTime,
+        tokens: result.tokens,
+      });
+    }
+
+    // Check for empty response (JSON tests only)
     if (!result.response || result.response.trim().length === 0) {
       console.log(`❌ ${modelName} returned empty response`);
       return NextResponse.json({

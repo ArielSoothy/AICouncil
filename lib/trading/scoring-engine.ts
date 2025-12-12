@@ -640,6 +640,38 @@ function generateInputHash(data: SharedTradingData, timeframe: TradingTimeframe)
 }
 
 /**
+ * Convert input hash to numeric seed for LLM reproducibility
+ *
+ * OpenAI supports seed parameter (best effort determinism):
+ * "If specified, our system will make a best effort to sample deterministically,
+ * such that repeated requests with the same seed and parameters should return
+ * the same result."
+ *
+ * @param inputHash - The hex hash string from generateInputHash
+ * @returns A positive integer seed value
+ */
+export function hashToSeed(inputHash: string): number {
+  // Convert hex hash to integer, ensure positive and within safe integer range
+  const seed = parseInt(inputHash, 16);
+  return Math.abs(seed) % Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Generate a seed directly from trading inputs
+ * Use this when you need a seed but don't have a TradingScore yet
+ */
+export function generateTradingSeed(symbol: string, timeframe: TradingTimeframe, date: string): number {
+  const inputString = `${symbol}-${timeframe}-${date}`;
+  let hash = 0;
+  for (let i = 0; i < inputString.length; i++) {
+    const char = inputString.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash) % Number.MAX_SAFE_INTEGER;
+}
+
+/**
  * Format trading score for display
  */
 export function formatTradingScoreForPrompt(score: TradingScore): string {

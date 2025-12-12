@@ -188,6 +188,7 @@ export function DebateMode() {
           synthesizerModel,
           timeframe,
           targetSymbol: targetSymbol.trim() || undefined,
+          researchTier: globalTier,  // Pass global tier to control research model
         }),
       })
 

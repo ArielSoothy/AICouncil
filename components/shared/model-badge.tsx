@@ -44,6 +44,7 @@ export interface ModelBadgeProps {
   showInternet?: boolean
   showRemove?: boolean
   showDropdown?: boolean
+  isSubscriptionMode?: boolean  // When true, show SUB badge instead of cost tier
   onClick?: () => void
   onRemove?: () => void
   className?: string
@@ -62,6 +63,7 @@ export function ModelBadge({
   showInternet = false,
   showRemove = false,
   showDropdown = false,
+  isSubscriptionMode = false,
   onClick,
   onRemove,
   className,
@@ -111,15 +113,21 @@ export function ModelBadge({
           </span>
         )}
 
-        {/* Cost Tier */}
+        {/* Cost Tier or SUB badge */}
         {showCost && (
-          <span className={cn(
-            'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
-            costStyle.bg,
-            costStyle.text
-          )}>
-            {costTier}
-          </span>
+          isSubscriptionMode ? (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white shadow-sm">
+              SUB
+            </span>
+          ) : (
+            <span className={cn(
+              'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
+              costStyle.bg,
+              costStyle.text
+            )}>
+              {costTier}
+            </span>
+          )
         )}
 
         {/* Internet Access Indicator */}
@@ -158,6 +166,7 @@ export interface ModelDropdownItemProps {
   selected?: boolean
   showPower?: boolean
   showCost?: boolean
+  isSubscriptionMode?: boolean  // When true, show SUB badge instead of cost tier
   onClick?: () => void
   className?: string
 }
@@ -170,6 +179,7 @@ export function ModelDropdownItem({
   selected = false,
   showPower = true,
   showCost = true,
+  isSubscriptionMode = false,
   onClick,
   className
 }: ModelDropdownItemProps) {
@@ -205,15 +215,21 @@ export function ModelDropdownItem({
           </span>
         )}
 
-        {/* Cost Tier */}
+        {/* Cost Tier or SUB badge */}
         {showCost && (
-          <span className={cn(
-            'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
-            costStyle.bg,
-            costStyle.text
-          )}>
-            {costTier}
-          </span>
+          isSubscriptionMode ? (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white shadow-sm">
+              SUB
+            </span>
+          ) : (
+            <span className={cn(
+              'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
+              costStyle.bg,
+              costStyle.text
+            )}>
+              {costTier}
+            </span>
+          )
         )}
       </span>
     </button>

@@ -47,6 +47,7 @@ const INPUT_MODES: InputModeOption[] = [
 interface InputModeSelectorProps {
   onSymbolSelect: (symbol: string) => void
   onModeChange?: (mode: InputMode) => void
+  onInputChange?: (symbol: string) => void  // Real-time sync on every keystroke
   disabled?: boolean
   initialSymbol?: string
   showPortfolioMode?: boolean
@@ -55,6 +56,7 @@ interface InputModeSelectorProps {
 export function InputModeSelector({
   onSymbolSelect,
   onModeChange,
+  onInputChange,
   disabled = false,
   initialSymbol = '',
   showPortfolioMode = true,
@@ -149,33 +151,27 @@ export function InputModeSelector({
 
       {/* Mode-specific content */}
       <div className="space-y-3">
-        {/* Research Mode - Symbol Input */}
+        {/* Research Mode - Symbol Input (auto-syncs on typing) */}
         {mode === 'research' && (
           <div className="space-y-2">
             <label className="text-sm font-semibold block">
               Stock Symbol
             </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === 'Enter' && handleSymbolSubmit()}
-                placeholder="e.g., AAPL, TSLA, NVDA"
-                disabled={disabled}
-                className="flex-1 px-3 py-2 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-              <Button
-                onClick={handleSymbolSubmit}
-                disabled={disabled || !symbol.trim()}
-                size="sm"
-              >
-                <Search className="w-4 h-4 mr-1" />
-                Analyze
-              </Button>
-            </div>
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => {
+                const value = e.target.value.toUpperCase()
+                setSymbol(value)
+                onInputChange?.(value)  // Real-time sync to parent
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && handleSymbolSubmit()}
+              placeholder="e.g., AAPL, TSLA, NVDA"
+              disabled={disabled}
+              className="w-full px-3 py-2 border rounded-md bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
             <p className="text-xs text-muted-foreground">
-              Enter a US stock ticker to research
+              Type a US stock ticker, then click Get Consensus
             </p>
           </div>
         )}

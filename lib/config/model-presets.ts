@@ -1,4 +1,4 @@
-import { Sparkles, Zap, Gift } from 'lucide-react'
+import { Sparkles, Zap, Gift, Terminal, Crown } from 'lucide-react'
 import { ModelConfig } from '@/types/consensus'
 import { TRADING_MODELS } from '../trading/models-config'
 
@@ -33,8 +33,10 @@ import { TRADING_MODELS } from '../trading/models-config'
  * - free: All free models (no API costs)
  * - pro: Balanced/Budget tier models (good quality-to-cost ratio)
  * - max: Best flagship models (highest quality, higher costs)
+ * - sub-pro: Subscription CLI models (Claude Code, GPT Codex, Gemini - standard tier)
+ * - sub-max: Subscription CLI flagship models (Claude Code Max, GPT Codex Max, Gemini Pro)
  */
-export type PresetTier = 'free' | 'pro' | 'max'
+export type PresetTier = 'free' | 'pro' | 'max' | 'sub-pro' | 'sub-max'
 
 /**
  * Configuration for a multi-model preset
@@ -88,18 +90,24 @@ export interface DebatePresetConfig {
  * - Working providers only: OpenAI, Anthropic, Google, Groq, xAI
  * - NOT WORKING: Perplexity, Mistral, Cohere (no_api_key status)
  *
+ * KNOWN GEMINI ISSUES (December 2025):
+ * - Gemini 2.5 Flash: Known truncation/malformed JSON bug (removed from Free tier)
+ *   @see https://discuss.ai.google.dev/t/truncated-response-issue-with-gemini-2-5-flash-preview/81258
+ * - Gemini 3 Pro: Fails after tool calls, requires temperature=1.0 (replaced with 2.5 Pro in Max)
+ *   @see https://github.com/zed-industries/zed/issues/43024
+ * - Gemini 2.0 Flash: Most stable free option, kept in Free tier
+ *
  * @see lib/model-metadata.ts - MODEL_COSTS_PER_1K, MODEL_BENCHMARKS
  */
 export const PRESET_CONFIGS: Record<PresetTier, PresetConfig> = {
   free: {
     label: 'Free',
     icon: Gift,
-    description: 'Free models only (4 models)',
+    description: 'Free models only (3 models)',
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300',
     modelIds: [
-      // Google FREE - Best free model (AAII 1280, A-tier)
-      'gemini-2.5-flash',
-      // Google FREE - Fallback (AAII 1250, A-tier)
+      // Google FREE - Most stable free option (AAII 1250, A-tier)
+      // NOTE: gemini-2.5-flash removed due to known truncation/JSON bugs
       'gemini-2.0-flash',
       // Groq FREE - Best Groq (AAII 1250, 86% MMLU)
       'llama-3.3-70b-versatile',
@@ -131,15 +139,48 @@ export const PRESET_CONFIGS: Record<PresetTier, PresetConfig> = {
     description: 'One flagship per provider (5 models)',
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
     modelIds: [
-      // Anthropic - Claude 4.5 Sonnet ($0.018/1K, AAII 1320) - Same price as 3.7, newer!
-      'claude-sonnet-4-5-20250929',
+      // Anthropic - Claude 4.5 Opus ($0.09/1K, AAII 1400) - THE flagship model
+      'claude-opus-4-5-20251124',
       // OpenAI - GPT-5 Chat Latest ($0.01125/1K, AAII 1380)
       'gpt-5-chat-latest',
-      // Google - Gemini 3 Pro ($0.014/1K, AAII 1420, #1 on LMArena)
-      'gemini-3-pro-preview',
+      // Google - Gemini 2.5 Pro ($0.01125/1K, AAII 1350, S-tier) - Most stable flagship
+      // NOTE: gemini-3-pro-preview removed due to tool call failures and temperature issues
+      'gemini-2.5-pro',
       // Groq - Their best (FREE, AAII 1250)
       'llama-3.3-70b-versatile',
       // xAI - Grok 4 0709 ($0.018/1K, AAII 1370, S-tier)
+      'grok-4-0709',
+    ]
+  },
+  'sub-pro': {
+    label: 'Sub Pro',
+    icon: Terminal,
+    description: 'Subscription CLI models (4 models)',
+    color: 'bg-cyan-100 hover:bg-cyan-200 text-cyan-700 border-cyan-300',
+    modelIds: [
+      // Claude Code Standard - Claude 4.5 Sonnet
+      'claude-sonnet-4-5-20250929',
+      // OpenAI Codex Standard - GPT-5 Codex
+      'gpt-5-codex',
+      // Google Gemini Subscription - Gemini 2.5 Pro
+      'gemini-2.5-pro',
+      // xAI Grok Code Fast
+      'grok-code-fast-1',
+    ]
+  },
+  'sub-max': {
+    label: 'Sub Max',
+    icon: Crown,
+    description: 'Flagship subscription CLI models (4 models)',
+    color: 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300',
+    modelIds: [
+      // Claude Code Max - Claude 4.5 Opus
+      'claude-opus-4-5-20251124',
+      // OpenAI Codex Max - GPT-5.1 Codex Max
+      'gpt-5.1-codex-max',
+      // Google Flagship - Gemini 3 Pro
+      'gemini-3-pro-preview',
+      // xAI Flagship - Grok 4
       'grok-4-0709',
     ]
   }
@@ -170,9 +211,10 @@ export const DEBATE_PRESETS: Record<PresetTier, DebatePresetConfig> = {
     color: 'bg-green-100 hover:bg-green-200 text-green-700 border-green-300',
     roles: {
       // All free models with best AAII scores
-      analyst: 'gemini-2.5-flash',        // Google FREE (AAII 1280, A-tier) - Best free for analysis
+      // NOTE: gemini-2.5-flash removed due to known truncation/JSON bugs
+      analyst: 'gemini-2.0-flash',        // Google FREE (AAII 1250) - Most stable free option
       critic: 'llama-3.3-70b-versatile',  // Groq FREE (AAII 1250, 86% MMLU) - Best free critic
-      synthesizer: 'gemini-2.0-flash',    // Google FREE (AAII 1250) - Good synthesis
+      synthesizer: 'llama-3.1-8b-instant', // Groq FREE (AAII 1100) - Fast synthesis
     }
   },
   pro: {
@@ -194,9 +236,34 @@ export const DEBATE_PRESETS: Record<PresetTier, DebatePresetConfig> = {
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
     roles: {
       // One flagship per provider - highest AAII scores
-      analyst: 'gemini-3-pro-preview',        // Google ($0.014/1K, AAII 1420, #1 LMArena!) - Best analyst
+      // NOTE: gemini-3-pro-preview removed due to tool call failures and temperature issues
+      analyst: 'gemini-2.5-pro',              // Google ($0.01125/1K, AAII 1350, S-tier) - Most stable flagship
       critic: 'gpt-5-chat-latest',            // OpenAI ($0.01125/1K, AAII 1380) - Strong reasoning
-      synthesizer: 'claude-sonnet-4-5-20250929', // Anthropic ($0.018/1K, AAII 1320) - Best synthesis
+      synthesizer: 'claude-opus-4-5-20251124', // Anthropic ($0.09/1K, AAII 1400) - THE flagship
+    }
+  },
+  'sub-pro': {
+    label: 'Sub Pro',
+    icon: Terminal,
+    description: 'Subscription CLI models',
+    color: 'bg-cyan-100 hover:bg-cyan-200 text-cyan-700 border-cyan-300',
+    roles: {
+      // Subscription-based CLI models for coding analysis
+      analyst: 'claude-sonnet-4-5-20250929',     // Claude Code Standard
+      critic: 'gpt-5-codex',                      // OpenAI Codex Standard
+      synthesizer: 'gemini-2.5-pro',              // Gemini Subscription
+    }
+  },
+  'sub-max': {
+    label: 'Sub Max',
+    icon: Crown,
+    description: 'Flagship subscription CLI models',
+    color: 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300',
+    roles: {
+      // Top-tier subscription models for best coding analysis
+      analyst: 'claude-opus-4-5-20251124',        // Claude Code Max
+      critic: 'gpt-5.1-codex-max',                // OpenAI Codex Max
+      synthesizer: 'gemini-3-pro-preview',        // Gemini 3 Pro
     }
   }
 }
@@ -226,7 +293,6 @@ export function getModelsForPreset(presetKey: PresetTier): ModelConfig[] {
       console.warn(`Model ${modelId} not found in TRADING_MODELS`)
       return null
     }
-
     return {
       provider: tradingModel.provider as any,
       model: modelId,
@@ -281,10 +347,10 @@ export function getDebatePresetConfig(presetKey: PresetTier): DebatePresetConfig
 /**
  * Get all available preset tier keys
  *
- * @returns Array of tier keys: ['free', 'pro', 'max']
+ * @returns Array of tier keys: ['free', 'pro', 'max', 'sub-pro', 'sub-max']
  *
  * Used for iterating over tiers in selector UI
  */
 export function getAllPresetTiers(): PresetTier[] {
-  return ['free', 'pro', 'max']
+  return ['free', 'pro', 'max', 'sub-pro', 'sub-max']
 }

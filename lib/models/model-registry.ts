@@ -49,6 +49,7 @@ export interface ModelInfo {
   badge?: string
   hasInternet?: boolean
   isLegacy?: boolean
+  isSubscription?: boolean  // True for CLI/subscription-only models (Codex, Grok Code)
   // Testing metadata
   status?: 'working' | 'unreleased' | 'no_api_key' | 'rate_limited' |
            'parameter_error' | 'service_error' | 'empty_response' | 'untested' | 'decommissioned'
@@ -131,6 +132,12 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'gpt-5', name: 'GPT-5', provider: 'openai', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     { id: 'gpt-5-mini', name: 'GPT-5 Mini', provider: 'openai', tier: 'balanced', badge: '⚡', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     { id: 'gpt-5-nano', name: 'GPT-5 Nano', provider: 'openai', tier: 'balanced', badge: '⚡', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
+    // GPT-5 Codex Series (Code-optimized, Subscription/CLI models)
+    { id: 'gpt-5-codex', name: 'GPT-5 Codex', provider: 'openai', tier: 'flagship', badge: '🌟', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: 'Code-optimized GPT-5. Available via Responses API. Same price as GPT-5' },
+    { id: 'gpt-5-codex-mini', name: 'GPT-5 Codex Mini', provider: 'openai', tier: 'balanced', badge: '⚡', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: 'Smaller code-optimized model. 4x more usage vs gpt-5-codex' },
+    { id: 'codex-mini-latest', name: 'Codex Mini (Latest)', provider: 'openai', tier: 'balanced', badge: '⚡', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: '$1.50/M input, $6/M output. 75% prompt caching discount' },
+    // GPT-5.1 Codex Max (Flagship subscription model)
+    { id: 'gpt-5.1-codex-max', name: 'GPT-5.1 Codex Max', provider: 'openai', tier: 'flagship', badge: '🌟', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: 'Flagship code model. OpenAI Codex Max/Pro+ subscription. Multi-million token context via compaction' },
     // GPT-4.1 Series
     { id: 'gpt-4.1', name: 'GPT-4.1', provider: 'openai', tier: 'balanced', badge: '⚡', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', provider: 'openai', tier: 'budget', badge: '💰', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
@@ -215,7 +222,7 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     // Grok 2 Series (Deprecated - superseded by Grok 4)
     { id: 'grok-2-image-1212', name: 'Grok 2 Image', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: false, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: 'Text-to-image generation only' },
     // Grok Code (Specialized)
-    { id: 'grok-code-fast-1', name: 'Grok Code Fast', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: '256K context. Optimized for code generation' }
+    { id: 'grok-code-fast-1', name: 'Grok Code Fast', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, isSubscription: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: '256K context. Optimized for code generation. xAI subscription model.' }
   ],
 
   // ===== PERPLEXITY =====
@@ -554,4 +561,12 @@ export function getSelectableModelsByProvider(): Record<Provider, ModelInfo[]> {
 export function isModelSelectable(modelId: string): boolean {
   const model = getModelInfo(modelId)
   return model !== null && model.status === 'working' && !model.isLegacy
+}
+
+/**
+ * Check if a model is a subscription/CLI model (Codex, Grok Code, etc.)
+ */
+export function isSubscriptionModel(modelId: string): boolean {
+  const model = getModelInfo(modelId)
+  return model?.isSubscription ?? false
 }
