@@ -1820,10 +1820,10 @@
 - **Key Features**:
   - **Claude Code CLI**: Shells out to `npx @anthropic-ai/claude-code -p` with stdin for prompts
   - **OpenAI Codex CLI**: Shells out to `/opt/homebrew/bin/codex exec` with stdin for prompts
-  - **Google Gemini CLI**: Uses gcloud OAuth token or falls back to GOOGLE_API_KEY
+  - **Google Gemini CLI**: Shells out to `/opt/homebrew/bin/gemini -o json --approval-mode yolo` with stdin
   - **stdin-based prompts**: Complex trading prompts sent via stdin to avoid shell escaping issues
   - **JSONL parsing**: Robust JSON extraction handles multi-JSON lines and JSON+text combos
-  - **Automatic fallback**: If CLI fails, falls back to API key providers
+  - **NO API FALLBACK**: Sub tiers use ONLY subscription - errors if CLI fails (user explicitly requested)
 - **Architecture Decision (IMPORTANT)**:
   - **Research Phase** = API providers (needs tool calling for 30-40 research tools)
   - **Decision Phase** = CLI providers (subscription-based, no tools needed)
@@ -1832,13 +1832,13 @@
 - **Authentication**:
   - Claude: Requires `claude` CLI authenticated (macOS Keychain)
   - Codex: Requires `codex` CLI authenticated (~/.codex/auth.json)
-  - Google: Requires `gcloud auth login` (falls back to GOOGLE_API_KEY on scope error)
+  - Gemini: Requires `gemini` CLI authenticated (~/.gemini/settings.json with oauth-personal)
 - **Tier Routing**:
   - `sub-pro` tier → Uses CLI providers for decision models
   - `sub-max` tier → Uses CLI providers for decision models
   - Other tiers → Uses standard API key providers
 - **Error Handling**:
-  - Gemini 403 scope error → Automatic fallback to API key
+  - CLI errors → Show clear error message (NO API fallback for sub tiers!)
   - Codex JSON parse error → Robust bracket-counting JSON extraction
   - CLI timeout → 2-3 minute timeout for complex prompts
 - **TypeScript**: 0 errors
