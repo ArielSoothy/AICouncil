@@ -18,11 +18,13 @@
  * - Multi-agent systems perform better with shared data for high-interdependency tasks
  */
 
-import { getDataProvider } from '@/lib/data-providers';
+import { getDataProvider, enhanceWithSecFallback } from '@/lib/data-providers';
 import type { SharedTradingData } from '@/lib/data-providers';
+import type { EnhancedTradingData } from '@/lib/data-providers/data-enhancer';
 
 // Re-export SharedTradingData for backward compatibility
 export type { SharedTradingData };
+export type { EnhancedTradingData };
 
 /**
  * Fetch all market data for a symbol in ONE efficient call
@@ -31,13 +33,19 @@ export type { SharedTradingData };
  * This is now a thin wrapper around the modular data provider system.
  * The actual fetching logic lives in lib/data-providers/ for modularity.
  *
+ * NEW: SEC EDGAR Fallback (December 2025)
+ * - Automatically detects sparse Yahoo Finance data
+ * - Fetches fundamental data from SEC EDGAR (10-K/10-Q filings)
+ * - Merges Yahoo prices + SEC fundamentals for complete data
+ * - Especially useful for obscure small-cap stocks like RLMD
+ *
  * To switch providers, set environment variable:
  * - DATA_PROVIDER=yahoo  (default, free)
  * - DATA_PROVIDER=alpaca (requires API keys)
  * - DATA_PROVIDER=ibkr   (requires IB account)
  *
  * @param symbol - Stock ticker symbol (e.g., "TSLA", "AAPL")
- * @returns Complete market data package
+ * @returns Complete market data package (enhanced with SEC data if Yahoo is sparse)
  */
 export async function fetchSharedTradingData(symbol: string): Promise<SharedTradingData> {
   try {
@@ -45,9 +53,13 @@ export async function fetchSharedTradingData(symbol: string): Promise<SharedTrad
     const provider = getDataProvider();
 
     // Fetch all data from provider
-    const data = await provider.fetchMarketData(symbol);
+    const yahooData = await provider.fetchMarketData(symbol);
 
-    return data;
+    // Enhance with SEC EDGAR fallback for obscure stocks
+    // This automatically detects sparse data and fetches SEC fundamentals
+    const enhancedData = await enhanceWithSecFallback(yahooData);
+
+    return enhancedData;
   } catch (error) {
     console.error(`❌ Error fetching trading data for ${symbol.toUpperCase()}:`, error);
     throw error;
@@ -164,6 +176,8 @@ DO NOT rely on:
 - General market knowledge
 
 YOU MUST gather REAL-TIME data by calling:
+
+MARKET DATA TOOLS (Alpaca):
 - get_stock_quote() for current price action
 - get_price_bars() for trend analysis
 - calculate_rsi() for momentum indicators
@@ -173,8 +187,16 @@ YOU MUST gather REAL-TIME data by calling:
 - get_volume_profile() for volume confirmation
 - check_earnings_date() for upcoming events
 
+SEC EDGAR TOOLS (Fundamental data - especially for obscure stocks):
+- get_10k_data() for annual report financials (revenue, net income, assets, liabilities)
+- get_company_filings() for recent SEC filings (10-K, 10-Q, 8-K material events)
+- get_rnd_spending() for R&D analysis (critical for biotech/pharma)
+
 🎯 RESEARCH STANDARD:
 Minimum 4-5 tool calls expected for thoroughness. Quality over speed - take time to research properly.
 Every decision impacts real money. No shortcuts allowed.
+
+💡 TIP FOR OBSCURE STOCKS: If Yahoo Finance data seems sparse (missing P/E, EPS, etc.),
+use the SEC EDGAR tools to get comprehensive fundamental data from official SEC filings.
 `;
 }

@@ -53,6 +53,26 @@ export { BaseDataProvider } from './base-provider';
 export { YahooFinanceProvider } from './yahoo-finance-provider';
 // export { AlpacaProvider } from './alpaca-provider'; // TODO: Implement
 
+// SEC EDGAR provider (for obscure stocks with sparse Yahoo data)
+export { secEdgarProvider, SecEdgarProvider, cikMapper } from './sec-edgar';
+
+// Data enhancement with SEC EDGAR fallback
+export {
+  enhanceWithSecFallback,
+  isSecFallbackAvailable,
+  getSecCompanyInfo,
+  type EnhancedTradingData,
+} from './data-enhancer';
+
+// Sparse data detection
+export {
+  detectSparseData,
+  isDataTooSparse,
+  isFundamentalDataSparse,
+  shouldTriggerSecFallback,
+  getSparseDataSummary,
+} from './sparse-data-detector';
+
 // Factory functions (most commonly used)
 export {
   getDataProvider,

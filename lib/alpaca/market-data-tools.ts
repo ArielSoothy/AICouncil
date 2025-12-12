@@ -1,7 +1,9 @@
 /**
  * Alpaca Market Data Tools for AI Trading Research
  *
- * Provides 8 trading tools that AI models can use to research stocks:
+ * Provides 11 trading tools that AI models can use to research stocks:
+ *
+ * Alpaca Tools (Real-time market data):
  * 1. get_stock_quote - Real-time price data
  * 2. get_price_bars - Historical candlestick data
  * 3. get_stock_news - Latest news articles
@@ -10,11 +12,17 @@
  * 6. get_volume_profile - Volume analysis
  * 7. get_support_resistance - Key price levels
  * 8. check_earnings_date - Upcoming earnings
+ *
+ * SEC EDGAR Tools (Fundamental data - especially for obscure stocks):
+ * 9. get_10k_data - Annual report financials
+ * 10. get_company_filings - Recent SEC filings
+ * 11. get_rnd_spending - R&D spending analysis (biotech/pharma)
  */
 
 import Alpaca from '@alpacahq/alpaca-trade-api';
 import { tool, Tool } from 'ai';
 import { z } from 'zod';
+import { secEdgarTools } from './sec-edgar-tools';
 
 // TypeScript workaround for AI SDK v5 deep type inference with Zod
 // The AI SDK v5 has extremely complex type inference that causes TypeScript to exceed
@@ -562,8 +570,13 @@ export const checkEarningsDateTool: AnyTool = createTool({
 
 /**
  * Export all tools as a tools object for Vercel AI SDK
+ *
+ * Includes:
+ * - 8 Alpaca market data tools (real-time prices, technicals)
+ * - 3 SEC EDGAR tools (fundamentals for obscure stocks)
  */
 export const alpacaTools = {
+  // Alpaca tools (real-time market data)
   get_stock_quote: getStockQuoteTool,
   get_price_bars: getPriceBarsTool,
   get_stock_news: getStockNewsTool,
@@ -572,6 +585,9 @@ export const alpacaTools = {
   get_volume_profile: getVolumeProfileTool,
   get_support_resistance: getSupportResistanceTool,
   check_earnings_date: checkEarningsDateTool,
+
+  // SEC EDGAR tools (fundamental data for obscure stocks)
+  ...secEdgarTools,
 };
 
 /**
