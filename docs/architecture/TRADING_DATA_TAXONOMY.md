@@ -299,14 +299,14 @@ REMAINING TASKS (Updated December 12, 2025):
 ✅ LLM seed parameter - IMPLEMENTED in openai.ts, google.ts
 ✅ Audit trail logging system - FILE EXISTS (lib/trading/audit-logger.ts)
 ✅ Research backend - ALL 3 modes run runResearchAgents() and inject into prompts
-⏳ Research UI for Individual Mode - ResearchActivityPanel not added
-⏳ Research UI for Debate Mode - ResearchActivityPanel not added
+✅ Research UI for Individual Mode - COMPLETE (Dec 12, 2025)
+✅ Research UI for Debate Mode - COMPLETE (Dec 12, 2025)
+✅ API research format fixed - agents[] → direct props in all routes
 ⏳ AuditLogger integration - File exists but not called from routes
 
-NEXT PRIORITY: Add ResearchActivityPanel to Individual & Debate modes
-- Component exists: components/trading/research-activity-panel.tsx
-- Already working in Consensus Mode
-- Just need to import and render in individual-mode.tsx and debate-mode.tsx
+NEXT PRIORITY: Integrate AuditLogger into trading routes
+- File exists: lib/trading/audit-logger.ts
+- Need to call from consensus/stream, individual, and debate routes
 ```
 
 ---
@@ -320,8 +320,8 @@ NEXT PRIORITY: Add ResearchActivityPanel to Individual & Debate modes
 | Research Agents | ✅ WORKING | All 3 routes call `runResearchAgents()` |
 | Research in Prompts | ✅ WORKING | All 3 routes inject `researchSection` |
 | Research UI (Consensus) | ✅ WORKING | `ResearchActivityPanel` renders |
-| Research UI (Individual) | ⏳ TODO | Component exists, not imported |
-| Research UI (Debate) | ⏳ TODO | Component exists, not imported |
+| Research UI (Individual) | ✅ COMPLETE | ResearchActivityPanel added (Dec 12, 2025) |
+| Research UI (Debate) | ✅ COMPLETE | ResearchActivityPanel added (Dec 12, 2025) |
 | LLM Seed | ✅ IMPLEMENTED | `openai.ts:40`, `google.ts:29` |
 | Audit Logger | ⏳ FILE EXISTS | `lib/trading/audit-logger.ts` not integrated |
 
