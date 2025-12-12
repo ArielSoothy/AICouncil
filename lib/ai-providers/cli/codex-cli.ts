@@ -88,6 +88,12 @@ interface CodexEvent {
     content?: string;
     role?: string;
   };
+  // Codex JSONL format: {"type":"item.completed","item":{"type":"agent_message","text":"..."}}
+  item?: {
+    id?: string;
+    type?: string;
+    text?: string;
+  };
   text?: string;
   [key: string]: unknown;
 }
@@ -220,18 +226,28 @@ export class CodexCLIProvider implements AIProvider {
         }
 
         for (const event of events) {
-          // Look for assistant messages in the event stream
+          // Codex JSONL format:
+          // {"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"4"}}
+
+          // Look for agent_message in item.completed events
+          if (event.type === 'item.completed' && event.item) {
+            if (event.item.type === 'agent_message' && event.item.text) {
+              lastAssistantMessage = event.item.text;
+            }
+          }
+
+          // Legacy format: Look for assistant messages
           if (event.type === 'message' && event.message?.role === 'assistant') {
             lastAssistantMessage = event.message.content || '';
           }
 
-          // Also check for text output
+          // Also check for direct text output
           if (event.text) {
             responseText += event.text;
           }
 
           // Check for final message type
-          if (event.type === 'agent_complete' || event.type === 'done') {
+          if (event.type === 'agent_complete' || event.type === 'done' || event.type === 'turn.completed') {
             // Use whatever text we've accumulated
             if (!responseText && lastAssistantMessage) {
               responseText = lastAssistantMessage;
