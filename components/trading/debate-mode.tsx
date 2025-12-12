@@ -14,6 +14,8 @@ import { useTradingPreset } from '@/contexts/trading-preset-context'
 import { getDebateRolesForPreset, DEBATE_PRESETS, getDebatePresetConfig } from '@/lib/config/model-presets'
 import { TradeCard, type TradeRecommendation } from './trade-card'
 import { InputModeSelector, type InputMode } from './input-mode-selector'
+import { ResearchActivityPanel } from './research-activity-panel'
+import { ResearchReport } from '@/lib/agents/research-agents'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -63,6 +65,8 @@ export function DebateMode() {
   const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper'>('paper')
   const [showTradeCard, setShowTradeCard] = useState(true)
   const [inputMode, setInputMode] = useState<InputMode>('research')
+  const [researchData, setResearchData] = useState<ResearchReport | null>(null)
+  const [researchLoading, setResearchLoading] = useState(false)
 
   // Model selection for each debate role (initialized with Pro preset)
   const [analystModel, setAnalystModel] = useState(() => getDebateRolesForPreset('pro').analyst)
@@ -135,6 +139,8 @@ export function DebateMode() {
     setProgressSteps([])
     setTradeRecommendation(null)
     setShowTradeCard(true)
+    setResearchData(null)
+    setResearchLoading(false)
     // Remove URL parameter
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
@@ -149,6 +155,8 @@ export function DebateMode() {
     setActiveRound(1)
     setTranscriptMessages([])
     setProgressSteps([])
+    setResearchData(null)
+    setResearchLoading(true)
 
     // Show initial progress
     const initialSteps: ReasoningStep[] = [
@@ -223,6 +231,12 @@ export function DebateMode() {
       ])
 
       setDebate(data.debate)
+
+      // Capture research data for ResearchActivityPanel
+      if (data.research) {
+        setResearchData(data.research as ResearchReport)
+      }
+      setResearchLoading(false)
 
       // Create trade recommendation from final decision
       if (data.debate?.finalDecision) {
@@ -309,6 +323,7 @@ export function DebateMode() {
       alert(error instanceof Error ? error.message : 'Failed to start trading debate')
     } finally {
       setLoading(false)
+      setResearchLoading(false)
     }
   }
 
@@ -430,6 +445,14 @@ export function DebateMode() {
           isStreaming={true}
           title="Debate Progress"
           modelName="Trading System"
+        />
+      )}
+
+      {/* Research Activity Panel - Shows 4 specialized research agents */}
+      {(researchData || researchLoading) && (
+        <ResearchActivityPanel
+          research={researchData}
+          isLoading={researchLoading}
         />
       )}
 

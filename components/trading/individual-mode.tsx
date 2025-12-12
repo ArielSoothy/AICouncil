@@ -14,6 +14,8 @@ import { useTradingPreset } from '@/contexts/trading-preset-context'
 import { getModelsForPreset } from '@/lib/config/model-presets'
 import { TradeCard, type TradeRecommendation } from './trade-card'
 import { InputModeSelector, type InputMode } from './input-mode-selector'
+import { ResearchActivityPanel } from './research-activity-panel'
+import { ResearchReport } from '@/lib/agents/research-agents'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -59,6 +61,8 @@ export function IndividualMode() {
   const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper'>('paper')
   const [showTradeCard, setShowTradeCard] = useState(true)
   const [inputMode, setInputMode] = useState<InputMode>('research')
+  const [researchData, setResearchData] = useState<ResearchReport | null>(null)
+  const [researchLoading, setResearchLoading] = useState(false)
 
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
@@ -152,6 +156,8 @@ export function IndividualMode() {
     setContextSteps([])
     setShowTradeCard(true)
     setProgressSteps([])
+    setResearchData(null)
+    setResearchLoading(false)
     // Remove URL parameter
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
@@ -166,6 +172,8 @@ export function IndividualMode() {
     setContext(null)
     setContextSteps([])
     setProgressSteps([])
+    setResearchData(null)
+    setResearchLoading(true)
 
     // Extract enabled model IDs for API
     const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
@@ -226,6 +234,12 @@ export function IndividualMode() {
 
       setDecisions(data.decisions)
 
+      // Capture research data for ResearchActivityPanel
+      if (data.research) {
+        setResearchData(data.research as ResearchReport)
+      }
+      setResearchLoading(false)
+
       // Set context and create reasoning steps for transparency
       if (data.context) {
         setContext(data.context)
@@ -277,6 +291,7 @@ export function IndividualMode() {
       alert(error instanceof Error ? error.message : 'Failed to get trading decisions')
     } finally {
       setLoading(false)
+      setResearchLoading(false)
     }
   }
 
@@ -380,6 +395,14 @@ export function IndividualMode() {
             />
           )}
         </div>
+      )}
+
+      {/* Research Activity Panel - Shows 4 specialized research agents */}
+      {(researchData || researchLoading) && (
+        <ResearchActivityPanel
+          research={researchData}
+          isLoading={researchLoading}
+        />
       )}
 
       {/* Results */}

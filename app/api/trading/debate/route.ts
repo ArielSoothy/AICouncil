@@ -498,35 +498,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       debate,
       research: {
-        // Research metadata for UI display
+        // Research data for UI display - direct properties (not agents[] array)
         totalToolCalls: researchReport.totalToolCalls,
         researchDuration: researchReport.researchDuration,
-        agents: [
-          {
-            role: 'technical',
-            model: researchReport.technical.model,
-            toolsUsed: researchReport.technical.toolCallCount,
-            tools: researchReport.technical.toolNames,
-          },
-          {
-            role: 'fundamental',
-            model: researchReport.fundamental.model,
-            toolsUsed: researchReport.fundamental.toolCallCount,
-            tools: researchReport.fundamental.toolNames,
-          },
-          {
-            role: 'sentiment',
-            model: researchReport.sentiment.model,
-            toolsUsed: researchReport.sentiment.toolCallCount,
-            tools: researchReport.sentiment.toolNames,
-          },
-          {
-            role: 'risk',
-            model: researchReport.risk.model,
-            toolsUsed: researchReport.risk.toolCallCount,
-            tools: researchReport.risk.toolNames,
-          },
-        ],
+        symbol: researchReport.symbol,
+        timestamp: researchReport.timestamp,
+        // Direct agent properties for ResearchActivityPanel
+        technical: researchReport.technical,
+        fundamental: researchReport.fundamental,
+        sentiment: researchReport.sentiment,
+        risk: researchReport.risk,
       },
       deterministicScore: deterministicScore ? {
         recommendation: deterministicScore.recommendation,
