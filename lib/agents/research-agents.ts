@@ -20,6 +20,9 @@ import { GroqProvider } from '@/lib/ai-providers/groq';
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
 import { GoogleProvider } from '@/lib/ai-providers/google';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
+// Note: CLI providers (ClaudeCLIProvider, CodexCLIProvider, GoogleCLIProvider)
+// are NOT used here - research agents need tool calling which CLI doesn't support.
+// CLI providers are used in consensus route for final model queries instead.
 import { AlpacaAccount } from '@/lib/alpaca/types';
 import { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { ModelResponse } from '@/types/consensus';
@@ -36,12 +39,15 @@ import type { ResearchProgressEvent } from '@/types/research-progress';
 /**
  * Research Model Tier Configuration
  *
- * Different tiers use different models for research agents:
- * - Free: Groq Llama 3.3 70B (free, good tool calling)
- * - Pro: Claude 3.5 Sonnet (balanced cost/quality)
- * - Max: Claude 3.7 Sonnet (best quality)
+ * ALL tiers use Claude 4.5 Sonnet for research agents (December 2025)
+ * - Best tool calling reliability across all tiers
+ * - Consistent quality for market research
+ * - Claude Code optimized for structured analysis
+ *
+ * Note: Tier differences are in decision models, not research models
+ * Sub-max uses Opus 4.5 for flagship subscription users
  */
-export type ResearchTier = 'free' | 'pro' | 'max';
+export type ResearchTier = 'free' | 'pro' | 'max' | 'sub-pro' | 'sub-max';
 
 interface TierModelConfig {
   model: string;
@@ -51,27 +57,59 @@ interface TierModelConfig {
 
 const RESEARCH_TIER_MODELS: Record<ResearchTier, TierModelConfig> = {
   free: {
-    model: 'llama-3.3-70b-versatile',
-    provider: 'groq',
-    displayName: 'Llama 3.3 70B',
+    // Claude 4.5 Sonnet - consistent research quality across ALL tiers
+    // December 2025: Standardized to Sonnet 4.5 for reliable tool calling
+    model: 'claude-sonnet-4-5-20250929',
+    provider: 'anthropic',
+    displayName: 'Claude 4.5 Sonnet',
   },
   pro: {
-    model: 'claude-3-5-sonnet-20241022',
+    // Claude 4.5 Sonnet - consistent research quality across ALL tiers
+    model: 'claude-sonnet-4-5-20250929',
     provider: 'anthropic',
-    displayName: 'Claude 3.5 Sonnet',
+    displayName: 'Claude 4.5 Sonnet',
   },
   max: {
-    model: 'claude-3-7-sonnet-20250219',
+    // Claude 4.5 Sonnet - consistent research quality across ALL tiers
+    model: 'claude-sonnet-4-5-20250929',
     provider: 'anthropic',
-    displayName: 'Claude 3.7 Sonnet',
+    displayName: 'Claude 4.5 Sonnet',
+  },
+  'sub-pro': {
+    // Claude 4.5 Sonnet - Sub Pro tier for subscription CLI users
+    model: 'claude-sonnet-4-5-20250929',
+    provider: 'anthropic',
+    displayName: 'Claude 4.5 Sonnet',
+  },
+  'sub-max': {
+    // Claude 4.5 Opus - Sub Max tier for flagship subscription CLI users
+    model: 'claude-opus-4-5-20251124',
+    provider: 'anthropic',
+    displayName: 'Claude 4.5 Opus',
   },
 };
 
 /**
- * Get the appropriate AI provider based on tier
+ * Get the appropriate AI provider for RESEARCH agents
+ *
+ * IMPORTANT: Research agents ALWAYS use API providers (not CLI)
+ * because they require tool calling for market data research.
+ * CLI providers don't support tool calling.
+ *
+ * CLI providers are used in the CONSENSUS route for final model
+ * analysis, which doesn't require tools.
+ *
+ * All tiers use API key providers for research:
+ *   - Research needs 30-40 tool calls for market data
+ *   - Claude 4.5 Sonnet has best tool calling reliability
  */
 function getProviderForTier(tier: ResearchTier) {
   const config = RESEARCH_TIER_MODELS[tier];
+
+  // ALL TIERS: Use API providers for research (NEEDS TOOL CALLING)
+  // Note: CLI providers (ClaudeCLIProvider, CodexCLIProvider, GoogleCLIProvider)
+  // are used in consensus route for final model queries, not here.
+  console.log(`🔧 Research agents using API provider for tier: ${tier} (tools required)`);
   switch (config.provider) {
     case 'groq':
       return new GroqProvider();
@@ -168,6 +206,8 @@ export async function runTechnicalResearch(
 
     const provider = getProviderForTier(tier);
 
+    console.log(`🔬 Technical Analyst calling ${modelConfig.provider} with useTools=true`);
+
     const result: ModelResponse = await provider.query(prompt, {
       model: modelConfig.model,
       provider: modelConfig.provider,
@@ -181,6 +221,8 @@ export async function runTechnicalResearch(
     const responseTime = Date.now() - startTime;
     const toolCalls = result.toolCalls || [];
 
+    // DEBUG: Log what we got back
+    console.log(`🔬 Technical Analyst RESULT: toolCalls=${JSON.stringify(toolCalls?.length)}, error=${result.error}, responseLen=${result.response?.length}`);
     console.log(
       `✅ Technical Analyst complete: ${toolCalls.length} tools used in ${responseTime}ms`
     );

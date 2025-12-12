@@ -1769,5 +1769,81 @@
 - **Last Modified**: December 11, 2025
 - **DO NOT**: Change test prompt format (models are trained on it), remove error details from response
 
+### 51. Real-Time Research Progress Visibility (SSE Streaming)
+- **Status**: ✅ ACTIVE & IMPLEMENTED
+- **Location**:
+  - UI Panel: `components/trading/research-progress-panel.tsx`
+  - SSE Endpoint: `app/api/trading/consensus/stream/route.ts`
+  - Integration: `components/trading/consensus-mode.tsx`
+  - Types: `types/research-progress.ts`
+- **Purpose**: Show real-time visibility into which tools/research is being conducted during trading analysis
+- **Key Features**:
+  - **3-Phase Progress Display**: Shows Phase 1 (Research Agents), Phase 2 (Decision Models), Phase 3 (Judge Consensus)
+  - **4 Research Agent Cards**: Technical Analyst, Fundamental Analyst, Sentiment Analyst, Risk Manager
+  - **Real-Time Tool Calls**: Shows tool call counts updating as agents work
+  - **Agent Status Indicators**: pending → running → complete with duration and token usage
+  - **Decision Model Results**: Shows BUY/SELL/HOLD with confidence % for each model
+  - **Judge Consensus Phase**: Shows final weighted consensus being calculated
+  - **Always Visible**: Panel shows automatically during analysis (no expand/collapse needed)
+- **SSE Event Types**:
+  - `phase_start` - New phase begins (1, 2, or 3)
+  - `agent_start` / `agent_complete` - Research agent lifecycle
+  - `tool_call` - Individual tool invocation
+  - `decision_start` / `decision_complete` - Model decision lifecycle
+  - `judge_start` / `judge_complete` - Judge consensus lifecycle
+  - `final_result` - Complete analysis results
+- **Implementation Details**:
+  - Uses `useRef<ResearchProgressPanelHandle>` for event forwarding
+  - `processEvent()` method exposed via `useImperativeHandle`
+  - SSE parsing with `ReadableStream` reader and buffer handling
+  - `isStreaming` state controls panel visibility
+- **Architecture**:
+  - Replaces POST to `/api/trading/consensus` with POST to `/api/trading/consensus/stream`
+  - Real-time updates via Server-Sent Events (SSE)
+  - Final results populate consensus/decisions/research state
+- **Dependencies**:
+  - `ResearchProgressPanel` component (513 lines)
+  - `ResearchActivityPanel` shows after completion (summary view)
+- **TypeScript**: 0 errors
+- **Last Modified**: December 11, 2025
+- **DO NOT**: Remove SSE streaming, hide progress panel during analysis, change event types without updating panel
+
+### 52. CLI Subscription Providers (Sub Pro/Max Tiers)
+- **Status**: ✅ ACTIVE & IMPLEMENTED
+- **Location**:
+  - Claude CLI: `lib/ai-providers/cli/claude-cli.ts`
+  - Codex CLI: `lib/ai-providers/cli/codex-cli.ts`
+  - Google CLI: `lib/ai-providers/cli/google-cli.ts`
+  - Index: `lib/ai-providers/cli/index.ts`
+  - Integration: `app/api/trading/consensus/stream/route.ts`
+- **Purpose**: Use user's existing AI subscriptions (Claude Pro/Max, ChatGPT Plus/Pro, Gemini Advanced) instead of API keys for Sub Pro/Max tiers
+- **Key Features**:
+  - **Claude Code CLI**: Shells out to `npx @anthropic-ai/claude-code -p` with stdin for prompts
+  - **OpenAI Codex CLI**: Shells out to `/opt/homebrew/bin/codex exec` with stdin for prompts
+  - **Google Gemini CLI**: Uses gcloud OAuth token or falls back to GOOGLE_API_KEY
+  - **stdin-based prompts**: Complex trading prompts sent via stdin to avoid shell escaping issues
+  - **JSONL parsing**: Robust JSON extraction handles multi-JSON lines and JSON+text combos
+  - **Automatic fallback**: If CLI fails, falls back to API key providers
+- **Architecture Decision (IMPORTANT)**:
+  - **Research Phase** = API providers (needs tool calling for 30-40 research tools)
+  - **Decision Phase** = CLI providers (subscription-based, no tools needed)
+  - CLI providers DON'T support custom tools (get_stock_quote, calculate_rsi, etc.)
+  - Built-in CLI tools (WebFetch, Read, Grep) work but custom trading tools don't
+- **Authentication**:
+  - Claude: Requires `claude` CLI authenticated (macOS Keychain)
+  - Codex: Requires `codex` CLI authenticated (~/.codex/auth.json)
+  - Google: Requires `gcloud auth login` (falls back to GOOGLE_API_KEY on scope error)
+- **Tier Routing**:
+  - `sub-pro` tier → Uses CLI providers for decision models
+  - `sub-max` tier → Uses CLI providers for decision models
+  - Other tiers → Uses standard API key providers
+- **Error Handling**:
+  - Gemini 403 scope error → Automatic fallback to API key
+  - Codex JSON parse error → Robust bracket-counting JSON extraction
+  - CLI timeout → 2-3 minute timeout for complex prompts
+- **TypeScript**: 0 errors
+- **Last Modified**: December 12, 2025
+- **DO NOT**: Remove stdin-based prompt handling (breaks on complex prompts), bypass CLI for sub tiers, change research to use CLI (needs tools)
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**

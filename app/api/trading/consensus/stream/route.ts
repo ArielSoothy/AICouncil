@@ -29,6 +29,8 @@ import { MistralProvider } from '@/lib/ai-providers/mistral';
 import { PerplexityProvider } from '@/lib/ai-providers/perplexity';
 import { CohereProvider } from '@/lib/ai-providers/cohere';
 import { XAIProvider } from '@/lib/ai-providers/xai';
+// CLI-based providers for subscription mode (Sub Pro/Max) - for FINAL MODEL QUERIES only
+import { ClaudeCLIProvider, CodexCLIProvider, GoogleCLIProvider } from '@/lib/ai-providers/cli';
 import { ResearchCache } from '@/lib/trading/research-cache';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -84,7 +86,7 @@ function extractJSON(text: string): string {
   }
 }
 
-// Initialize all providers
+// Initialize all providers - API key based
 const PROVIDERS = {
   anthropic: new AnthropicProvider(),
   openai: new OpenAIProvider(),
@@ -95,6 +97,45 @@ const PROVIDERS = {
   cohere: new CohereProvider(),
   xai: new XAIProvider(),
 };
+
+// CLI-based providers for subscription tiers (Sub Pro/Max)
+// These use local CLI tools with user's subscription credentials
+const CLI_PROVIDERS = {
+  anthropic: new ClaudeCLIProvider(),   // Uses Claude Pro/Max subscription
+  openai: new CodexCLIProvider(),       // Uses ChatGPT Plus/Pro subscription
+  google: new GoogleCLIProvider(),      // Uses Gemini Advanced subscription
+};
+
+/**
+ * Get the appropriate provider based on model and tier
+ *
+ * SUB TIERS (sub-pro, sub-max):
+ *   Use CLI providers for anthropic/openai/google models
+ *   (leverages user's subscription instead of API keys)
+ *
+ * REGULAR TIERS (free, pro, max):
+ *   Use API key providers (standard billing)
+ */
+function getProviderForModelAndTier(
+  providerType: string,
+  tier: string
+) {
+  const useSubscription = tier === 'sub-pro' || tier === 'sub-max';
+
+  // For sub tiers, use CLI providers where available
+  if (useSubscription) {
+    const cliProvider = CLI_PROVIDERS[providerType as keyof typeof CLI_PROVIDERS];
+    if (cliProvider) {
+      console.log(`🔑 Using CLI SUBSCRIPTION provider for ${providerType} (${tier} tier)`);
+      return cliProvider;
+    }
+    // Fall back to API provider if no CLI provider for this type
+    console.log(`⚠️ No CLI provider for ${providerType}, falling back to API`);
+  }
+
+  // Use regular API providers
+  return PROVIDERS[providerType as keyof typeof PROVIDERS];
+}
 
 // extractJSON and repairJSON functions now imported from @/lib/utils/json-repair
 
@@ -143,15 +184,18 @@ export async function POST(request: NextRequest) {
           const symbol = normalizedSymbol || (positions.length > 0 ? positions[0].symbol : 'AAPL');
 
           // PHASE 1: RESEARCH (with caching)
+          // Include researchTier in cache key so different tiers don't share cache
+          const cacheSymbol = `${symbol}-${researchTier}`; // e.g., "TEAD-free" vs "TEAD-pro"
+
           sendEvent({
             type: 'phase_start',
             phase: 1,
-            message: `Starting exhaustive research for ${symbol}`,
+            message: `Starting exhaustive research for ${symbol} (${researchTier} tier)`,
             timestamp: Date.now()
           });
 
-          // Check cache first
-          let researchReport = await researchCache.get(symbol, timeframe);
+          // Check cache first (tier-aware)
+          let researchReport = await researchCache.get(cacheSymbol, timeframe);
 
           if (researchReport) {
             // Cache hit! Skip research and use cached data
@@ -213,8 +257,8 @@ export async function POST(request: NextRequest) {
               onProgress  // Pass callback to stream progress
             );
 
-            // Cache the results for next time
-            await researchCache.set(symbol, timeframe, researchReport);
+            // Cache the results for next time (tier-aware key)
+            await researchCache.set(cacheSymbol, timeframe, researchReport);
           }
 
           // PHASE 2: DECISION MODELS
@@ -226,13 +270,20 @@ export async function POST(request: NextRequest) {
           });
 
           // Get decisions from selected models
+          // researchTier determines whether to use CLI (subscription) or API providers
           const decisionsPromises = selectedModels.map(async (modelId: string) => {
             const modelName = getModelDisplayName(modelId);
             const providerType = getProviderType(modelId);
 
             try {
-              if (!providerType || !PROVIDERS[providerType as keyof typeof PROVIDERS]) {
+              if (!providerType) {
                 throw new Error(`Unknown model or provider: ${modelId}`);
+              }
+
+              // Get provider based on tier - CLI for sub-pro/sub-max, API for others
+              const provider = getProviderForModelAndTier(providerType, researchTier);
+              if (!provider) {
+                throw new Error(`No provider available for: ${providerType}`);
               }
 
               // Send decision start event
@@ -244,7 +295,6 @@ export async function POST(request: NextRequest) {
               });
 
               const decisionStartTime = Date.now();
-              const provider = PROVIDERS[providerType as keyof typeof PROVIDERS];
 
               // Generate prompt with research data
               const prompt = generateEnhancedTradingPrompt(
