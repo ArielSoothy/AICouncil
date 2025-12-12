@@ -22,6 +22,7 @@
 import Alpaca from '@alpacahq/alpaca-trade-api';
 import { tool, Tool } from 'ai';
 import { z } from 'zod';
+import { faker } from '@faker-js/faker';
 import { secEdgarTools } from './sec-edgar-tools';
 
 // TypeScript workaround for AI SDK v5 deep type inference with Zod
@@ -44,6 +45,8 @@ function getAlpacaClient(): Alpaca {
   });
 }
 
+import { get_stock_quote as fake_get_stock_quote } from '../trading/get_stock_quote';
+
 /**
  * Tool 1: Get Real-Time Stock Quote
  * Returns current price, bid/ask, volume
@@ -55,15 +58,13 @@ export const getStockQuoteTool: AnyTool = createTool({
   }),
   execute: async ({ symbol }: { symbol: string }) => {
     try {
-      const alpaca = getAlpacaClient();
-      const trade = await alpaca.getLatestTrade(symbol.toUpperCase());
-
+      const quote = fake_get_stock_quote(symbol.toUpperCase());
       return {
         symbol: symbol.toUpperCase(),
-        price: trade.Price,
-        timestamp: trade.Timestamp,
-        size: trade.Size,
-        exchange: trade.Exchange,
+        price: quote.price,
+        timestamp: new Date().toISOString(),
+        size: faker.number.int({ min: 100, max: 1000 }),
+        exchange: quote.exchange,
         success: true
       };
     } catch (error) {
