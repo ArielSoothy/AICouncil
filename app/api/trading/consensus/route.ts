@@ -18,7 +18,7 @@ import type { TradeDecision } from '@/lib/alpaca/types';
 import { generateTradingJudgePrompt, parseTradingJudgeResponse } from '@/lib/trading/judge-system';
 // Deterministic scoring engine imports
 import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
-import { calculateTradingScore, formatTradingScoreForPrompt, hashToSeed, type TradingScore } from '@/lib/trading/scoring-engine';
+import { calculateTradingScore, formatTradingScoreForPrompt, type TradingScore } from '@/lib/trading/scoring-engine';
 
 // Initialize all providers
 const PROVIDERS = {
@@ -275,9 +275,6 @@ export async function POST(request: NextRequest) {
         const provider = PROVIDERS[providerType];
         const modelName = getModelDisplayName(modelId);
 
-        // Generate seed from deterministic score for reproducibility (OpenAI supports this)
-        const seed = deterministicScore ? hashToSeed(deterministicScore.inputHash) : undefined;
-
         const result = await provider.query(prompt, {
           model: modelId,
           provider: providerType,
@@ -286,7 +283,6 @@ export async function POST(request: NextRequest) {
           enabled: true,
           useTools: false, // ❌ NO TOOLS - decision models analyze research, don't conduct it
           maxSteps: 1,
-          seed, // For reproducibility (OpenAI supports this)
         });
 
         // ✅ Check for error response BEFORE parsing
