@@ -403,6 +403,7 @@ export function DebateMode() {
                   setTargetSymbol(symbol)
                 }
               }}
+              onInputChange={(symbol) => setTargetSymbol(symbol)}
               onModeChange={setInputMode}
               disabled={loading}
               initialSymbol={targetSymbol}

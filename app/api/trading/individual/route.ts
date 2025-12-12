@@ -159,36 +159,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 1: Get broker account info and positions
-    const broker = getActiveBroker();
-    const [brokerAccount, brokerPositions] = await Promise.all([
-      broker.getAccount(),
-      broker.getPositions(),
-    ]);
+    // Step 1: Get broker account info and positions (graceful fallback if broker unavailable)
+    let account;
+    let positions: Array<{ symbol: string; qty: string; side: string; market_value: string; cost_basis: string; unrealized_pl: string; unrealized_plpc: string; current_price: string; avg_entry_price: string }> = [];
 
-    // Map to legacy format for compatibility with existing prompts
-    const account = {
-      id: brokerAccount.id,
-      account_number: brokerAccount.accountNumber,
-      status: brokerAccount.status,
-      currency: brokerAccount.currency,
-      portfolio_value: String(brokerAccount.portfolioValue),
-      buying_power: String(brokerAccount.buyingPower),
-      cash: String(brokerAccount.cash),
-      equity: String(brokerAccount.equity),
-      last_equity: String(brokerAccount.lastEquity),
-    };
-    const positions = brokerPositions.map(pos => ({
-      symbol: pos.symbol,
-      qty: String(pos.quantity),
-      side: pos.side,
-      market_value: String(pos.marketValue),
-      cost_basis: String(pos.avgEntryPrice * pos.quantity),
-      unrealized_pl: String(pos.unrealizedPL),
-      unrealized_plpc: String(pos.unrealizedPLPercent),
-      current_price: String(pos.currentPrice),
-      avg_entry_price: String(pos.avgEntryPrice),
-    }));
+    try {
+      const broker = getActiveBroker();
+      const [brokerAccount, brokerPositions] = await Promise.all([
+        broker.getAccount(),
+        broker.getPositions(),
+      ]);
+
+      // Map to legacy format for compatibility with existing prompts
+      account = {
+        id: brokerAccount.id,
+        account_number: brokerAccount.accountNumber,
+        status: brokerAccount.status,
+        currency: brokerAccount.currency,
+        portfolio_value: String(brokerAccount.portfolioValue),
+        buying_power: String(brokerAccount.buyingPower),
+        cash: String(brokerAccount.cash),
+        equity: String(brokerAccount.equity),
+        last_equity: String(brokerAccount.lastEquity),
+      };
+      positions = brokerPositions.map(pos => ({
+        symbol: pos.symbol,
+        qty: String(pos.quantity),
+        side: pos.side,
+        market_value: String(pos.marketValue),
+        cost_basis: String(pos.avgEntryPrice * pos.quantity),
+        unrealized_pl: String(pos.unrealizedPL),
+        unrealized_plpc: String(pos.unrealizedPLPercent),
+        current_price: String(pos.currentPrice),
+        avg_entry_price: String(pos.avgEntryPrice),
+      }));
+    } catch (brokerError) {
+      // Graceful fallback - research can proceed without live broker data
+      console.warn(`⚠️ Broker unavailable, using fallback data: ${brokerError}`);
+      account = {
+        id: 'fallback',
+        account_number: 'N/A',
+        status: 'ACTIVE',
+        currency: 'USD',
+        portfolio_value: '100000',
+        buying_power: '100000',
+        cash: '100000',
+        equity: '100000',
+        last_equity: '100000',
+      };
+      // positions already initialized as empty array
+    }
 
     // Step 2: Validate target symbol (required for research)
     if (!targetSymbol) {

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     if (cookieBrokerId && ['alpaca', 'ibkr'].includes(cookieBrokerId)) {
       brokerId = cookieBrokerId as 'alpaca' | 'ibkr';
     } else {
-      // Default based on environment: Local = IBKR, Production = Alpaca
+      // Default: Local → IBKR, Production → Alpaca (original intended behavior)
       brokerId = isProduction ? 'alpaca' : 'ibkr';
     }
 

@@ -331,6 +331,7 @@ export function IndividualMode() {
                 setTargetSymbol(symbol)
               }
             }}
+            onInputChange={(symbol) => setTargetSymbol(symbol)}
             onModeChange={setInputMode}
             disabled={loading}
             initialSymbol={targetSymbol}
