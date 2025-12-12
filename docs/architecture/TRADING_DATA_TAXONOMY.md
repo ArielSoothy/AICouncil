@@ -295,18 +295,45 @@ FILES MODIFIED:
 - app/api/trading/individual/route.ts - Deterministic score + temp 0.2
 - app/api/trading/debate/route.ts - Deterministic score + temp 0.2
 
-REMAINING TASKS:
-⏳ Visual research progress component (live tool usage display)
-⏳ LLM seed parameter for reproducibility
-⏳ Audit trail logging system
+REMAINING TASKS (Updated December 12, 2025):
+✅ LLM seed parameter - IMPLEMENTED in openai.ts, google.ts
+✅ Audit trail logging system - FILE EXISTS (lib/trading/audit-logger.ts)
+✅ Research backend - ALL 3 modes run runResearchAgents() and inject into prompts
+⏳ Research UI for Individual Mode - ResearchActivityPanel not added
+⏳ Research UI for Debate Mode - ResearchActivityPanel not added
+⏳ AuditLogger integration - File exists but not called from routes
 
-NEXT PRIORITY: Create visual research progress UI component
-- Show tools being used in real-time (expandable)
-- Compact cards for each research agent
-- Display tool names and findings as they complete
+NEXT PRIORITY: Add ResearchActivityPanel to Individual & Debate modes
+- Component exists: components/trading/research-activity-panel.tsx
+- Already working in Consensus Mode
+- Just need to import and render in individual-mode.tsx and debate-mode.tsx
 ```
 
 ---
 
-**Last Updated**: December 11, 2025
+## VERIFICATION LOG (December 12, 2025)
+
+### Research System Status - VERIFIED WORKING
+
+| Component | Status | Evidence |
+|-----------|--------|----------|
+| Research Agents | ✅ WORKING | All 3 routes call `runResearchAgents()` |
+| Research in Prompts | ✅ WORKING | All 3 routes inject `researchSection` |
+| Research UI (Consensus) | ✅ WORKING | `ResearchActivityPanel` renders |
+| Research UI (Individual) | ⏳ TODO | Component exists, not imported |
+| Research UI (Debate) | ⏳ TODO | Component exists, not imported |
+| LLM Seed | ✅ IMPLEMENTED | `openai.ts:40`, `google.ts:29` |
+| Audit Logger | ⏳ FILE EXISTS | `lib/trading/audit-logger.ts` not integrated |
+
+### CLI Subscription Providers - COMPLETE (December 12, 2025)
+
+| Provider | CLI Tool | Status |
+|----------|----------|--------|
+| Claude | `npx @anthropic-ai/claude-code` | ✅ Working (stdin) |
+| Codex/GPT | `/opt/homebrew/bin/codex` | ✅ Working (no -m flag) |
+| Gemini | `/opt/homebrew/bin/gemini` | ✅ Working (oauth-personal) |
+
+---
+
+**Last Updated**: December 12, 2025
 **Maintainer**: Ariel Soothy
