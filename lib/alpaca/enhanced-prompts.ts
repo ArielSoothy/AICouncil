@@ -143,6 +143,26 @@ YOU HAVE ACCESS TO REAL-TIME MARKET DATA TOOLS. USE THEM BEFORE MAKING DECISIONS
    - Example: check_earnings_date("NFLX") → Next earnings date
    - Use for: Avoiding/trading earnings catalysts
 
+🏛️ SEC EDGAR TOOLS (For Obscure Stocks with Sparse Yahoo Data):
+
+9. get_10k_data(symbol: string)
+   - Fetch comprehensive annual report fundamentals from SEC EDGAR (FREE, all US companies)
+   - Example: get_10k_data("RLMD") → Revenue, Net Income, Assets, Cash, R&D, EPS
+   - Use for: Obscure stocks, biotech, small-cap companies with sparse Yahoo data
+
+10. get_company_filings(symbol: string, limit: number)
+    - Get list of recent SEC filings (10-K, 10-Q, 8-K material events)
+    - Example: get_company_filings("RLMD", 5) → Recent filing dates and types
+    - Use for: Understanding reporting cadence and material events
+
+11. get_rnd_spending(symbol: string)
+    - Get R&D spending details (critical for biotech/pharma companies)
+    - Example: get_rnd_spending("RLMD") → R&D expense, R&D as % of revenue
+    - Use for: Evaluating innovation investment in tech/pharma companies
+
+💡 TIP: For obscure stocks like RLMD, PRST, or small-cap biotech where Yahoo data is sparse,
+use SEC EDGAR tools (get_10k_data, get_company_filings) to get official fundamental data.
+
 📋 RESEARCH GUIDELINES:
 - ⚠️ CRITICAL: ALWAYS use tools to research stocks BEFORE making trading decisions
 - ⚠️ MANDATORY: You MUST include actual data from tool results in your response
@@ -693,8 +713,8 @@ const RESEARCH_AGENT_CONFIGS: Record<ResearchAgentRole, ResearchAgentConfig> = {
     title: 'Fundamental Analyst',
     specialty: 'fundamental analysis',
     peerAgents: ['Technical Analyst', 'Sentiment Analyst', 'Risk Manager'],
-    minTools: 4,
-    maxTools: 6,
+    minTools: 5,
+    maxTools: 9,
     primaryTool: 'check_earnings_date',
     tools: [
       {
@@ -717,9 +737,30 @@ const RESEARCH_AGENT_CONFIGS: Record<ResearchAgentRole, ResearchAgentConfig> = {
         purpose: 'Current market valuation (price)',
         whenToUse: 'Connect news to current valuation',
         insight: 'Is current price justified by fundamentals?'
+      },
+      {
+        name: 'get_10k_data',
+        params: 'symbol',
+        purpose: 'Fetch annual report fundamentals from SEC EDGAR (FREE, all US companies)',
+        whenToUse: 'For obscure stocks with sparse Yahoo data - SEC has ALL US companies',
+        insight: 'Revenue, Net Income, Total Assets, Cash, R&D, EPS from official 10-K filings'
+      },
+      {
+        name: 'get_company_filings',
+        params: 'symbol, limit',
+        purpose: 'Get recent SEC filings list (10-K, 10-Q, 8-K material events)',
+        whenToUse: 'To check for material events and regulatory filings',
+        insight: 'Filing dates, types, accession numbers for deeper research'
+      },
+      {
+        name: 'get_rnd_spending',
+        params: 'symbol',
+        purpose: 'Get R&D spending analysis (critical for biotech/pharma)',
+        whenToUse: 'For tech/biotech companies where R&D is key value driver',
+        insight: 'R&D expense absolute and as percentage of revenue'
       }
     ],
-    keyInsights: ['earnings outlook', 'revenue growth', 'competitive position', 'valuation assessment'],
+    keyInsights: ['earnings outlook', 'revenue growth', 'competitive position', 'valuation assessment', 'SEC filings'],
     outputFields: [
       { key: 'earningsDate', description: 'Next earnings date and proximity warning' },
       { key: 'recentEarnings', description: 'Latest earnings performance (beat/miss/in-line)' },
@@ -776,7 +817,7 @@ const RESEARCH_AGENT_CONFIGS: Record<ResearchAgentRole, ResearchAgentConfig> = {
     specialty: 'risk assessment',
     peerAgents: ['Technical Analyst', 'Fundamental Analyst', 'Sentiment Analyst'],
     minTools: 6,
-    maxTools: 10,
+    maxTools: 12,
     primaryTool: 'get_support_resistance',
     tools: [
       {
@@ -827,9 +868,23 @@ const RESEARCH_AGENT_CONFIGS: Record<ResearchAgentRole, ResearchAgentConfig> = {
         purpose: 'Current price for position sizing',
         whenToUse: 'Calculate exact share quantity',
         insight: 'Position size calculation based on stop-loss distance'
+      },
+      {
+        name: 'get_10k_data',
+        params: 'symbol',
+        purpose: 'Get fundamental health for risk assessment (SEC EDGAR)',
+        whenToUse: 'For obscure stocks - verify company financial stability',
+        insight: 'Cash position, debt levels, burn rate for risk context'
+      },
+      {
+        name: 'get_company_filings',
+        params: 'symbol, limit',
+        purpose: 'Check for material events and SEC filings',
+        whenToUse: 'Identify regulatory or material event risks',
+        insight: '8-K filings may reveal risks not yet in news'
       }
     ],
-    keyInsights: ['stop-loss level', 'position size', 'risk:reward ratio', 'timing risk', 'event risk'],
+    keyInsights: ['stop-loss level', 'position size', 'risk:reward ratio', 'timing risk', 'event risk', 'fundamental risk'],
     outputFields: [
       { key: 'recommendedStopLoss', description: 'Stop-loss price based on support + volatility' },
       { key: 'recommendedTakeProfit', description: 'Take-profit price based on resistance' },
