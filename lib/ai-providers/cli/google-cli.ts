@@ -1,29 +1,25 @@
 /**
- * Google Gemini CLI Provider - Uses Gemini subscription via OAuth
+ * Google Gemini CLI Provider - Uses Gemini Advanced subscription via CLI
  *
- * This provider uses Google OAuth authentication to access Gemini
- * with the user's Gemini Advanced subscription.
+ * This provider shells out to the Gemini CLI which uses
+ * the user's Gemini Advanced subscription credentials.
  *
  * Requirements:
- * - Google Cloud SDK installed (`gcloud`)
- * - User authenticated (`gcloud auth login` with Gemini Advanced account)
- * - OR Google API credentials in environment
+ * - Gemini CLI installed (`brew install gemini`)
+ * - User authenticated with Gemini Advanced subscription
+ *   (configured in ~/.gemini/settings.json with "selectedType": "oauth-personal")
  *
- * Usage: For Sub Pro/Max tiers that want to use Gemini subscription
+ * Usage: For Sub Pro/Max tiers that want to use subscription instead of API keys
  *
- * Note: Unlike Claude Code and Codex which have dedicated subscription CLIs,
- * Gemini Advanced requires OAuth token authentication through the API.
- * We use `gcloud auth print-access-token` to get OAuth tokens.
+ * IMPORTANT: This provider does NOT fall back to API keys.
+ * User explicitly requested subscription-only mode for sub tiers.
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import { ModelResponse, ModelConfig } from '@/types/consensus';
 import { AIProvider } from '../types';
 
-const execAsync = promisify(exec);
-
-// Models available via Gemini (subscription)
+// Models available via Gemini CLI (subscription)
 const GEMINI_CLI_MODELS = [
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
@@ -31,45 +27,97 @@ const GEMINI_CLI_MODELS = [
   'gemini-1.5-flash',
 ];
 
-// Gemini API endpoint for OAuth-based access
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+/**
+ * Run Gemini CLI with prompt via stdin (avoids shell escaping issues)
+ * Returns a promise with stdout/stderr
+ */
+function runGeminiCliWithStdin(
+  prompt: string,
+  model: string
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-o', 'json',              // JSON output format
+      '--approval-mode', 'yolo', // Non-interactive (auto-approve all actions)
+    ];
+
+    if (model) {
+      args.push('-m', model);
+    }
+
+    const child = spawn('/opt/homebrew/bin/gemini', args, {
+      shell: '/bin/zsh',
+      timeout: 180000,  // 3 minute timeout for complex queries
+      env: { ...process.env },
+      cwd: process.cwd(),
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('error', (error) => {
+      reject(error);
+    });
+
+    child.on('close', (code) => {
+      if (code !== 0 && !stdout) {
+        reject(new Error(stderr || `Process exited with code ${code}`));
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+
+    // Write prompt to stdin and close it
+    child.stdin.write(prompt);
+    child.stdin.end();
+  });
+}
+
+interface GeminiEvent {
+  type?: string;
+  message?: {
+    content?: string;
+    role?: string;
+  };
+  text?: string;
+  result?: string;
+  [key: string]: unknown;
+}
 
 export class GoogleCLIProvider implements AIProvider {
   name = 'Gemini (Subscription)';
   models = GEMINI_CLI_MODELS;
 
   /**
-   * Check if Google OAuth is available
+   * Check if Gemini CLI is available and authenticated
    */
   isConfigured(): boolean {
     try {
-      // Check if gcloud command exists
+      // Check if gemini command exists at homebrew path
       const { execSync } = require('child_process');
-      execSync('which gcloud', { encoding: 'utf-8', stdio: 'pipe' });
+      execSync('/opt/homebrew/bin/gemini --version', {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        timeout: 10000,
+        shell: '/bin/zsh',
+      });
       return true;
     } catch {
-      // Fall back to checking for API key
-      return !!process.env.GOOGLE_API_KEY;
+      return false;
     }
   }
 
   /**
-   * Get OAuth access token from gcloud
-   */
-  private async getOAuthToken(): Promise<string | null> {
-    try {
-      const { stdout } = await execAsync('gcloud auth print-access-token', {
-        encoding: 'utf-8',
-        timeout: 10000,
-      });
-      return stdout.trim();
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Query Gemini via OAuth or API key
+   * Query Gemini via CLI using subscription
+   * NOTE: Does NOT fall back to API key - subscription only!
    */
   async query(
     prompt: string,
@@ -78,89 +126,62 @@ export class GoogleCLIProvider implements AIProvider {
     const startTime = Date.now();
 
     try {
-      console.log(`🔵 Gemini (Subscription): Querying ${config.model}...`);
+      console.log(`🔵 Gemini CLI (Subscription): Querying ${config.model}...`);
+      console.log(`🔵 Gemini CLI: Using stdin for prompt (${prompt.length} chars)`);
 
-      // Try OAuth first, fall back to API key
-      const oauthToken = await this.getOAuthToken();
-      const apiKey = process.env.GOOGLE_API_KEY;
-
-      if (!oauthToken && !apiKey) {
-        throw new Error(
-          'Google authentication not configured. Run `gcloud auth login` or set GOOGLE_API_KEY.'
-        );
-      }
-
-      // Build request
-      const model = config.model || 'gemini-2.0-flash';
-      const url = `${GEMINI_API_URL}/${model}:generateContent`;
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-
-      // Use OAuth if available (subscription), otherwise API key
-      if (oauthToken) {
-        headers['Authorization'] = `Bearer ${oauthToken}`;
-        console.log(`🔵 Using OAuth token (Gemini Advanced subscription)`);
-      } else {
-        // API key goes in query string
-        console.log(`🔵 Using API key (pay-as-you-go)`);
-      }
-
-      const requestUrl = oauthToken ? url : `${url}?key=${apiKey}`;
-
-      const body = JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: config.temperature || 0.7,
-          maxOutputTokens: config.maxTokens || 1000,
-        },
-      });
-
-      // Make API request
-      let response = await fetch(requestUrl, {
-        method: 'POST',
-        headers,
-        body,
-      });
-
-      // If OAuth fails with scope error, fall back to API key
-      if (!response.ok && oauthToken && apiKey) {
-        const errorText = await response.text();
-        if (response.status === 403 && errorText.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT')) {
-          console.log(`⚠️ OAuth scope insufficient, falling back to API key`);
-          // Retry with API key instead
-          const apiKeyUrl = `${url}?key=${apiKey}`;
-          const apiKeyHeaders = { 'Content-Type': 'application/json' };
-          response = await fetch(apiKeyUrl, {
-            method: 'POST',
-            headers: apiKeyHeaders,
-            body,
-          });
-        }
-      }
+      // Use stdin-based execution to avoid shell escaping issues with complex prompts
+      const { stdout, stderr } = await runGeminiCliWithStdin(prompt, config.model);
 
       const responseTime = Date.now() - startTime;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+      if (stderr && !stdout) {
+        console.error('❌ Gemini CLI stderr:', stderr);
+        throw new Error(stderr);
       }
 
-      const data = await response.json();
+      // Parse JSON output - Gemini CLI can return JSON or JSONL
+      let responseText = '';
 
-      // Extract text from Gemini response
-      const responseText =
-        data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      // Try to parse as single JSON first
+      try {
+        const data = JSON.parse(stdout);
+        responseText = data.result || data.text || data.message?.content || '';
+      } catch {
+        // If not single JSON, try JSONL (multiple JSON objects)
+        const lines = stdout.trim().split('\n').filter(Boolean);
+        let lastMessage = '';
 
-      console.log(`✅ Gemini (Subscription): Response received in ${responseTime}ms`);
-      console.log(
-        `   Response length: ${responseText.length} chars ${oauthToken ? '(subscription - no charge)' : '(API key - pay-per-use)'}`
-      );
+        for (const line of lines) {
+          try {
+            const event: GeminiEvent = JSON.parse(line);
+
+            // Look for text/result in various formats
+            if (event.result) {
+              responseText = event.result;
+            } else if (event.text) {
+              responseText += event.text;
+            } else if (event.message?.content) {
+              lastMessage = event.message.content;
+            }
+          } catch {
+            // If line isn't valid JSON, might be plain text output
+            responseText += line + '\n';
+          }
+        }
+
+        // Fallback to last message if no text accumulated
+        if (!responseText && lastMessage) {
+          responseText = lastMessage;
+        }
+
+        // Final fallback - use entire stdout
+        if (!responseText) {
+          responseText = stdout.trim();
+        }
+      }
+
+      console.log(`✅ Gemini CLI (Subscription): Response received in ${responseTime}ms`);
+      console.log(`   Response length: ${responseText.length} chars (subscription - no charge)`);
 
       return {
         id: `gemini-cli-${Date.now()}`,
@@ -170,13 +191,10 @@ export class GoogleCLIProvider implements AIProvider {
         confidence: this.calculateConfidence(responseText),
         responseTime,
         tokens: {
-          prompt: data.usageMetadata?.promptTokenCount || Math.ceil(prompt.length / 4),
-          completion:
-            data.usageMetadata?.candidatesTokenCount ||
-            Math.ceil(responseText.length / 4),
-          total:
-            data.usageMetadata?.totalTokenCount ||
-            Math.ceil((prompt.length + responseText.length) / 4),
+          // CLI doesn't provide exact token counts, estimate based on text
+          prompt: Math.ceil(prompt.length / 4),
+          completion: Math.ceil(responseText.length / 4),
+          total: Math.ceil((prompt.length + responseText.length) / 4),
         },
         timestamp: new Date(),
         toolCalls: undefined,
@@ -185,7 +203,7 @@ export class GoogleCLIProvider implements AIProvider {
       const responseTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-      console.error('❌ Gemini error:', errorMessage);
+      console.error('❌ Gemini CLI error:', errorMessage);
 
       return {
         id: `gemini-cli-error-${Date.now()}`,
@@ -196,7 +214,7 @@ export class GoogleCLIProvider implements AIProvider {
         responseTime,
         tokens: { prompt: 0, completion: 0, total: 0 },
         timestamp: new Date(),
-        error: `Gemini Error: ${errorMessage}`,
+        error: `Gemini CLI Error: ${errorMessage}. Make sure 'gemini' CLI is installed and authenticated with your Gemini Advanced subscription.`,
       };
     }
   }
