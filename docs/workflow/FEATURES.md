@@ -1845,5 +1845,40 @@
 - **Last Modified**: December 12, 2025
 - **DO NOT**: Remove stdin-based prompt handling (breaks on complex prompts), bypass CLI for sub tiers, change research to use CLI (needs tools)
 
+### 53. SEC EDGAR Integration for Obscure Stocks
+- **Status**: ✅ ACTIVE & CRITICAL - Data coverage for ALL US public companies
+- **Location**:
+  - `lib/data-providers/sec-edgar/` - SEC EDGAR module (types, cik-mapper, xbrl-parser, provider)
+  - `lib/data-providers/sparse-data-detector.ts` - Detect when Yahoo data is insufficient
+  - `lib/data-providers/data-enhancer.ts` - Merge Yahoo + SEC data
+  - `lib/alpaca/sec-edgar-tools.ts` - 3 new research tools
+  - `lib/alpaca/enhanced-prompts.ts` - SEC tools added to prompts (lines 146-164, 741-761, 872-885)
+- **Purpose**: Provide fundamental data for obscure stocks (biotech, small-cap) where Yahoo Finance has sparse data
+- **Key Components**:
+  - **CIK Mapper** (`cik-mapper.ts`): Maps ticker symbols to SEC CIK numbers (10,200+ tickers cached 24h)
+  - **XBRL Parser** (`xbrl-parser.ts`): Parses SEC Company Facts API for structured financial data
+  - **SEC EDGAR Provider** (`sec-edgar-provider.ts`): Fetches 10-K/10-Q data from SEC (FREE, no API key)
+  - **Sparse Data Detector**: Scores Yahoo data completeness (0-100%), triggers fallback at <80%
+  - **Data Enhancer**: Merges Yahoo prices with SEC fundamentals for complete data
+  - **Research Agent Tools**: `get_10k_data`, `get_company_filings`, `get_rnd_spending`
+- **API Endpoints** (100% FREE, no auth required):
+  - Company Facts: `https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json`
+  - Submissions: `https://data.sec.gov/submissions/CIK{cik}.json`
+  - Ticker Map: `https://www.sec.gov/files/company_tickers.json`
+- **Rate Limit**: 10 requests/second (SEC fair use policy)
+- **User-Agent Required**: `AICouncil/1.0 (contact@aicouncil.app)`
+- **Example RLMD Data** (obscure biotech):
+  - Revenue: $13,070 (pre-revenue biotech)
+  - Net Income: -$79.98M
+  - R&D Spending: $46.18M (high - typical biotech)
+  - EPS: -2.65
+- **Problem Solved**: Models like Sonnet/GPT were saying "Unable to evaluate RLMD" because:
+  1. Yahoo Finance had sparse data (15% completeness)
+  2. SEC EDGAR tools weren't listed in research prompts
+  3. Now prompts include SEC tools → Models use them → Real data for ALL US companies
+- **TypeScript**: 0 errors
+- **Last Modified**: December 12, 2025
+- **DO NOT**: Remove SEC tools from prompts, disable sparse data detection, remove User-Agent header (SEC requirement)
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
