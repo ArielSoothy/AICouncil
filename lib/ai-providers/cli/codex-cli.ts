@@ -9,6 +9,10 @@
  * - User authenticated with ChatGPT subscription (`codex login`)
  *
  * Usage: For Sub Pro/Max tiers that want to use subscription instead of API keys
+ *
+ * IMPORTANT: ChatGPT subscription mode does NOT support specifying models!
+ * The CLI uses its own default model (usually o4-mini or similar).
+ * Do NOT pass -m flag when using ChatGPT subscription.
  */
 
 import { spawn } from 'child_process';
@@ -16,15 +20,10 @@ import { ModelResponse, ModelConfig } from '@/types/consensus';
 import { AIProvider } from '../types';
 
 // Models available via Codex CLI (ChatGPT subscription)
+// NOTE: ChatGPT subscription uses default model only - cannot specify!
+// These are listed for reference but -m flag is NOT used
 const CODEX_CLI_MODELS = [
-  'gpt-5',
-  'gpt-5-turbo',
-  'gpt-4.1',
-  'gpt-4o',
-  'o3',
-  'o3-mini',
-  'o1',
-  'o1-mini',
+  'codex-default',  // ChatGPT subscription uses default model
 ];
 
 /**
@@ -42,9 +41,10 @@ function runCodexCliWithStdin(
       '--skip-git-repo-check',
     ];
 
-    if (model) {
-      args.push('-m', model);
-    }
+    // NOTE: Do NOT pass -m flag with ChatGPT subscription!
+    // ChatGPT subscription mode uses default model only.
+    // Passing specific models like gpt-4o causes:
+    // "The 'gpt-4o' model is not supported when using Codex with a ChatGPT account."
 
     const child = spawn('/opt/homebrew/bin/codex', args, {
       shell: '/bin/zsh',

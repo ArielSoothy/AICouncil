@@ -145,7 +145,8 @@ export class GoogleCLIProvider implements AIProvider {
       // Try to parse as single JSON first
       try {
         const data = JSON.parse(stdout);
-        responseText = data.result || data.text || data.message?.content || '';
+        // Gemini CLI returns { "response": "...", "stats": {...} }
+        responseText = data.response || data.result || data.text || data.message?.content || '';
       } catch {
         // If not single JSON, try JSONL (multiple JSON objects)
         const lines = stdout.trim().split('\n').filter(Boolean);
