@@ -471,6 +471,7 @@ export async function POST(request: NextRequest) {
           });
 
           // FINAL: Send complete results
+          // Research data sent as direct properties (UI expects research.technical, not research.agents[])
           sendEvent({
             type: 'final_result',
             consensus,
@@ -478,12 +479,10 @@ export async function POST(request: NextRequest) {
             research: {
               totalToolCalls: researchReport.totalToolCalls,
               researchDuration: researchReport.researchDuration,
-              agents: [
-                { role: 'technical', ...researchReport.technical },
-                { role: 'fundamental', ...researchReport.fundamental },
-                { role: 'sentiment', ...researchReport.sentiment },
-                { role: 'risk', ...researchReport.risk },
-              ]
+              technical: researchReport.technical,
+              fundamental: researchReport.fundamental,
+              sentiment: researchReport.sentiment,
+              risk: researchReport.risk,
             },
             timestamp: Date.now()
           });
