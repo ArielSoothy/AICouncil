@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveBroker } from '@/lib/brokers/broker-factory';
 import { generateEnhancedTradingPrompt } from '@/lib/alpaca/enhanced-prompts';
-import { runResearchAgents, type ResearchReport, type ResearchTier } from '@/lib/agents/research-agents';
+import { runResearchAgents, type ResearchReport, type ResearchTier, type ResearchModelPreset } from '@/lib/agents/research-agents';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
+import { ResearchCache } from '@/lib/trading/research-cache';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
+
+// Initialize research cache
+const researchCache = new ResearchCache();
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
 import { GoogleProvider } from '@/lib/ai-providers/google';
 import { GroqProvider } from '@/lib/ai-providers/groq';
@@ -150,7 +154,7 @@ Synthesize all 4 research perspectives into ONE informed decision.
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { selectedModels, timeframe = 'swing', targetSymbol, researchMode = 'hybrid', researchTier = 'free' } = body;
+    const { selectedModels, timeframe = 'swing', targetSymbol, researchMode = 'hybrid', researchTier = 'free', researchModel } = body;
 
     if (!selectedModels || !Array.isArray(selectedModels) || selectedModels.length < 2) {
       return NextResponse.json(
@@ -231,12 +235,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 3: RUN EXHAUSTIVE RESEARCH PIPELINE (4 specialized agents)
-    const researchReport = await runResearchAgents(
-      targetSymbol,
-      timeframe as TradingTimeframe,
-      account,
-      researchTier as ResearchTier
-    );
+    // Check cache first
+    let researchReport = await researchCache.get(targetSymbol, timeframe as TradingTimeframe);
+
+    if (researchReport) {
+      console.log(`✅ Cache hit for ${targetSymbol}-${timeframe} - using cached research`);
+    } else {
+      console.log(`💨 Cache miss for ${targetSymbol}-${timeframe} - running fresh research`);
+      researchReport = await runResearchAgents(
+        targetSymbol,
+        timeframe as TradingTimeframe,
+        account,
+        researchTier as ResearchTier,
+        undefined, // No progress callback for individual mode (non-streaming)
+        researchModel as ResearchModelPreset | undefined
+      );
+      // Cache the results for next time
+      await researchCache.set(targetSymbol, timeframe as TradingTimeframe, researchReport);
+    }
 
     // Step 4: Generate trading prompt WITH research findings AND deterministic score
     const date = new Date().toISOString().split('T')[0];
@@ -290,12 +306,14 @@ export async function POST(request: NextRequest) {
         const cleanedResponse = extractJSON(result.response);
         const decision: TradeDecision = JSON.parse(cleanedResponse);
 
-        // Track tool usage
-        const decisionWithTracking: TradeDecision & { model: string } = {
+        // Track tool usage and token usage for cost tracking
+        const decisionWithTracking: TradeDecision & { model: string; modelId: string; tokens?: { prompt: number; completion: number; total: number } } = {
           model: modelName,
+          modelId: modelId,
           ...decision,
           toolsUsed: false, // Decision model didn't use tools
           toolCallCount: 0, // But research agents used 30-40 tools
+          tokens: result.tokens, // Include token usage for cost tracking
         };
 
         return decisionWithTracking;

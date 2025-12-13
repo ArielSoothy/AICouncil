@@ -14,7 +14,7 @@
 
 import { NextRequest } from 'next/server';
 import { getAccount, getPositions } from '@/lib/alpaca/client';
-import { runResearchAgents, type ResearchTier } from '@/lib/agents/research-agents';
+import { runResearchAgents, type ResearchTier, type ResearchModelPreset } from '@/lib/agents/research-agents';
 import type { ResearchProgressEvent, ProgressCallback } from '@/types/research-progress';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import type { TradeDecision } from '@/lib/alpaca/types';
@@ -122,19 +122,38 @@ function getProviderForModelAndTier(
 ) {
   const useSubscription = tier === 'sub-pro' || tier === 'sub-max';
 
-  // For sub tiers, use CLI providers where available
+  // For sub tiers, try CLI providers where available AND configured
   if (useSubscription) {
     const cliProvider = CLI_PROVIDERS[providerType as keyof typeof CLI_PROVIDERS];
     if (cliProvider) {
-      console.log(`🔑 Using CLI SUBSCRIPTION provider for ${providerType} (${tier} tier)`);
-      return cliProvider;
+      // Check if CLI is actually installed and configured
+      try {
+        if (cliProvider.isConfigured()) {
+          console.log(`🔑 Using CLI SUBSCRIPTION provider for ${providerType} (${tier} tier)`);
+          return cliProvider;
+        } else {
+          console.log(`⚠️ CLI provider for ${providerType} not configured, falling back to API`);
+        }
+      } catch (error) {
+        console.log(`⚠️ CLI provider check failed for ${providerType}: ${error}, falling back to API`);
+      }
+    } else {
+      console.log(`⚠️ No CLI provider available for ${providerType}, falling back to API`);
     }
-    // Fall back to API provider if no CLI provider for this type
-    console.log(`⚠️ No CLI provider for ${providerType}, falling back to API`);
   }
 
-  // Use regular API providers
-  return PROVIDERS[providerType as keyof typeof PROVIDERS];
+  // Use regular API providers (default fallback)
+  const apiProvider = PROVIDERS[providerType as keyof typeof PROVIDERS];
+  if (apiProvider) {
+    if (useSubscription) {
+      console.log(`📡 Using API provider for ${providerType} (CLI fallback for ${tier})`);
+    }
+    return apiProvider;
+  }
+
+  // Final fallback - should never happen
+  console.error(`❌ No provider found for ${providerType}!`);
+  return null;
 }
 
 // extractJSON and repairJSON functions now imported from @/lib/utils/json-repair
@@ -154,7 +173,8 @@ export async function POST(request: NextRequest) {
       selectedModels = [],
       timeframe = 'swing' as TradingTimeframe,
       targetSymbol,
-      researchTier = 'free'
+      researchTier = 'free',
+      researchModel // Optional research model override (sonnet, haiku, llama, gemini)
     } = body;
 
     // Validation
@@ -254,7 +274,8 @@ export async function POST(request: NextRequest) {
               timeframe,
               account,
               researchTier as ResearchTier,
-              onProgress  // Pass callback to stream progress
+              onProgress,  // Pass callback to stream progress
+              researchModel // Optional research model override
             );
 
             // Cache the results for next time (tier-aware key)
@@ -354,7 +375,7 @@ export async function POST(request: NextRequest) {
 
               const decisionDuration = Date.now() - decisionStartTime;
 
-              // Send decision complete event
+              // Send decision complete event with token usage for cost tracking
               sendEvent({
                 type: 'decision_complete',
                 modelName,
@@ -362,6 +383,9 @@ export async function POST(request: NextRequest) {
                 action: decision.action,
                 confidence: decision.confidence || 0.5,
                 duration: decisionDuration,
+                tokensUsed: result.tokens?.total || 0,
+                inputTokens: result.tokens?.prompt || 0,
+                outputTokens: result.tokens?.completion || 0,
                 timestamp: Date.now()
               });
 
@@ -467,6 +491,9 @@ export async function POST(request: NextRequest) {
             consensusAction: consensus.action,
             agreement: agreementLevel,
             duration: judgeDuration,
+            tokensUsed: judgeResult.tokens?.total || 0,
+            inputTokens: judgeResult.tokens?.prompt || 0,
+            outputTokens: judgeResult.tokens?.completion || 0,
             timestamp: Date.now()
           });
 

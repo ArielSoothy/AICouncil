@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getActiveBroker } from '@/lib/brokers/broker-factory';
 import { generateEnhancedTradingPromptWithData } from '@/lib/alpaca/enhanced-prompts';
 import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
-import { runResearchAgents, type ResearchReport, type ResearchTier } from '@/lib/agents/research-agents';
+import { runResearchAgents, type ResearchReport, type ResearchTier, type ResearchModelPreset } from '@/lib/agents/research-agents';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
+import { ResearchCache } from '@/lib/trading/research-cache';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
+
+// Initialize research cache
+const researchCache = new ResearchCache();
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
 import { GoogleProvider } from '@/lib/ai-providers/google';
 import { GroqProvider } from '@/lib/ai-providers/groq';
@@ -246,6 +250,7 @@ export async function POST(request: NextRequest) {
     const targetSymbol = body.targetSymbol;
     const researchMode = body.researchMode || 'hybrid';
     const researchTier = body.researchTier || 'free';
+    const researchModel = body.researchModel; // Optional research model override
 
     // Step 1: Get broker account info and positions
     const broker = getActiveBroker();
@@ -300,12 +305,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 3: RUN EXHAUSTIVE RESEARCH PIPELINE (4 specialized agents)
-    const researchReport = await runResearchAgents(
-      targetSymbol,
-      timeframe as TradingTimeframe,
-      account,
-      researchTier as ResearchTier
-    );
+    // Check cache first
+    let researchReport = await researchCache.get(targetSymbol, timeframe as TradingTimeframe);
+
+    if (researchReport) {
+      console.log(`✅ Cache hit for ${targetSymbol}-${timeframe} - using cached research`);
+    } else {
+      console.log(`💨 Cache miss for ${targetSymbol}-${timeframe} - running fresh research`);
+      researchReport = await runResearchAgents(
+        targetSymbol,
+        timeframe as TradingTimeframe,
+        account,
+        researchTier as ResearchTier,
+        undefined, // No progress callback for debate mode (non-streaming)
+        researchModel as ResearchModelPreset | undefined
+      );
+      // Cache the results for next time
+      await researchCache.set(targetSymbol, timeframe as TradingTimeframe, researchReport);
+    }
 
     // Step 4: Generate trading prompt WITH research findings AND deterministic score
     const date = new Date().toISOString().split('T')[0];
