@@ -50,6 +50,23 @@ git diff    # Review changes
 git reset --hard HEAD  # Nuclear option
 ```
 
+#### 6. **Quick Troubleshooting - Common Issues**:
+
+**🚨 0 Tool Calls / 0 Tokens / Fast Response (~500ms)?**
+```
+FIRST CHECK: API Credits/Rate Limits!
+- Symptom: Research shows 0 tool calls, 0 tokens, completes in ~500ms
+- Root cause (90% of time): API credits exhausted or rate limited
+- Fix: Check https://console.anthropic.com/settings/billing (Anthropic)
+       Check https://platform.openai.com/usage (OpenAI)
+- DO NOT immediately assume code is broken!
+- DO NOT revert recent commits until API status confirmed!
+
+December 2025 Incident: Spent hours debugging "broken tool calling"
+when the actual cause was depleted Anthropic credits. The 0 tokens
+and fast response time are the telltale signs of an API auth/billing issue.
+```
+
 ## 🤖 SUB-AGENT SYSTEM:
 **For complex features, use the orchestrated sub-agent system defined in docs/guides/SUB_AGENTS.md:**
 - **Orchestration Agent**: Coordinates all other agents
