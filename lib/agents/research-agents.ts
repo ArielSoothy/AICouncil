@@ -204,13 +204,14 @@ function getProviderForModel(modelConfig: TierModelConfig) {
 // ============================================================================
 
 /**
- * Fallback order: FREE first → Cheapest paid → More expensive
- * 1. gemini-flash: FREE tier available
- * 2. gpt-mini: $0.15/M in, $0.60/M out (cheapest paid)
- * 3. haiku: $1.00/M in, $5.00/M out
- * 4. sonnet: $3.00/M in, $15.00/M out (most capable)
+ * Fallback order: Cheapest reliable → More expensive
+ * 1. gpt-mini: $0.15/M in, $0.60/M out (DEFAULT - reliable, cheapest)
+ * 2. haiku: $1.00/M in, $5.00/M out
+ * 3. sonnet: $3.00/M in, $15.00/M out (most capable)
+ *
+ * NOTE: Gemini FREE tier removed - 5 RPM limit too restrictive for 4 parallel agents
  */
-const FALLBACK_ORDER: ResearchModelPreset[] = ['gemini-flash', 'gpt-mini', 'haiku', 'sonnet'];
+const FALLBACK_ORDER: ResearchModelPreset[] = ['gpt-mini', 'haiku', 'sonnet'];
 
 /**
  * Check if an error is a rate limit or quota error
@@ -245,7 +246,7 @@ function getNextFallback(currentPreset: ResearchModelPreset): ResearchModelPrese
 
 /**
  * Get model config with automatic fallback on rate limit errors
- * Tries providers in order: gemini-flash → gpt-mini → haiku → sonnet
+ * Tries providers in order: gpt-mini → haiku → sonnet
  *
  * @param preferredPreset - User's preferred preset
  * @param onFallback - Optional callback when fallback occurs
@@ -398,7 +399,7 @@ export async function runTechnicalResearch(
   const startTime = Date.now();
   const modelConfig = getResearchModelForConfig(tier, researchModel);
   // Determine the preset being used for fallback logic
-  const currentPreset: ResearchModelPreset = researchModel || 'gemini-flash';
+  const currentPreset: ResearchModelPreset = researchModel || 'gpt-mini';
 
   try {
     console.log(`🔍 Technical Analyst starting research... (${modelConfig.displayName})`);
@@ -509,7 +510,7 @@ export async function runFundamentalResearch(
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
   const modelConfig = getResearchModelForConfig(tier, researchModel);
-  const currentPreset: ResearchModelPreset = researchModel || 'gemini-flash';
+  const currentPreset: ResearchModelPreset = researchModel || 'gpt-mini';
 
   try {
     console.log(`🔍 Fundamental Analyst starting research... (${modelConfig.displayName})`);
@@ -619,7 +620,7 @@ export async function runSentimentResearch(
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
   const modelConfig = getResearchModelForConfig(tier, researchModel);
-  const currentPreset: ResearchModelPreset = researchModel || 'gemini-flash';
+  const currentPreset: ResearchModelPreset = researchModel || 'gpt-mini';
 
   try {
     console.log(`🔍 Sentiment Analyst starting research... (${modelConfig.displayName})`);
@@ -729,7 +730,7 @@ export async function runRiskAnalysis(
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
   const modelConfig = getResearchModelForConfig(tier, researchModel);
-  const currentPreset: ResearchModelPreset = researchModel || 'gemini-flash';
+  const currentPreset: ResearchModelPreset = researchModel || 'gpt-mini';
 
   try {
     console.log(`🔍 Risk Manager starting research... (${modelConfig.displayName})`);

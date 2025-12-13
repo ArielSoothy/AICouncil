@@ -10,14 +10,14 @@ import {
  * Research Model Selector Component
  *
  * Allows users to select which AI model to use for research agents.
- * Priority order (fallback): gemini-flash → gpt-mini → haiku → sonnet
+ * DEFAULT: GPT-4.1 Mini (reliable, cheapest paid option)
  *
  * Cost comparison per 1M tokens:
- * - Gemini 2.5 Flash: $0.30/$2.50 (FREE tier available!)
- * - GPT-4.1 Mini: $0.15/$0.60 (cheapest paid, 4x cheaper than Gemini)
+ * - GPT-4.1 Mini: $0.15/$0.60 (DEFAULT - reliable, cheapest)
  * - Claude 4.5 Haiku: $1.00/$5.00
  * - Claude 4.5 Sonnet: $3.00/$15.00
  *
+ * NOTE: Gemini FREE tier removed as default - 5 RPM limit too restrictive
  * NOTE: Llama 70B removed - Groq AI SDK doesn't reliably enforce tool calling
  */
 
@@ -31,22 +31,16 @@ const PRESET_OPTIONS: {
   recommended?: boolean
 }[] = [
   {
-    value: 'gemini-flash',
-    label: 'Gemini 2.5 Flash',
-    description: 'FREE tier available, good tool support',
-    cost: 'FREE',
-    recommended: true,
-  },
-  {
     value: 'gpt-mini',
     label: 'GPT-4.1 Mini',
-    description: 'Cheapest paid (4x cheaper than Gemini)',
+    description: 'Reliable, cheapest option with good tool support',
     cost: '$',
+    recommended: true,
   },
   {
     value: 'haiku',
     label: 'Claude 4.5 Haiku',
-    description: 'Reliable, good for Anthropic users',
+    description: 'Good for Anthropic users',
     cost: '$$',
   },
   {
@@ -55,13 +49,12 @@ const PRESET_OPTIONS: {
     description: 'Best quality, highest cost',
     cost: '$$$',
   },
-  // Legacy option - kept for backward compatibility
+  // Gemini moved to bottom - FREE tier has 5 RPM limit, not practical for 4 parallel agents
   {
-    value: 'gemini',
-    label: 'Gemini 2.5 Flash (Legacy)',
-    description: 'Alias for gemini-flash',
+    value: 'gemini-flash',
+    label: 'Gemini 2.5 Flash',
+    description: 'FREE tier but limited to 5 req/min',
     cost: 'FREE',
-    disabled: false,
   },
 ]
 
@@ -117,9 +110,14 @@ export function ResearchModelSelector() {
       </div>
 
       {/* Info for recommended option */}
+      {researchModel === 'gpt-mini' && (
+        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-xs text-blue-700 dark:text-blue-400">
+          GPT-4.1 Mini is the most cost-effective option with reliable tool support.
+        </div>
+      )}
       {(researchModel === 'gemini-flash' || researchModel === 'gemini') && (
-        <div className="p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-xs text-green-700 dark:text-green-400">
-          Gemini 2.5 Flash has a FREE tier! Falls back to GPT-4.1 Mini if rate limited.
+        <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-400">
+          Gemini FREE tier is limited to 5 requests/min. May hit rate limits with 4 parallel agents.
         </div>
       )}
     </div>

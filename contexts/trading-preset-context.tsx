@@ -34,7 +34,7 @@ const GlobalModelTierContext = createContext<GlobalModelTierContextType | undefi
 export function GlobalModelTierProvider({ children }: { children: ReactNode }) {
   const { userTier } = useAuth()
   const [globalTier, setGlobalTier] = useState<PresetTier>('sub-pro')
-  const [researchModel, setResearchModel] = useState<ResearchModelPreset>('sonnet')
+  const [researchModel, setResearchModel] = useState<ResearchModelPreset>('gpt-mini')
 
   // Smart default: Sync with user subscription tier on mount
   useEffect(() => {
