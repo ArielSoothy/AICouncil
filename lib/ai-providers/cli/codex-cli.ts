@@ -122,19 +122,6 @@ export class CodexCLIProvider implements AIProvider {
   }
 
   /**
-   * Sanitize prompt to avoid Codex CLI content filter triggers
-   * Codex CLI refuses prompts with "real money" trading language
-   */
-  private sanitizePromptForCodex(prompt: string): string {
-    return prompt
-      .replace(/REAL MONEY trading decision/gi, 'paper trading simulation')
-      .replace(/real money/gi, 'simulated')
-      .replace(/actual capital/gi, 'simulated capital')
-      .replace(/financial outcomes/gi, 'analysis outcomes')
-      .replace(/impacts real money/gi, 'requires thorough analysis');
-  }
-
-  /**
    * Query OpenAI via Codex CLI using subscription
    */
   async query(
@@ -144,14 +131,11 @@ export class CodexCLIProvider implements AIProvider {
     const startTime = Date.now();
 
     try {
-      // Sanitize prompt to avoid content filter (Codex CLI is stricter than API)
-      const sanitizedPrompt = this.sanitizePromptForCodex(prompt);
-
       console.log(`🟢 Codex CLI (Subscription): Querying ${config.model}...`);
-      console.log(`🟢 Codex CLI: Using stdin for prompt (${sanitizedPrompt.length} chars)`);
+      console.log(`🟢 Codex CLI: Using stdin for prompt (${prompt.length} chars)`);
 
       // Use stdin-based execution to avoid shell escaping issues with complex prompts
-      const { stdout, stderr } = await runCodexCliWithStdin(sanitizedPrompt, config.model);
+      const { stdout, stderr } = await runCodexCliWithStdin(prompt, config.model);
 
       const responseTime = Date.now() - startTime;
 
