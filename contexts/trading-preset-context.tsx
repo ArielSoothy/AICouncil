@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useAuth } from './auth-context'
 import { PresetTier } from '@/lib/config/model-presets'
+import { IS_PRODUCTION } from '@/lib/utils/environment'
 import type { ResearchModelPreset } from '@/types/research-agents'
 
 /**
@@ -20,6 +21,10 @@ import type { ResearchModelPreset } from '@/types/research-agents'
  * - Smart defaults based on user subscription tier
  * - Session-scoped state (no persistence needed)
  * - Consumed by all mode components that use AI models
+ *
+ * Production behavior:
+ * - Defaults to 'free' tier (SUB tiers require local CLI, not available on Vercel)
+ * - Pro/Max tiers locked until Stripe integration
  */
 
 interface GlobalModelTierContextType {
@@ -31,9 +36,12 @@ interface GlobalModelTierContextType {
 
 const GlobalModelTierContext = createContext<GlobalModelTierContextType | undefined>(undefined)
 
+// Default tier: 'free' in production (SUB tiers don't work on Vercel), 'sub-pro' in dev
+const DEFAULT_TIER: PresetTier = IS_PRODUCTION ? 'free' : 'sub-pro'
+
 export function GlobalModelTierProvider({ children }: { children: ReactNode }) {
   const { userTier } = useAuth()
-  const [globalTier, setGlobalTier] = useState<PresetTier>('sub-pro')
+  const [globalTier, setGlobalTier] = useState<PresetTier>(DEFAULT_TIER)
   const [researchModel, setResearchModel] = useState<ResearchModelPreset>('gpt-mini')
 
   // Smart default: Sync with user subscription tier on mount
@@ -46,7 +54,8 @@ export function GlobalModelTierProvider({ children }: { children: ReactNode }) {
         enterprise: 'max',
       }
 
-      const mappedPreset = presetMapping[userTier] || 'sub-pro'
+      // In production, default to 'free' if no valid mapping (SUB tiers don't work on Vercel)
+      const mappedPreset = presetMapping[userTier] || DEFAULT_TIER
       setGlobalTier(mappedPreset)
     }
   }, [userTier])

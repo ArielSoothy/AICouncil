@@ -23,12 +23,21 @@ import { IS_PRODUCTION } from '@/lib/utils/environment'
  * - Syncs with user subscription tier (smart defaults)
  * - Consistent styling across all pages
  * - Compact header-friendly design
+ *
+ * Production behavior:
+ * - SUB tiers (sub-pro, sub-max) are hidden completely (use CLI, not available on Vercel)
+ * - Pro/Max tiers shown but locked until Stripe integration
+ * - Free tier fully functional
  */
+
+// Tiers to show in production (no SUB tiers - they require local CLI)
+const PRODUCTION_TIERS: PresetTier[] = ['free', 'pro', 'max']
 
 export function GlobalModelTierSelector() {
   const { globalTier, setGlobalTier } = useGlobalModelTier()
 
-  const allTiers = getAllPresetTiers()
+  // In production, hide SUB tiers completely
+  const allTiers = IS_PRODUCTION ? PRODUCTION_TIERS : getAllPresetTiers()
 
   return (
     <div className="border-b bg-muted/20">
