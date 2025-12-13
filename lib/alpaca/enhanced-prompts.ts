@@ -409,11 +409,11 @@ export function generateResearchAgentPrompt(
 
 🎯 YOUR MISSION:
 Conduct EXHAUSTIVE ${roleConfig.specialty} research on ${symbol} for ${timeframe} trading.
-This analysis is for a paper trading simulation system. Accuracy and thoroughness are critical.
+This is a REAL MONEY trading decision. Your research directly impacts financial outcomes.
 
 📊 PROJECT CONTEXT: AI Council Trading System
 - You are part of a multi-agent research pipeline
-- Your findings will inform simulated trading recommendations
+- Your findings will inform trading decisions with actual capital
 - Quality and thoroughness are paramount over speed
 - Other agents (${roleConfig.peerAgents.join(', ')}) are researching complementary aspects
 
@@ -598,7 +598,7 @@ ${roleConfig.specialty === 'risk assessment' ? `
 
 1. **No Shortcuts Allowed**
    - Every omitted tool call is a potential blind spot
-   - Quality analysis requires real data
+   - Real money decisions require real data
    - Speed is irrelevant, accuracy is everything
 
 2. **Tool Calls Are Mandatory**

@@ -167,7 +167,7 @@ FUNDAMENTAL SNAPSHOT:
 ` : ''}
 
 ⚠️ RESEARCH MANDATE:
-You have been provided with MINIMAL data intentionally. This is a paper trading simulation.
+You have been provided with MINIMAL data intentionally. This is a REAL MONEY trading decision.
 You MUST conduct EXHAUSTIVE research using ALL available tools before making any recommendation.
 
 DO NOT rely on:
@@ -194,7 +194,7 @@ SEC EDGAR TOOLS (Fundamental data - especially for obscure stocks):
 
 🎯 RESEARCH STANDARD:
 Minimum 4-5 tool calls expected for thoroughness. Quality over speed - take time to research properly.
-Every analysis should be thorough and data-driven. No shortcuts allowed.
+Every decision impacts real money. No shortcuts allowed.
 
 💡 TIP FOR OBSCURE STOCKS: If Yahoo Finance data seems sparse (missing P/E, EPS, etc.),
 use the SEC EDGAR tools to get comprehensive fundamental data from official SEC filings.
