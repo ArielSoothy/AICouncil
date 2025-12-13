@@ -109,14 +109,16 @@ export class ClaudeCLIProvider implements AIProvider {
     try {
       // Check if npx can run claude-code (more reliable than 'which claude' alias)
       const { execSync } = require('child_process');
-      execSync('npx @anthropic-ai/claude-code --version', {
+      const result = execSync('npx @anthropic-ai/claude-code --version', {
         encoding: 'utf-8',
         stdio: 'pipe',
         timeout: 10000,
         shell: '/bin/zsh', // Use zsh to get proper environment
       });
+      console.log('✅ Claude CLI isConfigured: true, version:', result.trim());
       return true;
-    } catch {
+    } catch (error) {
+      console.log('❌ Claude CLI isConfigured: false, error:', error instanceof Error ? error.message : error);
       return false;
     }
   }
@@ -139,8 +141,13 @@ export class ClaudeCLIProvider implements AIProvider {
 
       const responseTime = Date.now() - startTime;
 
+      // Log stderr even if we have stdout (may contain warnings)
+      if (stderr) {
+        console.log('🔷 Claude CLI stderr:', stderr);
+      }
+
       if (stderr && !stdout) {
-        console.error('❌ Claude CLI stderr:', stderr);
+        console.error('❌ Claude CLI stderr (no stdout):', stderr);
         throw new Error(stderr);
       }
 
@@ -153,9 +160,18 @@ export class ClaudeCLIProvider implements AIProvider {
         response = { result: stdout.trim() };
       }
 
+      // 🔍 DEBUG: Log full response for troubleshooting
+      console.log('🔷 Claude CLI raw response:', JSON.stringify(response, null, 2));
+
       // Check for error in response
       if (response.is_error || response.type === 'error') {
-        throw new Error(response.error || 'Claude CLI returned an error');
+        console.error('❌ Claude CLI error response:', {
+          is_error: response.is_error,
+          type: response.type,
+          error: response.error,
+          subtype: response.subtype,
+        });
+        throw new Error(response.error || `Claude CLI returned an error (is_error=${response.is_error}, type=${response.type})`);
       }
 
       const responseText = response.result || stdout.trim();

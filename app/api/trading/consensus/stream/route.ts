@@ -110,50 +110,62 @@ const CLI_PROVIDERS = {
  * Get the appropriate provider based on model and tier
  *
  * SUB TIERS (sub-pro, sub-max):
- *   Use CLI providers for anthropic/openai/google models
+ *   Use CLI providers ONLY for anthropic/openai/google models
+ *   NO FALLBACK TO API - if CLI fails, show error to user
  *   (leverages user's subscription instead of API keys)
  *
  * REGULAR TIERS (free, pro, max):
  *   Use API key providers (standard billing)
+ *
+ * CRITICAL: Sub tiers NEVER fall back to API providers!
+ * User pays monthly subscription - should NOT be charged per-call API fees.
  */
 function getProviderForModelAndTier(
   providerType: string,
   tier: string
-) {
+): { provider: any; error?: string } {
   const useSubscription = tier === 'sub-pro' || tier === 'sub-max';
 
-  // For sub tiers, try CLI providers where available AND configured
+  // SUB TIERS: CLI providers ONLY - NO API FALLBACK
   if (useSubscription) {
     const cliProvider = CLI_PROVIDERS[providerType as keyof typeof CLI_PROVIDERS];
-    if (cliProvider) {
-      // Check if CLI is actually installed and configured
-      try {
-        if (cliProvider.isConfigured()) {
-          console.log(`🔑 Using CLI SUBSCRIPTION provider for ${providerType} (${tier} tier)`);
-          return cliProvider;
-        } else {
-          console.log(`⚠️ CLI provider for ${providerType} not configured, falling back to API`);
-        }
-      } catch (error) {
-        console.log(`⚠️ CLI provider check failed for ${providerType}: ${error}, falling back to API`);
+
+    // Check if CLI provider exists for this provider type
+    if (!cliProvider) {
+      const errorMsg = `No CLI provider available for ${providerType}. Sub ${tier} requires CLI. Switch to Pro/Max tier for API access.`;
+      console.error(`❌ ${errorMsg}`);
+      return { provider: null, error: errorMsg };
+    }
+
+    // Check if CLI is installed and configured
+    try {
+      if (cliProvider.isConfigured()) {
+        console.log(`🔑 Using CLI SUBSCRIPTION provider for ${providerType} (${tier} tier)`);
+        return { provider: cliProvider };
+      } else {
+        // CLI not configured - DO NOT FALL BACK TO API
+        const errorMsg = `CLI provider for ${providerType} not configured. Install the CLI tool or switch to Pro/Max tier for API access.`;
+        console.error(`❌ ${errorMsg}`);
+        return { provider: null, error: errorMsg };
       }
-    } else {
-      console.log(`⚠️ No CLI provider available for ${providerType}, falling back to API`);
+    } catch (error) {
+      // CLI check failed - DO NOT FALL BACK TO API
+      const errorMsg = `CLI provider check failed for ${providerType}: ${error}. Install the CLI tool or switch to Pro/Max tier.`;
+      console.error(`❌ ${errorMsg}`);
+      return { provider: null, error: errorMsg };
     }
   }
 
-  // Use regular API providers (default fallback)
+  // REGULAR TIERS: Use API providers
   const apiProvider = PROVIDERS[providerType as keyof typeof PROVIDERS];
   if (apiProvider) {
-    if (useSubscription) {
-      console.log(`📡 Using API provider for ${providerType} (CLI fallback for ${tier})`);
-    }
-    return apiProvider;
+    return { provider: apiProvider };
   }
 
-  // Final fallback - should never happen
-  console.error(`❌ No provider found for ${providerType}!`);
-  return null;
+  // No provider found
+  const errorMsg = `No provider found for ${providerType}!`;
+  console.error(`❌ ${errorMsg}`);
+  return { provider: null, error: errorMsg };
 }
 
 // extractJSON and repairJSON functions now imported from @/lib/utils/json-repair
@@ -322,9 +334,10 @@ export async function POST(request: NextRequest) {
               }
 
               // Get provider based on tier - CLI for sub-pro/sub-max, API for others
-              const provider = getProviderForModelAndTier(providerType, researchTier);
-              if (!provider) {
-                throw new Error(`No provider available for: ${providerType}`);
+              // CRITICAL: Sub tiers use CLI ONLY - no fallback to API
+              const { provider, error: providerError } = getProviderForModelAndTier(providerType, researchTier);
+              if (providerError || !provider) {
+                throw new Error(providerError || `No provider available for: ${providerType}`);
               }
 
               // Send decision start event

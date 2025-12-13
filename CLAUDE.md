@@ -67,6 +67,73 @@ when the actual cause was depleted Anthropic credits. The 0 tokens
 and fast response time are the telltale signs of an API auth/billing issue.
 ```
 
+## 🔑 SUB PRO/MAX MODE - SUBSCRIPTION-BASED PROVIDERS
+
+**CRITICAL: Sub Pro/Max tiers use CLI SUBSCRIPTION, NOT per-call API billing!**
+
+### How It Works
+- **Sub Pro/Max tiers** → Use CLI providers (subscription-based, monthly fee)
+- **Pro/Max tiers** → Use API providers (per-call billing via API keys)
+
+### Provider Selection Logic (in `app/api/trading/consensus/stream/route.ts`):
+```typescript
+const useSubscription = tier === 'sub-pro' || tier === 'sub-max';
+
+if (useSubscription) {
+  // Uses ClaudeCLIProvider, CodexCLIProvider, GoogleCLIProvider
+  // These run CLI tools that use monthly subscriptions
+} else {
+  // Uses AnthropicProvider, OpenAIProvider, GoogleProvider
+  // These use API keys with per-call billing
+}
+```
+
+### CLI Providers (Subscription-Based)
+| Provider | CLI Command | Subscription |
+|----------|-------------|--------------|
+| `ClaudeCLIProvider` | `npx @anthropic-ai/claude-code` | Claude Pro/Max ($20-100/mo) |
+| `CodexCLIProvider` | `npx openai-codex` | ChatGPT Plus/Pro |
+| `GoogleCLIProvider` | `gcloud ai` | Gemini Advanced |
+
+### Key Files
+- `lib/ai-providers/cli/claude-cli.ts` - Claude subscription provider
+- `lib/ai-providers/cli/codex-cli.ts` - OpenAI subscription provider
+- `lib/ai-providers/cli/google-cli.ts` - Google subscription provider
+
+### Billing Model
+- **Sub Pro/Max**: Monthly fee covers unlimited usage (within fair use)
+- **Pro/Max API**: Pay per token ($3-15/1M tokens depending on model)
+
+### Debugging CLI Errors
+If "Claude CLI Error" appears:
+1. Check terminal for `🔷 Claude CLI raw response:` logs
+2. Verify CLI is authenticated: `npx @anthropic-ai/claude-code --version`
+3. Check subscription status in Claude app settings
+
+### CRITICAL: NO API FALLBACK FOR SUB TIERS
+**This is a hard rule - NEVER change this behavior!**
+
+```
+⛔ Sub Pro/Max tiers MUST use CLI providers ONLY
+⛔ If CLI fails → show error to user, DO NOT fall back to API
+⛔ User pays monthly subscription → should NEVER be charged per-call API fees
+```
+
+**Why this matters:**
+- User selected "Sub Pro" = they want to use their Claude/GPT/Gemini subscription
+- Falling back to API = unexpected charges on their API key
+- This was a recurring bug that I kept re-introducing - NEVER DO THIS AGAIN
+
+**If CLI fails, show THIS error:**
+```
+"CLI provider for {provider} not configured. Install the CLI tool or switch to Pro/Max tier for API access."
+```
+
+**DO NOT:**
+- Silently fall back to API providers
+- Log "falling back to API" and continue
+- Try to "help" by using API when CLI fails
+
 ## 🤖 SUB-AGENT SYSTEM:
 **For complex features, use the orchestrated sub-agent system defined in docs/guides/SUB_AGENTS.md:**
 - **Orchestration Agent**: Coordinates all other agents
