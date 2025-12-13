@@ -17,31 +17,32 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ Model Registry Consistency & New Flagship Models (December 9, 2025)
-**Goal:** Fix agent debate failures + add Claude 4.5 Opus + Gemini 3 Pro + consistent selectors
+**Current Session:** ✅ Research Pipeline Fix & Real Data Integration (December 13, 2025)
+**Goal:** Fix research findings not reaching decision models + replace fake data with real Yahoo Finance
 
 **Progress:**
-- ✅ Added Claude 4.5 Opus (`claude-opus-4-5-20251124`) - Released Nov 24, 2025
-- ✅ Added Gemini 3 Pro Image (`gemini-3-pro-image-preview`) - NEW model
-- ✅ Updated Gemini 3 Pro status to `working` (was `unreleased`)
-- ✅ Rewrote agent-selector.tsx to use MODEL_REGISTRY (removed 44 hardcoded model names)
-- ✅ Fixed agent presets to use only working models (Max preset now uses Gemini 3, Opus 4.5, GPT-5, Grok 4.1)
-- ✅ Added power/cost badges to agent selector dropdowns
-- ✅ TypeScript: 0 errors (build successful)
-- ✅ Documentation: FEATURES.md updated (Feature #42)
+- ✅ Fixed AI SDK tool results extraction (`tr.output` not `tr.result`)
+- ✅ Added `synthesizeFindingsFromToolCalls()` for fallback data extraction
+- ✅ Research findings now passed: Technical 6,233 chars, Fundamental 8,686 chars, etc.
+- ✅ Commits pushed: `9f58047` (main fix), `4253a4c` (debug logging)
+- ⏳ Replacing Faker.js fake data with real Yahoo Finance quotes
+
+**Root Cause Fixed:**
+AI SDK stores tool results in `step.toolResults[]` with `output` field, not in `toolCalls[]` with `result` field.
+The Anthropic provider wasn't merging these correctly.
 
 **Files Modified:**
 ```
-lib/models/model-registry.ts                       # MODIFIED: Added 3 new models, updated Gemini 3 status
-lib/model-metadata.ts                              # MODIFIED: Added costs + benchmarks for new models
-components/agents/agent-selector.tsx               # REWRITTEN: Uses MODEL_REGISTRY, power/cost badges
-docs/workflow/FEATURES.md                          # MODIFIED: Added Feature #42
-docs/workflow/PRIORITIES.md                        # MODIFIED: Session context
+lib/ai-providers/anthropic.ts                      # FIXED: Merge toolCalls with toolResults using tr.output
+lib/agents/research-agents.ts                      # ADDED: synthesizeFindingsFromToolCalls() function
+app/api/trading/consensus/stream/route.ts          # ADDED: Debug logging for research findings
+lib/trading/get_stock_quote.ts                     # IN PROGRESS: Replace Faker.js with Yahoo Finance
 ```
 
-**Previous Session:** Model Registry Fixes & Power Sorting (December 9, 2025)
-- ✅ Fixed Grok models showing "FREE" incorrectly
-- ✅ Power-sorted model dropdowns (Feature #41)
+**Previous Session:** Model Registry Consistency & New Flagship Models (December 9, 2025)
+- ✅ Added Claude 4.5 Opus, Gemini 3 Pro Image
+- ✅ Rewrote agent-selector.tsx to use MODEL_REGISTRY
+- ✅ Power/cost badges in all model selectors
 
 **Earlier Session:** Multi-Broker Support & IBKR Auth (December 9, 2025)
 - ✅ Created broker selector dropdown + IBKR auth dialog (Features #39-40)

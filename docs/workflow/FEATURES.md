@@ -1880,5 +1880,27 @@
 - **Last Modified**: December 12, 2025
 - **DO NOT**: Remove SEC tools from prompts, disable sparse data detection, remove User-Agent header (SEC requirement)
 
+### 54. Research Findings Pipeline Fix
+- **Status**: ✅ ACTIVE & CRITICAL - Research data flow to decision models
+- **Location**:
+  - `lib/ai-providers/anthropic.ts` - Tool results extraction fix
+  - `lib/agents/research-agents.ts` - Findings synthesis from tool calls
+  - `app/api/trading/consensus/stream/route.ts` - Debug logging
+- **Purpose**: Ensure research agent findings (76+ tool calls) reach decision models
+- **Root Cause Fixed**:
+  - AI SDK stores tool results in `step.toolResults[]` with `output` field
+  - NOT in `toolCalls[]` with `result` field (common misconception)
+  - Anthropic provider wasn't merging these correctly
+- **Key Components**:
+  - **Tool Results Mapping**: Create Map of `toolCallId → output` from `step.toolResults`
+  - **Merge with toolCalls**: Match each toolCall to its result via toolCallId
+  - **Fallback Synthesis**: `synthesizeFindingsFromToolCalls()` extracts data when model response is empty
+- **Before Fix**: Research agents made 76 tool calls but findings = 0 chars
+- **After Fix**: Technical 6,233 chars, Fundamental 8,686 chars, Sentiment 7,263 chars, Risk 6,060 chars
+- **Commits**: `9f58047` (main fix), `4253a4c` (debug logging)
+- **TypeScript**: 0 errors
+- **Last Modified**: December 13, 2025
+- **DO NOT**: Revert `tr.output` back to `tr.result`, remove synthesizeFindingsFromToolCalls(), or remove debug logging
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
