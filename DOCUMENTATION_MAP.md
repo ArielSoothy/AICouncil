@@ -62,7 +62,8 @@ These files MUST be read at the start of every development session:
 │   │   ├── BEST_PRACTICES.md           # Debugging patterns & successful methods
 │   │   ├── SUB_AGENTS.md               # Sub-agent specifications & orchestration
 │   │   ├── MANUAL_STEPS.md             # Manual steps for deployment
-│   │   ├── RESEARCH_CACHE_TESTING.md   # Research caching system testing guide (NEW)
+│   │   ├── RESEARCH_CACHE_TESTING.md   # Research caching system testing guide
+│   │   ├── IBKR_AUTH_TROUBLESHOOTING.md # IBKR Gateway auth flow & troubleshooting
 │   │   └── evals.md                    # Evaluation metrics & testing
 │   │
 │   ├── history/                        # Session logs & work summaries
@@ -199,7 +200,8 @@ Development guidelines, debugging patterns, and orchestration:
 | **BEST_PRACTICES.md** | Debugging patterns, successful fix methods | When encountering issues |
 | **SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
 | **MANUAL_STEPS.md** | Manual steps required for deployment | Before deployment |
-| **RESEARCH_CACHE_TESTING.md** | Research caching system testing guide (NEW) | Testing Phase 2C caching |
+| **RESEARCH_CACHE_TESTING.md** | Research caching system testing guide | Testing Phase 2C caching |
+| **IBKR_AUTH_TROUBLESHOOTING.md** | IBKR Gateway auth flow & troubleshooting | IBKR auth issues |
 | **evals.md** | Evaluation metrics and testing guidelines | Quality assurance |
 
 **Path**: `/docs/guides/`
@@ -319,6 +321,12 @@ Historical documentation and research (reference only):
 1. Read docs/guides/MANUAL_STEPS.md
 2. Check docs/architecture/SUPABASE_SETUP.md (database)
 3. Review README.md (deployment process)
+
+### IBKR Authentication Issues
+1. Read docs/guides/IBKR_AUTH_TROUBLESHOOTING.md (auth flow explanation)
+2. Check Gateway is running: `curl -k https://127.0.0.1:5050/v1/api/iserver/auth/status`
+3. Try ssodh/init to complete 2FA handshake
+4. Check for competing sessions
 
 ### Researching Architecture
 1. Read docs/architecture/PROJECT_OVERVIEW.md (system architecture & features)
