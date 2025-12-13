@@ -31,14 +31,16 @@ export interface TierModelConfig {
 /**
  * RESEARCH MODEL PRESETS
  *
- * Cost comparison per 1K tokens:
- *   - Sonnet 4.5: $0.003 in / $0.015 out (current default)
- *   - Haiku 4.5:  $0.001 in / $0.005 out (3x cheaper!)
- *   - Gemini 2.0: FREE (Google) - NO TOOL SUPPORT
+ * Cost comparison per 1M tokens:
+ *   - Sonnet 4.5: $3.00 in / $15.00 out (default, powerful)
+ *   - Haiku 4.5:  $1.00 in / $5.00 out (3x cheaper!)
+ *   - Gemini 2.5 Flash: $0.30 in / $2.50 out (FREE tier available!)
+ *   - GPT-4.1 Mini: $0.15 in / $0.60 out (cheapest paid, 4x cheaper than Gemini)
  *
+ * Priority order for fallback: gemini-flash → gpt-mini → haiku → sonnet
  * NOTE: Llama 70B removed - Groq AI SDK doesn't reliably enforce tool calling
  */
-export type ResearchModelPreset = 'sonnet' | 'haiku' | 'gemini';
+export type ResearchModelPreset = 'sonnet' | 'haiku' | 'gemini' | 'gemini-flash' | 'gpt-mini';
 
 export const RESEARCH_MODEL_PRESETS: Record<ResearchModelPreset, TierModelConfig> = {
   sonnet: {
@@ -50,14 +52,29 @@ export const RESEARCH_MODEL_PRESETS: Record<ResearchModelPreset, TierModelConfig
   haiku: {
     model: 'claude-haiku-4-5-20251001',
     provider: 'anthropic',
-    displayName: 'Claude 4.5 Haiku (Budget)',
+    displayName: 'Claude 4.5 Haiku ($)',
     hasToolSupport: true,
   },
+  // Legacy alias - now points to gemini-flash
   gemini: {
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     provider: 'google',
-    displayName: 'Gemini 2.0 Flash (Free)',
-    hasToolSupport: false, // Gemini SDK doesn't properly support Tool objects
+    displayName: 'Gemini 2.5 Flash (FREE)',
+    hasToolSupport: true, // AI SDK supports tool calling for Gemini 2.5+
+  },
+  // Recommended FREE option
+  'gemini-flash': {
+    model: 'gemini-2.5-flash',
+    provider: 'google',
+    displayName: 'Gemini 2.5 Flash (FREE)',
+    hasToolSupport: true,
+  },
+  // Cheapest paid option (4x cheaper than Gemini on output)
+  'gpt-mini': {
+    model: 'gpt-4.1-mini',
+    provider: 'openai',
+    displayName: 'GPT-4.1 Mini (Budget)',
+    hasToolSupport: true,
   },
 };
 

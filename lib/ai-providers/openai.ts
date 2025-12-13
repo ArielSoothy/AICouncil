@@ -86,20 +86,26 @@ export class OpenAIProvider implements AIProvider {
         tools: hasTools ? tools : undefined,
         stopWhen: hasTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
         onStepFinish: hasTools ? (step) => {
-          console.log('🔍 OpenAI Step finished:', {
-            text: step.text?.substring(0, 100),
-            toolCalls: step.toolCalls?.length || 0,
-            toolResults: step.toolResults?.length || 0
-          });
-          if (step.toolCalls && step.toolCalls.length > 0) {
-            step.toolCalls.forEach((call: any) => {
-              if (call.toolName === 'web_search') {
-                console.log(`🔍 ${config.model} → OpenAI Web Search`);
-              } else {
-                console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
-                toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
-              }
+          try {
+            console.log('🔍 OpenAI Step finished:', {
+              text: step.text?.substring(0, 100),
+              toolCalls: step.toolCalls?.length || 0,
+              toolResults: step.toolResults?.length || 0
             });
+            if (step.toolCalls && step.toolCalls.length > 0) {
+              step.toolCalls.forEach((call: any) => {
+                if (call.toolName === 'web_search') {
+                  console.log(`🔍 ${config.model} → OpenAI Web Search`);
+                } else {
+                  // Tool call args may be in different properties depending on AI SDK version
+                  const args = call.args || call.input || call.parameters || {};
+                  console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(args)})`);
+                  toolTracker.logCall(call.toolName, args?.symbol || 'N/A');
+                }
+              });
+            }
+          } catch (e) {
+            console.error('OpenAI onStepFinish error:', e);
           }
         } : undefined,
       });

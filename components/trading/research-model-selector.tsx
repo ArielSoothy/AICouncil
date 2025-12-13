@@ -10,10 +10,13 @@ import {
  * Research Model Selector Component
  *
  * Allows users to select which AI model to use for research agents.
- * Options:
- * - Claude 4.5 Sonnet ($$$) - Default, best tool-calling
- * - Claude 4.5 Haiku ($) - 3x cheaper
- * - Gemini 2.0 Flash (Free) - No tool support (disabled)
+ * Priority order (fallback): gemini-flash → gpt-mini → haiku → sonnet
+ *
+ * Cost comparison per 1M tokens:
+ * - Gemini 2.5 Flash: $0.30/$2.50 (FREE tier available!)
+ * - GPT-4.1 Mini: $0.15/$0.60 (cheapest paid, 4x cheaper than Gemini)
+ * - Claude 4.5 Haiku: $1.00/$5.00
+ * - Claude 4.5 Sonnet: $3.00/$15.00
  *
  * NOTE: Llama 70B removed - Groq AI SDK doesn't reliably enforce tool calling
  */
@@ -22,35 +25,50 @@ const PRESET_OPTIONS: {
   value: ResearchModelPreset
   label: string
   description: string
-  cost: 'FREE' | '$' | '$$$'
+  cost: 'FREE' | '$' | '$$' | '$$$'
   disabled?: boolean
   disabledReason?: string
+  recommended?: boolean
 }[] = [
   {
-    value: 'sonnet',
-    label: 'Claude 4.5 Sonnet',
-    description: 'Best tool-calling for research',
-    cost: '$$$',
+    value: 'gemini-flash',
+    label: 'Gemini 2.5 Flash',
+    description: 'FREE tier available, good tool support',
+    cost: 'FREE',
+    recommended: true,
+  },
+  {
+    value: 'gpt-mini',
+    label: 'GPT-4.1 Mini',
+    description: 'Cheapest paid (4x cheaper than Gemini)',
+    cost: '$',
   },
   {
     value: 'haiku',
     label: 'Claude 4.5 Haiku',
-    description: '3x cheaper, good reliability',
-    cost: '$',
+    description: 'Reliable, good for Anthropic users',
+    cost: '$$',
   },
   {
+    value: 'sonnet',
+    label: 'Claude 4.5 Sonnet',
+    description: 'Best quality, highest cost',
+    cost: '$$$',
+  },
+  // Legacy option - kept for backward compatibility
+  {
     value: 'gemini',
-    label: 'Gemini 2.0 Flash',
-    description: 'No tool support',
+    label: 'Gemini 2.5 Flash (Legacy)',
+    description: 'Alias for gemini-flash',
     cost: 'FREE',
-    disabled: true,
-    disabledReason: 'Tool calling not supported',
+    disabled: false,
   },
 ]
 
 const COST_BADGE_COLORS: Record<string, string> = {
   FREE: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   $: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  $$: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
   $$$: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
 }
 
@@ -98,10 +116,10 @@ export function ResearchModelSelector() {
         </span>
       </div>
 
-      {/* Warning for Gemini selection (shouldn't happen since disabled) */}
-      {researchModel === 'gemini' && (
-        <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-400">
-          Gemini doesn't support tool calling. Using Claude Sonnet as fallback.
+      {/* Info for recommended option */}
+      {(researchModel === 'gemini-flash' || researchModel === 'gemini') && (
+        <div className="p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-xs text-green-700 dark:text-green-400">
+          Gemini 2.5 Flash has a FREE tier! Falls back to GPT-4.1 Mini if rate limited.
         </div>
       )}
     </div>

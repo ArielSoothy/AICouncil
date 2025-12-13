@@ -199,6 +199,104 @@ function getProviderForModel(modelConfig: TierModelConfig) {
   }
 }
 
+// ============================================================================
+// PROVIDER FALLBACK SYSTEM
+// ============================================================================
+
+/**
+ * Fallback order: FREE first → Cheapest paid → More expensive
+ * 1. gemini-flash: FREE tier available
+ * 2. gpt-mini: $0.15/M in, $0.60/M out (cheapest paid)
+ * 3. haiku: $1.00/M in, $5.00/M out
+ * 4. sonnet: $3.00/M in, $15.00/M out (most capable)
+ */
+const FALLBACK_ORDER: ResearchModelPreset[] = ['gemini-flash', 'gpt-mini', 'haiku', 'sonnet'];
+
+/**
+ * Check if an error is a rate limit or quota error
+ * These errors should trigger fallback to another provider
+ */
+function isRateLimitError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes('rate limit') ||
+    msg.includes('quota') ||
+    msg.includes('429') ||
+    msg.includes('too many requests') ||
+    msg.includes('usage limit') ||
+    msg.includes('api usage limits') ||
+    msg.includes('exceeded') ||
+    msg.includes('capacity')
+  );
+}
+
+/**
+ * Get next fallback preset after the current one
+ * Returns null if no more fallbacks available
+ */
+function getNextFallback(currentPreset: ResearchModelPreset): ResearchModelPreset | null {
+  const currentIndex = FALLBACK_ORDER.indexOf(currentPreset);
+  if (currentIndex === -1 || currentIndex >= FALLBACK_ORDER.length - 1) {
+    return null;
+  }
+  return FALLBACK_ORDER[currentIndex + 1];
+}
+
+/**
+ * Get model config with automatic fallback on rate limit errors
+ * Tries providers in order: gemini-flash → gpt-mini → haiku → sonnet
+ *
+ * @param preferredPreset - User's preferred preset
+ * @param onFallback - Optional callback when fallback occurs
+ */
+export function getModelConfigWithFallback(
+  preferredPreset: ResearchModelPreset,
+  usedPresets: Set<ResearchModelPreset> = new Set()
+): TierModelConfig {
+  // If preferred preset hasn't been tried, use it
+  if (!usedPresets.has(preferredPreset)) {
+    return RESEARCH_MODEL_PRESETS[preferredPreset];
+  }
+
+  // Find next available fallback
+  let nextPreset = getNextFallback(preferredPreset);
+  while (nextPreset && usedPresets.has(nextPreset)) {
+    nextPreset = getNextFallback(nextPreset);
+  }
+
+  if (nextPreset) {
+    console.log(`🔄 Falling back to ${RESEARCH_MODEL_PRESETS[nextPreset].displayName}`);
+    return RESEARCH_MODEL_PRESETS[nextPreset];
+  }
+
+  // All providers exhausted - use last resort (sonnet)
+  console.log(`❌ All fallbacks exhausted, using Sonnet as last resort`);
+  return RESEARCH_MODEL_PRESETS.sonnet;
+}
+
+/**
+ * Handle rate limit error by returning next fallback config
+ * Returns null if no more fallbacks available
+ */
+export function handleRateLimitError(
+  error: unknown,
+  currentPreset: ResearchModelPreset
+): TierModelConfig | null {
+  if (!isRateLimitError(error)) {
+    return null; // Not a rate limit error, don't fallback
+  }
+
+  const nextPreset = getNextFallback(currentPreset);
+  if (!nextPreset) {
+    console.log(`❌ Rate limit hit on ${currentPreset}, no more fallbacks available`);
+    return null;
+  }
+
+  console.log(`⚠️ Rate limit hit on ${currentPreset}, falling back to ${nextPreset}`);
+  return RESEARCH_MODEL_PRESETS[nextPreset];
+}
+
 /**
  * OPTIONAL Progress Callback Type
  * Pass this to research functions to receive real-time progress updates
