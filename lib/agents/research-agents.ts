@@ -298,6 +298,76 @@ export function handleRateLimitError(
 }
 
 /**
+ * Check if a string error message indicates a rate limit
+ */
+function isRateLimitErrorMessage(errorMessage: string): boolean {
+  if (!errorMessage) return false;
+  const msg = errorMessage.toLowerCase();
+  return (
+    msg.includes('rate limit') ||
+    msg.includes('quota') ||
+    msg.includes('429') ||
+    msg.includes('too many requests') ||
+    msg.includes('usage limit') ||
+    msg.includes('api usage limits') ||
+    msg.includes('exceeded') ||
+    msg.includes('capacity')
+  );
+}
+
+/**
+ * Execute provider query with automatic fallback on rate limit errors
+ * Tries each provider in FALLBACK_ORDER until success or all exhausted
+ */
+async function queryWithFallback(
+  prompt: string,
+  initialConfig: TierModelConfig,
+  queryConfig: {
+    temperature: number;
+    maxTokens: number;
+    useTools: boolean;
+    maxSteps: number;
+  },
+  researchModelPreset: ResearchModelPreset
+): Promise<{ result: ModelResponse; usedConfig: TierModelConfig }> {
+  let currentConfig = initialConfig;
+  let currentPreset = researchModelPreset;
+  const triedPresets = new Set<ResearchModelPreset>();
+
+  while (true) {
+    triedPresets.add(currentPreset);
+    const provider = getProviderForModel(currentConfig);
+
+    console.log(`🔬 Trying ${currentConfig.displayName} for research...`);
+
+    const result = await provider.query(prompt, {
+      model: currentConfig.model,
+      provider: currentConfig.provider,
+      enabled: true,
+      ...queryConfig,
+    });
+
+    // Check if we got a rate limit error in result.error
+    if (result.error && isRateLimitErrorMessage(result.error)) {
+      const nextPreset = getNextFallback(currentPreset);
+
+      if (nextPreset && !triedPresets.has(nextPreset)) {
+        console.log(`⚠️ Rate limit on ${currentConfig.displayName}, falling back to ${RESEARCH_MODEL_PRESETS[nextPreset].displayName}`);
+        currentConfig = RESEARCH_MODEL_PRESETS[nextPreset];
+        currentPreset = nextPreset;
+        continue; // Try next provider
+      }
+
+      // No more fallbacks - return the error result
+      console.log(`❌ All fallback providers exhausted`);
+    }
+
+    // Success or non-rate-limit error - return the result
+    return { result, usedConfig: currentConfig };
+  }
+}
+
+/**
  * OPTIONAL Progress Callback Type
  * Pass this to research functions to receive real-time progress updates
  * If not provided, functions work normally without streaming
@@ -327,6 +397,8 @@ export async function runTechnicalResearch(
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
   const modelConfig = getResearchModelForConfig(tier, researchModel);
+  // Determine the preset being used for fallback logic
+  const currentPreset: ResearchModelPreset = researchModel || 'gemini-flash';
 
   try {
     console.log(`🔍 Technical Analyst starting research... (${modelConfig.displayName})`);
@@ -348,19 +420,20 @@ export async function runTechnicalResearch(
       minimalData
     );
 
-    const provider = getProviderForModel(modelConfig);
-
     console.log(`🔬 Technical Analyst calling ${modelConfig.provider} with useTools=true`);
 
-    const result: ModelResponse = await provider.query(prompt, {
-      model: modelConfig.model,
-      provider: modelConfig.provider,
-      enabled: true,
-      temperature: 0.7,
-      maxTokens: 2000,
-      useTools: true, // ✅ Enable all 8 market data tools
-      maxSteps: 10, // Allow up to 10 tool calls
-    });
+    // Use queryWithFallback for automatic rate limit handling
+    const { result, usedConfig } = await queryWithFallback(
+      prompt,
+      modelConfig,
+      {
+        temperature: 0.7,
+        maxTokens: 2000,
+        useTools: true, // ✅ Enable all 8 market data tools
+        maxSteps: 10, // Allow up to 10 tool calls
+      },
+      currentPreset
+    );
 
     const responseTime = Date.now() - startTime;
     const toolCalls = result.toolCalls || [];
@@ -378,8 +451,8 @@ export async function runTechnicalResearch(
       toolCount: toolCalls.length,
       duration: responseTime,
       tokensUsed: result.tokens.total,
-      model: modelConfig.model,      // For cost tracking
-      provider: modelConfig.provider, // For cost tracking
+      model: usedConfig.model,      // Use the actual model that succeeded
+      provider: usedConfig.provider, // Use the actual provider that succeeded
       inputTokens: result.tokens.prompt,
       outputTokens: result.tokens.completion,
       timestamp: Date.now()
@@ -392,8 +465,8 @@ export async function runTechnicalResearch(
 
     return {
       agent: 'technical',
-      model: modelConfig.model,
-      provider: modelConfig.provider,
+      model: usedConfig.model,
+      provider: usedConfig.provider,
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -436,6 +509,7 @@ export async function runFundamentalResearch(
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
   const modelConfig = getResearchModelForConfig(tier, researchModel);
+  const currentPreset: ResearchModelPreset = researchModel || 'gemini-flash';
 
   try {
     console.log(`🔍 Fundamental Analyst starting research... (${modelConfig.displayName})`);
@@ -457,17 +531,18 @@ export async function runFundamentalResearch(
       minimalData
     );
 
-    const provider = getProviderForModel(modelConfig);
-
-    const result: ModelResponse = await provider.query(prompt, {
-      model: modelConfig.model,
-      provider: modelConfig.provider,
-      enabled: true,
-      temperature: 0.7,
-      maxTokens: 2000,
-      useTools: true,
-      maxSteps: 10,
-    });
+    // Use queryWithFallback for automatic rate limit handling
+    const { result, usedConfig } = await queryWithFallback(
+      prompt,
+      modelConfig,
+      {
+        temperature: 0.7,
+        maxTokens: 2000,
+        useTools: true,
+        maxSteps: 10,
+      },
+      currentPreset
+    );
 
     const responseTime = Date.now() - startTime;
     const toolCalls = result.toolCalls || [];
@@ -483,8 +558,8 @@ export async function runFundamentalResearch(
       toolCount: toolCalls.length,
       duration: responseTime,
       tokensUsed: result.tokens.total,
-      model: modelConfig.model,      // For cost tracking
-      provider: modelConfig.provider, // For cost tracking
+      model: usedConfig.model,
+      provider: usedConfig.provider,
       inputTokens: result.tokens.prompt,
       outputTokens: result.tokens.completion,
       timestamp: Date.now()
@@ -497,8 +572,8 @@ export async function runFundamentalResearch(
 
     return {
       agent: 'fundamental',
-      model: modelConfig.model,
-      provider: modelConfig.provider,
+      model: usedConfig.model,
+      provider: usedConfig.provider,
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -544,6 +619,7 @@ export async function runSentimentResearch(
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
   const modelConfig = getResearchModelForConfig(tier, researchModel);
+  const currentPreset: ResearchModelPreset = researchModel || 'gemini-flash';
 
   try {
     console.log(`🔍 Sentiment Analyst starting research... (${modelConfig.displayName})`);
@@ -565,17 +641,18 @@ export async function runSentimentResearch(
       minimalData
     );
 
-    const provider = getProviderForModel(modelConfig);
-
-    const result: ModelResponse = await provider.query(prompt, {
-      model: modelConfig.model,
-      provider: modelConfig.provider,
-      enabled: true,
-      temperature: 0.7,
-      maxTokens: 2000,
-      useTools: true,
-      maxSteps: 10,
-    });
+    // Use queryWithFallback for automatic rate limit handling
+    const { result, usedConfig } = await queryWithFallback(
+      prompt,
+      modelConfig,
+      {
+        temperature: 0.7,
+        maxTokens: 2000,
+        useTools: true,
+        maxSteps: 10,
+      },
+      currentPreset
+    );
 
     const responseTime = Date.now() - startTime;
     const toolCalls = result.toolCalls || [];
@@ -591,8 +668,8 @@ export async function runSentimentResearch(
       toolCount: toolCalls.length,
       duration: responseTime,
       tokensUsed: result.tokens.total,
-      model: modelConfig.model,      // For cost tracking
-      provider: modelConfig.provider, // For cost tracking
+      model: usedConfig.model,
+      provider: usedConfig.provider,
       inputTokens: result.tokens.prompt,
       outputTokens: result.tokens.completion,
       timestamp: Date.now()
@@ -605,8 +682,8 @@ export async function runSentimentResearch(
 
     return {
       agent: 'sentiment',
-      model: modelConfig.model,
-      provider: modelConfig.provider,
+      model: usedConfig.model,
+      provider: usedConfig.provider,
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
@@ -652,6 +729,7 @@ export async function runRiskAnalysis(
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
   const modelConfig = getResearchModelForConfig(tier, researchModel);
+  const currentPreset: ResearchModelPreset = researchModel || 'gemini-flash';
 
   try {
     console.log(`🔍 Risk Manager starting research... (${modelConfig.displayName})`);
@@ -673,17 +751,18 @@ export async function runRiskAnalysis(
       minimalData
     );
 
-    const provider = getProviderForModel(modelConfig);
-
-    const result: ModelResponse = await provider.query(prompt, {
-      model: modelConfig.model,
-      provider: modelConfig.provider,
-      enabled: true,
-      temperature: 0.7,
-      maxTokens: 2000,
-      useTools: true,
-      maxSteps: 10,
-    });
+    // Use queryWithFallback for automatic rate limit handling
+    const { result, usedConfig } = await queryWithFallback(
+      prompt,
+      modelConfig,
+      {
+        temperature: 0.7,
+        maxTokens: 2000,
+        useTools: true,
+        maxSteps: 10,
+      },
+      currentPreset
+    );
 
     const responseTime = Date.now() - startTime;
     const toolCalls = result.toolCalls || [];
@@ -699,8 +778,8 @@ export async function runRiskAnalysis(
       toolCount: toolCalls.length,
       duration: responseTime,
       tokensUsed: result.tokens.total,
-      model: modelConfig.model,      // For cost tracking
-      provider: modelConfig.provider, // For cost tracking
+      model: usedConfig.model,
+      provider: usedConfig.provider,
       inputTokens: result.tokens.prompt,
       outputTokens: result.tokens.completion,
       timestamp: Date.now()
@@ -713,8 +792,8 @@ export async function runRiskAnalysis(
 
     return {
       agent: 'risk',
-      model: modelConfig.model,
-      provider: modelConfig.provider,
+      model: usedConfig.model,
+      provider: usedConfig.provider,
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
