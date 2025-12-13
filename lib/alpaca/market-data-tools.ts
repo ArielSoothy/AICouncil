@@ -22,7 +22,7 @@
 import Alpaca from '@alpacahq/alpaca-trade-api';
 import { tool, Tool } from 'ai';
 import { z } from 'zod';
-import { faker } from '@faker-js/faker';
+// faker import removed - get_stock_quote now uses real Yahoo Finance data
 import { secEdgarTools } from './sec-edgar-tools';
 
 // TypeScript workaround for AI SDK v5 deep type inference with Zod
@@ -45,11 +45,13 @@ function getAlpacaClient(): Alpaca {
   });
 }
 
-import { get_stock_quote as fake_get_stock_quote } from '../trading/get_stock_quote';
+import { get_stock_quote } from '../trading/get_stock_quote';
 
 /**
  * Tool 1: Get Real-Time Stock Quote
- * Returns current price, bid/ask, volume
+ * Returns current price, bid/ask, volume from Yahoo Finance
+ *
+ * @see Feature #54 - Now uses real Yahoo Finance data instead of Faker.js
  */
 export const getStockQuoteTool: AnyTool = createTool({
   description: 'Get real-time stock quote with current price, bid/ask spread, and volume. Use this to check current market price before making trading decisions.',
@@ -58,13 +60,16 @@ export const getStockQuoteTool: AnyTool = createTool({
   }),
   execute: async ({ symbol }: { symbol: string }) => {
     try {
-      const quote = fake_get_stock_quote(symbol.toUpperCase());
+      // Now uses REAL Yahoo Finance data (async)
+      const quote = await get_stock_quote(symbol.toUpperCase());
       return {
         symbol: symbol.toUpperCase(),
         price: quote.price,
-        timestamp: new Date().toISOString(),
-        size: faker.number.int({ min: 100, max: 1000 }),
+        bid: quote.bid,
+        ask: quote.ask,
+        volume: quote.volume,
         exchange: quote.exchange,
+        timestamp: quote.lastUpdated,
         success: true
       };
     } catch (error) {

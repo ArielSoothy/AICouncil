@@ -2,7 +2,7 @@
  * Test Script for Trading Tools Integration
  *
  * Tests:
- * 1. get_stock_quote - Fake stock quote generation
+ * 1. get_stock_quote - REAL Yahoo Finance quotes (replaced Faker.js Dec 2025)
  * 2. SEC EDGAR Tools - 10-K data, company filings, R&D spending
  * 3. Import paths - Verify all modules resolve correctly
  *
@@ -18,18 +18,23 @@ async function testTradingTools() {
   console.log('Trading Tools Integration Test');
   console.log('='.repeat(60));
 
-  // Test 1: get_stock_quote (faker-based)
-  console.log('\n📊 Test 1: get_stock_quote (Faker)');
+  // Test 1: get_stock_quote (Yahoo Finance - REAL data)
+  console.log('\n📊 Test 1: get_stock_quote (Yahoo Finance)');
   console.log('-'.repeat(40));
 
   const testSymbols = ['AAPL', 'RLMD', 'TSLA'];
   for (const symbol of testSymbols) {
-    const quote = get_stock_quote(symbol);
-    console.log(`  ${symbol}:`);
-    console.log(`    Price: $${quote.price.toFixed(2)}`);
-    console.log(`    Bid: $${quote.bid.toFixed(2)} / Ask: $${quote.ask.toFixed(2)}`);
-    console.log(`    Volume: ${quote.volume.toLocaleString()}`);
-    console.log(`    Exchange: ${quote.exchange}`);
+    try {
+      const quote = await get_stock_quote(symbol);
+      console.log(`  ${symbol}:`);
+      console.log(`    Price: $${quote.price.toFixed(2)}`);
+      console.log(`    Bid: $${quote.bid.toFixed(2)} / Ask: $${quote.ask.toFixed(2)}`);
+      console.log(`    Volume: ${quote.volume.toLocaleString()}`);
+      console.log(`    Exchange: ${quote.exchange}`);
+      console.log(`    Updated: ${quote.lastUpdated}`);
+    } catch (error) {
+      console.log(`  ${symbol}: ERROR - ${error instanceof Error ? error.message : 'Unknown'}`);
+    }
   }
 
   // Test 2: CIK Mapper
