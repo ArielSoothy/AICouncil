@@ -24,6 +24,8 @@ import { tool, Tool } from 'ai';
 import { z } from 'zod';
 // faker import removed - get_stock_quote now uses real Yahoo Finance data
 import { secEdgarTools } from './sec-edgar-tools';
+import { IBKRBroker } from '../brokers/ibkr-broker';
+import { BrokerBar } from '../brokers/types';
 
 // TypeScript workaround for AI SDK v5 deep type inference with Zod
 // The AI SDK v5 has extremely complex type inference that causes TypeScript to exceed
@@ -43,6 +45,105 @@ function getAlpacaClient(): Alpaca {
     paper: true,
     baseUrl: process.env.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets',
   });
+}
+
+// IBKR broker instance (singleton)
+let ibkrBroker: IBKRBroker | null = null;
+
+function getIBKRBroker(): IBKRBroker {
+  if (!ibkrBroker) {
+    ibkrBroker = new IBKRBroker();
+  }
+  return ibkrBroker;
+}
+
+/**
+ * Get historical price bars with IBKR-first fallback to Alpaca
+ *
+ * Priority:
+ * 1. Try IBKR (user authenticated with full data access)
+ * 2. Fall back to Alpaca if IBKR fails
+ * 3. Return error if both fail
+ *
+ * @param symbol Stock ticker
+ * @param timeframe Bar size ('1Min', '5Min', '1Hour', '1Day')
+ * @param start Start date
+ * @param end End date
+ * @param limit Max bars to return
+ */
+async function getBarsWithFallback(
+  symbol: string,
+  timeframe: string,
+  start: Date,
+  end: Date,
+  limit: number
+): Promise<{ bars: BrokerBar[]; source: 'ibkr' | 'alpaca'; error?: string }> {
+  const symbolUpper = symbol.toUpperCase();
+
+  // Try IBKR first (has full data access when authenticated)
+  try {
+    const ibkr = getIBKRBroker();
+    const isConnected = await ibkr.isConnected();
+
+    if (isConnected) {
+      console.log(`[MarketData] Trying IBKR for ${symbolUpper} bars...`);
+      const bars = await ibkr.getBars(symbolUpper, timeframe, start, end);
+
+      if (bars && bars.length > 0) {
+        console.log(`[MarketData] ✅ IBKR returned ${bars.length} bars for ${symbolUpper}`);
+        return { bars: bars.slice(-limit), source: 'ibkr' };
+      }
+    }
+  } catch (ibkrError) {
+    console.log(`[MarketData] IBKR failed for ${symbolUpper}: ${ibkrError instanceof Error ? ibkrError.message : 'Unknown'}`);
+  }
+
+  // Fall back to Alpaca
+  try {
+    console.log(`[MarketData] Trying Alpaca for ${symbolUpper} bars...`);
+    const alpaca = getAlpacaClient();
+
+    const barsGenerator = alpaca.getBarsV2(symbolUpper, {
+      start: start.toISOString(),
+      end: end.toISOString(),
+      timeframe,
+      limit,
+    });
+
+    const bars: BrokerBar[] = [];
+    for await (const bar of barsGenerator) {
+      bars.push({
+        symbol: symbolUpper,
+        timestamp: new Date(bar.Timestamp),
+        open: bar.OpenPrice,
+        high: bar.HighPrice,
+        low: bar.LowPrice,
+        close: bar.ClosePrice,
+        volume: bar.Volume,
+      });
+    }
+
+    if (bars.length > 0) {
+      console.log(`[MarketData] ✅ Alpaca returned ${bars.length} bars for ${symbolUpper}`);
+      return { bars: bars.slice(-limit), source: 'alpaca' };
+    }
+
+    return { bars: [], source: 'alpaca', error: 'No data returned' };
+  } catch (alpacaError) {
+    const errorMsg = alpacaError instanceof Error ? alpacaError.message : 'Unknown error';
+    console.log(`[MarketData] ❌ Alpaca failed for ${symbolUpper}: ${errorMsg}`);
+
+    // Check if it's a 403 subscription error
+    if (errorMsg.includes('403') || errorMsg.includes('subscription')) {
+      return {
+        bars: [],
+        source: 'alpaca',
+        error: `Historical data requires market data subscription. IBKR not connected and Alpaca returned 403. Error: ${errorMsg}`
+      };
+    }
+
+    return { bars: [], source: 'alpaca', error: errorMsg };
+  }
 }
 
 import { get_stock_quote } from '../trading/get_stock_quote';
@@ -85,6 +186,8 @@ export const getStockQuoteTool: AnyTool = createTool({
 /**
  * Tool 2: Get Historical Price Bars
  * Returns candlestick data for technical analysis
+ *
+ * Uses IBKR-first fallback: tries IBKR (if authenticated), then Alpaca
  */
 export const getPriceBarsTool: AnyTool = createTool({
   description: 'Get historical price bars (candlesticks) for technical analysis. Returns OHLC (Open, High, Low, Close) data with volume. Use this to analyze price trends, patterns, and support/resistance levels.',
@@ -94,67 +197,50 @@ export const getPriceBarsTool: AnyTool = createTool({
     limit: z.number().min(1).max(100).describe('Number of bars to fetch (max 100)'),
   }),
   execute: async ({ symbol, timeframe, limit }: { symbol: string; timeframe: string; limit: number }) => {
-    try {
-      const alpaca = getAlpacaClient();
+    // Calculate start date based on timeframe and limit
+    const end = new Date();
+    const start = new Date();
 
-      // Calculate start date based on timeframe and limit
-      const end = new Date();
-      const start = new Date();
+    if (timeframe === '1Min') {
+      start.setMinutes(start.getMinutes() - (limit * 2)); // Extra buffer
+    } else if (timeframe === '5Min') {
+      start.setMinutes(start.getMinutes() - (limit * 10)); // Extra buffer
+    } else if (timeframe === '15Min') {
+      start.setMinutes(start.getMinutes() - (limit * 30)); // Extra buffer
+    } else if (timeframe === '1Hour') {
+      start.setHours(start.getHours() - (limit * 2)); // Extra buffer
+    } else if (timeframe === '1Day') {
+      start.setDate(start.getDate() - (limit * 2)); // Extra buffer
+    }
 
-      if (timeframe === '1Min') {
-        start.setMinutes(start.getMinutes() - (limit * 2)); // Extra buffer
-      } else if (timeframe === '5Min') {
-        start.setMinutes(start.getMinutes() - (limit * 10)); // Extra buffer
-      } else if (timeframe === '15Min') {
-        start.setMinutes(start.getMinutes() - (limit * 30)); // Extra buffer
-      } else if (timeframe === '1Hour') {
-        start.setHours(start.getHours() - (limit * 2)); // Extra buffer
-      } else if (timeframe === '1Day') {
-        start.setDate(start.getDate() - (limit * 2)); // Extra buffer
-      }
+    // Use IBKR-first fallback
+    const result = await getBarsWithFallback(symbol, timeframe, start, end, limit);
 
-      const barsGenerator = alpaca.getBarsV2(symbol.toUpperCase(), {
-        start: start.toISOString(),
-        end: end.toISOString(),
-        timeframe,
-        limit,
-      });
-
-      // Collect bars from async generator
-      const formattedBars: Array<{
-        timestamp: string;
-        open: number;
-        high: number;
-        low: number;
-        close: number;
-        volume: number;
-      }> = [];
-
-      for await (const bar of barsGenerator) {
-        formattedBars.push({
-          timestamp: bar.Timestamp,
-          open: bar.OpenPrice,
-          high: bar.HighPrice,
-          low: bar.LowPrice,
-          close: bar.ClosePrice,
-          volume: bar.Volume,
-        });
-      }
-
+    if (result.error) {
       return {
         symbol: symbol.toUpperCase(),
-        timeframe,
-        bars: formattedBars.slice(-limit), // Return only requested limit
-        count: formattedBars.length,
-        success: true
-      };
-    } catch (error) {
-      return {
-        symbol: symbol.toUpperCase(),
-        error: error instanceof Error ? error.message : 'Failed to fetch bars',
+        error: result.error,
         success: false
       };
     }
+
+    const formattedBars = result.bars.map(bar => ({
+      timestamp: bar.timestamp.toISOString(),
+      open: bar.open,
+      high: bar.high,
+      low: bar.low,
+      close: bar.close,
+      volume: bar.volume,
+    }));
+
+    return {
+      symbol: symbol.toUpperCase(),
+      timeframe,
+      bars: formattedBars,
+      count: formattedBars.length,
+      source: result.source,
+      success: true
+    };
   },
 });
 
@@ -204,6 +290,8 @@ export const getStockNewsTool: AnyTool = createTool({
 /**
  * Tool 4: Calculate RSI (Relative Strength Index)
  * Returns RSI indicator for overbought/oversold analysis
+ *
+ * Uses IBKR-first fallback: tries IBKR (if authenticated), then Alpaca
  */
 export const calculateRSITool: AnyTool = createTool({
   description: 'Calculate RSI (Relative Strength Index) indicator. RSI values: >70 = overbought (potential sell), <30 = oversold (potential buy), 40-60 = neutral. Use this to identify potential reversal points.',
@@ -212,86 +300,79 @@ export const calculateRSITool: AnyTool = createTool({
     period: z.number().min(5).max(50).default(14).describe('RSI period (default 14)'),
   }),
   execute: async ({ symbol, period }: { symbol: string; period: number }) => {
-    try {
-      const alpaca = getAlpacaClient();
+    // Calculate start date for enough historical data
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - (period + 30)); // Extra buffer for accurate calculation
 
-      // Calculate start date for enough historical data
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - (period + 30)); // Extra buffer for accurate calculation
+    // Use IBKR-first fallback
+    const result = await getBarsWithFallback(symbol, '1Day', start, end, period + 30);
 
-      const barsGenerator = alpaca.getBarsV2(symbol.toUpperCase(), {
-        start: start.toISOString(),
-        end: end.toISOString(),
-        timeframe: '1Day',
-        limit: period + 30,
-      });
-
-      // Collect bars
-      const bars: Array<{ close: number }> = [];
-      for await (const bar of barsGenerator) {
-        bars.push({ close: bar.ClosePrice });
-      }
-
-      if (bars.length < period + 1) {
-        return {
-          symbol: symbol.toUpperCase(),
-          error: `Not enough data to calculate RSI (need ${period + 1} bars, got ${bars.length})`,
-          success: false
-        };
-      }
-
-      // Calculate RSI
-      const closes = bars.map(bar => bar.close);
-      const gains: number[] = [];
-      const losses: number[] = [];
-
-      for (let i = 1; i < closes.length; i++) {
-        const change = closes[i] - closes[i - 1];
-        gains.push(change > 0 ? change : 0);
-        losses.push(change < 0 ? Math.abs(change) : 0);
-      }
-
-      // Calculate average gain and loss
-      const avgGain = gains.slice(-period).reduce((a, b) => a + b, 0) / period;
-      const avgLoss = losses.slice(-period).reduce((a, b) => a + b, 0) / period;
-
-      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-      const rsi = 100 - (100 / (1 + rs));
-
-      let interpretation = '';
-      if (rsi > 70) {
-        interpretation = 'Overbought - Potential sell signal';
-      } else if (rsi < 30) {
-        interpretation = 'Oversold - Potential buy signal';
-      } else if (rsi >= 40 && rsi <= 60) {
-        interpretation = 'Neutral - No clear signal';
-      } else if (rsi > 60) {
-        interpretation = 'Bullish momentum';
-      } else {
-        interpretation = 'Bearish momentum';
-      }
-
+    if (result.error) {
       return {
         symbol: symbol.toUpperCase(),
-        rsi: Math.round(rsi * 100) / 100,
-        interpretation,
-        period,
-        success: true
-      };
-    } catch (error) {
-      return {
-        symbol: symbol.toUpperCase(),
-        error: error instanceof Error ? error.message : 'Failed to calculate RSI',
+        error: result.error,
         success: false
       };
     }
+
+    const bars = result.bars;
+
+    if (bars.length < period + 1) {
+      return {
+        symbol: symbol.toUpperCase(),
+        error: `Not enough data to calculate RSI (need ${period + 1} bars, got ${bars.length})`,
+        success: false
+      };
+    }
+
+    // Calculate RSI
+    const closes = bars.map(bar => bar.close);
+    const gains: number[] = [];
+    const losses: number[] = [];
+
+    for (let i = 1; i < closes.length; i++) {
+      const change = closes[i] - closes[i - 1];
+      gains.push(change > 0 ? change : 0);
+      losses.push(change < 0 ? Math.abs(change) : 0);
+    }
+
+    // Calculate average gain and loss
+    const avgGain = gains.slice(-period).reduce((a, b) => a + b, 0) / period;
+    const avgLoss = losses.slice(-period).reduce((a, b) => a + b, 0) / period;
+
+    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    const rsi = 100 - (100 / (1 + rs));
+
+    let interpretation = '';
+    if (rsi > 70) {
+      interpretation = 'Overbought - Potential sell signal';
+    } else if (rsi < 30) {
+      interpretation = 'Oversold - Potential buy signal';
+    } else if (rsi >= 40 && rsi <= 60) {
+      interpretation = 'Neutral - No clear signal';
+    } else if (rsi > 60) {
+      interpretation = 'Bullish momentum';
+    } else {
+      interpretation = 'Bearish momentum';
+    }
+
+    return {
+      symbol: symbol.toUpperCase(),
+      rsi: Math.round(rsi * 100) / 100,
+      interpretation,
+      period,
+      source: result.source,
+      success: true
+    };
   },
 });
 
 /**
  * Tool 5: Calculate MACD Indicator
  * Returns MACD line, signal line, and histogram for trend analysis
+ *
+ * Uses IBKR-first fallback: tries IBKR (if authenticated), then Alpaca
  */
 export const calculateMACDTool: AnyTool = createTool({
   description: 'Calculate MACD (Moving Average Convergence Divergence) indicator. Positive MACD = bullish trend, negative = bearish. Crossovers indicate trend changes. Use this to identify trend direction and momentum.',
@@ -299,79 +380,70 @@ export const calculateMACDTool: AnyTool = createTool({
     symbol: z.string().describe('Stock ticker symbol'),
   }),
   execute: async ({ symbol }: { symbol: string }) => {
-    try {
-      const alpaca = getAlpacaClient();
+    // Calculate start date for 60 days of data
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 60);
 
-      // Calculate start date for 60 days of data
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - 60);
+    // Use IBKR-first fallback
+    const result = await getBarsWithFallback(symbol, '1Day', start, end, 60);
 
-      const barsGenerator = alpaca.getBarsV2(symbol.toUpperCase(), {
-        start: start.toISOString(),
-        end: end.toISOString(),
-        timeframe: '1Day',
-        limit: 60,
-      });
-
-      // Collect bars
-      const bars: Array<{ close: number }> = [];
-      for await (const bar of barsGenerator) {
-        bars.push({ close: bar.ClosePrice });
-      }
-
-      if (bars.length < 26) {
-        return {
-          symbol: symbol.toUpperCase(),
-          error: 'Not enough data to calculate MACD (need 26+ bars)',
-          success: false
-        };
-      }
-
-      const closes = bars.map(bar => bar.close);
-
-      // Calculate EMAs
-      const ema12 = calculateEMA(closes, 12);
-      const ema26 = calculateEMA(closes, 26);
-      const macdLine = ema12 - ema26;
-
-      // Calculate signal line (9-period EMA of MACD)
-      const macdHistory = [];
-      for (let i = 0; i < closes.length - 26; i++) {
-        const shortEMA = calculateEMA(closes.slice(0, i + 26), 12);
-        const longEMA = calculateEMA(closes.slice(0, i + 26), 26);
-        macdHistory.push(shortEMA - longEMA);
-      }
-
-      const signalLine = calculateEMA(macdHistory, 9);
-      const histogram = macdLine - signalLine;
-
-      let interpretation = '';
-      if (macdLine > signalLine && histogram > 0) {
-        interpretation = 'Bullish - MACD above signal line';
-      } else if (macdLine < signalLine && histogram < 0) {
-        interpretation = 'Bearish - MACD below signal line';
-      } else if (histogram > 0) {
-        interpretation = 'Bullish momentum building';
-      } else {
-        interpretation = 'Bearish momentum building';
-      }
-
+    if (result.error) {
       return {
         symbol: symbol.toUpperCase(),
-        macd: Math.round(macdLine * 100) / 100,
-        signal: Math.round(signalLine * 100) / 100,
-        histogram: Math.round(histogram * 100) / 100,
-        interpretation,
-        success: true
-      };
-    } catch (error) {
-      return {
-        symbol: symbol.toUpperCase(),
-        error: error instanceof Error ? error.message : 'Failed to calculate MACD',
+        error: result.error,
         success: false
       };
     }
+
+    const bars = result.bars;
+
+    if (bars.length < 26) {
+      return {
+        symbol: symbol.toUpperCase(),
+        error: 'Not enough data to calculate MACD (need 26+ bars)',
+        success: false
+      };
+    }
+
+    const closes = bars.map(bar => bar.close);
+
+    // Calculate EMAs
+    const ema12 = calculateEMA(closes, 12);
+    const ema26 = calculateEMA(closes, 26);
+    const macdLine = ema12 - ema26;
+
+    // Calculate signal line (9-period EMA of MACD)
+    const macdHistory = [];
+    for (let i = 0; i < closes.length - 26; i++) {
+      const shortEMA = calculateEMA(closes.slice(0, i + 26), 12);
+      const longEMA = calculateEMA(closes.slice(0, i + 26), 26);
+      macdHistory.push(shortEMA - longEMA);
+    }
+
+    const signalLine = calculateEMA(macdHistory, 9);
+    const histogram = macdLine - signalLine;
+
+    let interpretation = '';
+    if (macdLine > signalLine && histogram > 0) {
+      interpretation = 'Bullish - MACD above signal line';
+    } else if (macdLine < signalLine && histogram < 0) {
+      interpretation = 'Bearish - MACD below signal line';
+    } else if (histogram > 0) {
+      interpretation = 'Bullish momentum building';
+    } else {
+      interpretation = 'Bearish momentum building';
+    }
+
+    return {
+      symbol: symbol.toUpperCase(),
+      macd: Math.round(macdLine * 100) / 100,
+      signal: Math.round(signalLine * 100) / 100,
+      histogram: Math.round(histogram * 100) / 100,
+      interpretation,
+      source: result.source,
+      success: true
+    };
   },
 });
 
@@ -390,6 +462,8 @@ function calculateEMA(data: number[], period: number): number {
 /**
  * Tool 6: Get Volume Profile
  * Analyzes trading volume patterns
+ *
+ * Uses IBKR-first fallback: tries IBKR (if authenticated), then Alpaca
  */
 export const getVolumeProfileTool: AnyTool = createTool({
   description: 'Analyze trading volume patterns. High volume = strong interest/conviction. Use this to confirm trend strength or identify potential reversals.',
@@ -398,72 +472,65 @@ export const getVolumeProfileTool: AnyTool = createTool({
     days: z.number().min(5).max(30).default(20).describe('Number of days to analyze (default 20)'),
   }),
   execute: async ({ symbol, days }: { symbol: string; days: number }) => {
-    try {
-      const alpaca = getAlpacaClient();
+    // Calculate start date
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - (days + 5)); // Extra buffer
 
-      // Calculate start date
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - (days + 5)); // Extra buffer
+    // Use IBKR-first fallback
+    const result = await getBarsWithFallback(symbol, '1Day', start, end, days + 5);
 
-      const barsGenerator = alpaca.getBarsV2(symbol.toUpperCase(), {
-        start: start.toISOString(),
-        end: end.toISOString(),
-        timeframe: '1Day',
-        limit: days + 5,
-      });
-
-      // Collect bars
-      const bars: Array<{ volume: number }> = [];
-      for await (const bar of barsGenerator) {
-        bars.push({ volume: bar.Volume });
-      }
-
-      if (bars.length < 5) {
-        return {
-          symbol: symbol.toUpperCase(),
-          error: 'Not enough data for volume analysis',
-          success: false
-        };
-      }
-
-      const volumes = bars.map(bar => bar.volume);
-      const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
-      const currentVolume = volumes[volumes.length - 1];
-      const volumeRatio = currentVolume / avgVolume;
-
-      let interpretation = '';
-      if (volumeRatio > 2) {
-        interpretation = 'Very high volume - Strong interest';
-      } else if (volumeRatio > 1.5) {
-        interpretation = 'Above average volume - Increased activity';
-      } else if (volumeRatio < 0.5) {
-        interpretation = 'Low volume - Weak interest';
-      } else {
-        interpretation = 'Normal volume';
-      }
-
+    if (result.error) {
       return {
         symbol: symbol.toUpperCase(),
-        currentVolume: Math.round(currentVolume),
-        averageVolume: Math.round(avgVolume),
-        volumeRatio: Math.round(volumeRatio * 100) / 100,
-        interpretation,
-        success: true
-      };
-    } catch (error) {
-      return {
-        symbol: symbol.toUpperCase(),
-        error: error instanceof Error ? error.message : 'Failed to analyze volume',
+        error: result.error,
         success: false
       };
     }
+
+    const bars = result.bars;
+
+    if (bars.length < 5) {
+      return {
+        symbol: symbol.toUpperCase(),
+        error: 'Not enough data for volume analysis',
+        success: false
+      };
+    }
+
+    const volumes = bars.map(bar => bar.volume);
+    const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+    const currentVolume = volumes[volumes.length - 1];
+    const volumeRatio = currentVolume / avgVolume;
+
+    let interpretation = '';
+    if (volumeRatio > 2) {
+      interpretation = 'Very high volume - Strong interest';
+    } else if (volumeRatio > 1.5) {
+      interpretation = 'Above average volume - Increased activity';
+    } else if (volumeRatio < 0.5) {
+      interpretation = 'Low volume - Weak interest';
+    } else {
+      interpretation = 'Normal volume';
+    }
+
+    return {
+      symbol: symbol.toUpperCase(),
+      currentVolume: Math.round(currentVolume),
+      averageVolume: Math.round(avgVolume),
+      volumeRatio: Math.round(volumeRatio * 100) / 100,
+      interpretation,
+      source: result.source,
+      success: true
+    };
   },
 });
 
 /**
  * Tool 7: Get Support and Resistance Levels
  * Identifies key price levels from recent price action
+ *
+ * Uses IBKR-first fallback: tries IBKR (if authenticated), then Alpaca
  */
 export const getSupportResistanceTool: AnyTool = createTool({
   description: 'Identify support and resistance levels from recent price action. Support = price floor where buying pressure emerges. Resistance = price ceiling where selling pressure emerges. Use these for entry/exit planning.',
@@ -472,82 +539,69 @@ export const getSupportResistanceTool: AnyTool = createTool({
     days: z.number().min(10).max(90).default(30).describe('Number of days to analyze (10-90 days, default 30)'),
   }),
   execute: async ({ symbol, days }: { symbol: string; days: number }) => {
-    try {
-      const alpaca = getAlpacaClient();
+    // Calculate start date
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - (days + 10)); // Extra buffer
 
-      // Calculate start date
-      const end = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - (days + 10)); // Extra buffer
+    // Use IBKR-first fallback
+    const result = await getBarsWithFallback(symbol, '1Day', start, end, days + 10);
 
-      const barsGenerator = alpaca.getBarsV2(symbol.toUpperCase(), {
-        start: start.toISOString(),
-        end: end.toISOString(),
-        timeframe: '1Day',
-        limit: days + 10,
-      });
-
-      // Collect bars
-      const bars: Array<{ high: number; low: number; close: number }> = [];
-      for await (const bar of barsGenerator) {
-        bars.push({
-          high: bar.HighPrice,
-          low: bar.LowPrice,
-          close: bar.ClosePrice,
-        });
-      }
-
-      if (bars.length < 10) {
-        return {
-          symbol: symbol.toUpperCase(),
-          error: 'Not enough data for support/resistance analysis',
-          success: false
-        };
-      }
-
-      const highs = bars.map(bar => bar.high);
-      const lows = bars.map(bar => bar.low);
-      const currentPrice = bars[bars.length - 1].close;
-
-      // Find resistance (recent highs)
-      const sortedHighs = [...highs].sort((a, b) => b - a);
-      const resistance = sortedHighs[Math.floor(sortedHighs.length * 0.1)]; // Top 10% high
-
-      // Find support (recent lows)
-      const sortedLows = [...lows].sort((a, b) => a - b);
-      const support = sortedLows[Math.floor(sortedLows.length * 0.1)]; // Bottom 10% low
-
-      const distanceToResistance = ((resistance - currentPrice) / currentPrice) * 100;
-      const distanceToSupport = ((currentPrice - support) / currentPrice) * 100;
-
-      let interpretation = '';
-      if (distanceToResistance < 2) {
-        interpretation = 'Near resistance - Potential sell zone';
-      } else if (distanceToSupport < 2) {
-        interpretation = 'Near support - Potential buy zone';
-      } else if (distanceToResistance < distanceToSupport) {
-        interpretation = 'Closer to resistance than support';
-      } else {
-        interpretation = 'Closer to support than resistance';
-      }
-
+    if (result.error) {
       return {
         symbol: symbol.toUpperCase(),
-        currentPrice: Math.round(currentPrice * 100) / 100,
-        resistance: Math.round(resistance * 100) / 100,
-        support: Math.round(support * 100) / 100,
-        distanceToResistance: Math.round(distanceToResistance * 100) / 100 + '%',
-        distanceToSupport: Math.round(distanceToSupport * 100) / 100 + '%',
-        interpretation,
-        success: true
-      };
-    } catch (error) {
-      return {
-        symbol: symbol.toUpperCase(),
-        error: error instanceof Error ? error.message : 'Failed to find support/resistance',
+        error: result.error,
         success: false
       };
     }
+
+    const bars = result.bars;
+
+    if (bars.length < 10) {
+      return {
+        symbol: symbol.toUpperCase(),
+        error: 'Not enough data for support/resistance analysis',
+        success: false
+      };
+    }
+
+    const highs = bars.map(bar => bar.high);
+    const lows = bars.map(bar => bar.low);
+    const currentPrice = bars[bars.length - 1].close;
+
+    // Find resistance (recent highs)
+    const sortedHighs = [...highs].sort((a, b) => b - a);
+    const resistance = sortedHighs[Math.floor(sortedHighs.length * 0.1)]; // Top 10% high
+
+    // Find support (recent lows)
+    const sortedLows = [...lows].sort((a, b) => a - b);
+    const support = sortedLows[Math.floor(sortedLows.length * 0.1)]; // Bottom 10% low
+
+    const distanceToResistance = ((resistance - currentPrice) / currentPrice) * 100;
+    const distanceToSupport = ((currentPrice - support) / currentPrice) * 100;
+
+    let interpretation = '';
+    if (distanceToResistance < 2) {
+      interpretation = 'Near resistance - Potential sell zone';
+    } else if (distanceToSupport < 2) {
+      interpretation = 'Near support - Potential buy zone';
+    } else if (distanceToResistance < distanceToSupport) {
+      interpretation = 'Closer to resistance than support';
+    } else {
+      interpretation = 'Closer to support than resistance';
+    }
+
+    return {
+      symbol: symbol.toUpperCase(),
+      currentPrice: Math.round(currentPrice * 100) / 100,
+      resistance: Math.round(resistance * 100) / 100,
+      support: Math.round(support * 100) / 100,
+      distanceToResistance: Math.round(distanceToResistance * 100) / 100 + '%',
+      distanceToSupport: Math.round(distanceToSupport * 100) / 100 + '%',
+      interpretation,
+      source: result.source,
+      success: true
+    };
   },
 });
 

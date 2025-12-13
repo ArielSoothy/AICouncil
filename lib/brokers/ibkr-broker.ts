@@ -32,6 +32,7 @@ import {
   BrokerPosition,
   BrokerOrder,
   BrokerQuote,
+  BrokerBar,
   OrderRequest,
   OrderStatus,
   ConnectionError,
@@ -99,6 +100,22 @@ interface IBKRMarketDataSnapshot {
   '86'?: number; // Ask price
   '87'?: number; // Last size
   '88'?: number; // Bid size
+}
+
+// IBKR Historical Data Response
+interface IBKRBar {
+  t: number; // timestamp in ms
+  o: number; // open
+  h: number; // high
+  l: number; // low
+  c: number; // close
+  v: number; // volume
+}
+
+interface IBKRHistoricalData {
+  symbol?: string;
+  data: IBKRBar[];
+  mdAvailability?: string;
 }
 
 export class IBKRBroker implements IBroker {
@@ -481,6 +498,114 @@ export class IBKRBroker implements IBroker {
         error
       );
     }
+  }
+
+  /**
+   * Get historical price bars from IBKR
+   *
+   * IBKR Client Portal API endpoint: /iserver/marketdata/history
+   *
+   * @param symbol - Stock ticker symbol
+   * @param timeframe - Bar size: '1min', '5min', '15min', '1hour', '1day'
+   * @param start - Start date (IBKR uses period-based, we calculate from dates)
+   * @param end - End date
+   * @returns Array of OHLCV bars
+   */
+  async getBars(
+    symbol: string,
+    timeframe: string,
+    start: Date,
+    end: Date
+  ): Promise<BrokerBar[]> {
+    try {
+      // First get contract ID for the symbol
+      const contracts = await this.request<IBKRContract[]>(
+        `/iserver/secdef/search?symbol=${symbol}&secType=STK`
+      );
+
+      if (!contracts || contracts.length === 0) {
+        throw new ConnectionError(this.id, `Symbol not found: ${symbol}`);
+      }
+
+      const conid = contracts[0].conid;
+
+      // Map timeframe to IBKR bar size
+      const barSize = this.mapTimeframeToIBKR(timeframe);
+
+      // Calculate period based on date range
+      const period = this.calculatePeriod(start, end);
+
+      // IBKR historical data endpoint
+      // Note: IBKR uses period-based requests, not exact date ranges
+      const histData = await this.request<IBKRHistoricalData>(
+        `/iserver/marketdata/history?conid=${conid}&period=${period}&bar=${barSize}`
+      );
+
+      if (!histData || !histData.data || histData.data.length === 0) {
+        console.log(`[IBKR] No historical data returned for ${symbol}`);
+        return [];
+      }
+
+      // Map IBKR response to BrokerBar format
+      return histData.data.map((bar: IBKRBar) => ({
+        symbol,
+        timestamp: new Date(bar.t), // IBKR returns timestamp in ms
+        open: bar.o,
+        high: bar.h,
+        low: bar.l,
+        close: bar.c,
+        volume: bar.v,
+      }));
+    } catch (error) {
+      console.error(`[IBKR] getBars error for ${symbol}:`, error);
+      throw new ConnectionError(
+        this.id,
+        `Failed to get historical bars for ${symbol}`,
+        error
+      );
+    }
+  }
+
+  /**
+   * Map common timeframe strings to IBKR bar sizes
+   */
+  private mapTimeframeToIBKR(timeframe: string): string {
+    const map: Record<string, string> = {
+      '1Min': '1min',
+      '1min': '1min',
+      '5Min': '5min',
+      '5min': '5min',
+      '15Min': '15min',
+      '15min': '15min',
+      '30Min': '30min',
+      '30min': '30min',
+      '1Hour': '1h',
+      '1hour': '1h',
+      '1h': '1h',
+      '1Day': '1d',
+      '1day': '1d',
+      '1d': '1d',
+      'day': '1d',
+    };
+    return map[timeframe] || '1d';
+  }
+
+  /**
+   * Calculate IBKR period string from date range
+   * IBKR periods: '1d', '1w', '1m', '3m', '6m', '1y', '2y', '3y', '5y', '10y'
+   */
+  private calculatePeriod(start: Date, end: Date): string {
+    const diffMs = end.getTime() - start.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    if (diffDays <= 1) return '1d';
+    if (diffDays <= 7) return '1w';
+    if (diffDays <= 30) return '1m';
+    if (diffDays <= 90) return '3m';
+    if (diffDays <= 180) return '6m';
+    if (diffDays <= 365) return '1y';
+    if (diffDays <= 730) return '2y';
+    return '3y';
   }
 
   private mapOrder(order: IBKROrder): BrokerOrder {

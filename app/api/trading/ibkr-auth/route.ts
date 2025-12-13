@@ -36,6 +36,19 @@ function makeGatewayRequest<T>(
   return new Promise((resolve, reject) => {
     const fullPath = `/v1/api${endpoint}`
 
+    // Build headers - include Content-Length for POST requests (fixes 411 error)
+    const headers: Record<string, string> = {
+      'User-Agent': 'Mozilla/5.0 VerdictAI/1.0',
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    }
+
+    // CRITICAL: Add Content-Length header for POST requests
+    // IBKR Gateway returns 411 "Length Required" without this
+    if (body) {
+      headers['Content-Length'] = Buffer.byteLength(body).toString()
+    }
+
     const req = https.request(
       {
         hostname: '127.0.0.1',
@@ -43,11 +56,7 @@ function makeGatewayRequest<T>(
         path: fullPath,
         method,
         rejectUnauthorized: false,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 VerdictAI/1.0',
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers,
       },
       (res) => {
         let responseBody = ''
