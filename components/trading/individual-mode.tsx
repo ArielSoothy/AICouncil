@@ -15,7 +15,9 @@ import { getModelsForPreset } from '@/lib/config/model-presets'
 import { TradeCard, type TradeRecommendation } from './trade-card'
 import { InputModeSelector, type InputMode } from './input-mode-selector'
 import { ResearchActivityPanel } from './research-activity-panel'
-import { ResearchReport } from '@/lib/agents/research-agents'
+import { ResearchReport } from '@/types/research-agents'
+import { useCostTrackerOptional } from '@/contexts/cost-tracker-context'
+import { getProviderForModel } from '@/lib/trading/models-config'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -48,7 +50,8 @@ interface AnalysisContext {
 }
 
 export function IndividualMode() {
-  const { globalTier } = useTradingPreset()
+  const { globalTier, researchModel } = useTradingPreset()
+  const costTracker = useCostTrackerOptional()
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(() => getModelsForPreset('pro'))
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [targetSymbol, setTargetSymbol] = useState<string>('')
@@ -175,6 +178,9 @@ export function IndividualMode() {
     setResearchData(null)
     setResearchLoading(true)
 
+    // Start cost tracking for this analysis
+    costTracker?.startAnalysis('trading-individual', `${targetSymbol || 'Market'} ${timeframe}`)
+
     // Extract enabled model IDs for API
     const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
     const enabledModels = selectedModels.filter(m => m.enabled)
@@ -214,7 +220,8 @@ export function IndividualMode() {
           selectedModels: modelIds,
           timeframe,
           targetSymbol: targetSymbol.trim() || undefined,
-          researchTier: globalTier  // Pass global tier to control research model
+          researchTier: globalTier,  // Pass global tier to control research model
+          researchModel,  // Explicit research model override from UI selector
         }),
       })
 
@@ -234,11 +241,34 @@ export function IndividualMode() {
 
       setDecisions(data.decisions)
 
+      // Track costs for each decision model
+      if (costTracker && data.decisions) {
+        data.decisions.forEach((decision: any) => {
+          if (decision.tokens && decision.modelId) {
+            const provider = getProviderForModel(decision.modelId) || 'unknown'
+            costTracker.trackUsage({
+              modelId: decision.modelId,
+              provider,
+              tokens: {
+                prompt: decision.tokens.prompt || 0,
+                completion: decision.tokens.completion || 0,
+                total: decision.tokens.total || 0
+              },
+              analysisType: 'trading-individual',
+              context: `Decision: ${decision.model}`
+            })
+          }
+        })
+      }
+
       // Capture research data for ResearchActivityPanel
       if (data.research) {
         setResearchData(data.research as ResearchReport)
       }
       setResearchLoading(false)
+
+      // End cost tracking - analysis complete
+      costTracker?.endAnalysis('completed')
 
       // Set context and create reasoning steps for transparency
       if (data.context) {
@@ -289,6 +319,7 @@ export function IndividualMode() {
     } catch (error) {
       console.error('Failed to get trading decisions:', error)
       alert(error instanceof Error ? error.message : 'Failed to get trading decisions')
+      costTracker?.endAnalysis('error')
     } finally {
       setLoading(false)
       setResearchLoading(false)

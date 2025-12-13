@@ -15,7 +15,9 @@ import { getDebateRolesForPreset, DEBATE_PRESETS, getDebatePresetConfig } from '
 import { TradeCard, type TradeRecommendation } from './trade-card'
 import { InputModeSelector, type InputMode } from './input-mode-selector'
 import { ResearchActivityPanel } from './research-activity-panel'
-import { ResearchReport } from '@/lib/agents/research-agents'
+import { ResearchReport } from '@/types/research-agents'
+import { useCostTrackerOptional } from '@/contexts/cost-tracker-context'
+import { getProviderForModel } from '@/lib/trading/models-config'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -52,7 +54,8 @@ interface DebateResult {
 }
 
 export function DebateMode() {
-  const { globalTier } = useTradingPreset()
+  const { globalTier, researchModel } = useTradingPreset()
+  const costTracker = useCostTrackerOptional()
   const [loading, setLoading] = useState(false)
   const [debate, setDebate] = useState<DebateResult | null>(null)
   const [activeRound, setActiveRound] = useState<1 | 2>(1)
@@ -158,6 +161,9 @@ export function DebateMode() {
     setResearchData(null)
     setResearchLoading(true)
 
+    // Start cost tracking for this analysis
+    costTracker?.startAnalysis('trading-debate', `${targetSymbol || 'Market'} ${timeframe}`)
+
     // Show initial progress
     const initialSteps: ReasoningStep[] = [
       createReasoningStep('thinking', '🔄 Starting agent debate...'),
@@ -197,6 +203,7 @@ export function DebateMode() {
           timeframe,
           targetSymbol: targetSymbol.trim() || undefined,
           researchTier: globalTier,  // Pass global tier to control research model
+          researchModel,  // Explicit research model override from UI selector
         }),
       })
 
@@ -231,6 +238,46 @@ export function DebateMode() {
       ])
 
       setDebate(data.debate)
+
+      // Track costs for each debate participant (if token data available)
+      if (costTracker && data.debate) {
+        // Track analyst (Round 1)
+        if (data.tokens?.analyst) {
+          const provider = getProviderForModel(analystModel) || 'unknown'
+          costTracker.trackUsage({
+            modelId: analystModel,
+            provider,
+            tokens: data.tokens.analyst,
+            analysisType: 'trading-debate',
+            context: 'Analyst (Round 1)'
+          })
+        }
+        // Track critic (Round 1)
+        if (data.tokens?.critic) {
+          const provider = getProviderForModel(criticModel) || 'unknown'
+          costTracker.trackUsage({
+            modelId: criticModel,
+            provider,
+            tokens: data.tokens.critic,
+            analysisType: 'trading-debate',
+            context: 'Critic (Round 1)'
+          })
+        }
+        // Track synthesizer
+        if (data.tokens?.synthesizer) {
+          const provider = getProviderForModel(synthesizerModel) || 'unknown'
+          costTracker.trackUsage({
+            modelId: synthesizerModel,
+            provider,
+            tokens: data.tokens.synthesizer,
+            analysisType: 'trading-debate',
+            context: 'Synthesizer'
+          })
+        }
+      }
+
+      // End cost tracking - analysis complete
+      costTracker?.endAnalysis('completed')
 
       // Capture research data for ResearchActivityPanel
       if (data.research) {
@@ -321,6 +368,7 @@ export function DebateMode() {
     } catch (error) {
       console.error('Failed to start trading debate:', error)
       alert(error instanceof Error ? error.message : 'Failed to start trading debate')
+      costTracker?.endAnalysis('error')
     } finally {
       setLoading(false)
       setResearchLoading(false)

@@ -13,6 +13,7 @@ import { TradeHistory } from '@/components/trading/trade-history'
 import { PortfolioDisplay } from '@/components/trading/portfolio-display'
 import { IBKRAuthButton } from '@/components/trading/broker-status-badge'
 import { ModelTester } from '@/components/trading/model-tester'
+import { ResearchModelSelector } from '@/components/trading/research-model-selector'
 import { IS_PRODUCTION } from '@/lib/utils/environment'
 
 function TradingPageContent() {
@@ -128,6 +129,17 @@ function TradingPageContent() {
           {/* Model Health Check - Test individual models before consensus */}
           <div className="mb-8">
             <ModelTester />
+          </div>
+
+          {/* Research Model Settings */}
+          <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Brain className="w-4 h-4" />
+              Research Settings
+            </h3>
+            <div className="max-w-xs">
+              <ResearchModelSelector />
+            </div>
           </div>
 
           {/* Mode selector tabs */}

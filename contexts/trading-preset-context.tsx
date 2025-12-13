@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useAuth } from './auth-context'
 import { PresetTier } from '@/lib/config/model-presets'
+import type { ResearchModelPreset } from '@/types/research-agents'
 
 /**
  * Global Model Tier Context
@@ -24,6 +25,8 @@ import { PresetTier } from '@/lib/config/model-presets'
 interface GlobalModelTierContextType {
   globalTier: PresetTier
   setGlobalTier: (preset: PresetTier) => void
+  researchModel: ResearchModelPreset
+  setResearchModel: (model: ResearchModelPreset) => void
 }
 
 const GlobalModelTierContext = createContext<GlobalModelTierContextType | undefined>(undefined)
@@ -31,6 +34,7 @@ const GlobalModelTierContext = createContext<GlobalModelTierContextType | undefi
 export function GlobalModelTierProvider({ children }: { children: ReactNode }) {
   const { userTier } = useAuth()
   const [globalTier, setGlobalTier] = useState<PresetTier>('sub-pro')
+  const [researchModel, setResearchModel] = useState<ResearchModelPreset>('sonnet')
 
   // Smart default: Sync with user subscription tier on mount
   useEffect(() => {
@@ -48,7 +52,7 @@ export function GlobalModelTierProvider({ children }: { children: ReactNode }) {
   }, [userTier])
 
   return (
-    <GlobalModelTierContext.Provider value={{ globalTier, setGlobalTier }}>
+    <GlobalModelTierContext.Provider value={{ globalTier, setGlobalTier, researchModel, setResearchModel }}>
       {children}
     </GlobalModelTierContext.Provider>
   )

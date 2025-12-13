@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/contexts/auth-context'
 import { GlobalModelTierProvider } from '@/contexts/trading-preset-context'
+import { CostTrackerProvider } from '@/contexts/cost-tracker-context'
 import { Toaster } from '@/components/ui/toaster'
+import { CostMonitoringFooter } from '@/components/shared/cost-monitoring-footer'
 import { PROJECT_TITLE, BRANDING } from '@/lib/config/branding'
 import './globals.css'
 
@@ -30,10 +32,13 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <GlobalModelTierProvider>
-            <div className="min-h-screen bg-background font-sans antialiased">
-              {children}
-              <Toaster />
-            </div>
+            <CostTrackerProvider>
+              <div className="min-h-screen bg-background font-sans antialiased pb-12">
+                {children}
+                <Toaster />
+              </div>
+              <CostMonitoringFooter />
+            </CostTrackerProvider>
           </GlobalModelTierProvider>
         </AuthProvider>
       </body>

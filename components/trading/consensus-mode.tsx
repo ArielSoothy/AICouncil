@@ -17,6 +17,8 @@ import { useConversationPersistence } from '@/hooks/use-conversation-persistence
 import { ModelConfig } from '@/types/consensus'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
 import { getModelsForPreset } from '@/lib/config/model-presets'
+import { useCostTrackerOptional } from '@/contexts/cost-tracker-context'
+import { getProviderForModel } from '@/lib/trading/models-config'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -59,7 +61,8 @@ interface ConsensusResult {
 }
 
 export function ConsensusMode() {
-  const { globalTier } = useTradingPreset()
+  const { globalTier, researchModel } = useTradingPreset()
+  const costTracker = useCostTrackerOptional()
   const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(() => getModelsForPreset('pro'))
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
   const [targetSymbol, setTargetSymbol] = useState<string>('')
@@ -239,6 +242,9 @@ export function ConsensusMode() {
     setProgressSteps([])
     setResearchData(null)
 
+    // Start cost tracking for this analysis
+    costTracker?.startAnalysis('trading-consensus', `${targetSymbol || 'Market'} ${timeframe}`)
+
     // Extract enabled model IDs for API
     const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
 
@@ -251,7 +257,8 @@ export function ConsensusMode() {
           selectedModels: modelIds,
           timeframe,
           targetSymbol: targetSymbol.trim() || undefined,
-          researchTier: globalTier  // Pass global tier to control research model
+          researchTier: globalTier,  // Pass global tier to control research model
+          researchModel,  // Explicit research model override from UI selector
         }),
       })
 
@@ -286,6 +293,55 @@ export function ConsensusMode() {
               // Send event to ResearchProgressPanel for real-time display
               progressPanelRef.current?.processEvent(event)
 
+              // Track costs from SSE events
+              if (costTracker) {
+                // Track research agent completions (Phase 1)
+                if (event.type === 'agent_complete' && event.tokensUsed > 0) {
+                  costTracker.trackUsage({
+                    modelId: event.model || 'research-agent',
+                    provider: event.provider || 'anthropic',
+                    tokens: {
+                      prompt: Math.round(event.tokensUsed * 0.7), // Estimate: 70% input
+                      completion: Math.round(event.tokensUsed * 0.3), // 30% output
+                      total: event.tokensUsed
+                    },
+                    analysisType: 'trading-consensus',
+                    context: `Research: ${event.agent}`
+                  })
+                }
+
+                // Track decision model completions (Phase 2)
+                if (event.type === 'decision_complete' && event.tokensUsed) {
+                  const provider = getProviderForModel(event.modelId) || 'unknown'
+                  costTracker.trackUsage({
+                    modelId: event.modelId,
+                    provider,
+                    tokens: {
+                      prompt: event.inputTokens || 0,
+                      completion: event.outputTokens || 0,
+                      total: event.tokensUsed
+                    },
+                    analysisType: 'trading-consensus',
+                    context: `Decision: ${event.modelName}`
+                  })
+                }
+
+                // Track judge completion (Phase 3)
+                if (event.type === 'judge_complete' && event.tokensUsed) {
+                  costTracker.trackUsage({
+                    modelId: 'claude-sonnet-4-5-20250929',
+                    provider: 'anthropic',
+                    tokens: {
+                      prompt: event.inputTokens || 0,
+                      completion: event.outputTokens || 0,
+                      total: event.tokensUsed
+                    },
+                    analysisType: 'trading-consensus',
+                    context: 'Judge synthesis'
+                  })
+                }
+              }
+
               // Handle final_result event to set state
               if (event.type === 'final_result') {
                 const data = event
@@ -298,6 +354,9 @@ export function ConsensusMode() {
                 const recommendation = extractTradeRecommendation(data.consensus, 'consensus')
                 setTradeRecommendation(recommendation)
                 setShowTradeCard(true)
+
+                // End cost tracking - analysis complete
+                costTracker?.endAnalysis('completed')
 
                 // Save conversation for history and persistence (non-blocking, silent fail)
                 fetch('/api/conversations', {
@@ -361,6 +420,7 @@ export function ConsensusMode() {
     } catch (error) {
       console.error('Failed to get consensus decision:', error)
       alert(error instanceof Error ? error.message : 'Failed to get consensus decision')
+      costTracker?.endAnalysis('error')
     } finally {
       setLoading(false)
       setIsStreaming(false)
