@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveBroker } from '@/lib/brokers/broker-factory';
-import { generateEnhancedTradingPrompt } from '@/lib/alpaca/enhanced-prompts';
+import { generateDecisionPrompt, type ResearchFindings } from '@/lib/alpaca/enhanced-prompts';
 import { runResearchAgents, type ResearchReport, type ResearchTier } from '@/lib/agents/research-agents';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { ResearchCache } from '@/lib/trading/research-cache';
@@ -247,22 +247,28 @@ export async function POST(request: NextRequest) {
       ? formatTradingScoreForPrompt(deterministicScore)
       : '';
 
-    // Use generateEnhancedTradingPrompt WITHOUT shared data
-    // (research report already contains all market data)
-    const basePrompt = generateEnhancedTradingPrompt(
+    // CRITICAL: Use generateDecisionPrompt which does NOT mention tools
+    // Decision models have useTools: false so they analyze research, not call tools
+    const researchFindings: ResearchFindings = {
+      technical: researchReport.technical.findings,
+      fundamental: researchReport.fundamental.findings,
+      sentiment: researchReport.sentiment.findings,
+      risk: researchReport.risk.findings,
+    };
+
+    const basePrompt = generateDecisionPrompt(
       account,
       positions,
       date,
       timeframe as TradingTimeframe,
-      targetSymbol
+      targetSymbol,
+      researchFindings
     );
 
-    // Insert research findings AND deterministic score into prompt
-    // Score comes FIRST so AI can explain the deterministic recommendation
-    const prompt = basePrompt.replace(
-      '⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️',
-      `${scoreSection}\n\n${researchSection}\n\n⚠️ YOUR TASK: Analyze the deterministic score above and research findings. Explain WHY the score recommends ${deterministicScore?.recommendation || 'this action'} based on the research data. Your reasoning should validate, refine, or challenge the algorithmic score.\n\n⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️`
-    );
+    // Prepend deterministic score if available
+    const prompt = scoreSection
+      ? `${scoreSection}\n\n🎯 YOUR TASK: Analyze the deterministic score above and research findings. Explain WHY the score recommends ${deterministicScore?.recommendation || 'this action'} based on the research data. Your reasoning should validate, refine, or challenge the algorithmic score.\n\n${basePrompt}`
+      : basePrompt;
 
     // Step 5: Call each AI model in parallel (NO TOOLS - analyzing research)
     const decisionsPromises = selectedModels.map(async (modelId: string) => {

@@ -19,7 +19,7 @@ import type { ResearchProgressEvent, ProgressCallback } from '@/types/research-p
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import type { TradeDecision } from '@/lib/alpaca/types';
 import { getModelDisplayName, getProviderForModel as getProviderType } from '@/lib/trading/models-config';
-import { generateEnhancedTradingPrompt } from '@/lib/alpaca/enhanced-prompts';
+import { generateDecisionPrompt, type ResearchFindings } from '@/lib/alpaca/enhanced-prompts';
 import { generateTradingJudgePrompt, parseTradingJudgeResponse } from '@/lib/trading/judge-system';
 import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
 import { OpenAIProvider } from '@/lib/ai-providers/openai';
@@ -317,17 +317,24 @@ export async function POST(request: NextRequest) {
 
               const decisionStartTime = Date.now();
 
-              // Generate prompt with research data
-              const prompt = generateEnhancedTradingPrompt(
+              // Generate decision prompt with research data
+              // CRITICAL: Use generateDecisionPrompt which does NOT mention tools
+              // Decision models have useTools: false so they should analyze research, not expect tools
+              const researchFindings: ResearchFindings = {
+                technical: researchReport.technical.findings,
+                fundamental: researchReport.fundamental.findings,
+                sentiment: researchReport.sentiment.findings,
+                risk: researchReport.risk.findings,
+              };
+
+              const enhancedPrompt = generateDecisionPrompt(
                 account,
                 positions,
                 new Date().toLocaleDateString(),
                 timeframe,
-                normalizedSymbol || undefined
+                normalizedSymbol || 'UNKNOWN',
+                researchFindings
               );
-
-              // Add research context
-              const enhancedPrompt = `${prompt}\n\n=== RESEARCH FINDINGS ===\n\nTechnical Analysis:\n${researchReport.technical.findings}\n\nFundamental Analysis:\n${researchReport.fundamental.findings}\n\nSentiment Analysis:\n${researchReport.sentiment.findings}\n\nRisk Assessment:\n${researchReport.risk.findings}`;
 
               const result = await provider.query(enhancedPrompt, {
                 model: modelId,

@@ -374,6 +374,130 @@ export function meetsRiskRewardRequirement(
 }
 
 // ============================================================================
+// DECISION-ONLY PROMPT - NO TOOL REFERENCES (December 2025)
+// For use when research has already been conducted by research agents
+// ============================================================================
+
+export interface ResearchFindings {
+  technical: string;
+  fundamental: string;
+  sentiment: string;
+  risk: string;
+}
+
+/**
+ * Generate decision prompt for models that receive pre-researched data
+ *
+ * CRITICAL: This prompt does NOT mention tools because decision models
+ * have useTools: false - they analyze research findings, not call tools.
+ */
+export function generateDecisionPrompt(
+  account: AlpacaAccount,
+  positions: AlpacaPosition[],
+  date: string,
+  timeframe: TradingTimeframe,
+  targetSymbol: string,
+  researchFindings: ResearchFindings
+): string {
+  const config = TIMEFRAME_CONFIGS[timeframe];
+  const positionsText = positions.length > 0
+    ? positions.map(p => `- ${p.symbol}: ${p.qty} shares @ $${p.avg_entry_price} (Current: $${p.current_price}, P&L: $${p.unrealized_pl})`).join('\n')
+    : '- No current positions';
+
+  const maxPositionSize = parseFloat(account.portfolio_value) * 0.3;
+  const minRiskReward = config.riskRewardMin;
+  const normalizedSymbol = targetSymbol.toUpperCase().trim();
+
+  return `You are a PROFESSIONAL AI TRADER making a decision based on research findings provided below.
+
+CURRENT DATE: ${date}
+TRADING TIMEFRAME: ${timeframe.toUpperCase()}
+
+YOUR ACCOUNT:
+- Cash: $${account.cash}
+- Portfolio Value: $${account.portfolio_value}
+- Buying Power: $${account.buying_power}
+
+CURRENT POSITIONS:
+${positionsText}
+
+═══════════════════════════════════════════════════════════════════════════════
+📊 RESEARCH FINDINGS FOR ${normalizedSymbol}
+═══════════════════════════════════════════════════════════════════════════════
+
+📈 TECHNICAL ANALYSIS:
+${researchFindings.technical}
+
+💼 FUNDAMENTAL ANALYSIS:
+${researchFindings.fundamental}
+
+📰 SENTIMENT ANALYSIS:
+${researchFindings.sentiment}
+
+⚠️ RISK ASSESSMENT:
+${researchFindings.risk}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 YOUR TASK: Based on the research findings above, provide a ${timeframe} trading decision for ${normalizedSymbol}.
+
+TRADING CONSTRAINTS:
+- Max 3 positions at once
+- Max 30% of portfolio per position ($${maxPositionSize.toFixed(2)})
+- 🎯 TARGET STOCK: ${normalizedSymbol} - Analyze this stock ONLY
+- Market is CLOSED on weekends and holidays
+
+PROFESSIONAL ANALYSIS REQUIRED:
+
+${config.keyMetrics.map((metric, i) => `${i + 1}. ${metric}`).join('\n')}
+
+RISK MANAGEMENT RULES:
+- Minimum Risk:Reward Ratio: ${minRiskReward}
+- ${config.stopLossGuidance}
+- ${config.entryExitFocus}
+- Never risk more than 2% of portfolio on a single trade
+
+⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️
+YOU MUST RESPOND WITH **ONLY** VALID JSON - NO EXPLANATORY TEXT, NO PREAMBLE, NO COMMENTARY!
+
+RESPOND IN VALID JSON FORMAT:
+{
+  "action": "BUY" | "SELL" | "HOLD",
+  "symbol": "${normalizedSymbol}",
+  "quantity": 10,
+  "entryPrice": 150.25,
+  "stopLoss": 145.50,
+  "takeProfit": 160.00,
+  "riskRewardRatio": "3.2:1",
+  "reasoning": {
+    "bullishCase": "Why this trade could work - cite research findings",
+    "bearishCase": "What could go wrong - cite risk assessment",
+    "technicalAnalysis": "Key technical levels from research above",
+    "fundamentalAnalysis": "Company/sector fundamentals from research",
+    "sentiment": "Market sentiment from sentiment analysis above",
+    "timing": "Why now is the right time based on research"
+  },
+  "confidence": 0.75,
+  "timeHorizon": "${timeframe}",
+  "keyLevels": {
+    "support": 145.00,
+    "resistance": 165.00
+  }
+}
+
+CRITICAL REQUIREMENTS:
+- ⚠️ RETURN ONLY VALID JSON - START YOUR RESPONSE WITH "{" AND END WITH "}"
+- ⚠️ USE ONLY STRAIGHT QUOTES (") NOT CURLY QUOTES (" or ")
+- Use "HOLD" if no favorable ${minRiskReward} risk:reward setup exists
+- Ensure riskRewardRatio meets minimum ${minRiskReward}
+- Your reasoning MUST cite specific data from the research findings above
+- Quantity must be a whole number
+- You can only SELL stocks you currently own
+
+Remember: If the research doesn't support a high-probability setup with favorable risk:reward, recommend HOLD.`;
+}
+
+// ============================================================================
 // EXHAUSTIVE RESEARCH SYSTEM - AGENTIC PROMPTS (October 28, 2025)
 // ============================================================================
 
