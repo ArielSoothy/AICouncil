@@ -219,6 +219,16 @@ export async function POST(request: NextRequest) {
 
           if (researchReport) {
             // Cache hit! Skip research and use cached data
+            // DEBUG: Log what's in the cached research report
+            console.log(`🔍 CACHE DEBUG - researchReport structure:`, {
+              technical_findings_length: researchReport.technical?.findings?.length || 0,
+              fundamental_findings_length: researchReport.fundamental?.findings?.length || 0,
+              sentiment_findings_length: researchReport.sentiment?.findings?.length || 0,
+              risk_findings_length: researchReport.risk?.findings?.length || 0,
+              technical_keys: researchReport.technical ? Object.keys(researchReport.technical) : [],
+              totalToolCalls: researchReport.totalToolCalls,
+            });
+
             // Send cache hit event
             sendEvent({
               type: 'phase_start',
@@ -278,6 +288,16 @@ export async function POST(request: NextRequest) {
               researchModel // Optional research model override
             );
 
+            // DEBUG: Log fresh research results before caching
+            console.log(`🔍 FRESH RESEARCH DEBUG - researchReport structure:`, {
+              technical_findings_length: researchReport.technical?.findings?.length || 0,
+              fundamental_findings_length: researchReport.fundamental?.findings?.length || 0,
+              sentiment_findings_length: researchReport.sentiment?.findings?.length || 0,
+              risk_findings_length: researchReport.risk?.findings?.length || 0,
+              technical_keys: researchReport.technical ? Object.keys(researchReport.technical) : [],
+              totalToolCalls: researchReport.totalToolCalls,
+            });
+
             // Cache the results for next time (tier-aware key)
             await researchCache.set(cacheSymbol, timeframe, researchReport);
           }
@@ -326,6 +346,14 @@ export async function POST(request: NextRequest) {
                 sentiment: researchReport.sentiment.findings,
                 risk: researchReport.risk.findings,
               };
+
+              // DEBUG: Log research findings length to verify data is passing through
+              console.log(`📊 Research findings for ${modelId}:`, {
+                technical: researchFindings.technical?.length || 0,
+                fundamental: researchFindings.fundamental?.length || 0,
+                sentiment: researchFindings.sentiment?.length || 0,
+                risk: researchFindings.risk?.length || 0,
+              });
 
               const enhancedPrompt = generateDecisionPrompt(
                 account,
