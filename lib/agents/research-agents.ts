@@ -36,53 +36,75 @@ import {
 } from '@/lib/alpaca/data-coordinator';
 import type { ResearchProgressEvent } from '@/types/research-progress';
 
-/**
- * Research Model Tier Configuration
- *
- * ALL tiers use Claude 4.5 Sonnet for research agents (December 2025)
- * - Best tool calling reliability across all tiers
- * - Consistent quality for market research
- * - Claude Code optimized for structured analysis
- *
- * Note: Tier differences are in decision models, not research models
- * Sub-max uses Opus 4.5 for flagship subscription users
- */
-export type ResearchTier = 'free' | 'pro' | 'max' | 'sub-pro' | 'sub-max';
+// Import client-safe types from types/ directory
+// Re-export for backward compatibility with API routes
+import {
+  type ResearchTier,
+  type TierModelConfig,
+  type ResearchModelPreset,
+  type ResearchAgentResult,
+  type ResearchReport,
+  RESEARCH_MODEL_PRESETS,
+} from '@/types/research-agents';
 
-interface TierModelConfig {
-  model: string;
-  provider: 'groq' | 'anthropic' | 'openai' | 'google';
-  displayName: string;
+// Re-export types for API route backward compatibility
+export type { ResearchTier, TierModelConfig, ResearchModelPreset, ResearchAgentResult, ResearchReport };
+export { RESEARCH_MODEL_PRESETS };
+
+// Types and RESEARCH_MODEL_PRESETS are now imported from @/types/research-agents
+
+// Get research model from env or default to sonnet
+function getResearchModelConfig(): TierModelConfig {
+  const preset = (process.env.RESEARCH_MODEL || 'sonnet').toLowerCase() as ResearchModelPreset;
+  const config = RESEARCH_MODEL_PRESETS[preset];
+  if (config) {
+    console.log(`🔬 Research model: ${config.displayName} (preset: ${preset})`);
+    return config;
+  }
+  console.log(`🔬 Research model: Claude 4.5 Sonnet (default)`);
+  return RESEARCH_MODEL_PRESETS.sonnet;
+}
+
+/**
+ * Get research model config from preset or tier
+ * Priority: explicit preset > env var > tier default
+ *
+ * IMPORTANT: If selected model doesn't support tools, fall back to sonnet
+ */
+export function getResearchModelForConfig(tier: ResearchTier, researchModel?: ResearchModelPreset): TierModelConfig {
+  // If explicit preset provided, use it
+  if (researchModel && RESEARCH_MODEL_PRESETS[researchModel]) {
+    const config = RESEARCH_MODEL_PRESETS[researchModel];
+
+    // Check if model supports tool calling (required for research)
+    if (config.hasToolSupport === false) {
+      console.log(`⚠️ ${config.displayName} doesn't support tool calling, falling back to Sonnet`);
+      return RESEARCH_MODEL_PRESETS.sonnet;
+    }
+
+    console.log(`🔬 Research model (UI selected): ${config.displayName}`);
+    return config;
+  }
+
+  // Otherwise use tier config (which checks env var)
+  const tierConfig = RESEARCH_TIER_MODELS[tier];
+
+  // Also check tier config for tool support
+  if (tierConfig.hasToolSupport === false) {
+    console.log(`⚠️ ${tierConfig.displayName} doesn't support tool calling, falling back to Sonnet`);
+    return RESEARCH_MODEL_PRESETS.sonnet;
+  }
+
+  return tierConfig;
 }
 
 const RESEARCH_TIER_MODELS: Record<ResearchTier, TierModelConfig> = {
-  free: {
-    // Claude 4.5 Sonnet - consistent research quality across ALL tiers
-    // December 2025: Standardized to Sonnet 4.5 for reliable tool calling
-    model: 'claude-sonnet-4-5-20250929',
-    provider: 'anthropic',
-    displayName: 'Claude 4.5 Sonnet',
-  },
-  pro: {
-    // Claude 4.5 Sonnet - consistent research quality across ALL tiers
-    model: 'claude-sonnet-4-5-20250929',
-    provider: 'anthropic',
-    displayName: 'Claude 4.5 Sonnet',
-  },
-  max: {
-    // Claude 4.5 Sonnet - consistent research quality across ALL tiers
-    model: 'claude-sonnet-4-5-20250929',
-    provider: 'anthropic',
-    displayName: 'Claude 4.5 Sonnet',
-  },
-  'sub-pro': {
-    // Claude 4.5 Sonnet - Sub Pro tier for subscription CLI users
-    model: 'claude-sonnet-4-5-20250929',
-    provider: 'anthropic',
-    displayName: 'Claude 4.5 Sonnet',
-  },
+  free: getResearchModelConfig(),
+  pro: getResearchModelConfig(),
+  max: getResearchModelConfig(),
+  'sub-pro': getResearchModelConfig(),
   'sub-max': {
-    // Claude 4.5 Opus - Sub Max tier for flagship subscription CLI users
+    // Sub Max keeps Opus for flagship users
     model: 'claude-opus-4-5-20251124',
     provider: 'anthropic',
     displayName: 'Claude 4.5 Opus',
@@ -96,21 +118,15 @@ const RESEARCH_TIER_MODELS: Record<ResearchTier, TierModelConfig> = {
  * because they require tool calling for market data research.
  * CLI providers don't support tool calling.
  *
- * CLI providers are used in the CONSENSUS route for final model
- * analysis, which doesn't require tools.
+ * This function now takes the modelConfig directly to properly support
+ * user-selected research models (Llama, Haiku, etc.)
  *
- * All tiers use API key providers for research:
- *   - Research needs 30-40 tool calls for market data
- *   - Claude 4.5 Sonnet has best tool calling reliability
+ * @param modelConfig - The model configuration from getResearchModelForConfig()
  */
-function getProviderForTier(tier: ResearchTier) {
-  const config = RESEARCH_TIER_MODELS[tier];
-
-  // ALL TIERS: Use API providers for research (NEEDS TOOL CALLING)
-  // Note: CLI providers (ClaudeCLIProvider, CodexCLIProvider, GoogleCLIProvider)
-  // are used in consensus route for final model queries, not here.
-  console.log(`🔧 Research agents using API provider for tier: ${tier} (tools required)`);
-  switch (config.provider) {
+function getProviderForModel(modelConfig: TierModelConfig) {
+  // Use the model's actual provider - NOT the tier's default!
+  console.log(`🔧 Research agents using ${modelConfig.provider.toUpperCase()} provider for ${modelConfig.displayName}`);
+  switch (modelConfig.provider) {
     case 'groq':
       return new GroqProvider();
     case 'anthropic':
@@ -120,7 +136,8 @@ function getProviderForTier(tier: ResearchTier) {
     case 'google':
       return new GoogleProvider();
     default:
-      return new GroqProvider();
+      console.log(`⚠️ Unknown provider ${modelConfig.provider}, falling back to Anthropic`);
+      return new AnthropicProvider();
   }
 }
 
@@ -131,37 +148,7 @@ function getProviderForTier(tier: ResearchTier) {
  */
 export type ProgressCallback = (event: ResearchProgressEvent) => void;
 
-/**
- * Individual research agent result
- */
-export interface ResearchAgentResult {
-  agent: ResearchAgentRole;
-  model: string;
-  provider: string;
-  toolsUsed: boolean;
-  toolCallCount: number;
-  toolNames: string[];
-  findings: string; // Raw research output
-  responseTime: number;
-  tokensUsed: number;
-  error?: string;
-}
-
-/**
- * Complete research report from all 4 agents
- */
-export interface ResearchReport {
-  symbol: string;
-  timeframe: TradingTimeframe;
-  technical: ResearchAgentResult;
-  fundamental: ResearchAgentResult;
-  sentiment: ResearchAgentResult;
-  risk: ResearchAgentResult;
-  totalToolCalls: number;
-  researchDuration: number; // ms
-  timestamp: Date;
-  minimalDataProvided: string; // What basic data agents started with
-}
+// ResearchAgentResult and ResearchReport interfaces are now imported from @/types/research-agents
 
 /**
  * Technical Analyst Research Agent
@@ -179,10 +166,11 @@ export async function runTechnicalResearch(
   account: AlpacaAccount,
   minimalData: string,
   tier: ResearchTier = 'free',
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  researchModel?: ResearchModelPreset
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
-  const modelConfig = RESEARCH_TIER_MODELS[tier];
+  const modelConfig = getResearchModelForConfig(tier, researchModel);
 
   try {
     console.log(`🔍 Technical Analyst starting research... (${modelConfig.displayName})`);
@@ -204,7 +192,7 @@ export async function runTechnicalResearch(
       minimalData
     );
 
-    const provider = getProviderForTier(tier);
+    const provider = getProviderForModel(modelConfig);
 
     console.log(`🔬 Technical Analyst calling ${modelConfig.provider} with useTools=true`);
 
@@ -227,13 +215,17 @@ export async function runTechnicalResearch(
       `✅ Technical Analyst complete: ${toolCalls.length} tools used in ${responseTime}ms`
     );
 
-    // Emit agent complete event (OPTIONAL)
+    // Emit agent complete event (OPTIONAL) - include model/provider for cost tracking
     onProgress?.({
       type: 'agent_complete',
       agent: 'technical',
       toolCount: toolCalls.length,
       duration: responseTime,
       tokensUsed: result.tokens.total,
+      model: modelConfig.model,      // For cost tracking
+      provider: modelConfig.provider, // For cost tracking
+      inputTokens: result.tokens.prompt,
+      outputTokens: result.tokens.completion,
       timestamp: Date.now()
     });
 
@@ -278,10 +270,11 @@ export async function runFundamentalResearch(
   account: AlpacaAccount,
   minimalData: string,
   tier: ResearchTier = 'free',
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  researchModel?: ResearchModelPreset
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
-  const modelConfig = RESEARCH_TIER_MODELS[tier];
+  const modelConfig = getResearchModelForConfig(tier, researchModel);
 
   try {
     console.log(`🔍 Fundamental Analyst starting research... (${modelConfig.displayName})`);
@@ -303,7 +296,7 @@ export async function runFundamentalResearch(
       minimalData
     );
 
-    const provider = getProviderForTier(tier);
+    const provider = getProviderForModel(modelConfig);
 
     const result: ModelResponse = await provider.query(prompt, {
       model: modelConfig.model,
@@ -322,13 +315,17 @@ export async function runFundamentalResearch(
       `✅ Fundamental Analyst complete: ${toolCalls.length} tools used in ${responseTime}ms`
     );
 
-    // Emit agent complete event (OPTIONAL)
+    // Emit agent complete event (OPTIONAL) - include model/provider for cost tracking
     onProgress?.({
       type: 'agent_complete',
       agent: 'fundamental',
       toolCount: toolCalls.length,
       duration: responseTime,
       tokensUsed: result.tokens.total,
+      model: modelConfig.model,      // For cost tracking
+      provider: modelConfig.provider, // For cost tracking
+      inputTokens: result.tokens.prompt,
+      outputTokens: result.tokens.completion,
       timestamp: Date.now()
     });
 
@@ -376,10 +373,11 @@ export async function runSentimentResearch(
   account: AlpacaAccount,
   minimalData: string,
   tier: ResearchTier = 'free',
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  researchModel?: ResearchModelPreset
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
-  const modelConfig = RESEARCH_TIER_MODELS[tier];
+  const modelConfig = getResearchModelForConfig(tier, researchModel);
 
   try {
     console.log(`🔍 Sentiment Analyst starting research... (${modelConfig.displayName})`);
@@ -401,7 +399,7 @@ export async function runSentimentResearch(
       minimalData
     );
 
-    const provider = getProviderForTier(tier);
+    const provider = getProviderForModel(modelConfig);
 
     const result: ModelResponse = await provider.query(prompt, {
       model: modelConfig.model,
@@ -420,13 +418,17 @@ export async function runSentimentResearch(
       `✅ Sentiment Analyst complete: ${toolCalls.length} tools used in ${responseTime}ms`
     );
 
-    // Emit agent complete event (OPTIONAL)
+    // Emit agent complete event (OPTIONAL) - include model/provider for cost tracking
     onProgress?.({
       type: 'agent_complete',
       agent: 'sentiment',
       toolCount: toolCalls.length,
       duration: responseTime,
       tokensUsed: result.tokens.total,
+      model: modelConfig.model,      // For cost tracking
+      provider: modelConfig.provider, // For cost tracking
+      inputTokens: result.tokens.prompt,
+      outputTokens: result.tokens.completion,
       timestamp: Date.now()
     });
 
@@ -474,10 +476,11 @@ export async function runRiskAnalysis(
   account: AlpacaAccount,
   minimalData: string,
   tier: ResearchTier = 'free',
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  researchModel?: ResearchModelPreset
 ): Promise<ResearchAgentResult> {
   const startTime = Date.now();
-  const modelConfig = RESEARCH_TIER_MODELS[tier];
+  const modelConfig = getResearchModelForConfig(tier, researchModel);
 
   try {
     console.log(`🔍 Risk Manager starting research... (${modelConfig.displayName})`);
@@ -499,7 +502,7 @@ export async function runRiskAnalysis(
       minimalData
     );
 
-    const provider = getProviderForTier(tier);
+    const provider = getProviderForModel(modelConfig);
 
     const result: ModelResponse = await provider.query(prompt, {
       model: modelConfig.model,
@@ -518,13 +521,17 @@ export async function runRiskAnalysis(
       `✅ Risk Manager complete: ${toolCalls.length} tools used in ${responseTime}ms`
     );
 
-    // Emit agent complete event (OPTIONAL)
+    // Emit agent complete event (OPTIONAL) - include model/provider for cost tracking
     onProgress?.({
       type: 'agent_complete',
       agent: 'risk',
       toolCount: toolCalls.length,
       duration: responseTime,
       tokensUsed: result.tokens.total,
+      model: modelConfig.model,      // For cost tracking
+      provider: modelConfig.provider, // For cost tracking
+      inputTokens: result.tokens.prompt,
+      outputTokens: result.tokens.completion,
       timestamp: Date.now()
     });
 
@@ -575,6 +582,7 @@ export async function runRiskAnalysis(
  * @param account - Alpaca account for context
  * @param tier - Research tier (free/pro/max) determines which models to use
  * @param onProgress - OPTIONAL callback for real-time progress updates (SSE streaming)
+ * @param researchModel - OPTIONAL explicit research model preset (overrides tier default)
  * @returns Complete research report from all agents
  */
 export async function runResearchAgents(
@@ -582,15 +590,20 @@ export async function runResearchAgents(
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
   tier: ResearchTier = 'free',
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  researchModel?: ResearchModelPreset
 ): Promise<ResearchReport> {
   const startTime = Date.now();
-  const modelConfig = RESEARCH_TIER_MODELS[tier];
+  // Use explicit researchModel if provided, otherwise fall back to tier config
+  const modelConfig = getResearchModelForConfig(tier, researchModel);
 
   console.log(
     `\n${'='.repeat(80)}\n🔬 STARTING EXHAUSTIVE RESEARCH PIPELINE FOR ${symbol.toUpperCase()}\n${'='.repeat(80)}`
   );
   console.log(`📊 Research Tier: ${tier.toUpperCase()} (${modelConfig.displayName})`);
+  if (researchModel) {
+    console.log(`🔬 Research Model Override: ${researchModel}`);
+  }
 
   try {
     // Step 1: Fetch minimal shared data (just for market validation)
@@ -609,10 +622,10 @@ export async function runResearchAgents(
     console.log('🚀 Step 2: Launching 4 specialized research agents in parallel...\n');
 
     const [technical, fundamental, sentiment, risk] = await Promise.all([
-      runTechnicalResearch(symbol, timeframe, account, minimalData, tier, onProgress),
-      runFundamentalResearch(symbol, timeframe, account, minimalData, tier, onProgress),
-      runSentimentResearch(symbol, timeframe, account, minimalData, tier, onProgress),
-      runRiskAnalysis(symbol, timeframe, account, minimalData, tier, onProgress),
+      runTechnicalResearch(symbol, timeframe, account, minimalData, tier, onProgress, researchModel),
+      runFundamentalResearch(symbol, timeframe, account, minimalData, tier, onProgress, researchModel),
+      runSentimentResearch(symbol, timeframe, account, minimalData, tier, onProgress, researchModel),
+      runRiskAnalysis(symbol, timeframe, account, minimalData, tier, onProgress, researchModel),
     ]);
 
     const researchDuration = Date.now() - startTime;

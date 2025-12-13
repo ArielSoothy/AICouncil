@@ -69,6 +69,10 @@ export interface AgentCompleteEvent {
   toolCount: number
   duration: number // ms
   tokensUsed: number
+  model?: string // Research model used (for cost tracking)
+  provider?: string // Provider used (for cost tracking)
+  inputTokens?: number // Input/prompt tokens (for precise cost calculation)
+  outputTokens?: number // Output/completion tokens (for precise cost calculation)
   timestamp: number
   error?: string
 }
@@ -93,6 +97,9 @@ export interface DecisionCompleteEvent {
   action: 'BUY' | 'SELL' | 'HOLD'
   confidence: number
   duration: number // ms
+  tokensUsed?: number // Total tokens (for cost tracking)
+  inputTokens?: number // Input/prompt tokens
+  outputTokens?: number // Output/completion tokens
   timestamp: number
 }
 
@@ -113,6 +120,9 @@ export interface JudgeCompleteEvent {
   consensusAction: 'BUY' | 'SELL' | 'HOLD'
   agreement: number
   duration: number // ms
+  tokensUsed?: number // Total tokens (for cost tracking)
+  inputTokens?: number // Input/prompt tokens
+  outputTokens?: number // Output/completion tokens
   timestamp: number
 }
 
@@ -200,6 +210,9 @@ export interface DecisionProgress {
   action?: 'BUY' | 'SELL' | 'HOLD'
   confidence?: number
   duration: number // ms
+  tokensUsed?: number // Total tokens (for cost tracking)
+  inputTokens?: number // Input/prompt tokens
+  outputTokens?: number // Output/completion tokens
   startTime?: number
 }
 

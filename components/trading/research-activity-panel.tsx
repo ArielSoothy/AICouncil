@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { ChevronDown, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
-import { ResearchReport } from '@/lib/agents/research-agents';
+import { ResearchReport } from '@/types/research-agents';
 
 interface ResearchActivityPanelProps {
   research: ResearchReport | null;
