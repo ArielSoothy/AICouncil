@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Zap, X, ChevronDown, Check, Plus } from 'lucide-react'
 import { canUseModel } from '@/lib/user-tiers'
 import { MODEL_COSTS_PER_1K } from '@/lib/model-metadata'
+import { getModelGrade, getModelTokenCost } from '@/lib/models/model-registry'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,14 +93,15 @@ export function LLMPillSelector({
     setInternalSelection(internalSelection.filter(m => !(m.provider === provider && m.model === model)))
   }
 
-  const getCostTier = (model: string) => {
-    const cost = MODEL_COSTS_PER_1K[model]
-    if (!cost) return ''
-    const avgCost = (cost.input + cost.output) / 2
-    if (avgCost < 0.001) return '(Free)'
-    if (avgCost < 0.01) return '($)'
-    if (avgCost < 0.1) return '($$)'
-    return '($$$)'
+  // Get formatted cost display for dropdown items
+  const getModelCostDisplay = (model: string) => {
+    const tokenCost = getModelTokenCost(model)
+    const { grade, weight } = getModelGrade(model)
+
+    if (tokenCost.isFree) {
+      return `${grade}(${weight.toFixed(2)}) FREE`
+    }
+    return `${grade}(${weight.toFixed(2)}) In:${tokenCost.inputDisplay} Out:${tokenCost.outputDisplay}`
   }
 
   // Group ALL models by provider (not just available ones)
@@ -225,15 +227,15 @@ export function LLMPillSelector({
                         key={model}
                         onClick={() => canUse && addModel(providerName, model)}
                         className={cn(
-                          canUse 
-                            ? "cursor-pointer hover:bg-zinc-800" 
+                          canUse
+                            ? "cursor-pointer hover:bg-zinc-800"
                             : "cursor-not-allowed opacity-50"
                         )}
                         disabled={!canUse}
                       >
-                        <span className="flex-1">{model}</span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {canUse ? getCostTier(model) : userTier === 'guest' ? 'Sign in' : 'Upgrade'}
+                        <span className="flex-1 truncate">{model}</span>
+                        <span className="text-[10px] text-muted-foreground ml-2 font-mono whitespace-nowrap">
+                          {canUse ? getModelCostDisplay(model) : userTier === 'guest' ? 'Sign in' : 'Upgrade'}
                         </span>
                       </DropdownMenuItem>
                     ))

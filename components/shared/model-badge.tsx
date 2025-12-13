@@ -5,6 +5,7 @@ import {
   getModelInfo,
   getModelGrade,
   getModelCostTier,
+  getModelTokenCost,
   Provider,
   PROVIDER_NAMES,
   ModelCostTier,
@@ -41,6 +42,7 @@ export interface ModelBadgeProps {
   modelId: string
   showPower?: boolean
   showCost?: boolean
+  showTokenCost?: boolean  // When true, show exact token costs (In: $X Out: $X)
   showInternet?: boolean
   showRemove?: boolean
   showDropdown?: boolean
@@ -60,6 +62,7 @@ export function ModelBadge({
   modelId,
   showPower = true,
   showCost = true,
+  showTokenCost = false,
   showInternet = false,
   showRemove = false,
   showDropdown = false,
@@ -75,6 +78,7 @@ export function ModelBadge({
 
   const { grade, weight, display: gradeDisplay } = getModelGrade(modelId)
   const costTier = getModelCostTier(modelId)
+  const tokenCost = getModelTokenCost(modelId)
   const provider = model.provider
   const colorClass = PROVIDER_COLORS[provider] || PROVIDER_COLORS.openai
   const costStyle = COST_TIER_STYLES[costTier]
@@ -130,6 +134,17 @@ export function ModelBadge({
           )
         )}
 
+        {/* Exact Token Costs (per 1K) */}
+        {showTokenCost && !isSubscriptionMode && (
+          <span className="text-[10px] text-muted-foreground font-mono">
+            {tokenCost.isFree ? (
+              <span className="text-emerald-600 dark:text-emerald-400">FREE</span>
+            ) : (
+              <>In:{tokenCost.inputDisplay} Out:{tokenCost.outputDisplay}</>
+            )}
+          </span>
+        )}
+
         {/* Internet Access Indicator */}
         {showInternet && model.hasInternet && (
           <Globe className="h-3 w-3 text-blue-500" />
@@ -166,6 +181,7 @@ export interface ModelDropdownItemProps {
   selected?: boolean
   showPower?: boolean
   showCost?: boolean
+  showTokenCost?: boolean  // When true, show exact token costs (In: $X Out: $X)
   isSubscriptionMode?: boolean  // When true, show SUB badge instead of cost tier
   onClick?: () => void
   className?: string
@@ -179,6 +195,7 @@ export function ModelDropdownItem({
   selected = false,
   showPower = true,
   showCost = true,
+  showTokenCost = true,  // Default true for dropdown items (more space)
   isSubscriptionMode = false,
   onClick,
   className
@@ -188,6 +205,7 @@ export function ModelDropdownItem({
 
   const { grade, weight } = getModelGrade(modelId)
   const costTier = getModelCostTier(modelId)
+  const tokenCost = getModelTokenCost(modelId)
   const costStyle = COST_TIER_STYLES[costTier]
   const gradeStyle = GRADE_STYLES[grade]
 
@@ -230,6 +248,17 @@ export function ModelDropdownItem({
               {costTier}
             </span>
           )
+        )}
+
+        {/* Exact Token Costs (per 1K) */}
+        {showTokenCost && !isSubscriptionMode && (
+          <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap">
+            {tokenCost.isFree ? (
+              <span className="text-emerald-600 dark:text-emerald-400">FREE</span>
+            ) : (
+              <>In:{tokenCost.inputDisplay} Out:{tokenCost.outputDisplay}</>
+            )}
+          </span>
         )}
       </span>
     </button>

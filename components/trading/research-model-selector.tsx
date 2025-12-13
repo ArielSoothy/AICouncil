@@ -8,6 +8,7 @@ import {
 import {
   getModelGrade,
   getModelCostTier,
+  getModelTokenCost,
   ModelCostTier,
   ModelGrade,
 } from '@/lib/models/model-registry'
@@ -84,6 +85,7 @@ export function ResearchModelSelector() {
   const currentModelId = PRESET_MODEL_IDS[researchModel] || 'gpt-4.1-mini'
   const { grade, weight } = getModelGrade(currentModelId)
   const costTier = getModelCostTier(currentModelId)
+  const tokenCost = getModelTokenCost(currentModelId)
   const gradeStyle = GRADE_STYLES[grade]
   const costStyle = COST_TIER_STYLES[costTier]
 
@@ -104,16 +106,16 @@ export function ResearchModelSelector() {
         {PRESET_OPTIONS.map((option) => {
           const modelId = PRESET_MODEL_IDS[option.value]
           const optGrade = getModelGrade(modelId)
-          const optCost = getModelCostTier(modelId)
+          const optTokenCost = getModelTokenCost(modelId)
           return (
             <option key={option.value} value={option.value}>
-              {option.label} - {optGrade.grade}({optGrade.weight.toFixed(2)}) {optCost}
+              {option.label} - {optGrade.grade}({optGrade.weight.toFixed(2)}) | {optTokenCost.isFree ? 'FREE' : `In: ${optTokenCost.inputDisplay} Out: ${optTokenCost.outputDisplay}`}
             </option>
           )
         })}
       </select>
 
-      {/* Current selection info with grade and cost badges */}
+      {/* Current selection info with grade and cost details */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -132,6 +134,19 @@ export function ResearchModelSelector() {
         )}>
           {costTier}
         </span>
+      </div>
+
+      {/* Exact token costs per 1K */}
+      <div className="text-xs text-gray-500 dark:text-gray-400 flex gap-3">
+        <span>Cost per 1K tokens:</span>
+        {tokenCost.isFree ? (
+          <span className="text-emerald-600 dark:text-emerald-400 font-medium">FREE</span>
+        ) : (
+          <>
+            <span>Input: <span className="font-mono text-gray-700 dark:text-gray-300">{tokenCost.inputDisplay}</span></span>
+            <span>Output: <span className="font-mono text-gray-700 dark:text-gray-300">{tokenCost.outputDisplay}</span></span>
+          </>
+        )}
       </div>
 
       {/* Info for recommended option */}

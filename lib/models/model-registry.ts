@@ -570,3 +570,39 @@ export function isSubscriptionModel(modelId: string): boolean {
   const model = getModelInfo(modelId)
   return model?.isSubscription ?? false
 }
+
+/**
+ * Get exact token costs for a model (per 1K tokens)
+ * Returns { input, output, total } in USD
+ */
+export function getModelTokenCost(modelId: string): {
+  input: number
+  output: number
+  total: number
+  inputDisplay: string
+  outputDisplay: string
+  isFree: boolean
+} {
+  const cost = MODEL_COSTS_PER_1K[modelId]
+  const input = cost?.input ?? 0
+  const output = cost?.output ?? 0
+  const total = input + output
+  const isFree = input === 0 && output === 0
+
+  // Format display strings (show 4 decimal places for small values)
+  const formatCost = (val: number): string => {
+    if (val === 0) return 'FREE'
+    if (val < 0.001) return `$${val.toFixed(5)}`
+    if (val < 0.01) return `$${val.toFixed(4)}`
+    return `$${val.toFixed(3)}`
+  }
+
+  return {
+    input,
+    output,
+    total,
+    inputDisplay: formatCost(input),
+    outputDisplay: formatCost(output),
+    isFree
+  }
+}
