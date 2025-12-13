@@ -53,6 +53,64 @@ export { RESEARCH_MODEL_PRESETS };
 
 // Types and RESEARCH_MODEL_PRESETS are now imported from @/types/research-agents
 
+/**
+ * Synthesize findings from tool call results when model response is empty
+ *
+ * When research agents use all their steps for tool calls, result.response is empty.
+ * This function extracts useful data from tool results to create findings.
+ *
+ * @param toolCalls - Array of tool calls with results
+ * @param agentRole - The agent role for context (technical, fundamental, etc.)
+ * @returns Formatted findings string from tool results
+ */
+function synthesizeFindingsFromToolCalls(
+  toolCalls: Array<{ toolName: string; args?: Record<string, unknown>; result?: unknown }>,
+  agentRole: string
+): string {
+  if (!toolCalls || toolCalls.length === 0) {
+    return '';
+  }
+
+  const sections: string[] = [];
+  sections.push(`=== ${agentRole.toUpperCase()} AGENT RESEARCH DATA ===`);
+  sections.push(`(${toolCalls.length} market data queries executed)\n`);
+
+  for (const call of toolCalls) {
+    if (!call.result) continue;
+
+    const toolName = call.toolName || 'unknown_tool';
+    const args = call.args || {};
+    const result = call.result;
+
+    // Format tool name nicely
+    const formattedToolName = toolName
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+
+    sections.push(`--- ${formattedToolName} ---`);
+    if (args.symbol) sections.push(`Symbol: ${args.symbol}`);
+
+    // Handle different result types
+    if (typeof result === 'string') {
+      // Truncate very long strings
+      const truncated = result.length > 2000 ? result.substring(0, 2000) + '...' : result;
+      sections.push(truncated);
+    } else if (typeof result === 'object' && result !== null) {
+      // Format object results nicely
+      try {
+        const formatted = JSON.stringify(result, null, 2);
+        const truncated = formatted.length > 2000 ? formatted.substring(0, 2000) + '...' : formatted;
+        sections.push(truncated);
+      } catch {
+        sections.push('[Complex data object]');
+      }
+    }
+    sections.push('');
+  }
+
+  return sections.join('\n');
+}
+
 // Get research model from env or default to sonnet
 function getResearchModelConfig(): TierModelConfig {
   const preset = (process.env.RESEARCH_MODEL || 'sonnet').toLowerCase() as ResearchModelPreset;
@@ -229,6 +287,11 @@ export async function runTechnicalResearch(
       timestamp: Date.now()
     });
 
+    // Use model response if available, otherwise synthesize from tool results
+    const findings = result.response && result.response.trim().length > 0
+      ? result.response
+      : synthesizeFindingsFromToolCalls(toolCalls, 'technical');
+
     return {
       agent: 'technical',
       model: modelConfig.model,
@@ -236,7 +299,7 @@ export async function runTechnicalResearch(
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
-      findings: result.response,
+      findings,
       responseTime,
       tokensUsed: result.tokens.total,
     };
@@ -329,6 +392,11 @@ export async function runFundamentalResearch(
       timestamp: Date.now()
     });
 
+    // Use model response if available, otherwise synthesize from tool results
+    const findings = result.response && result.response.trim().length > 0
+      ? result.response
+      : synthesizeFindingsFromToolCalls(toolCalls, 'fundamental');
+
     return {
       agent: 'fundamental',
       model: modelConfig.model,
@@ -336,7 +404,7 @@ export async function runFundamentalResearch(
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
-      findings: result.response,
+      findings,
       responseTime,
       tokensUsed: result.tokens.total,
     };
@@ -432,6 +500,11 @@ export async function runSentimentResearch(
       timestamp: Date.now()
     });
 
+    // Use model response if available, otherwise synthesize from tool results
+    const findings = result.response && result.response.trim().length > 0
+      ? result.response
+      : synthesizeFindingsFromToolCalls(toolCalls, 'sentiment');
+
     return {
       agent: 'sentiment',
       model: modelConfig.model,
@@ -439,7 +512,7 @@ export async function runSentimentResearch(
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
-      findings: result.response,
+      findings,
       responseTime,
       tokensUsed: result.tokens.total,
     };
@@ -535,6 +608,11 @@ export async function runRiskAnalysis(
       timestamp: Date.now()
     });
 
+    // Use model response if available, otherwise synthesize from tool results
+    const findings = result.response && result.response.trim().length > 0
+      ? result.response
+      : synthesizeFindingsFromToolCalls(toolCalls, 'risk');
+
     return {
       agent: 'risk',
       model: modelConfig.model,
@@ -542,7 +620,7 @@ export async function runRiskAnalysis(
       toolsUsed: toolCalls.length > 0,
       toolCallCount: toolCalls.length,
       toolNames: toolCalls.map((tc) => tc.toolName),
-      findings: result.response,
+      findings,
       responseTime,
       tokensUsed: result.tokens.total,
     };

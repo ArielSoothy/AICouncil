@@ -101,6 +101,19 @@ export class AnthropicProvider implements AIProvider {
       const extractedToolCalls = config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : [];
       console.log(`🔧 Anthropic ${config.model} RESULT: steps=${result.steps?.length || 0}, toolCalls=${extractedToolCalls?.length || 0}, text=${result.text?.substring(0, 100)}...`);
 
+      // DEBUG: Log tool results structure to understand where results are stored
+      if (config.useTools && result.steps?.length > 0) {
+        const firstStep = result.steps[0];
+        console.log(`🔍 TOOL DEBUG - Step 0 structure:`, {
+          toolCallsCount: firstStep.toolCalls?.length || 0,
+          toolResultsCount: (firstStep as any).toolResults?.length || 0,
+          toolCallKeys: firstStep.toolCalls?.[0] ? Object.keys(firstStep.toolCalls[0]) : [],
+          toolResultKeys: (firstStep as any).toolResults?.[0] ? Object.keys((firstStep as any).toolResults[0]) : [],
+          sampleToolCallId: firstStep.toolCalls?.[0]?.toolCallId,
+          sampleToolResultId: (firstStep as any).toolResults?.[0]?.toolCallId,
+        });
+      }
+
       return {
         id: `anthropic-${Date.now()}`,
         provider: 'anthropic',
@@ -114,11 +127,18 @@ export class AnthropicProvider implements AIProvider {
           total: (result.usage?.inputTokens || 0) + (result.usage?.outputTokens || 0),
         },
         timestamp: new Date(),
-        toolCalls: config.useTools ? result.steps?.flatMap(s => s.toolCalls || []).map((tc: any) => ({
-          toolName: tc.toolName,
-          args: tc.args || {},
-          result: tc.result
-        })) : undefined,
+        // AI SDK stores tool results in step.toolResults with 'output' field (not 'result')
+        // We need to merge toolCalls with their corresponding toolResults
+        toolCalls: config.useTools ? result.steps?.flatMap(s => {
+          const toolResultsMap = new Map(
+            (s.toolResults || []).map((tr: any) => [tr.toolCallId, tr.output])
+          );
+          return (s.toolCalls || []).map((tc: any) => ({
+            toolName: tc.toolName,
+            args: tc.args || {},
+            result: toolResultsMap.get(tc.toolCallId) || tc.result
+          }));
+        }) : undefined,
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;
