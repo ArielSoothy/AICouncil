@@ -52,7 +52,8 @@ export interface ModelInfo {
   isSubscription?: boolean  // True for CLI/subscription-only models (Codex, Grok Code)
   // Testing metadata
   status?: 'working' | 'unreleased' | 'no_api_key' | 'rate_limited' |
-           'parameter_error' | 'service_error' | 'empty_response' | 'untested' | 'decommissioned'
+           'parameter_error' | 'service_error' | 'empty_response' | 'untested' |
+           'decommissioned' | 'deprecated' | 'responses_api_only' | 'not_supported'
   lastTested?: string  // ISO 8601 timestamp
   notes?: string  // Human-readable error details
   testResponseTime?: number  // milliseconds
@@ -135,7 +136,7 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     // GPT-5 Codex Series (Code-optimized, Subscription/CLI models)
     { id: 'gpt-5-codex', name: 'GPT-5 Codex', provider: 'openai', tier: 'flagship', badge: '🌟', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: 'Code-optimized GPT-5. Available via Responses API. Same price as GPT-5' },
     { id: 'gpt-5.1-codex-mini', name: 'GPT-5.1 Codex Mini', provider: 'openai', tier: 'balanced', badge: '⚡', isSubscription: true, status: 'working', lastTested: '2025-12-14T00:00:00.000Z', notes: 'Succeeded gpt-5-codex-mini. Available via Responses API. 4x more usage vs gpt-5-codex' },
-    { id: 'codex-mini-latest', name: 'Codex Mini (Latest)', provider: 'openai', tier: 'balanced', badge: '⚡', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: '$1.50/M input, $6/M output. 75% prompt caching discount' },
+    { id: 'codex-mini-latest', name: 'Codex Mini (Latest)', provider: 'openai', tier: 'balanced', badge: '⚡', isSubscription: true, status: 'responses_api_only', lastTested: '2025-12-14T00:00:00.000Z', notes: 'REQUIRES RESPONSES API (not Chat Completions). $1.50/M input, $6/M output. 75% prompt caching discount' },
     // GPT-5.1 Codex Max (Flagship subscription model)
     { id: 'gpt-5.1-codex-max', name: 'GPT-5.1 Codex Max', provider: 'openai', tier: 'flagship', badge: '🌟', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: 'Flagship code model. OpenAI Codex Max/Pro+ subscription. Multi-million token context via compaction' },
     // GPT-4.1 Series
@@ -152,7 +153,7 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'gpt-4', name: 'GPT-4', provider: 'openai', tier: 'balanced', badge: '⚡', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     // GPT-3.5 Series (Budget)
     { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai', tier: 'budget', badge: '💰', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
-    { id: 'gpt-3.5-turbo-16k', name: 'GPT-3.5 Turbo 16k', provider: 'openai', tier: 'budget', badge: '💰', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' }
+    { id: 'gpt-3.5-turbo-16k', name: 'GPT-3.5 Turbo 16k', provider: 'openai', tier: 'budget', badge: '💰', status: 'deprecated', lastTested: '2025-12-14T00:00:00.000Z', notes: 'DEPRECATED: Model ID no longer exists. Use gpt-3.5-turbo which now has 16k context by default' }
   ],
 
   // ===== ANTHROPIC (Web search available since March 2025) =====
@@ -220,7 +221,7 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'grok-3-beta', name: 'Grok 3 Beta', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: '131K context. Has Live Search API' },
     { id: 'grok-3-mini-beta', name: 'Grok 3 Mini Beta', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: '131K context. Fast, efficient model' },
     // Grok 2 Series (Deprecated - superseded by Grok 4)
-    { id: 'grok-2-image-1212', name: 'Grok 2 Image', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: false, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: 'Text-to-image generation only' },
+    { id: 'grok-2-image-1212', name: 'Grok 2 Image', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: false, status: 'not_supported', lastTested: '2025-12-14T00:00:00.000Z', notes: 'IMAGE GENERATION MODEL - not compatible with Chat Completions API. Requires different endpoint' },
     // Grok Code (Specialized)
     { id: 'grok-code-fast-1', name: 'Grok Code Fast', provider: 'xai', tier: 'balanced', badge: '⚡', hasInternet: true, isSubscription: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: '256K context. Optimized for code generation. xAI subscription model.' }
   ],
