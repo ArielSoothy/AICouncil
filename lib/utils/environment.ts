@@ -5,10 +5,15 @@
  * Development = Local development or Vercel preview (All tiers available)
  *
  * This ensures paid AI models are not abused when app is publicly deployed.
+ *
+ * NOTE: NEXT_PUBLIC_VERCEL_ENV is exposed via next.config.js for client-side access
  */
 
-export const IS_PRODUCTION = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
-export const IS_PREVIEW = process.env.VERCEL_ENV === 'preview'
+// Use NEXT_PUBLIC_ prefix for client-side access (set in next.config.js)
+const VERCEL_ENV = process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.VERCEL_ENV
+
+export const IS_PRODUCTION = VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
+export const IS_PREVIEW = VERCEL_ENV === 'preview'
 export const IS_DEVELOPMENT = !IS_PRODUCTION && !IS_PREVIEW
 
 /**

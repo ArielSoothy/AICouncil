@@ -34,6 +34,8 @@ const nextConfig = {
   },
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
+    // Expose VERCEL_ENV to client-side for production detection
+    NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV,
   },
 }
 
