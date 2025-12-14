@@ -12,11 +12,32 @@
 // Use NEXT_PUBLIC_ prefix for client-side access (set in next.config.js)
 const VERCEL_ENV = process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.VERCEL_ENV
 
-// IMPORTANT: Only Vercel production should hide dev tools
-// Preview deployments and local dev should show everything
-// Note: NODE_ENV is 'production' on ALL Vercel deployments, so don't use it for this check
+// Production hostnames - add your Vercel production domain here
+const PRODUCTION_HOSTNAMES = [
+  'ai-council-new.vercel.app',
+  'verdict-ai.vercel.app',
+  'verdictai.com',
+  'www.verdictai.com'
+]
+
+// Check hostname at runtime (works on client-side)
+export function isProductionHostname(): boolean {
+  if (typeof window === 'undefined') return false
+  return PRODUCTION_HOSTNAMES.includes(window.location.hostname)
+}
+
+// IMPORTANT: Check if running in production environment
+// Call this function at render time for accurate client-side detection
+export function checkIsProduction(): boolean {
+  // Build-time check via VERCEL_ENV
+  if (VERCEL_ENV === 'production') return true
+  // Runtime check via hostname (client-side only)
+  return isProductionHostname()
+}
+
+// Static exports for backwards compatibility (may not work correctly on client hydration)
 export const IS_VERCEL_PRODUCTION = VERCEL_ENV === 'production'
-export const IS_PRODUCTION = IS_VERCEL_PRODUCTION  // Alias for backwards compatibility
+export const IS_PRODUCTION = IS_VERCEL_PRODUCTION
 export const IS_PREVIEW = VERCEL_ENV === 'preview'
 export const IS_DEVELOPMENT = !IS_VERCEL_PRODUCTION && !IS_PREVIEW
 

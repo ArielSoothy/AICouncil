@@ -14,7 +14,7 @@ import { PortfolioDisplay } from '@/components/trading/portfolio-display'
 import { IBKRAuthButton } from '@/components/trading/broker-status-badge'
 import { ModelTester } from '@/components/trading/model-tester'
 import { ResearchModelSelector } from '@/components/trading/research-model-selector'
-import { IS_PRODUCTION } from '@/lib/utils/environment'
+import { checkIsProduction } from '@/lib/utils/environment'
 
 function TradingPageContent() {
   const { user, userTier } = useAuth()
@@ -25,6 +25,12 @@ function TradingPageContent() {
   const [brokerName, setBrokerName] = useState<string | null>(null)
   // Key to force child components to remount and refetch when broker changes
   const [brokerRefreshKey, setBrokerRefreshKey] = useState(0)
+  // Check production status on client (hostname-based detection)
+  const [isProduction, setIsProduction] = useState(false)
+
+  useEffect(() => {
+    setIsProduction(checkIsProduction())
+  }, [])
 
   // Fetch broker info for dynamic header
   useEffect(() => {
@@ -101,7 +107,7 @@ function TradingPageContent() {
           </div>
 
           {/* Production Notice - Free Tier Only */}
-          {IS_PRODUCTION && (
+          {isProduction && (
             <div className="mb-8 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
@@ -126,10 +132,12 @@ function TradingPageContent() {
             <PortfolioDisplay key={`portfolio-${brokerRefreshKey}`} />
           </div>
 
-          {/* Model Health Check - Test individual models before consensus */}
-          <div className="mb-8">
-            <ModelTester />
-          </div>
+          {/* Model Health Check - Test individual models before consensus (dev only) */}
+          {!isProduction && (
+            <div className="mb-8">
+              <ModelTester />
+            </div>
+          )}
 
           {/* Research Model Settings */}
           <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border">
