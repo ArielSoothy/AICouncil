@@ -17,36 +17,41 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ Model Fallback Hardening & Production Fixes (December 14, 2025)
-**Goal:** Fix broken fallback chains, add error classification, fix production mode detection
+**Current Session:** ✅ Model Health Check System & Production Fixes (December 14, 2025)
+**Goal:** Test all models, fix broken IDs, hide dev tools on production
 
 **Progress:**
-- ✅ Added `ModelErrorCategory` enum with 8 error categories (QUOTA_LIMIT, AUTH_ERROR, DEPRECATED, etc.)
-- ✅ Added `classifyError()` function for structured error logging with ANSI colors
-- ✅ Updated SSE types with `errorCategory` and `userMessage` fields
-- ✅ Removed decommissioned `gemma2-9b-it` from all fallback chains (Groq Nov 2025)
-- ✅ Fixed production detection - exposed `VERCEL_ENV` to client-side via `next.config.js`
-- ✅ ModelTester and SUB tiers now properly hidden on Vercel production
-- ✅ Research model defaults to GPT-4.1 Mini (already correct in `trading-preset-context.tsx`)
+- ✅ Added Model Health Check ping test (ultra-cheap ~$0.0001/model)
+- ✅ Added 3 test types: ping, JSON, tools
+- ✅ Fixed maxTokens from 10 to 50 (OpenAI minimum)
+- ✅ Fixed GPT-5.1 Codex Mini ID: `gpt-5-codex-mini` → `gpt-5.1-codex-mini`
+- ✅ Fixed Claude 4.5 Opus ID: `claude-opus-4-5-20251124` → `claude-opus-4-5-20251101`
+- ✅ Added 3 new model statuses: `deprecated`, `responses_api_only`, `not_supported`
+- ✅ Marked broken models: Codex Mini Latest, GPT-3.5 Turbo 16k, Grok 2 Image
+- ✅ Removed Gemini from research models (5 req/min too low for 4 agents)
+- ✅ Fixed production detection with hostname-based check (reliable client-side)
+- ✅ ModelTester now hidden on production via `checkIsProduction()` function
+
+**Test Results:** 32/37 models passed (86%), 5 rate-limited Grok models (temporary)
 
 **Files Modified:**
 ```
-lib/trading/model-fallback.ts           # ADDED: Error classification, removed gemma2-9b-it
-types/research-progress.ts              # ADDED: errorCategory, userMessage to events
-types/consensus.ts                      # ADDED: ModelFallbackEvent, ModelWarningEvent types
-app/api/trading/consensus/stream/route.ts # UPDATED: Use classifyError() for fallback events
-components/trading/consensus-mode.tsx   # ADDED: Fallback notification UI panel
-lib/utils/environment.ts                # FIXED: Client-side VERCEL_ENV access
-next.config.js                          # ADDED: NEXT_PUBLIC_VERCEL_ENV exposure
+app/api/trading/test-model/route.ts     # ADDED: Ping test, fixed maxTokens
+components/trading/model-tester.tsx     # ADDED: Ping/JSON/Tools buttons
+components/trading/research-model-selector.tsx # REMOVED: Gemini option
+lib/models/model-registry.ts            # FIXED: Model IDs, added status types
+lib/utils/environment.ts                # ADDED: hostname-based production check
+app/trading/page.tsx                    # FIXED: Use checkIsProduction() for client-side
+docs/reports/MODEL_STATUS_REPORT.md     # ADDED: Full test results report
 ```
 
 **Commits:**
-- `1f77ba3` - feat: Add model fallback error classification system
-- `13e29cc` - fix: Enable production mode detection on Vercel
-- `2031937` - fix: Remove decommissioned gemma2-9b-it from fallback chains
-- `53fe0bf` - fix: Expose VERCEL_ENV to client-side for production detection
+- `d38305c` - feat: Add Model Health Check system with ping test
+- `ba17f7a` - fix: Remove broken models from selectable list, add new status types
+- `5dfad95` - fix: Only hide dev tools on Vercel production, not preview
+- `2949884` - fix: Use hostname-based production detection for reliable client-side check
 
-**Previous Session:** Research Pipeline Fix & Real Data Integration (December 13, 2025)
+**Previous Session:** Model Fallback Hardening (December 14, 2025)
 - ✅ Added Claude 4.5 Opus, Gemini 3 Pro Image
 - ✅ Rewrote agent-selector.tsx to use MODEL_REGISTRY
 - ✅ Power/cost badges in all model selectors
