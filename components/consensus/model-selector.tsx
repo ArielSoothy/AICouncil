@@ -2,9 +2,7 @@
 
 import { ModelConfig } from '@/types/consensus'
 import { UltraModelBadgeSelector } from './ultra-model-badge-selector'
-import { useAuth } from '@/contexts/auth-context'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
-import { getPresetConfig } from '@/lib/config/model-presets'
 
 interface ModelSelectorProps {
   models: ModelConfig[]
@@ -23,45 +21,14 @@ interface ModelSelectorProps {
 export function ModelSelector({
   models,
   onChange,
-  usePremiumQuery = false,
-  maxModels,
-  userTier: propUserTier
 }: ModelSelectorProps) {
-  const { userTier, loading } = useAuth()
   const { globalTier } = useTradingPreset()
-
-  // Determine effective tier
-  const currentTier = loading ? 'free' : (userTier || 'free')
-  const effectiveTier = propUserTier || currentTier
-
-  // Debug logging
-  console.log('📊 ModelSelector - loading:', loading, 'userTier:', userTier, 'effectiveTier:', effectiveTier)
 
   // Check if using subscription mode
   const isSubscriptionMode = globalTier === 'sub-pro' || globalTier === 'sub-max'
 
   return (
-    <div className="space-y-4">
-      {/* Global Preset Indicator */}
-      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
-        <div>
-          <div className="text-sm font-medium">Global Model Tier</div>
-          <div className="text-xs text-muted-foreground">
-            Change tier using the selector in the header to update all modes
-          </div>
-        </div>
-        {(() => {
-          const preset = getPresetConfig(globalTier)
-          const Icon = preset.icon
-          return (
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 ${preset.color}`}>
-              <Icon className="w-4 h-4" />
-              <span className="font-semibold">{preset.label}</span>
-            </div>
-          )
-        })()}
-      </div>
-
+    <div className="space-y-3">
       {/* Badge Selector */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
