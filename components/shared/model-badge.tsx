@@ -15,17 +15,18 @@ import { X, ChevronDown, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // ============================================================================
-// COST TIER STYLING
+// COST TIER STYLING - SINGLE SOURCE OF TRUTH
+// Import these in other components instead of duplicating!
 // ============================================================================
 
-const COST_TIER_STYLES: Record<ModelCostTier, { bg: string; text: string }> = {
+export const COST_TIER_STYLES: Record<ModelCostTier, { bg: string; text: string }> = {
   'FREE': { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
   '$': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
   '$$': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300' },
   '$$$': { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300' }
 }
 
-const GRADE_STYLES: Record<ModelGrade, { text: string }> = {
+export const GRADE_STYLES: Record<ModelGrade, { text: string }> = {
   'A+': { text: 'text-emerald-600 dark:text-emerald-400' },
   'A': { text: 'text-green-600 dark:text-green-400' },
   'B+': { text: 'text-blue-600 dark:text-blue-400' },

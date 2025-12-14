@@ -26,7 +26,7 @@ import {
   PROVIDER_NAMES,
   Provider
 } from '@/lib/models/model-registry'
-import { ModelDropdownItem } from '@/components/shared/model-badge'
+import { ModelDropdownItem, COST_TIER_STYLES, GRADE_STYLES } from '@/components/shared/model-badge'
 import { cn } from '@/lib/utils'
 
 interface AgentSelectorProps {
@@ -36,23 +36,6 @@ interface AgentSelectorProps {
   userTier: 'guest' | 'free' | 'pro' | 'enterprise'
   globalTier?: 'free' | 'pro' | 'max' | 'sub-pro' | 'sub-max'  // Optional global tier from header selector
 }
-
-// Cost tier styling for inline badge display
-const COST_TIER_STYLES = {
-  'FREE': { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
-  '$': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
-  '$$': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300' },
-  '$$$': { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300' }
-} as const
-
-const GRADE_STYLES = {
-  'A+': { text: 'text-emerald-600 dark:text-emerald-400' },
-  'A': { text: 'text-green-600 dark:text-green-400' },
-  'B+': { text: 'text-blue-600 dark:text-blue-400' },
-  'B': { text: 'text-sky-600 dark:text-sky-400' },
-  'C+': { text: 'text-amber-600 dark:text-amber-400' },
-  'C': { text: 'text-orange-600 dark:text-orange-400' }
-} as const
 
 // Agent Presets - Pre-selected models for each role (4 agents: analyst, critic, judge, synthesizer)
 // IMPORTANT: Only use models with status: 'working' in MODEL_REGISTRY

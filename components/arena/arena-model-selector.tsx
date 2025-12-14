@@ -12,26 +12,10 @@ import {
 import { Plus, X, ChevronDown } from 'lucide-react'
 import { PROVIDER_COLORS } from '@/lib/brand-colors'
 import { TRADING_MODELS, MODELS_BY_PROVIDER, getModelDisplayName } from '@/lib/trading/models-config'
-import { getModelGrade, getModelTokenCost, ModelGrade, ModelCostTier, getModelCostTier } from '@/lib/models/model-registry'
+import { getModelGrade, getModelTokenCost, getModelCostTier } from '@/lib/models/model-registry'
+import { COST_TIER_STYLES, GRADE_STYLES } from '@/components/shared/model-badge'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
-
-// Consistent styling
-const COST_TIER_STYLES: Record<ModelCostTier, { bg: string; text: string }> = {
-  'FREE': { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
-  '$': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
-  '$$': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300' },
-  '$$$': { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300' }
-}
-
-const GRADE_STYLES: Record<ModelGrade, { text: string }> = {
-  'A+': { text: 'text-emerald-600 dark:text-emerald-400' },
-  'A': { text: 'text-green-600 dark:text-green-400' },
-  'B+': { text: 'text-blue-600 dark:text-blue-400' },
-  'B': { text: 'text-sky-600 dark:text-sky-400' },
-  'C+': { text: 'text-amber-600 dark:text-amber-400' },
-  'C': { text: 'text-orange-600 dark:text-orange-400' }
-}
 
 interface ArenaModelSelectorProps {
   enabledModels: string[]
