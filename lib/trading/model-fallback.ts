@@ -78,17 +78,17 @@ export const FALLBACK_CHAINS: Record<string, string[]> = {
     'gemini-1.5-flash',
     'claude-haiku-4-5-20251001',
     'llama-3.3-70b-versatile',
-    'gemma2-9b-it',
+    'llama-3.1-8b-instant',
   ],
   'gemini-1.5-flash': [
     'gpt-4o-mini',
     'llama-3.3-70b-versatile',
-    'gemma2-9b-it',
+    'llama-3.1-8b-instant',
   ],
   'gemini-2.0-flash': [
     'gemini-1.5-flash',
     'llama-3.3-70b-versatile',
-    'gemma2-9b-it',
+    'llama-3.1-8b-instant',
   ],
   'claude-haiku-4-5-20251001': [
     'gpt-4o-mini',
@@ -101,17 +101,13 @@ export const FALLBACK_CHAINS: Record<string, string[]> = {
   // ============================================
 
   'llama-3.3-70b-versatile': [
-    'gemma2-9b-it',
     'llama-3.1-8b-instant',
     'gemini-2.0-flash',         // Google free tier
   ],
-  'gemma2-9b-it': [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-  ],
+  // NOTE: gemma2-9b-it REMOVED - Decommissioned by Groq Nov 2025
   'llama-3.1-8b-instant': [
     'llama-3.3-70b-versatile',
-    'gemma2-9b-it',
+    'gemini-2.0-flash',
   ],
 
   // ============================================
@@ -119,8 +115,8 @@ export const FALLBACK_CHAINS: Record<string, string[]> = {
   // ============================================
   'default': [
     'llama-3.3-70b-versatile',    // Best free model
-    'gemma2-9b-it',               // Alternative free
     'llama-3.1-8b-instant',       // Fast free fallback
+    'gemini-2.0-flash',           // Google free tier
   ],
 }
 
@@ -307,7 +303,8 @@ export function getModelDisplayName(modelId: string): string {
  */
 export function hasFreeModelFallback(modelId: string): boolean {
   const chain = FALLBACK_CHAINS[modelId] || FALLBACK_CHAINS['default']
-  const freeModels = ['llama-3.3-70b-versatile', 'gemma2-9b-it', 'llama-3.1-8b-instant', 'gemini-2.0-flash']
+  // NOTE: gemma2-9b-it REMOVED - Decommissioned by Groq Nov 2025
+  const freeModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'gemini-2.0-flash']
 
   return chain.some(model => freeModels.includes(model))
 }
