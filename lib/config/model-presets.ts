@@ -140,7 +140,7 @@ export const PRESET_CONFIGS: Record<PresetTier, PresetConfig> = {
     color: 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300',
     modelIds: [
       // Anthropic - Claude 4.5 Opus ($0.09/1K, AAII 1400) - THE flagship model
-      'claude-opus-4-5-20251124',
+      'claude-opus-4-5-20251101',
       // OpenAI - GPT-5 Chat Latest ($0.01125/1K, AAII 1380)
       'gpt-5-chat-latest',
       // Google - Gemini 2.5 Pro ($0.01125/1K, AAII 1350, S-tier) - Most stable flagship
@@ -175,7 +175,7 @@ export const PRESET_CONFIGS: Record<PresetTier, PresetConfig> = {
     color: 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300',
     modelIds: [
       // Claude Code Max - Claude 4.5 Opus
-      'claude-opus-4-5-20251124',
+      'claude-opus-4-5-20251101',
       // OpenAI Codex Max - GPT-5.1 Codex Max
       'gpt-5.1-codex-max',
       // Google Flagship - Gemini 3 Pro
@@ -239,7 +239,7 @@ export const DEBATE_PRESETS: Record<PresetTier, DebatePresetConfig> = {
       // NOTE: gemini-3-pro-preview removed due to tool call failures and temperature issues
       analyst: 'gemini-2.5-pro',              // Google ($0.01125/1K, AAII 1350, S-tier) - Most stable flagship
       critic: 'gpt-5-chat-latest',            // OpenAI ($0.01125/1K, AAII 1380) - Strong reasoning
-      synthesizer: 'claude-opus-4-5-20251124', // Anthropic ($0.09/1K, AAII 1400) - THE flagship
+      synthesizer: 'claude-opus-4-5-20251101', // Anthropic ($0.09/1K, AAII 1400) - THE flagship
     }
   },
   'sub-pro': {
@@ -261,7 +261,7 @@ export const DEBATE_PRESETS: Record<PresetTier, DebatePresetConfig> = {
     color: 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300',
     roles: {
       // Top-tier subscription models for best coding analysis
-      analyst: 'claude-opus-4-5-20251124',        // Claude Code Max
+      analyst: 'claude-opus-4-5-20251101',        // Claude Code Max
       critic: 'gpt-5.1-codex-max',                // OpenAI Codex Max
       synthesizer: 'gemini-3-pro-preview',        // Gemini 3 Pro
     }

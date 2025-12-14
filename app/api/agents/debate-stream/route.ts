@@ -10,6 +10,12 @@ import { DisagreementAnalyzer } from '@/lib/agents/disagreement-analyzer'
 import { executePreResearch, type PreResearchResult } from '@/lib/web-search/pre-research-service'
 import { hasInternetAccess, getModelInfo, PROVIDER_NAMES, type Provider } from '@/lib/models/model-registry'
 import { getFallbacksForModel, isResponseFailed, PROVIDER_FALLBACKS } from '@/lib/models/model-fallback'
+import {
+  createResearchCoordinator,
+  logResearchDecision,
+  type AgentSearchCapability,
+  type ResearchDecision
+} from '@/lib/research/research-coordinator'
 // import { SimpleMemoryService } from '@/lib/memory/simple-memory-service' // Disabled - memory on backlog
 
 export const dynamic = 'force-dynamic'
@@ -109,34 +115,34 @@ export async function POST(request: NextRequest) {
         }
         
         // ==================== SMART SEARCH PHASE ====================
-        // NEW ARCHITECTURE: Native search for capable models, DuckDuckGo fallback for others
-        // - OpenAI, Anthropic, Google, Perplexity, xAI → Use their native search
-        // - Groq (Llama), Mistral, Cohere → Use DuckDuckGo pre-research
+        // Uses ResearchCoordinator for modular, maintainable research decisions
+        // Academic best practice: "Research ONCE, debate MANY times"
+        // - CPDE pattern: Centralized Planning, Decentralized Execution
+        // - Du et al. (2023): Cross-validation reduces hallucinations by 40%
         // See: docs/architecture/PRE_RESEARCH_ARCHITECTURE.md
         let preResearchContext = ''
         let preResearchResult: PreResearchResult | null = null
 
-        // Analyze which agents have native search vs need DuckDuckGo
-        const agentSearchCapabilities = agents.map((agent: any) => {
-          const modelHasNative = hasInternetAccess(agent.model)
-          const modelInfo = getModelInfo(agent.model)
-          const providerName = modelInfo?.provider ? PROVIDER_NAMES[modelInfo.provider as Provider] : 'Unknown'
-          return {
-            role: agent.persona?.role || 'Unknown',
-            model: agent.model,
-            provider: providerName,
-            hasNativeSearch: modelHasNative,
-            searchProvider: modelHasNative ? `${providerName} Native` : 'DuckDuckGo'
-          }
+        // Create research coordinator with current configuration
+        // TODO: When centralized research (conductGeneralResearch) is re-enabled,
+        //       pass hasCentralizedResearch: true and centralizedSourceCount from that result
+        const researchCoordinator = createResearchCoordinator({
+          enableWebSearch,
+          hasCentralizedResearch: false, // Set to true when centralized research integration is added
+          centralizedSourceCount: 0,     // Will be populated from conductGeneralResearch result
+          forceDuckDuckGo: false         // For testing only
         })
 
-        const modelsNeedingDuckDuckGo = agentSearchCapabilities.filter((a: any) => !a.hasNativeSearch)
-        const modelsWithNativeSearch = agentSearchCapabilities.filter((a: any) => a.hasNativeSearch)
+        // Analyze search capabilities using the coordinator
+        const agentSearchCapabilities = researchCoordinator.analyzeSearchCapabilities(agents)
 
-        console.log('\n🔍 Search capability analysis:')
-        agentSearchCapabilities.forEach((a: any) => {
-          console.log(`   ${a.role} (${a.model}): ${a.searchProvider}`)
-        })
+        // Make research decision based on capabilities and configuration
+        const researchDecision = researchCoordinator.makeResearchDecision(agentSearchCapabilities)
+        logResearchDecision(researchDecision)
+
+        // Extract for compatibility with existing code
+        const modelsNeedingDuckDuckGo = researchDecision.modelsNeedingDuckDuckGo
+        const modelsWithNativeSearch = researchDecision.modelsWithNativeSearch
 
         if (enableWebSearch) {
           // Send search capabilities to UI
@@ -145,16 +151,20 @@ export async function POST(request: NextRequest) {
             agents: agentSearchCapabilities,
             nativeSearchCount: modelsWithNativeSearch.length,
             duckDuckGoCount: modelsNeedingDuckDuckGo.length,
+            researchDecision: {
+              shouldRunDuckDuckGo: researchDecision.shouldRunDuckDuckGo,
+              reason: researchDecision.reason
+            },
             timestamp: Date.now()
           })}\n\n`))
 
-          // Only run DuckDuckGo pre-research for models that need it
-          if (modelsNeedingDuckDuckGo.length > 0) {
+          // Run DuckDuckGo based on coordinator's decision
+          if (researchDecision.shouldRunDuckDuckGo) {
             console.log(`\n🦆 Starting DuckDuckGo pre-research for ${modelsNeedingDuckDuckGo.length} model(s)...`)
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'pre_research_started',
               message: `Gathering evidence for ${modelsNeedingDuckDuckGo.length} model(s) without native search...`,
-              forModels: modelsNeedingDuckDuckGo.map((a: any) => a.model),
+              forModels: modelsNeedingDuckDuckGo.map((a) => a.model),
               timestamp: Date.now()
             })}\n\n`))
 
@@ -185,7 +195,7 @@ export async function POST(request: NextRequest) {
                   cacheHit: preResearchResult.cacheHit,
                   researchTime: preResearchResult.researchTime,
                   queryType: preResearchResult.queryAnalysis.primaryType,
-                  forModels: modelsNeedingDuckDuckGo.map((a: any) => a.model),
+                  forModels: modelsNeedingDuckDuckGo.map((a) => a.model),
                   searchResults: preResearchResult.searchResults.map(sr => ({
                     role: sr.role,
                     searchQuery: sr.searchQuery,
@@ -199,10 +209,11 @@ export async function POST(request: NextRequest) {
               console.warn('⚠️ DuckDuckGo pre-research failed:', preResearchError)
             }
           } else {
-            console.log('\n✅ All models have native search - skipping DuckDuckGo pre-research')
+            // Coordinator decided to skip DuckDuckGo
+            console.log(`\n✅ ${researchDecision.reason}`)
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'pre_research_skipped',
-              reason: 'All models have native search capability',
+              reason: researchDecision.reason,
               agents: agentSearchCapabilities,
               timestamp: Date.now()
             })}\n\n`))

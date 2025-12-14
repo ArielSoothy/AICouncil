@@ -100,7 +100,7 @@ const MODELS_WITH_INTERNET = new Set([
   'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
   'gpt-4o', 'gpt-4-turbo-preview', 'gpt-4',
   // Anthropic - Claude has web search since March 2025 (FIXED Nov 2025)
-  'claude-opus-4-5-20251124', 'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001',
+  'claude-opus-4-5-20251101', 'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001',
   'claude-opus-4-1-20250805', 'claude-opus-4-20250514', 'claude-sonnet-4-20250514',
   'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022',
   // Google - Gemini has Google Search grounding
@@ -184,10 +184,10 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
   // ===== GOOGLE (Updated Dec 2025 from official docs) =====
   google: [
     // Gemini 3 Series (Flagship - Nov 2025) - PREVIEW ONLY, no free tier
-    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'empty_response', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PREVIEW: No free tier available. Requires paid API plan. $2/M input, $12/M output' },
+    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PAID ONLY: Works with paid API. Returns empty on free tier. $2/M input, $12/M output' },
     { id: 'gemini-3-pro-image-preview', name: 'Gemini 3 Pro Image', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'empty_response', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PREVIEW: No free tier. Image generation model with reasoning-enhanced composition' },
     // Gemini 2.5 Series (Stable - Available)
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'empty_response', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PAID ONLY: Returns empty on free tier. $1.25/M input, $10/M output. Use Flash for free tier.' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PAID ONLY: Works with paid API. Returns empty on free tier. $1.25/M input, $10/M output' },
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Tested and working. Free tier available.' },
     { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Tested and working. Free tier available.' },
     // Gemini 2.0 Series (Free)

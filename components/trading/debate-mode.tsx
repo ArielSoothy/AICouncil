@@ -28,6 +28,23 @@ interface ReasoningDetails {
   timing?: string
 }
 
+// Helper to convert reasoning to string for transcript display
+// Handles both string and object formats safely
+function formatReasoningForTranscript(reasoning: string | ReasoningDetails): string {
+  if (typeof reasoning === 'string') {
+    return reasoning
+  }
+  // Convert ReasoningDetails object to readable string
+  const parts: string[] = []
+  if (reasoning.bullishCase) parts.push(reasoning.bullishCase)
+  if (reasoning.bearishCase) parts.push(reasoning.bearishCase)
+  if (reasoning.technicalAnalysis) parts.push(reasoning.technicalAnalysis)
+  if (reasoning.fundamentalAnalysis) parts.push(reasoning.fundamentalAnalysis)
+  if (reasoning.sentiment) parts.push(reasoning.sentiment)
+  if (reasoning.timing) parts.push(reasoning.timing)
+  return parts.join(' ') || 'No detailed reasoning provided'
+}
+
 interface DebateAgent {
   role: 'analyst' | 'critic' | 'synthesizer'
   name: string
@@ -344,7 +361,7 @@ export function DebateMode() {
             createDebateMessage(
               agent.role,
               agent.name,
-              `${agent.decision.action}${agent.decision.symbol ? ` ${agent.decision.symbol}` : ''} - ${agent.decision.reasoning}`,
+              `${agent.decision.action}${agent.decision.symbol ? ` ${agent.decision.symbol}` : ''} - ${formatReasoningForTranscript(agent.decision.reasoning)}`,
               1
             )
           )
@@ -356,7 +373,7 @@ export function DebateMode() {
             createDebateMessage(
               agent.role,
               agent.name,
-              `${agent.decision.action}${agent.decision.symbol ? ` ${agent.decision.symbol}` : ''} - ${agent.decision.reasoning}`,
+              `${agent.decision.action}${agent.decision.symbol ? ` ${agent.decision.symbol}` : ''} - ${formatReasoningForTranscript(agent.decision.reasoning)}`,
               2
             )
           )

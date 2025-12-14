@@ -18,7 +18,7 @@ import { AIProvider } from '../types';
 // Models available via Claude Code CLI subscription
 const CLAUDE_CLI_MODELS = [
   'claude-sonnet-4-5-20250929',
-  'claude-opus-4-5-20251124',
+  'claude-opus-4-5-20251101',
   'claude-haiku-4-5-20251001',
   'sonnet', // Alias for latest sonnet
   'opus',   // Alias for latest opus

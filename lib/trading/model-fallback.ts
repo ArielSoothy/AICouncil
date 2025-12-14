@@ -36,7 +36,7 @@ export const FALLBACK_CHAINS: Record<string, string[]> = {
     'gemini-2.0-flash',            // Google balanced (free)
     'llama-3.3-70b-versatile',     // Groq free
   ],
-  'claude-opus-4-5-20251124': [
+  'claude-opus-4-5-20251101': [
     'claude-sonnet-4-5-20250929',  // Same provider fallback
     'gpt-4o',
     'llama-3.3-70b-versatile',

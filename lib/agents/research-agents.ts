@@ -163,7 +163,7 @@ const RESEARCH_TIER_MODELS: Record<ResearchTier, TierModelConfig> = {
   'sub-pro': getResearchModelConfig(),
   'sub-max': {
     // Sub Max keeps Opus for flagship users
-    model: 'claude-opus-4-5-20251124',
+    model: 'claude-opus-4-5-20251101',
     provider: 'anthropic',
     displayName: 'Claude 4.5 Opus',
   },

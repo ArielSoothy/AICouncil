@@ -109,7 +109,7 @@ const AGENT_PRESETS = {
     color: 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700',
     roles: {
       // Top-tier subscription models
-      'analyst-001': { provider: 'anthropic', model: 'claude-opus-4-5-20251124' },
+      'analyst-001': { provider: 'anthropic', model: 'claude-opus-4-5-20251101' },
       'critic-001': { provider: 'openai', model: 'gpt-5.1-codex-max' },
       'judge-001': { provider: 'google', model: 'gemini-3-pro-preview' },
       'synthesizer-001': { provider: 'xai', model: 'grok-4-0709' }

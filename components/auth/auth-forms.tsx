@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { BRANDING } from '@/lib/config/branding'
 
 export function AuthForms() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -80,7 +81,7 @@ export function AuthForms() {
       <div className="w-full max-w-md space-y-8 p-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight consensus-gradient bg-clip-text text-transparent">
-            Consensus AI
+            {BRANDING.PROJECT_NAME}
           </h1>
           <p className="mt-2 text-muted-foreground">
             {isSignUp ? 'Create your account' : 'Sign in to your account'}
