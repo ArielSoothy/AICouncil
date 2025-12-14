@@ -134,3 +134,49 @@ export interface JudgeAnalysisResponse {
   conciseResults: ConciseJudgeResult[];
   timestamp: Date;
 }
+
+/**
+ * SSE Event Types for Consensus Streaming
+ *
+ * These types define the events sent during consensus trading stream
+ */
+
+// Base event structure
+export interface ConsensusStreamEvent {
+  type: string;
+  timestamp: number;
+  [key: string]: any;
+}
+
+// Model fallback event - sent when a model fails and another is substituted
+export interface ModelFallbackEvent extends ConsensusStreamEvent {
+  type: 'fallback';
+  originalModel: string;
+  originalModelName: string;
+  fallbackModel: string;
+  fallbackModelName: string;
+  reason: string;           // Raw error message
+  errorCategory: string;    // QUOTA_LIMIT, AUTH_ERROR, etc.
+  userMessage: string;      // Friendly UI message (e.g., "rate limit")
+}
+
+// Warning event - sent when a model is unstable but still attempted
+export interface ModelWarningEvent extends ConsensusStreamEvent {
+  type: 'warning';
+  model: string;
+  modelName: string;
+  message: string;
+}
+
+// Union of all stream event types
+export type TradingStreamEvent =
+  | { type: 'phase_start'; phase: number; message: string; timestamp: number }
+  | { type: 'agent_complete'; agent: string; timestamp: number }
+  | { type: 'decision_start'; modelName: string; modelId: string; timestamp: number }
+  | { type: 'decision_complete'; modelName: string; modelId: string; action: string; confidence: number; duration: number; tokensUsed: number; inputTokens: number; outputTokens: number; timestamp: number }
+  | { type: 'judge_start'; message: string; timestamp: number }
+  | { type: 'judge_complete'; judgeResult: any; timestamp: number }
+  | { type: 'final_result'; result: any; timestamp: number }
+  | { type: 'error'; phase?: number; model?: string; message: string; errorCategory?: string; timestamp: number }
+  | ModelFallbackEvent
+  | ModelWarningEvent;

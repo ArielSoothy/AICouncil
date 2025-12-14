@@ -81,6 +81,14 @@ export function ConsensusMode() {
   const progressPanelRef = useRef<ResearchProgressPanelHandle>(null)
   const [isStreaming, setIsStreaming] = useState(false)
 
+  // Fallback tracking - shows when models fail and alternatives are used
+  const [fallbackMessages, setFallbackMessages] = useState<Array<{
+    from: string
+    to: string
+    reason: string
+    category: string
+  }>>([])
+
   // Persistence for saving/restoring trading analyses
   const { saveConversation, isRestoring } = useConversationPersistence({
     storageKey: 'trading-consensus-mode',
@@ -241,6 +249,7 @@ export function ConsensusMode() {
     setDecisions([])
     setProgressSteps([])
     setResearchData(null)
+    setFallbackMessages([]) // Clear previous fallback notifications
 
     // Start cost tracking for this analysis
     costTracker?.startAnalysis('trading-consensus', `${targetSymbol || 'Market'} ${timeframe}`)
@@ -411,6 +420,22 @@ export function ConsensusMode() {
               if (event.type === 'error') {
                 console.error('Streaming error:', event.message)
               }
+
+              // Handle fallback events - model failed, using alternative
+              if (event.type === 'fallback') {
+                console.log(`🔄 [${event.errorCategory}] ${event.originalModelName} → ${event.fallbackModelName}: ${event.userMessage}`)
+                setFallbackMessages(prev => [...prev, {
+                  from: event.originalModelName,
+                  to: event.fallbackModelName,
+                  reason: event.userMessage,
+                  category: event.errorCategory
+                }])
+              }
+
+              // Handle warning events - unstable model being attempted
+              if (event.type === 'warning') {
+                console.warn(`⚠️ ${event.modelName}: ${event.message}`)
+              }
             } catch (parseError) {
               console.error('Failed to parse SSE event:', parseError)
             }
@@ -505,6 +530,28 @@ export function ConsensusMode() {
           ref={progressPanelRef}
           onError={(error) => console.error('Research progress error:', error)}
         />
+      )}
+
+      {/* Fallback Notifications - Shows when models fail and alternatives are used */}
+      {fallbackMessages.length > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-2">
+          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-medium text-sm">
+            <AlertCircle className="h-4 w-4" />
+            Model Fallbacks ({fallbackMessages.length})
+          </div>
+          <div className="space-y-1">
+            {fallbackMessages.map((fb, i) => (
+              <div key={i} className="text-sm text-amber-600 dark:text-amber-500 flex items-center gap-2">
+                <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/50 rounded text-xs font-mono">
+                  {fb.category}
+                </span>
+                <span>
+                  {fb.from} failed ({fb.reason}) → using {fb.to}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Phase 4: Research Activity Panel - Shows final summary after completion */}

@@ -32,6 +32,13 @@ import { XAIProvider } from '@/lib/ai-providers/xai';
 // CLI-based providers for subscription mode (Sub Pro/Max) - for FINAL MODEL QUERIES only
 import { ClaudeCLIProvider, CodexCLIProvider, GoogleCLIProvider } from '@/lib/ai-providers/cli';
 import { ResearchCache } from '@/lib/trading/research-cache';
+import {
+  getFallbackModel,
+  recordModelFailure,
+  isModelUnstable,
+  classifyError,
+  logFallbackWithColor,
+} from '@/lib/trading/model-fallback';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -322,138 +329,191 @@ export async function POST(request: NextRequest) {
             timestamp: Date.now()
           });
 
-          // Get decisions from selected models
+          // Get decisions from selected models with automatic fallback
           // researchTier determines whether to use CLI (subscription) or API providers
           const decisionsPromises = selectedModels.map(async (modelId: string) => {
-            const modelName = getModelDisplayName(modelId);
-            const providerType = getProviderType(modelId);
+            // Track attempted models to avoid infinite loops in fallback chain
+            const attemptedModels: string[] = [];
 
-            try {
-              if (!providerType) {
-                throw new Error(`Unknown model or provider: ${modelId}`);
+            // Recursive helper to query with fallback
+            const queryWithFallback = async (currentModelId: string): Promise<TradeDecision | null> => {
+              const modelName = getModelDisplayName(currentModelId);
+              const providerType = getProviderType(currentModelId);
+
+              // Check if model is unstable (failed multiple times recently)
+              if (isModelUnstable(currentModelId)) {
+                sendEvent({
+                  type: 'warning',
+                  model: currentModelId,
+                  modelName,
+                  message: `${modelName} has been unstable recently, attempting anyway...`,
+                  timestamp: Date.now()
+                });
               }
 
-              // Get provider based on tier - CLI for sub-pro/sub-max, API for others
-              // CRITICAL: Sub tiers use CLI ONLY - no fallback to API
-              const { provider, error: providerError } = getProviderForModelAndTier(providerType, researchTier);
-              if (providerError || !provider) {
-                throw new Error(providerError || `No provider available for: ${providerType}`);
-              }
-
-              // Send decision start event
-              sendEvent({
-                type: 'decision_start',
-                modelName,
-                modelId,
-                timestamp: Date.now()
-              });
-
-              const decisionStartTime = Date.now();
-
-              // Generate decision prompt with research data
-              // CRITICAL: Use generateDecisionPrompt which does NOT mention tools
-              // Decision models have useTools: false so they should analyze research, not expect tools
-              const researchFindings: ResearchFindings = {
-                technical: researchReport.technical.findings,
-                fundamental: researchReport.fundamental.findings,
-                sentiment: researchReport.sentiment.findings,
-                risk: researchReport.risk.findings,
-              };
-
-              // DEBUG: Log research findings length to verify data is passing through
-              console.log(`📊 Research findings for ${modelId}:`, {
-                technical: researchFindings.technical?.length || 0,
-                fundamental: researchFindings.fundamental?.length || 0,
-                sentiment: researchFindings.sentiment?.length || 0,
-                risk: researchFindings.risk?.length || 0,
-              });
-
-              const enhancedPrompt = generateDecisionPrompt(
-                account,
-                positions,
-                new Date().toLocaleDateString(),
-                timeframe,
-                normalizedSymbol || 'UNKNOWN',
-                researchFindings
-              );
-
-              const result = await provider.query(enhancedPrompt, {
-                model: modelId,
-                provider: providerType,
-                temperature: 0.7,
-                maxTokens: 4000,  // ⬆️ Increased from 2000 to prevent truncation
-                enabled: true,
-                useTools: false,
-                maxSteps: 1,
-              });
-
-              // Check for provider errors or empty responses BEFORE parsing
-              if (result.error) {
-                throw new Error(`Provider error: ${result.error}`);
-              }
-
-              if (!result.response || result.response.trim().length === 0) {
-                throw new Error(`Empty response from provider (possible rate limit exhaustion)`);
-              }
-
-              // Extract and parse JSON response
-              const cleanedResponse = extractJSON(result.response);
-
-              let decision: TradeDecision;
               try {
-                decision = JSON.parse(cleanedResponse);
-              } catch (parseError) {
-                throw parseError; // Let outer catch handle it
-              }
+                if (!providerType) {
+                  throw new Error(`Unknown model or provider: ${currentModelId}`);
+                }
 
-              // Handle malformed responses
-              if (!decision.action && (decision as any).bullishCase) {
-                decision = {
-                  action: 'HOLD' as const,
-                  symbol: normalizedSymbol || 'UNKNOWN',
-                  quantity: 0,
-                  reasoning: decision as any,
-                  confidence: 0.5,
+                // Get provider based on tier - CLI for sub-pro/sub-max, API for others
+                // CRITICAL: Sub tiers use CLI ONLY - no fallback to API
+                const { provider, error: providerError } = getProviderForModelAndTier(providerType, researchTier);
+                if (providerError || !provider) {
+                  throw new Error(providerError || `No provider available for: ${providerType}`);
+                }
+
+                // Send decision start event
+                sendEvent({
+                  type: 'decision_start',
+                  modelName,
+                  modelId: currentModelId,
+                  timestamp: Date.now()
+                });
+
+                const decisionStartTime = Date.now();
+
+                // Generate decision prompt with research data
+                // CRITICAL: Use generateDecisionPrompt which does NOT mention tools
+                // Decision models have useTools: false so they should analyze research, not expect tools
+                const researchFindings: ResearchFindings = {
+                  technical: researchReport.technical.findings,
+                  fundamental: researchReport.fundamental.findings,
+                  sentiment: researchReport.sentiment.findings,
+                  risk: researchReport.risk.findings,
                 };
+
+                // DEBUG: Log research findings length to verify data is passing through
+                console.log(`📊 Research findings for ${currentModelId}:`, {
+                  technical: researchFindings.technical?.length || 0,
+                  fundamental: researchFindings.fundamental?.length || 0,
+                  sentiment: researchFindings.sentiment?.length || 0,
+                  risk: researchFindings.risk?.length || 0,
+                });
+
+                const enhancedPrompt = generateDecisionPrompt(
+                  account,
+                  positions,
+                  new Date().toLocaleDateString(),
+                  timeframe,
+                  normalizedSymbol || 'UNKNOWN',
+                  researchFindings
+                );
+
+                const result = await provider.query(enhancedPrompt, {
+                  model: currentModelId,
+                  provider: providerType,
+                  temperature: 0.7,
+                  maxTokens: 4000,  // Increased from 2000 to prevent truncation
+                  enabled: true,
+                  useTools: false,
+                  maxSteps: 1,
+                });
+
+                // Check for provider errors or empty responses BEFORE parsing
+                if (result.error) {
+                  throw new Error(`Provider error: ${result.error}`);
+                }
+
+                if (!result.response || result.response.trim().length === 0) {
+                  throw new Error(`Empty response (possible rate limit)`);
+                }
+
+                // Extract and parse JSON response
+                const cleanedResponse = extractJSON(result.response);
+
+                let decision: TradeDecision;
+                try {
+                  decision = JSON.parse(cleanedResponse);
+                } catch (parseError) {
+                  throw parseError; // Let outer catch handle it
+                }
+
+                // Handle malformed responses
+                if (!decision.action && (decision as any).bullishCase) {
+                  decision = {
+                    action: 'HOLD' as const,
+                    symbol: normalizedSymbol || 'UNKNOWN',
+                    quantity: 0,
+                    reasoning: decision as any,
+                    confidence: 0.5,
+                  };
+                }
+
+                decision.model = currentModelId;
+                decision.toolsUsed = false;
+                decision.toolCallCount = 0;
+
+                const decisionDuration = Date.now() - decisionStartTime;
+
+                // Send decision complete event with token usage for cost tracking
+                sendEvent({
+                  type: 'decision_complete',
+                  modelName,
+                  modelId: currentModelId,
+                  action: decision.action,
+                  confidence: decision.confidence || 0.5,
+                  duration: decisionDuration,
+                  tokensUsed: result.tokens?.total || 0,
+                  inputTokens: result.tokens?.prompt || 0,
+                  outputTokens: result.tokens?.completion || 0,
+                  timestamp: Date.now()
+                });
+
+                return decision;
+
+              } catch (error) {
+                // Record failure for instability tracking
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                recordModelFailure(currentModelId, errorMessage);
+                attemptedModels.push(currentModelId);
+
+                // Classify the error for structured logging and UI display
+                const classification = classifyError(errorMessage);
+
+                // Try to get a fallback model
+                const fallbackModelId = getFallbackModel(currentModelId, attemptedModels);
+
+                if (fallbackModelId) {
+                  const fallbackName = getModelDisplayName(fallbackModelId);
+
+                  // Send fallback event to user with error classification
+                  sendEvent({
+                    type: 'fallback',
+                    originalModel: currentModelId,
+                    originalModelName: modelName,
+                    fallbackModel: fallbackModelId,
+                    fallbackModelName: fallbackName,
+                    reason: errorMessage,
+                    errorCategory: classification.category,
+                    userMessage: classification.userMessage,
+                    timestamp: Date.now()
+                  });
+
+                  // Colored console output with structured error category
+                  logFallbackWithColor(currentModelId, fallbackModelId, classification);
+
+                  // Recursively try the fallback model
+                  return queryWithFallback(fallbackModelId);
+                }
+
+                // No fallback available - send error event with classification
+                sendEvent({
+                  type: 'error',
+                  phase: 2,
+                  model: modelName,
+                  message: `${modelName}: ${classification.userMessage} (no fallback available)`,
+                  errorCategory: classification.category,
+                  timestamp: Date.now()
+                });
+
+                console.error(`\x1b[${classification.consoleColor}m❌ [${classification.category}] All fallbacks exhausted for ${modelName}: ${errorMessage}\x1b[0m`);
+                return null;
               }
+            };
 
-              decision.model = modelId;
-              decision.toolsUsed = false;
-              decision.toolCallCount = 0;
-
-              const decisionDuration = Date.now() - decisionStartTime;
-
-              // Send decision complete event with token usage for cost tracking
-              sendEvent({
-                type: 'decision_complete',
-                modelName,
-                modelId,
-                action: decision.action,
-                confidence: decision.confidence || 0.5,
-                duration: decisionDuration,
-                tokensUsed: result.tokens?.total || 0,
-                inputTokens: result.tokens?.prompt || 0,
-                outputTokens: result.tokens?.completion || 0,
-                timestamp: Date.now()
-              });
-
-              return decision;
-            } catch (error) {
-              // Handle errors per-model (don't crash entire stream)
-              const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-              // Send error event
-              sendEvent({
-                type: 'error',
-                phase: 2,
-                model: modelName,
-                message: `${modelName}: ${errorMessage}`,
-                timestamp: Date.now()
-              });
-
-              // Return null for failed models
-              return null;
-            }
+            // Start query with the originally selected model
+            return queryWithFallback(modelId);
           });
 
           const decisionsOrNulls = await Promise.all(decisionsPromises);

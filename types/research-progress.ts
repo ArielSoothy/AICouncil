@@ -26,6 +26,8 @@ export type ResearchProgressEvent =
   | CacheHitEvent
   | ErrorEvent
   | FinalResultEvent
+  | ModelWarningEvent
+  | ModelFallbackEvent
 
 /**
  * Phase 1/2/3 Start Events
@@ -146,6 +148,7 @@ export interface ErrorEvent {
   agent?: ResearchAgentRole
   model?: string
   message: string
+  errorCategory?: string  // QUOTA_LIMIT, AUTH_ERROR, etc.
   timestamp: number
 }
 
@@ -157,6 +160,32 @@ export interface FinalResultEvent {
   consensus: any
   decisions: any[]
   research: any
+  timestamp: number
+}
+
+/**
+ * Model Warning Event - Sent when a model is unstable but still attempted
+ */
+export interface ModelWarningEvent {
+  type: 'warning'
+  model: string
+  modelName: string
+  message: string
+  timestamp: number
+}
+
+/**
+ * Model Fallback Event - Sent when a model fails and another is substituted
+ */
+export interface ModelFallbackEvent {
+  type: 'fallback'
+  originalModel: string
+  originalModelName: string
+  fallbackModel: string
+  fallbackModelName: string
+  reason: string           // Raw error message
+  errorCategory: string    // QUOTA_LIMIT, AUTH_ERROR, etc.
+  userMessage: string      // Friendly UI message (e.g., "rate limit")
   timestamp: number
 }
 
