@@ -134,7 +134,7 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'gpt-5-nano', name: 'GPT-5 Nano', provider: 'openai', tier: 'balanced', badge: '⚡', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     // GPT-5 Codex Series (Code-optimized, Subscription/CLI models)
     { id: 'gpt-5-codex', name: 'GPT-5 Codex', provider: 'openai', tier: 'flagship', badge: '🌟', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: 'Code-optimized GPT-5. Available via Responses API. Same price as GPT-5' },
-    { id: 'gpt-5-codex-mini', name: 'GPT-5 Codex Mini', provider: 'openai', tier: 'balanced', badge: '⚡', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: 'Smaller code-optimized model. 4x more usage vs gpt-5-codex' },
+    { id: 'gpt-5.1-codex-mini', name: 'GPT-5.1 Codex Mini', provider: 'openai', tier: 'balanced', badge: '⚡', isSubscription: true, status: 'working', lastTested: '2025-12-14T00:00:00.000Z', notes: 'Succeeded gpt-5-codex-mini. Available via Responses API. 4x more usage vs gpt-5-codex' },
     { id: 'codex-mini-latest', name: 'Codex Mini (Latest)', provider: 'openai', tier: 'balanced', badge: '⚡', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: '$1.50/M input, $6/M output. 75% prompt caching discount' },
     // GPT-5.1 Codex Max (Flagship subscription model)
     { id: 'gpt-5.1-codex-max', name: 'GPT-5.1 Codex Max', provider: 'openai', tier: 'flagship', badge: '🌟', isSubscription: true, status: 'working', lastTested: '2025-12-12T00:00:00.000Z', notes: 'Flagship code model. OpenAI Codex Max/Pro+ subscription. Multi-million token context via compaction' },
@@ -158,7 +158,7 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
   // ===== ANTHROPIC (Web search available since March 2025) =====
   anthropic: [
     // Claude 4.5 Series (2025 Flagship) - All have web search
-    { id: 'claude-opus-4-5-20251124', name: 'Claude 4.5 Opus', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Released Nov 24, 2025. Best coding model (80.9% SWE-bench). $5/$25 per M tokens' },
+    { id: 'claude-opus-4-5-20251101', name: 'Claude 4.5 Opus', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-14T00:00:00.000Z', notes: 'Released Nov 24, 2025. Model ID uses 20251101. Best coding model (80.9% SWE-bench). $5/$25 per M tokens' },
     { id: 'claude-sonnet-4-5-20250929', name: 'Claude 4.5 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has web search capability' },
     { id: 'claude-haiku-4-5-20251001', name: 'Claude 4.5 Haiku', provider: 'anthropic', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: 'Fast, cost-effective model released October 2025. $1/$5 per million tokens' },
     // Claude 4.1 Series - Opus 4.1 (August 2025)
@@ -182,11 +182,11 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
 
   // ===== GOOGLE (Updated Dec 2025 from official docs) =====
   google: [
-    // Gemini 3 Series (Flagship - Nov 2025)
-    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Google\'s most intelligent model. Available via AI Studio API. $2/M input, $12/M output' },
-    { id: 'gemini-3-pro-image-preview', name: 'Gemini 3 Pro Image', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'High-fidelity image generation with reasoning-enhanced composition and text rendering' },
+    // Gemini 3 Series (Flagship - Nov 2025) - PREVIEW ONLY, no free tier
+    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'empty_response', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PREVIEW: No free tier available. Requires paid API plan. $2/M input, $12/M output' },
+    { id: 'gemini-3-pro-image-preview', name: 'Gemini 3 Pro Image', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'empty_response', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PREVIEW: No free tier. Image generation model with reasoning-enhanced composition' },
     // Gemini 2.5 Series (Stable - Available)
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Works with paid API key. $1.25/M input, $10/M output. May hit quota on free tier.' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'empty_response', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PAID ONLY: Returns empty on free tier. $1.25/M input, $10/M output. Use Flash for free tier.' },
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Tested and working. Free tier available.' },
     { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Tested and working. Free tier available.' },
     // Gemini 2.0 Series (Free)

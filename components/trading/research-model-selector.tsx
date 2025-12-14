@@ -54,11 +54,8 @@ const PRESET_OPTIONS: {
     label: 'Claude 4.5 Sonnet',
     description: 'Best quality, highest cost',
   },
-  {
-    value: 'gemini-flash',
-    label: 'Gemini 2.5 Flash',
-    description: 'FREE tier but limited to 5 req/min',
-  },
+  // Gemini 2.5 Flash REMOVED: 5 req/min limit too low for 4 parallel research agents
+  // Keep in PRESET_MODEL_IDS for backward compatibility if users have it selected
 ]
 
 // Consistent styling with model-badge.tsx
@@ -155,11 +152,7 @@ export function ResearchModelSelector() {
           GPT-4.1 Mini is the most cost-effective option with reliable tool support.
         </div>
       )}
-      {(researchModel === 'gemini-flash' || researchModel === 'gemini') && (
-        <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-400">
-          Gemini FREE tier is limited to 5 requests/min. May hit rate limits with 4 parallel agents.
-        </div>
-      )}
+      {/* Gemini warning removed - option no longer available in selector */}
     </div>
   )
 }

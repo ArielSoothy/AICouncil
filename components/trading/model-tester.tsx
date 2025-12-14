@@ -38,26 +38,26 @@ export function ModelTester() {
 
   // Get all selectable models grouped by provider
   const models = getSelectableModels()
-  const [testType, setTestType] = useState<'json' | 'tools'>('json')
+  const [currentTestType, setCurrentTestType] = useState<'ping' | 'json' | 'tools'>('json')
 
-  const testModel = async (modelId: string, testTools: boolean = false): Promise<TestResult> => {
+  const testModel = async (modelId: string, testType: 'ping' | 'json' | 'tools' = 'json'): Promise<TestResult> => {
     const response = await fetch('/api/trading/test-model', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modelId, testTools }),
+      body: JSON.stringify({ modelId, testType }),
     })
     return response.json()
   }
 
-  const handleTestSingle = async (useTools: boolean = false) => {
+  const handleTestSingle = async (testType: 'ping' | 'json' | 'tools' = 'json') => {
     if (!selectedModel) return
 
     setTesting(true)
     setResult(null)
-    setTestType(useTools ? 'tools' : 'json')
+    setCurrentTestType(testType)
 
     try {
-      const testResult = await testModel(selectedModel, useTools)
+      const testResult = await testModel(selectedModel, testType)
       setResult(testResult)
     } catch (error) {
       setResult({
@@ -73,15 +73,17 @@ export function ModelTester() {
     }
   }
 
-  const handleTestAll = async () => {
+  // Test all models with ping (cheap, fast) by default
+  const handleTestAll = async (testType: 'ping' | 'json' | 'tools' = 'ping') => {
     setTestingAll(true)
     setAllResults([])
+    setCurrentTestType(testType)
 
     const results: TestResult[] = []
 
     for (const model of models) {
       try {
-        const testResult = await testModel(model.id)
+        const testResult = await testModel(model.id, testType)
         results.push(testResult)
         setAllResults([...results])
       } catch (error) {
@@ -134,12 +136,28 @@ export function ModelTester() {
           })}
         </select>
         <Button
-          onClick={() => handleTestSingle(false)}
+          onClick={() => handleTestSingle('ping')}
           disabled={!selectedModel || testing || testingAll}
           variant="outline"
-          title="Test JSON response format"
+          title="Quick ping test - verify model exists (~$0.0001)"
+          className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40"
         >
-          {testing && testType === 'json' ? (
+          {testing && currentTestType === 'ping' ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Ping...
+            </>
+          ) : (
+            '📡 Ping'
+          )}
+        </Button>
+        <Button
+          onClick={() => handleTestSingle('json')}
+          disabled={!selectedModel || testing || testingAll}
+          variant="outline"
+          title="Test JSON response format (~$0.002)"
+        >
+          {testing && currentTestType === 'json' ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Testing...
@@ -149,13 +167,13 @@ export function ModelTester() {
           )}
         </Button>
         <Button
-          onClick={() => handleTestSingle(true)}
+          onClick={() => handleTestSingle('tools')}
           disabled={!selectedModel || testing || testingAll}
           variant="outline"
-          title="Test tool calling capability"
+          title="Test tool calling capability (~$0.005)"
           className="bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40"
         >
-          {testing && testType === 'tools' ? (
+          {testing && currentTestType === 'tools' ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Testing...
@@ -243,24 +261,45 @@ export function ModelTester() {
 
       {/* Test All Button */}
       <div className="pt-2 border-t">
-        <Button
-          onClick={handleTestAll}
-          disabled={testing || testingAll}
-          variant="secondary"
-          className="w-full"
-        >
-          {testingAll ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Testing {allResults.length}/{models.length} models...
-            </>
-          ) : (
-            <>
-              <FlaskConical className="w-4 h-4 mr-2" />
-              Test All {models.length} Models
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => handleTestAll('ping')}
+            disabled={testing || testingAll}
+            variant="secondary"
+            className="flex-1 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
+            title="Quick ping all models (~$0.01 total)"
+          >
+            {testingAll && currentTestType === 'ping' ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Pinging {allResults.length}/{models.length}...
+              </>
+            ) : (
+              <>
+                📡 Ping All ({models.length})
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={() => handleTestAll('json')}
+            disabled={testing || testingAll}
+            variant="secondary"
+            className="flex-1"
+            title="Test JSON all models (~$0.10 total)"
+          >
+            {testingAll && currentTestType === 'json' ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Testing {allResults.length}/{models.length}...
+              </>
+            ) : (
+              <>
+                <FlaskConical className="w-4 h-4 mr-2" />
+                JSON All ({models.length})
+              </>
+            )}
+          </Button>
+        </div>
 
         {/* All Results Summary */}
         {allResults.length > 0 && (

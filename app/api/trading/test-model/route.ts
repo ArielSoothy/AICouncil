@@ -45,6 +45,9 @@ Your task:
 
 You MUST call the get_quote tool first before responding. Start by calling get_quote with symbol "AAPL".`;
 
+// Ultra-cheap ping test - just verify model exists and responds
+const PING_PROMPT = `Reply with exactly one word: OK`;
+
 /**
  * Extract JSON from model response (same as consensus route)
  */
@@ -86,7 +89,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { modelId, testTools = false } = body;
+    const { modelId, testTools = false, testType = 'json' } = body;
+    // testType: 'ping' | 'json' | 'tools'
 
     if (!modelId) {
       return NextResponse.json(
@@ -106,7 +110,10 @@ export async function POST(request: NextRequest) {
     const provider = PROVIDERS[providerType];
     const modelName = getModelDisplayName(modelId);
 
-    console.log(`🧪 Testing model: ${modelName} (${modelId}) - testTools=${testTools}`);
+    // Determine actual test type (testTools is legacy param)
+    const actualTestType = testTools ? 'tools' : testType;
+
+    console.log(`🧪 Testing model: ${modelName} (${modelId}) - type=${actualTestType}`);
 
     // Check if provider is configured
     if (!provider.isConfigured()) {
@@ -120,18 +127,39 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Select prompt based on test type
-    const prompt = testTools ? TOOL_TEST_PROMPT : TEST_PROMPT;
+    // Select prompt and config based on test type
+    let prompt: string;
+    let maxTokens: number;
+    let useTools: boolean = false;
+    let maxSteps: number = 1;
+
+    switch (actualTestType) {
+      case 'ping':
+        prompt = PING_PROMPT;
+        maxTokens = 50; // Minimum for OpenAI API (10 was too low)
+        break;
+      case 'tools':
+        prompt = TOOL_TEST_PROMPT;
+        maxTokens = 1000;
+        useTools = true;
+        maxSteps = 5;
+        break;
+      case 'json':
+      default:
+        prompt = TEST_PROMPT;
+        maxTokens = 500;
+        break;
+    }
 
     // Call the model
     const result = await provider.query(prompt, {
       model: modelId,
       provider: providerType,
       temperature: 0.2,
-      maxTokens: testTools ? 1000 : 500,
+      maxTokens,
       enabled: true,
-      useTools: testTools,  // Enable tools for tool test
-      maxSteps: testTools ? 5 : 1,
+      useTools,
+      maxSteps,
     });
 
     // Check for API errors
@@ -147,8 +175,26 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // For ping tests, just check for any response
+    if (actualTestType === 'ping') {
+      const hasResponse = result.response && result.response.trim().length > 0;
+      console.log(`📡 ${modelName} ping: ${hasResponse ? '✅ OK' : '❌ No response'}`);
+
+      return NextResponse.json({
+        success: hasResponse,
+        modelId,
+        modelName,
+        provider: providerType,
+        testType: 'ping',
+        rawResponse: result.response?.substring(0, 100) || '',
+        error: hasResponse ? undefined : 'Model returned empty response',
+        responseTime: Date.now() - startTime,
+        tokens: result.tokens,
+      });
+    }
+
     // For tool tests, check tool calls instead of JSON response
-    if (testTools) {
+    if (actualTestType === 'tools') {
       const toolCalls = result.toolCalls || [];
       const toolCallCount = toolCalls.length;
       const toolNames = toolCalls.map((tc: { toolName: string }) => tc.toolName);
