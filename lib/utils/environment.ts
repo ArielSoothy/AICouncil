@@ -12,9 +12,13 @@
 // Use NEXT_PUBLIC_ prefix for client-side access (set in next.config.js)
 const VERCEL_ENV = process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.VERCEL_ENV
 
-export const IS_PRODUCTION = VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
+// IMPORTANT: Only Vercel production should hide dev tools
+// Preview deployments and local dev should show everything
+// Note: NODE_ENV is 'production' on ALL Vercel deployments, so don't use it for this check
+export const IS_VERCEL_PRODUCTION = VERCEL_ENV === 'production'
+export const IS_PRODUCTION = IS_VERCEL_PRODUCTION  // Alias for backwards compatibility
 export const IS_PREVIEW = VERCEL_ENV === 'preview'
-export const IS_DEVELOPMENT = !IS_PRODUCTION && !IS_PREVIEW
+export const IS_DEVELOPMENT = !IS_VERCEL_PRODUCTION && !IS_PREVIEW
 
 /**
  * Allowed subscription tiers based on environment
