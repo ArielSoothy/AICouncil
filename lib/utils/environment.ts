@@ -7,7 +7,7 @@
  * This ensures paid AI models are not abused when app is publicly deployed.
  */
 
-export const IS_PRODUCTION = false // TESTING: Full access to all 46 models for testing phase (see docs/guides/TESTING_MODE_UNLOCK.md)
+export const IS_PRODUCTION = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
 export const IS_PREVIEW = process.env.VERCEL_ENV === 'preview'
 export const IS_DEVELOPMENT = !IS_PRODUCTION && !IS_PREVIEW
 
