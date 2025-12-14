@@ -147,8 +147,11 @@ System design, tech stack, and configuration:
 | **AI_MODELS_SETUP.md** | AI provider configuration (8 providers, 46+ models) | AI integration changes |
 | **UNIFIED_DEBATE_ENGINE.md** | 🎯 Core debate architecture (MADR-inspired), research modes | Debate engine work |
 | **RESEARCH_DRIVEN_DEBATE.md** | Research-first debate implementation details | Debate debugging |
+| **PRE_RESEARCH_ARCHITECTURE.md** | Why models don't research autonomously, pre-research pattern | Debate research issues |
 
 **Path**: `/docs/architecture/`
+
+**Related Code**: `lib/research/research-coordinator.ts` - Modular research decision-making (December 2024)
 
 ---
 

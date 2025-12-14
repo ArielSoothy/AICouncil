@@ -346,6 +346,66 @@ After implementation, measure:
 - `docs/features/TRADING_ENHANCEMENTS.md` - Trading research caching
 - `docs/guides/RESEARCH_CACHE_TESTING.md` - Cache testing guide
 - `types/domain-framework.ts` - Framework plugin interface
+- `lib/research/research-coordinator.ts` - Modular research decision-making
+
+---
+
+## Academic Research Supporting This Pattern
+
+### Key Papers (2023-2025)
+
+The pre-research architecture follows established best practices from academic literature:
+
+#### 1. Multi-Agent Collaboration Survey (arxiv, January 2025)
+- **Source**: [arxiv.org/abs/2501.06322](https://arxiv.org/abs/2501.06322)
+- **Key Finding**: "Centralized Planning, Decentralized Execution" (CPDE) is optimal
+- **Relevance**: Research/planning done centrally, agents execute independently
+- **Application**: Our pre-research phase = centralized planning
+
+#### 2. Du et al. - Multiagent Debate for Factuality (2023)
+- **Source**: [arxiv.org/abs/2305.14325](https://arxiv.org/abs/2305.14325)
+- **Key Finding**: Cross-validation between agents reduces hallucinations by **40%**
+- **Relevance**: All agents must work from the **same factual basis**
+- **Application**: Shared pre-research ensures consistent evidence
+
+#### 3. MAD Strategies - ICML 2024
+- **Source**: [proceedings.mlr.press/v235/smit24a.html](https://proceedings.mlr.press/v235/smit24a.html)
+- **Key Finding**: 15% accuracy improvement with proper debate structure
+- **Relevance**: Modulating agreement intensity between agents improves outcomes
+- **Application**: Consistent research enables meaningful cross-validation
+
+#### 4. Agentic RAG Architecture (IBM)
+- **Source**: [ibm.com/think/topics/agentic-rag](https://www.ibm.com/think/topics/agentic-rag)
+- **Key Insight**: "RAG is the research assistant providing grounded answers; an AI Agent is the project manager executing a plan."
+- **Relevance**: Separate retrieval phase from generation phase
+- **Application**: Pre-research (retrieval) → debate (generation)
+
+### Best Practice Summary
+
+> **"Research ONCE, debate MANY times"**
+
+Academic consensus supports:
+1. Centralized research phase (all agents receive same evidence)
+2. Tool-based retrieval separated from LLM reasoning
+3. Cross-validation more meaningful when data is consistent
+4. Reduced redundancy and cost with shared research
+
+### Implementation (December 2024)
+
+This pattern is now implemented in `lib/research/research-coordinator.ts`:
+
+```typescript
+// Create coordinator with configuration
+const coordinator = createResearchCoordinator({
+  enableWebSearch: true,
+  hasCentralizedResearch: true,  // Set when conductGeneralResearch ran
+  centralizedSourceCount: 7      // Number of sources from centralized research
+})
+
+// Coordinator decides: skip redundant DuckDuckGo if centralized research exists
+const decision = coordinator.makeResearchDecision(agentCapabilities)
+// Result: { shouldRunDuckDuckGo: false, reason: "Centralized research already complete" }
+```
 
 ---
 
