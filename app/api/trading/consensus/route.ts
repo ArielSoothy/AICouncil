@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { backendLogger } from '@/lib/dev/backend-logger';
 import { getActiveBroker } from '@/lib/brokers/broker-factory';
 import { generateDecisionPrompt, type ResearchFindings } from '@/lib/alpaca/enhanced-prompts';
 import { runResearchAgents, type ResearchReport, type ResearchTier } from '@/lib/agents/research-agents';
@@ -155,9 +156,17 @@ Synthesize all 4 research perspectives into ONE informed decision.
 }
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
   try {
     const body = await request.json();
     const { selectedModels, timeframe = 'swing', targetSymbol, researchMode = 'hybrid', researchTier = 'free' } = body;
+
+    backendLogger.info('api', `POST /api/trading/consensus`, {
+      symbol: targetSymbol,
+      timeframe,
+      modelCount: selectedModels?.length,
+      researchTier
+    }, '/api/trading/consensus');
 
     if (!selectedModels || !Array.isArray(selectedModels) || selectedModels.length < 2) {
       return NextResponse.json(
@@ -225,8 +234,11 @@ export async function POST(request: NextRequest) {
     if (cached) {
       // Cache hit! Reuse existing research
       researchReport = cached;
+      backendLogger.cacheHit(`${targetSymbol}-${timeframe}`);
     } else {
       // Cache miss - run fresh research
+      backendLogger.cacheMiss(`${targetSymbol}-${timeframe}`);
+      backendLogger.info('research', `Starting research pipeline for ${targetSymbol}`, { timeframe, tier: researchTier });
       researchReport = await runResearchAgents(
         targetSymbol,
         timeframe as TradingTimeframe,
@@ -234,8 +246,14 @@ export async function POST(request: NextRequest) {
         researchTier as ResearchTier
       );
 
+      backendLogger.success('research', `Research complete for ${targetSymbol}`, {
+        toolCalls: researchReport.totalToolCalls,
+        duration: `${(researchReport.researchDuration / 1000).toFixed(1)}s`
+      });
+
       // Cache the results for next time
       await researchCache.set(targetSymbol, timeframe as TradingTimeframe, researchReport);
+      backendLogger.cacheSet(`${targetSymbol}-${timeframe}`);
     }
 
     // Step 4: Generate trading prompt WITH research findings AND deterministic score
@@ -281,8 +299,11 @@ export async function POST(request: NextRequest) {
         const provider = PROVIDERS[providerType];
         const modelName = getModelDisplayName(modelId);
 
+        backendLogger.info('model', `Querying ${modelName}`, { provider: providerType, modelId }, modelId);
+
         // Generate seed from deterministic score for reproducibility (OpenAI supports this)
         const seed = deterministicScore ? hashToSeed(deterministicScore.inputHash) : undefined;
+        const modelStartTime = Date.now();
 
         const result = await provider.query(prompt, {
           model: modelId,
@@ -335,6 +356,11 @@ export async function POST(request: NextRequest) {
         // Mark that this decision was based on exhaustive research
         decision.toolsUsed = false; // Decision model didn't use tools
         decision.toolCallCount = 0; // But research agents used 30-40 tools
+
+        backendLogger.success('model', `${modelName} decided: ${decision.action}`, {
+          confidence: decision.confidence,
+          duration: `${Date.now() - modelStartTime}ms`
+        }, modelId);
 
         return decision;
       } catch (error) {
@@ -450,6 +476,13 @@ export async function POST(request: NextRequest) {
       riskLevel: judgeResult.riskLevel, // From LLM judge risk assessment
     };
 
+    // Log final consensus result
+    backendLogger.success('consensus', `Consensus: ${consensus.action} ${consensus.symbol || ''}`, {
+      agreement: agreementText,
+      votes,
+      duration: `${Date.now() - startTime}ms`
+    });
+
     // Return consensus, decisions, deterministic score, AND full research report
     return NextResponse.json({
       consensus,
@@ -474,6 +507,10 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ API Error:', error);
+    backendLogger.error('api', `POST /api/trading/consensus failed`, {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      duration: `${Date.now() - startTime}ms`
+    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

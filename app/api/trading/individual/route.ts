@@ -17,6 +17,7 @@ import { CohereProvider } from '@/lib/ai-providers/cohere';
 import { XAIProvider } from '@/lib/ai-providers/xai';
 import { getModelDisplayName, getProviderForModel as getProviderType } from '@/lib/trading/models-config';
 import { getModelInfo } from '@/lib/models/model-registry';
+import { getFallbackModel, recordModelFailure, isModelUnstable } from '@/lib/trading/model-fallback';
 import type { TradeDecision } from '@/lib/alpaca/types';
 // Deterministic scoring engine imports
 import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
@@ -285,57 +286,105 @@ export async function POST(request: NextRequest) {
       ? `${scoreSection}\n\n🎯 YOUR TASK: Analyze the deterministic score above and research findings. Explain WHY the score recommends ${deterministicScore?.recommendation || 'this action'} based on the research data.\n\n${basePrompt}`
       : basePrompt;
 
-    // Step 5: Call each AI model in parallel (NO TOOLS - analyzing research)
+    // Step 5: Call each AI model in parallel with fallback (NO TOOLS - analyzing research)
     const decisionsPromises = selectedModels.map(async (modelId: string) => {
-      try {
-        const providerType = getProviderType(modelId);
-        if (!providerType || !PROVIDERS[providerType]) {
-          throw new Error(`Unknown model or provider: ${modelId}`);
+      // Track attempted models for fallback chain
+      const attemptedModels: string[] = [];
+      const fallbackLog: Array<{ from: string; to: string; reason: string }> = [];
+
+      // Recursive helper for querying with fallback
+      const queryWithFallback = async (currentModelId: string): Promise<TradeDecision & { model: string; modelId: string; tokens?: any; fallbacks?: typeof fallbackLog }> => {
+        const modelName = getModelDisplayName(currentModelId);
+
+        // Log if model is unstable
+        if (isModelUnstable(currentModelId)) {
+          console.warn(`⚠️ ${modelName} has been unstable recently, attempting anyway...`);
         }
 
-        const provider = PROVIDERS[providerType];
-        const modelName = getModelDisplayName(modelId);
+        try {
+          const providerType = getProviderType(currentModelId);
+          if (!providerType || !PROVIDERS[providerType]) {
+            throw new Error(`Unknown model or provider: ${currentModelId}`);
+          }
 
-        // Generate seed from deterministic score for reproducibility (OpenAI supports this)
-        const seed = deterministicScore ? hashToSeed(deterministicScore.inputHash) : undefined;
+          const provider = PROVIDERS[providerType];
 
-        const result = await provider.query(prompt, {
-          model: modelId,
-          provider: providerType,
-          temperature: 0.2, // Low temperature for deterministic trading decisions
-          maxTokens: 2000, // Sufficient for analyzing research
-          enabled: true,
-          useTools: false, // ❌ NO TOOLS - decision models analyze research, don't conduct it
-          maxSteps: 1,
-          seed, // For reproducibility (OpenAI supports this)
-        });
+          // Generate seed from deterministic score for reproducibility (OpenAI supports this)
+          const seed = deterministicScore ? hashToSeed(deterministicScore.inputHash) : undefined;
 
-        // Parse JSON response with robust extraction
-        const cleanedResponse = extractJSON(result.response);
-        const decision: TradeDecision = JSON.parse(cleanedResponse);
+          const result = await provider.query(prompt, {
+            model: currentModelId,
+            provider: providerType,
+            temperature: 0.2, // Low temperature for deterministic trading decisions
+            maxTokens: 2000, // Sufficient for analyzing research
+            enabled: true,
+            useTools: false, // NO TOOLS - decision models analyze research, don't conduct it
+            maxSteps: 1,
+            seed, // For reproducibility (OpenAI supports this)
+          });
 
-        // Track tool usage and token usage for cost tracking
-        const decisionWithTracking: TradeDecision & { model: string; modelId: string; tokens?: { prompt: number; completion: number; total: number } } = {
-          model: modelName,
-          modelId: modelId,
-          ...decision,
-          toolsUsed: false, // Decision model didn't use tools
-          toolCallCount: 0, // But research agents used 30-40 tools
-          tokens: result.tokens, // Include token usage for cost tracking
-        };
+          // Validate response
+          if (!result.response || result.response.trim().length === 0) {
+            throw new Error('Empty response (possible rate limit)');
+          }
 
-        return decisionWithTracking;
-      } catch (error) {
-        const modelName = getModelDisplayName(modelId);
-        console.error(`❌ Error getting decision from ${modelName}:`, error);
-        // Return error as HOLD decision
-        return {
-          model: modelName,
-          action: 'HOLD' as const,
-          reasoning: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          confidence: 0,
-        };
-      }
+          // Parse JSON response with robust extraction
+          const cleanedResponse = extractJSON(result.response);
+          const decision: TradeDecision = JSON.parse(cleanedResponse);
+
+          // Track tool usage and token usage for cost tracking
+          return {
+            model: modelName,
+            modelId: currentModelId,
+            ...decision,
+            toolsUsed: false, // Decision model didn't use tools
+            toolCallCount: 0, // But research agents used 30-40 tools
+            tokens: result.tokens, // Include token usage for cost tracking
+            fallbacks: fallbackLog.length > 0 ? fallbackLog : undefined, // Include fallback history if any
+          };
+
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+          // Record failure for instability tracking
+          recordModelFailure(currentModelId, errorMessage);
+          attemptedModels.push(currentModelId);
+
+          // Try fallback model
+          const fallbackModelId = getFallbackModel(currentModelId, attemptedModels);
+
+          if (fallbackModelId) {
+            const fallbackName = getModelDisplayName(fallbackModelId);
+            console.log(`🔄 Fallback: ${modelName} → ${fallbackName} (${errorMessage})`);
+
+            // Track fallback for response
+            fallbackLog.push({
+              from: modelName,
+              to: fallbackName,
+              reason: errorMessage,
+            });
+
+            // Recursively try fallback
+            return queryWithFallback(fallbackModelId);
+          }
+
+          // No more fallbacks - return HOLD with error
+          console.error(`❌ All fallbacks exhausted for ${modelName}: ${errorMessage}`);
+          return {
+            model: modelName,
+            modelId: currentModelId,
+            action: 'HOLD' as const,
+            symbol: targetSymbol,
+            quantity: 0,
+            reasoning: `Error: ${errorMessage} (all fallbacks exhausted)`,
+            confidence: 0,
+            fallbacks: fallbackLog.length > 0 ? fallbackLog : undefined,
+          };
+        }
+      };
+
+      // Start query with original model
+      return queryWithFallback(modelId);
     });
 
     const decisions = await Promise.all(decisionsPromises);

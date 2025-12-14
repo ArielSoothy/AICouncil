@@ -19,6 +19,13 @@ import { XAIProvider } from '@/lib/ai-providers/xai';
 import { getModelDisplayName as getModelName, getProviderForModel as getProviderFromConfig } from '@/lib/trading/models-config';
 import { getModelInfo } from '@/lib/models/model-registry';
 import type { TradeDecision } from '@/lib/alpaca/types';
+// Model fallback system imports
+import {
+  getFallbackModel,
+  recordModelFailure,
+  isModelUnstable,
+  getModelDisplayName as getFallbackModelName,
+} from '@/lib/trading/model-fallback';
 // Deterministic scoring engine imports
 import { calculateTradingScore, formatTradingScoreForPrompt, hashToSeed, type TradingScore } from '@/lib/trading/scoring-engine';
 
@@ -100,6 +107,104 @@ function getProviderForModel(modelId: string, providers: {
 function getProviderName(modelId: string): 'anthropic' | 'openai' | 'google' | 'groq' | 'mistral' | 'perplexity' | 'cohere' | 'xai' {
   const providerType = getProviderFromConfig(modelId);
   return providerType || 'anthropic';
+}
+
+// Fallback tracking for response
+interface FallbackInfo {
+  originalModel: string;
+  originalModelName: string;
+  fallbackModel: string;
+  fallbackModelName: string;
+  reason: string;
+  role: string;
+  round: number;
+}
+
+// Helper function to query with fallback
+async function queryWithFallback(
+  prompt: string,
+  modelId: string,
+  providers: {
+    anthropic: AnthropicProvider;
+    openai: OpenAIProvider;
+    google: GoogleProvider;
+    groq: GroqProvider;
+    mistral: MistralProvider;
+    perplexity: PerplexityProvider;
+    cohere: CohereProvider;
+    xai: XAIProvider;
+  },
+  options: {
+    temperature: number;
+    maxTokens: number;
+    seed?: number;
+    role: string;
+    round: number;
+  },
+  fallbacks: FallbackInfo[],
+  attemptedModels: string[] = []
+): Promise<{ response: string; modelUsed: string; tokensUsed?: number }> {
+  // Log warning if model has been unstable
+  if (isModelUnstable(modelId)) {
+    console.warn(`⚠️ [Debate ${options.role} R${options.round}] ${getFallbackModelName(modelId)} has been unstable recently`);
+  }
+
+  try {
+    const provider = getProviderForModel(modelId, providers);
+    const result = await provider.query(prompt, {
+      model: modelId,
+      provider: getProviderName(modelId),
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      enabled: true,
+      useTools: false,
+      maxSteps: 1,
+      seed: options.seed,
+    });
+
+    return {
+      response: result.response,
+      modelUsed: modelId,
+      tokensUsed: result.tokens?.total,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ [Debate ${options.role} R${options.round}] ${getFallbackModelName(modelId)} failed: ${errorMessage}`);
+
+    // Record failure for instability tracking
+    recordModelFailure(modelId, errorMessage);
+
+    // Get fallback model
+    const fallbackModelId = getFallbackModel(modelId, [...attemptedModels, modelId]);
+
+    if (fallbackModelId) {
+      console.log(`🔄 [Debate ${options.role} R${options.round}] Falling back: ${getFallbackModelName(modelId)} → ${getFallbackModelName(fallbackModelId)}`);
+
+      // Track fallback for response
+      fallbacks.push({
+        originalModel: modelId,
+        originalModelName: getFallbackModelName(modelId),
+        fallbackModel: fallbackModelId,
+        fallbackModelName: getFallbackModelName(fallbackModelId),
+        reason: errorMessage,
+        role: options.role,
+        round: options.round,
+      });
+
+      // Recursive call with fallback model
+      return queryWithFallback(
+        prompt,
+        fallbackModelId,
+        providers,
+        options,
+        fallbacks,
+        [...attemptedModels, modelId]
+      );
+    }
+
+    // No more fallbacks - throw error
+    throw new Error(`All fallback models exhausted for ${options.role} (Round ${options.round}). Last error: ${errorMessage}`);
+  }
 }
 
 // Helper function to determine if model should use tools (Hybrid Research Mode)
@@ -361,68 +466,62 @@ export async function POST(request: NextRequest) {
       xai: new XAIProvider(),
     };
 
+    // Track fallbacks for response
+    const fallbacks: FallbackInfo[] = [];
+
     // Round 1: Initial positions
 
     // Generate seed from deterministic score for reproducibility (OpenAI supports this)
     const seed = deterministicScore ? hashToSeed(deterministicScore.inputHash) : undefined;
 
-    // Analyst (Dynamic model)
+    // Analyst (Dynamic model) - with fallback
     const analystPrompt = `${basePrompt}\n\n${ANALYST_PROMPT}`;
-    const analystProvider = getProviderForModel(analystModel, providers);
-    const analystResult = await analystProvider.query(analystPrompt, {
-      model: analystModel,
-      provider: getProviderName(analystModel),
-      temperature: 0.2, // Low temperature for deterministic trading decisions
-      maxTokens: 2000, // Sufficient for analyzing research
-      enabled: true,
-      useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
-      maxSteps: 1,
-      seed, // For reproducibility (OpenAI supports this)
-    });
-    const analystDecision: TradeDecision = JSON.parse(extractJSON(analystResult.response));
+    const analystResultWithFallback = await queryWithFallback(
+      analystPrompt,
+      analystModel,
+      providers,
+      { temperature: 0.2, maxTokens: 2000, seed, role: 'Analyst', round: 1 },
+      fallbacks
+    );
+    const analystDecision: TradeDecision = JSON.parse(extractJSON(analystResultWithFallback.response));
     analystDecision.toolsUsed = false; // Analyst didn't use tools (research agents did)
     analystDecision.toolCallCount = 0;
+    const analystModelUsed = analystResultWithFallback.modelUsed;
 
-    // Critic (Dynamic model)
+    // Critic (Dynamic model) - with fallback
     const criticPrompt = `${basePrompt}\n\n${CRITIC_PROMPT.replace('{analystDecision}', JSON.stringify(analystDecision))}`;
-    const criticProvider = getProviderForModel(criticModel, providers);
-    const criticResult = await criticProvider.query(criticPrompt, {
-      model: criticModel,
-      provider: getProviderName(criticModel),
-      temperature: 0.2, // Low temperature for deterministic trading decisions
-      maxTokens: 2000,
-      enabled: true,
-      useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
-      maxSteps: 1,
-      seed, // For reproducibility (OpenAI supports this)
-    });
-    const criticDecision: TradeDecision = JSON.parse(extractJSON(criticResult.response));
+    const criticResultWithFallback = await queryWithFallback(
+      criticPrompt,
+      criticModel,
+      providers,
+      { temperature: 0.2, maxTokens: 2000, seed, role: 'Critic', round: 1 },
+      fallbacks
+    );
+    const criticDecision: TradeDecision = JSON.parse(extractJSON(criticResultWithFallback.response));
     criticDecision.toolsUsed = false;
     criticDecision.toolCallCount = 0;
+    const criticModelUsed = criticResultWithFallback.modelUsed;
 
-    // Synthesizer (Dynamic model)
+    // Synthesizer (Dynamic model) - with fallback
     const synthesizerPrompt = `${basePrompt}\n\n${SYNTHESIZER_PROMPT
       .replace('{analystDecision}', JSON.stringify(analystDecision))
       .replace('{criticDecision}', JSON.stringify(criticDecision))}`;
-    const synthesizerProvider = getProviderForModel(synthesizerModel, providers);
-    const synthesizerResult = await synthesizerProvider.query(synthesizerPrompt, {
-      model: synthesizerModel,
-      provider: getProviderName(synthesizerModel),
-      temperature: 0.2, // Low temperature for deterministic trading decisions
-      maxTokens: 2000,
-      enabled: true,
-      useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
-      maxSteps: 1,
-      seed, // For reproducibility (OpenAI supports this)
-    });
-    const synthesizerDecision: TradeDecision = JSON.parse(extractJSON(synthesizerResult.response));
+    const synthesizerResultWithFallback = await queryWithFallback(
+      synthesizerPrompt,
+      synthesizerModel,
+      providers,
+      { temperature: 0.2, maxTokens: 2000, seed, role: 'Synthesizer', round: 1 },
+      fallbacks
+    );
+    const synthesizerDecision: TradeDecision = JSON.parse(extractJSON(synthesizerResultWithFallback.response));
     synthesizerDecision.toolsUsed = false;
     synthesizerDecision.toolCallCount = 0;
+    const synthesizerModelUsed = synthesizerResultWithFallback.modelUsed;
 
     const round1 = [
-      { role: 'analyst' as const, name: getModelName(analystModel), decision: analystDecision },
-      { role: 'critic' as const, name: getModelName(criticModel), decision: criticDecision },
-      { role: 'synthesizer' as const, name: getModelName(synthesizerModel), decision: synthesizerDecision },
+      { role: 'analyst' as const, name: getModelName(analystModelUsed), decision: analystDecision },
+      { role: 'critic' as const, name: getModelName(criticModelUsed), decision: criticDecision },
+      { role: 'synthesizer' as const, name: getModelName(synthesizerModelUsed), decision: synthesizerDecision },
     ];
 
     // Round 2: Refinement based on full debate
@@ -433,70 +532,64 @@ export async function POST(request: NextRequest) {
       synthesizerDecision: JSON.stringify(synthesizerDecision),
     };
 
-    // Round 2 Analyst refinement
+    // Round 2 Analyst refinement - with fallback
     const analystR2Prompt = `${basePrompt}\n\n${ROUND2_REFINEMENT_PROMPT
       .replace('{role}', 'ANALYST')
       .replace('{analystDecision}', round1Summary.analystDecision)
       .replace('{criticDecision}', round1Summary.criticDecision)
       .replace('{synthesizerDecision}', round1Summary.synthesizerDecision)}`;
-    const analystR2Result = await analystProvider.query(analystR2Prompt, {
-      model: analystModel,
-      provider: getProviderName(analystModel),
-      temperature: 0.2, // Low temperature for deterministic trading decisions
-      maxTokens: 2000,
-      enabled: true,
-      useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
-      maxSteps: 1,
-      seed, // For reproducibility (OpenAI supports this)
-    });
-    const analystR2Decision: TradeDecision = JSON.parse(extractJSON(analystR2Result.response));
+    const analystR2ResultWithFallback = await queryWithFallback(
+      analystR2Prompt,
+      analystModelUsed, // Use the model from Round 1 (may be fallback)
+      providers,
+      { temperature: 0.2, maxTokens: 2000, seed, role: 'Analyst', round: 2 },
+      fallbacks
+    );
+    const analystR2Decision: TradeDecision = JSON.parse(extractJSON(analystR2ResultWithFallback.response));
     analystR2Decision.toolsUsed = false;
     analystR2Decision.toolCallCount = 0;
+    const analystR2ModelUsed = analystR2ResultWithFallback.modelUsed;
 
-    // Round 2 Critic refinement
+    // Round 2 Critic refinement - with fallback
     const criticR2Prompt = `${basePrompt}\n\n${ROUND2_REFINEMENT_PROMPT
       .replace('{role}', 'CRITIC')
       .replace('{analystDecision}', round1Summary.analystDecision)
       .replace('{criticDecision}', round1Summary.criticDecision)
       .replace('{synthesizerDecision}', round1Summary.synthesizerDecision)}`;
-    const criticR2Result = await criticProvider.query(criticR2Prompt, {
-      model: criticModel,
-      provider: getProviderName(criticModel),
-      temperature: 0.2, // Low temperature for deterministic trading decisions
-      maxTokens: 2000,
-      enabled: true,
-      useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
-      maxSteps: 1,
-      seed, // For reproducibility (OpenAI supports this)
-    });
-    const criticR2Decision: TradeDecision = JSON.parse(extractJSON(criticR2Result.response));
+    const criticR2ResultWithFallback = await queryWithFallback(
+      criticR2Prompt,
+      criticModelUsed, // Use the model from Round 1 (may be fallback)
+      providers,
+      { temperature: 0.2, maxTokens: 2000, seed, role: 'Critic', round: 2 },
+      fallbacks
+    );
+    const criticR2Decision: TradeDecision = JSON.parse(extractJSON(criticR2ResultWithFallback.response));
     criticR2Decision.toolsUsed = false;
     criticR2Decision.toolCallCount = 0;
+    const criticR2ModelUsed = criticR2ResultWithFallback.modelUsed;
 
-    // Round 2 Synthesizer final decision
+    // Round 2 Synthesizer final decision - with fallback
     const synthesizerR2Prompt = `${basePrompt}\n\n${ROUND2_REFINEMENT_PROMPT
       .replace('{role}', 'SYNTHESIZER')
       .replace('{analystDecision}', round1Summary.analystDecision)
       .replace('{criticDecision}', round1Summary.criticDecision)
       .replace('{synthesizerDecision}', round1Summary.synthesizerDecision)}`;
-    const synthesizerR2Result = await synthesizerProvider.query(synthesizerR2Prompt, {
-      model: synthesizerModel,
-      provider: getProviderName(synthesizerModel),
-      temperature: 0.2, // Low temperature for deterministic trading decisions
-      maxTokens: 2000,
-      enabled: true,
-      useTools: false, // ❌ NO TOOLS - analyzes research, doesn't conduct it
-      maxSteps: 1,
-      seed, // For reproducibility (OpenAI supports this)
-    });
-    const synthesizerR2Decision: TradeDecision = JSON.parse(extractJSON(synthesizerR2Result.response));
+    const synthesizerR2ResultWithFallback = await queryWithFallback(
+      synthesizerR2Prompt,
+      synthesizerModelUsed, // Use the model from Round 1 (may be fallback)
+      providers,
+      { temperature: 0.2, maxTokens: 2000, seed, role: 'Synthesizer', round: 2 },
+      fallbacks
+    );
+    const synthesizerR2Decision: TradeDecision = JSON.parse(extractJSON(synthesizerR2ResultWithFallback.response));
     synthesizerR2Decision.toolsUsed = false;
     synthesizerR2Decision.toolCallCount = 0;
+    const synthesizerR2ModelUsed = synthesizerR2ResultWithFallback.modelUsed;
 
     const round2 = [
-      { role: 'analyst' as const, name: getModelName(analystModel), decision: analystR2Decision },
-      { role: 'critic' as const, name: getModelName(criticModel), decision: criticR2Decision },
-      { role: 'synthesizer' as const, name: getModelName(synthesizerModel), decision: synthesizerR2Decision },
+      { role: 'analyst' as const, name: getModelName(analystR2ModelUsed), decision: analystR2Decision },
+      { role: 'critic' as const, name: getModelName(criticR2ModelUsed), decision: criticR2Decision },
+      { role: 'synthesizer' as const, name: getModelName(synthesizerR2ModelUsed), decision: synthesizerR2Decision },
     ];
 
     // Final decision is the Round 2 Synthesizer's decision
@@ -511,7 +604,7 @@ export async function POST(request: NextRequest) {
       finalDecision,
     };
 
-    // Return debate results, deterministic score, AND research metadata
+    // Return debate results, deterministic score, research metadata, AND fallbacks
     return NextResponse.json({
       debate,
       research: {
@@ -541,6 +634,8 @@ export async function POST(request: NextRequest) {
         suggestedTakeProfit: deterministicScore.suggestedTakeProfit,
         riskRewardRatio: deterministicScore.riskRewardRatio,
       } : null,
+      // Model fallback information (if any models were substituted)
+      fallbacks: fallbacks.length > 0 ? fallbacks : undefined,
     });
 
   } catch (error) {

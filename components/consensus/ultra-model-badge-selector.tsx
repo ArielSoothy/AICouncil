@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Plus, X, ChevronDown } from 'lucide-react'
 import { PROVIDER_COLORS } from '@/lib/brand-colors'
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   MODEL_REGISTRY,
   Provider,
@@ -20,7 +20,7 @@ import {
   getModelGrade,
   getModelCostTier
 } from '@/lib/models/model-registry'
-import { IS_PRODUCTION } from '@/lib/utils/environment'
+import { checkIsProduction } from '@/lib/utils/environment'
 import { ModelDropdownItem } from '@/components/shared/model-badge'
 import { cn } from '@/lib/utils'
 
@@ -52,21 +52,23 @@ const GRADE_STYLES = {
 // 🔒 PRODUCTION LOCK: Only free models in production
 // Generate available models from registry (only working models, excluding legacy)
 // Sort by power (weight) - highest power first
-const availableModels = Object.entries(MODEL_REGISTRY).reduce((acc, [provider, models]) => {
-  acc[provider as Provider] = models
-    .filter(m => !m.isLegacy && m.status === 'working')
-    .filter(m => {
-      // In production, only allow free tier models
-      if (IS_PRODUCTION) {
-        return m.tier === 'free' && (provider === 'google' || provider === 'groq')
-      }
-      return true
-    })
-    .map(m => ({ id: m.id, weight: getModelGrade(m.id).weight }))
-    .sort((a, b) => b.weight - a.weight) // Sort by power (highest first)
-    .map(m => m.id)
-  return acc
-}, {} as Record<Provider, string[]>)
+function getAvailableModels(isProduction: boolean): Record<Provider, string[]> {
+  return Object.entries(MODEL_REGISTRY).reduce((acc, [provider, models]) => {
+    acc[provider as Provider] = models
+      .filter(m => !m.isLegacy && m.status === 'working')
+      .filter(m => {
+        // In production, only allow free tier models
+        if (isProduction) {
+          return m.tier === 'free' && (provider === 'google' || provider === 'groq')
+        }
+        return true
+      })
+      .map(m => ({ id: m.id, weight: getModelGrade(m.id).weight }))
+      .sort((a, b) => b.weight - a.weight) // Sort by power (highest first)
+      .map(m => m.id)
+    return acc
+  }, {} as Record<Provider, string[]>)
+}
 
 export function UltraModelBadgeSelector({
   models,
@@ -76,6 +78,15 @@ export function UltraModelBadgeSelector({
   isSubscriptionMode = false
 }: UltraModelBadgeSelectorProps) {
   const [isAddingModel, setIsAddingModel] = useState(false)
+
+  // Check production status on client (hostname-based detection)
+  const [isProduction, setIsProduction] = useState(false)
+  useEffect(() => {
+    setIsProduction(checkIsProduction())
+  }, [])
+
+  // Compute available models based on environment
+  const availableModels = useMemo(() => getAvailableModels(isProduction), [isProduction])
 
   const enabledModels = models.filter(m => m.enabled)
 
