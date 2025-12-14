@@ -6,6 +6,13 @@ import {
   type ResearchModelPreset,
 } from '@/types/research-agents'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { ChevronDown } from 'lucide-react'
+import {
   getModelGrade,
   getModelCostTier,
   getModelTokenCost,
@@ -16,8 +23,8 @@ import { cn } from '@/lib/utils'
 /**
  * Research Model Selector Component
  *
- * Allows users to select which AI model to use for research agents.
- * Now uses consistent styling with other model selectors (grade + cost tier)
+ * Badge dropdown style - consistent with other model selectors
+ * Shows grade + cost tier inline on badge button
  *
  * DEFAULT: GPT-4.1 Mini (reliable, cheapest paid option)
  */
@@ -31,6 +38,15 @@ const PRESET_MODEL_IDS: Record<ResearchModelPreset, string> = {
   'gemini': 'gemini-2.5-flash', // Legacy alias
 }
 
+// Provider colors for badge styling
+const PRESET_COLORS: Record<ResearchModelPreset, string> = {
+  'gpt-mini': 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300',
+  'haiku': 'bg-orange-100 hover:bg-orange-200 text-orange-800 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-300',
+  'sonnet': 'bg-orange-100 hover:bg-orange-200 text-orange-800 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-300',
+  'gemini-flash': 'bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300',
+  'gemini': 'bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300',
+}
+
 const PRESET_OPTIONS: {
   value: ResearchModelPreset
   label: string
@@ -40,7 +56,7 @@ const PRESET_OPTIONS: {
   {
     value: 'gpt-mini',
     label: 'GPT-4.1 Mini',
-    description: 'Reliable, cheapest option with good tool support',
+    description: 'Reliable, cheapest option',
     recommended: true,
   },
   {
@@ -54,9 +70,7 @@ const PRESET_OPTIONS: {
     description: 'Best quality, highest cost',
   },
   // Gemini 2.5 Flash REMOVED: 5 req/min limit too low for 4 parallel research agents
-  // Keep in PRESET_MODEL_IDS for backward compatibility if users have it selected
 ]
-
 
 export function ResearchModelSelector() {
   const { researchModel, setResearchModel } = useGlobalModelTier()
@@ -68,6 +82,11 @@ export function ResearchModelSelector() {
   const tokenCost = getModelTokenCost(currentModelId)
   const gradeStyle = GRADE_STYLES[grade]
   const costStyle = COST_TIER_STYLES[costTier]
+  const colorClass = PRESET_COLORS[researchModel] || PRESET_COLORS['gpt-mini']
+
+  // Get current label
+  const currentOption = PRESET_OPTIONS.find(o => o.value === researchModel)
+  const currentLabel = currentOption?.label || 'GPT-4.1 Mini'
 
   return (
     <div className="space-y-2">
@@ -78,45 +97,83 @@ export function ResearchModelSelector() {
         </span>
       </label>
 
-      <select
-        value={researchModel}
-        onChange={(e) => setResearchModel(e.target.value as ResearchModelPreset)}
-        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      >
-        {PRESET_OPTIONS.map((option) => {
-          const modelId = PRESET_MODEL_IDS[option.value]
-          const optGrade = getModelGrade(modelId)
-          const optTokenCost = getModelTokenCost(modelId)
-          return (
-            <option key={option.value} value={option.value}>
-              {option.label} - {optGrade.grade}({optGrade.weight.toFixed(2)}) | {optTokenCost.isFree ? 'FREE' : `In: ${optTokenCost.inputDisplay} Out: ${optTokenCost.outputDisplay}`}
-            </option>
-          )
-        })}
-      </select>
+      {/* Badge Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className={cn(
+              colorClass,
+              'transition-colors cursor-pointer px-4 py-2 h-auto text-sm font-medium rounded-full',
+              'flex items-center gap-2 outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary'
+            )}
+          >
+            {currentLabel}
+            <span className={cn('font-semibold text-xs', gradeStyle.text)}>
+              {grade}({weight.toFixed(2)})
+            </span>
+            <span className={cn(
+              'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
+              costStyle.bg,
+              costStyle.text
+            )}>
+              {costTier}
+            </span>
+            <ChevronDown className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-72">
+          {PRESET_OPTIONS.map((option, index) => {
+            const modelId = PRESET_MODEL_IDS[option.value]
+            const optGrade = getModelGrade(modelId)
+            const optCostTier = getModelCostTier(modelId)
+            const optTokenCost = getModelTokenCost(modelId)
+            const optGradeStyle = GRADE_STYLES[optGrade.grade]
+            const optCostStyle = COST_TIER_STYLES[optCostTier]
+            const isSelected = researchModel === option.value
 
-      {/* Current selection info with grade and cost details */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-700 dark:text-gray-300">
-            {RESEARCH_MODEL_PRESETS[researchModel]?.displayName || researchModel}
-          </span>
-          {/* Grade badge */}
-          <span className={cn('text-xs font-semibold', gradeStyle.text)}>
-            {grade}({weight.toFixed(2)})
-          </span>
-        </div>
-        {/* Cost tier badge */}
-        <span className={cn(
-          'px-2 py-0.5 rounded-full text-xs font-bold',
-          costStyle.bg,
-          costStyle.text
-        )}>
-          {costTier}
-        </span>
-      </div>
+            return (
+              <div key={option.value}>
+                {index > 0 && <DropdownMenuSeparator />}
+                <button
+                  onClick={() => setResearchModel(option.value)}
+                  className={cn(
+                    'w-full flex items-center justify-between px-3 py-2 text-sm',
+                    'hover:bg-accent rounded-md transition-colors',
+                    isSelected && 'bg-accent'
+                  )}
+                >
+                  <span className="flex flex-col items-start">
+                    <span className="flex items-center gap-2">
+                      {option.label}
+                      {isSelected && <span className="text-primary">✓</span>}
+                      {option.recommended && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                          Recommended
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{option.description}</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className={cn('text-xs font-semibold', optGradeStyle.text)}>
+                      {optGrade.grade}({optGrade.weight.toFixed(2)})
+                    </span>
+                    <span className={cn(
+                      'px-1.5 py-0.5 rounded-full text-[10px] font-bold',
+                      optCostStyle.bg,
+                      optCostStyle.text
+                    )}>
+                      {optCostTier}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            )
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      {/* Exact token costs per 1K */}
+      {/* Token cost display */}
       <div className="text-xs text-gray-500 dark:text-gray-400 flex gap-3">
         <span>Cost per 1K tokens:</span>
         {tokenCost.isFree ? (
@@ -128,14 +185,6 @@ export function ResearchModelSelector() {
           </>
         )}
       </div>
-
-      {/* Info for recommended option */}
-      {researchModel === 'gpt-mini' && (
-        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-xs text-blue-700 dark:text-blue-400">
-          GPT-4.1 Mini is the most cost-effective option with reliable tool support.
-        </div>
-      )}
-      {/* Gemini warning removed - option no longer available in selector */}
     </div>
   )
 }
