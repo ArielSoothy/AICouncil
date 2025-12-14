@@ -17,29 +17,36 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ Research Pipeline Fix & Real Data Integration (December 13, 2025)
-**Goal:** Fix research findings not reaching decision models + replace fake data with real Yahoo Finance
+**Current Session:** ✅ Model Fallback Hardening & Production Fixes (December 14, 2025)
+**Goal:** Fix broken fallback chains, add error classification, fix production mode detection
 
 **Progress:**
-- ✅ Fixed AI SDK tool results extraction (`tr.output` not `tr.result`)
-- ✅ Added `synthesizeFindingsFromToolCalls()` for fallback data extraction
-- ✅ Research findings now passed: Technical 6,233 chars, Fundamental 8,686 chars, etc.
-- ✅ Commits pushed: `9f58047` (main fix), `4253a4c` (debug logging)
-- ⏳ Replacing Faker.js fake data with real Yahoo Finance quotes
-
-**Root Cause Fixed:**
-AI SDK stores tool results in `step.toolResults[]` with `output` field, not in `toolCalls[]` with `result` field.
-The Anthropic provider wasn't merging these correctly.
+- ✅ Added `ModelErrorCategory` enum with 8 error categories (QUOTA_LIMIT, AUTH_ERROR, DEPRECATED, etc.)
+- ✅ Added `classifyError()` function for structured error logging with ANSI colors
+- ✅ Updated SSE types with `errorCategory` and `userMessage` fields
+- ✅ Removed decommissioned `gemma2-9b-it` from all fallback chains (Groq Nov 2025)
+- ✅ Fixed production detection - exposed `VERCEL_ENV` to client-side via `next.config.js`
+- ✅ ModelTester and SUB tiers now properly hidden on Vercel production
+- ✅ Research model defaults to GPT-4.1 Mini (already correct in `trading-preset-context.tsx`)
 
 **Files Modified:**
 ```
-lib/ai-providers/anthropic.ts                      # FIXED: Merge toolCalls with toolResults using tr.output
-lib/agents/research-agents.ts                      # ADDED: synthesizeFindingsFromToolCalls() function
-app/api/trading/consensus/stream/route.ts          # ADDED: Debug logging for research findings
-lib/trading/get_stock_quote.ts                     # IN PROGRESS: Replace Faker.js with Yahoo Finance
+lib/trading/model-fallback.ts           # ADDED: Error classification, removed gemma2-9b-it
+types/research-progress.ts              # ADDED: errorCategory, userMessage to events
+types/consensus.ts                      # ADDED: ModelFallbackEvent, ModelWarningEvent types
+app/api/trading/consensus/stream/route.ts # UPDATED: Use classifyError() for fallback events
+components/trading/consensus-mode.tsx   # ADDED: Fallback notification UI panel
+lib/utils/environment.ts                # FIXED: Client-side VERCEL_ENV access
+next.config.js                          # ADDED: NEXT_PUBLIC_VERCEL_ENV exposure
 ```
 
-**Previous Session:** Model Registry Consistency & New Flagship Models (December 9, 2025)
+**Commits:**
+- `1f77ba3` - feat: Add model fallback error classification system
+- `13e29cc` - fix: Enable production mode detection on Vercel
+- `2031937` - fix: Remove decommissioned gemma2-9b-it from fallback chains
+- `53fe0bf` - fix: Expose VERCEL_ENV to client-side for production detection
+
+**Previous Session:** Research Pipeline Fix & Real Data Integration (December 13, 2025)
 - ✅ Added Claude 4.5 Opus, Gemini 3 Pro Image
 - ✅ Rewrote agent-selector.tsx to use MODEL_REGISTRY
 - ✅ Power/cost badges in all model selectors
