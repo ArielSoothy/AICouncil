@@ -519,7 +519,7 @@ export default function ArenaModePage() {
           <div className="mb-8 bg-card rounded-lg border p-6">
             <div className="flex items-center gap-2 mb-4">
               <Clock className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-semibold">Today's Activity</h2>
+              <h2 className="text-xl font-semibold">Today&apos;s Activity</h2>
               <span className="text-sm text-muted-foreground ml-auto">
                 {todaysActivity.summary}
               </span>
