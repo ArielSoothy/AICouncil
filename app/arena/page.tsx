@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { UltraModelBadgeSelector } from '@/components/consensus/ultra-model-badge-selector'
 import { PortfolioDisplay } from '@/components/trading/portfolio-display'
+import { TimeframeSelector, TradingTimeframe } from '@/components/trading/timeframe-selector'
 import { useGlobalModelTier } from '@/contexts/trading-preset-context'
 import { getModelsForPreset } from '@/lib/config/model-presets'
 import type { ModelConfig } from '@/types/consensus'
@@ -134,6 +135,9 @@ export default function ArenaModePage() {
   // Today's activity tracking
   const [todaysActivity, setTodaysActivity] = useState<TodaysActivity | null>(null)
 
+  // Trading timeframe (Day Trading is default - most common use case)
+  const [timeframe, setTimeframe] = useState<TradingTimeframe>('day')
+
   // Helper to check if using subscription tier
   const isSubscriptionTier = globalTier === 'sub-pro' || globalTier === 'sub-max'
 
@@ -235,7 +239,7 @@ export default function ArenaModePage() {
       const response = await fetch('/api/arena/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phase: 'research', tier: globalTier, selectedModels })
+        body: JSON.stringify({ phase: 'research', tier: globalTier, selectedModels, timeframe })
       })
 
       if (!response.ok) {
@@ -492,6 +496,11 @@ export default function ArenaModePage() {
             )}
           </div>
         )}
+
+        {/* Trading Timeframe Selection */}
+        <div className="mb-8 bg-card rounded-lg border p-6">
+          <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+        </div>
 
         {/* Model Selection */}
         <div className="mb-8 bg-card rounded-lg border p-6">

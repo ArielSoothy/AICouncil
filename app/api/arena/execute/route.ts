@@ -118,7 +118,7 @@ function createQueryFunction(tier: UserTier): (modelId: string, prompt: string) 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { phase, approvedTrades, rerunModels, additionalExclusions, tier = 'free', selectedModels } = body;
+    const { phase, approvedTrades, rerunModels, additionalExclusions, tier = 'free', selectedModels, timeframe: requestTimeframe } = body;
 
     const supabase = await createClient();
 
@@ -158,7 +158,9 @@ export async function POST(request: NextRequest) {
 
     // Get account info
     const account = await getAccount();
-    const timeframe = config.default_timeframe as TradingTimeframe;
+    // Use request timeframe if provided, fallback to config default
+    const timeframe = (requestTimeframe as TradingTimeframe) || (config.default_timeframe as TradingTimeframe);
+    console.log(`🕐 Using timeframe: ${timeframe} (source: ${requestTimeframe ? 'request' : 'config default'})`)
 
     // Create tier-aware query function
     const queryModel = createQueryFunction(tier as UserTier);
