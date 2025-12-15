@@ -11,15 +11,24 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Plus, X, ChevronDown } from 'lucide-react'
 import { PROVIDER_COLORS } from '@/lib/brand-colors'
-import { TRADING_MODELS, MODELS_BY_PROVIDER, getModelDisplayName } from '@/lib/trading/models-config'
-import { getModelGrade, getModelTokenCost, getModelCostTier } from '@/lib/models/model-registry'
+import { getModelDisplayName } from '@/lib/trading/models-config'
+import {
+  getModelGrade,
+  getModelTokenCost,
+  getModelCostTier,
+  getModelInfo,
+  getSelectableModelsByProvider,
+  type Provider
+} from '@/lib/models/model-registry'
+import type { PresetTier } from '@/lib/config/model-presets'
 import { COST_TIER_STYLES, GRADE_STYLES } from '@/components/shared/model-badge'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 interface ArenaModelSelectorProps {
   enabledModels: string[]
   onChange: (modelIds: string[]) => void
+  tier: PresetTier  // Global tier from header selector
 }
 
 const providerNames = {
@@ -33,8 +42,12 @@ const providerNames = {
   cohere: 'Cohere'
 } as const
 
-export function ArenaModelSelector({ enabledModels, onChange }: ArenaModelSelectorProps) {
+export function ArenaModelSelector({ enabledModels, onChange, tier }: ArenaModelSelectorProps) {
   const [isAddingModel, setIsAddingModel] = useState(false)
+
+  // Get all selectable models grouped by provider (uses existing global function)
+  // The tier preset determines the DEFAULT selection, but users can swap to any working model
+  const modelsByProvider = useMemo(() => getSelectableModelsByProvider(), [])
 
   const swapModel = (oldModelId: string, newModelId: string) => {
     const updated = enabledModels.map(id => id === oldModelId ? newModelId : id)
@@ -46,9 +59,9 @@ export function ArenaModelSelector({ enabledModels, onChange }: ArenaModelSelect
     onChange(enabledModels.filter(id => id !== modelId))
   }
 
-  const addModel = (provider: keyof typeof MODELS_BY_PROVIDER) => {
-    const providerModels = MODELS_BY_PROVIDER[provider]
-    if (providerModels.length === 0) return
+  const addModel = (provider: Provider) => {
+    const providerModels = modelsByProvider[provider]
+    if (!providerModels || providerModels.length === 0) return
 
     // Add the first free/budget model from this provider
     const freeModel = providerModels.find(m => m.tier === 'free')
@@ -62,12 +75,12 @@ export function ArenaModelSelector({ enabledModels, onChange }: ArenaModelSelect
   return (
     <div className="flex flex-wrap gap-2 items-center">
       {enabledModels.map((modelId) => {
-        const model = TRADING_MODELS.find(m => m.id === modelId)
+        const model = getModelInfo(modelId)
         if (!model) return null
 
         const colorClass = PROVIDER_COLORS[model.provider] || PROVIDER_COLORS.openai
         const displayName = getModelDisplayName(modelId)
-        const providerModels = MODELS_BY_PROVIDER[model.provider]
+        const providerModels = modelsByProvider[model.provider] || []
         const { grade, weight } = getModelGrade(modelId)
         const costTier = getModelCostTier(modelId)
         const tokenCost = getModelTokenCost(modelId)
@@ -156,10 +169,10 @@ export function ArenaModelSelector({ enabledModels, onChange }: ArenaModelSelect
         <DropdownMenuContent align="start" className="w-48">
           <DropdownMenuLabel>Select Provider</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {Object.keys(MODELS_BY_PROVIDER).map((provider) => (
+          {Object.keys(modelsByProvider).map((provider) => (
             <DropdownMenuItem
               key={provider}
-              onClick={() => addModel(provider as keyof typeof MODELS_BY_PROVIDER)}
+              onClick={() => addModel(provider as Provider)}
             >
               {providerNames[provider as keyof typeof providerNames]}
             </DropdownMenuItem>

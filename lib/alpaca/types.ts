@@ -1,7 +1,8 @@
 // Trading action types
 export type TradeAction = 'BUY' | 'SELL' | 'HOLD';
 export type OrderSide = 'buy' | 'sell';
-export type OrderType = 'market' | 'limit';
+export type OrderType = 'market' | 'limit' | 'stop' | 'stop_limit';
+export type OrderClass = 'simple' | 'bracket' | 'oco' | 'oto';
 
 // Alpaca account info
 export interface AlpacaAccount {
@@ -36,6 +37,17 @@ export interface AlpacaOrder {
   status: string;
   filled_avg_price?: string;
   submitted_at: string;
+  // Bracket order fields
+  order_class?: OrderClass;
+  legs?: AlpacaOrder[];  // Child orders (stop-loss, take-profit)
+}
+
+// Bracket order result (parent + child orders)
+export interface BracketOrderResult {
+  parentOrder: AlpacaOrder;
+  stopLossOrderId: string;
+  takeProfitOrderId: string;
+  legs: AlpacaOrder[];
 }
 
 // AI model trade decision
@@ -57,4 +69,12 @@ export interface TradeDecision {
     result: string;
     timestamp: number;
   }>;
+}
+
+// Arena Mode trade decision (includes bracket order parameters)
+export interface ArenaTradeDecision extends TradeDecision {
+  stopLoss: number;      // Stop-loss price
+  takeProfit: number;    // Take-profit price
+  entryPrice?: number;   // Expected entry price (for limit orders)
+  riskRewardRatio?: string; // e.g., "2.5:1"
 }

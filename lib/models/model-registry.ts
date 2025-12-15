@@ -564,6 +564,74 @@ export function isModelSelectable(modelId: string): boolean {
   return model !== null && model.status === 'working' && !model.isLegacy
 }
 
+// ============================================================================
+// PRESET TIER FILTERING (for Global AI Model Tier selector)
+// ============================================================================
+
+/**
+ * PresetTier matches the global tier selector in the header
+ * - free: Only free models (Groq + Google free tier)
+ * - pro/sub-pro: Free + budget + balanced models
+ * - max/sub-max: All models including flagship/premium
+ */
+export type PresetTier = 'free' | 'pro' | 'max' | 'sub-pro' | 'sub-max'
+
+/**
+ * Get models available for a specific preset tier
+ * This is the main function for tier-based filtering across the app
+ */
+export function getModelsForPresetTier(tier: PresetTier): ModelInfo[] {
+  const allSelectable = getSelectableModels()
+
+  switch (tier) {
+    case 'free':
+      // Only free models from groq and google
+      return allSelectable.filter(m =>
+        m.tier === 'free' && (m.provider === 'groq' || m.provider === 'google')
+      )
+
+    case 'pro':
+    case 'sub-pro':
+      // Free + budget + balanced (excludes flagship/premium)
+      return allSelectable.filter(m =>
+        m.tier === 'free' || m.tier === 'budget' || m.tier === 'balanced'
+      )
+
+    case 'max':
+    case 'sub-max':
+      // All models including flagship/premium
+      return allSelectable
+
+    default:
+      return allSelectable
+  }
+}
+
+/**
+ * Get models grouped by provider for a preset tier
+ */
+export function getModelsForPresetTierByProvider(tier: PresetTier): Record<Provider, ModelInfo[]> {
+  const models = getModelsForPresetTier(tier)
+  const result: Partial<Record<Provider, ModelInfo[]>> = {}
+
+  for (const model of models) {
+    if (!result[model.provider]) {
+      result[model.provider] = []
+    }
+    result[model.provider]!.push(model)
+  }
+
+  return result as Record<Provider, ModelInfo[]>
+}
+
+/**
+ * Check if a model is available for a given preset tier
+ */
+export function isModelAvailableForTier(modelId: string, tier: PresetTier): boolean {
+  const availableModels = getModelsForPresetTier(tier)
+  return availableModels.some(m => m.id === modelId)
+}
+
 /**
  * Check if a model is a subscription/CLI model (Codex, Grok Code, etc.)
  */

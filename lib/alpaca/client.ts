@@ -1,5 +1,5 @@
 import Alpaca from '@alpacahq/alpaca-trade-api';
-import type { AlpacaAccount, AlpacaOrder, OrderSide } from './types';
+import type { AlpacaAccount, AlpacaOrder, OrderSide, BracketOrderResult } from './types';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -129,6 +129,168 @@ export async function placeMarketOrder(
     return order as AlpacaOrder;
   } catch (error) {
     console.error('❌ Failed to place order:', error);
+    throw error;
+  }
+}
+
+/**
+ * Place a bracket order (entry + stop-loss + take-profit)
+ * This creates a parent market order with two child orders that auto-execute
+ * @param symbol - Stock symbol (e.g., 'AAPL')
+ * @param quantity - Number of shares
+ * @param side - 'buy' or 'sell'
+ * @param takeProfitPrice - Price to take profit at
+ * @param stopLossPrice - Price to stop loss at
+ * @returns Parent order and child order IDs
+ */
+export async function placeBracketOrder(
+  symbol: string,
+  quantity: number,
+  side: OrderSide,
+  takeProfitPrice: number,
+  stopLossPrice: number
+): Promise<BracketOrderResult> {
+  try {
+    console.log(`📈 Placing BRACKET ${side.toUpperCase()} order: ${quantity} shares of ${symbol}`);
+    console.log(`   Take Profit: $${takeProfitPrice}`);
+    console.log(`   Stop Loss: $${stopLossPrice}`);
+
+    const alpaca = getAlpacaClient();
+
+    // Create bracket order with stop-loss and take-profit legs
+    const order = await alpaca.createOrder({
+      symbol,
+      qty: quantity,
+      side,
+      type: 'market',
+      time_in_force: 'day',
+      order_class: 'bracket',
+      take_profit: {
+        limit_price: takeProfitPrice,
+      },
+      stop_loss: {
+        stop_price: stopLossPrice,
+      },
+    }) as any;
+
+    console.log('✅ Bracket order placed successfully!');
+    console.log('Parent Order ID:', order.id);
+    console.log('Status:', order.status);
+
+    // Extract child order IDs from legs
+    const legs = order.legs || [];
+    let stopLossOrderId = '';
+    let takeProfitOrderId = '';
+
+    for (const leg of legs) {
+      if (leg.type === 'stop') {
+        stopLossOrderId = leg.id;
+        console.log('Stop-Loss Order ID:', leg.id);
+      } else if (leg.type === 'limit') {
+        takeProfitOrderId = leg.id;
+        console.log('Take-Profit Order ID:', leg.id);
+      }
+    }
+
+    return {
+      parentOrder: order as AlpacaOrder,
+      stopLossOrderId,
+      takeProfitOrderId,
+      legs: legs as AlpacaOrder[],
+    };
+  } catch (error) {
+    console.error('❌ Failed to place bracket order:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get order by ID
+ * @param orderId - Alpaca order ID
+ */
+export async function getOrder(orderId: string): Promise<AlpacaOrder | null> {
+  try {
+    const alpaca = getAlpacaClient();
+    const order = await alpaca.getOrder(orderId);
+    return order as AlpacaOrder;
+  } catch (error: any) {
+    if (error.statusCode === 404) {
+      return null;
+    }
+    console.error(`❌ Failed to get order ${orderId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Cancel an order by ID
+ * @param orderId - Alpaca order ID
+ */
+export async function cancelOrder(orderId: string): Promise<void> {
+  try {
+    const alpaca = getAlpacaClient();
+    await alpaca.cancelOrder(orderId);
+    console.log(`✅ Order ${orderId} cancelled`);
+  } catch (error) {
+    console.error(`❌ Failed to cancel order ${orderId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get a specific position by symbol
+ * @param symbol - Stock symbol (e.g., 'AAPL')
+ */
+export async function getPosition(symbol: string): Promise<any | null> {
+  try {
+    const alpaca = getAlpacaClient();
+    const position = await alpaca.getPosition(symbol);
+    return position;
+  } catch (error: any) {
+    // Position doesn't exist (404) is expected, not an error
+    if (error.statusCode === 404) {
+      return null;
+    }
+    console.error(`❌ Failed to get position for ${symbol}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Close a position (sell all shares of a symbol)
+ * @param symbol - Stock symbol (e.g., 'AAPL')
+ * @returns Order details from closing the position
+ */
+export async function closePosition(symbol: string): Promise<AlpacaOrder> {
+  try {
+    console.log(`📉 Closing position: ${symbol}`);
+    const alpaca = getAlpacaClient();
+    const order = await alpaca.closePosition(symbol);
+    console.log('✅ Position closed successfully!');
+    console.log('Order ID:', order.id);
+    console.log('Status:', order.status);
+    return order as AlpacaOrder;
+  } catch (error) {
+    console.error(`❌ Failed to close position ${symbol}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get current market price for a symbol
+ * @param symbol - Stock symbol (e.g., 'AAPL')
+ */
+export async function getLatestQuote(symbol: string): Promise<{ price: number; timestamp: string }> {
+  try {
+    const alpaca = getAlpacaClient();
+    // Use latest trade price as current market price
+    const latestTrade = await alpaca.getLatestTrade(symbol) as any;
+    return {
+      price: parseFloat(latestTrade.Price || latestTrade.price || String(latestTrade.p) || '0'),
+      timestamp: latestTrade.Timestamp || latestTrade.timestamp || String(latestTrade.t) || new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error(`❌ Failed to get quote for ${symbol}:`, error);
     throw error;
   }
 }

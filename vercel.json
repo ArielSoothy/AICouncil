@@ -14,14 +14,11 @@
     },
     "app/api/arena/cron/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/arena/monitor/route.ts": {
+      "maxDuration": 60
     }
   },
-  "crons": [
-    {
-      "path": "/api/arena/cron",
-      "schedule": "0 9 * * *"
-    }
-  ],
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1"
