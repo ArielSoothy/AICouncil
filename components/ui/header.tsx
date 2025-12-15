@@ -61,12 +61,15 @@ export function Header() {
             </Button>
           </Link>
 
-          <Link href="/arena">
-            <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700 font-semibold">
-              <Trophy className="h-4 w-4 mr-2" />
-              Arena
-            </Button>
-          </Link>
+          {/* Arena Mode - Development only */}
+          {process.env.NODE_ENV === 'development' && (
+            <Link href="/arena">
+              <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700 font-semibold">
+                <Trophy className="h-4 w-4 mr-2" />
+                Arena
+              </Button>
+            </Link>
+          )}
 
           {/* Ultra Mode - Grayed out in production (premium feature) */}
           <Link href={IS_PRODUCTION ? "#" : "/ultra"} className={IS_PRODUCTION ? "cursor-not-allowed" : ""}>
@@ -181,12 +184,15 @@ export function Header() {
               </Button>
             </Link>
 
-            <Link href="/arena" onClick={() => setIsMobileMenuOpen(false)}>
-              <Button variant="ghost" size="sm" className="w-full justify-start text-amber-600 hover:text-amber-700 font-semibold">
-                <Trophy className="h-4 w-4 mr-2" />
-                Arena
-              </Button>
-            </Link>
+            {/* Arena Mode - Development only */}
+            {process.env.NODE_ENV === 'development' && (
+              <Link href="/arena" onClick={() => setIsMobileMenuOpen(false)}>
+                <Button variant="ghost" size="sm" className="w-full justify-start text-amber-600 hover:text-amber-700 font-semibold">
+                  <Trophy className="h-4 w-4 mr-2" />
+                  Arena
+                </Button>
+              </Link>
+            )}
 
             {/* Ultra Mode - Grayed out in production (premium feature) */}
             <Link
