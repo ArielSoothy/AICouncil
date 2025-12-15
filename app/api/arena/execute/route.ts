@@ -21,6 +21,7 @@ import { runAllModelsArena, rerunModelsWithExclusions } from '@/lib/arena/arena-
 import type { ArenaRunResult, ArenaModelResult } from '@/lib/arena/arena-research';
 import { getLockedStocks, lockStock } from '@/lib/arena/stock-locks';
 import { getTodayRotation } from '@/lib/arena/rotation';
+import { getTodaysTrades } from '@/lib/arena/trade-guards';
 
 // API Providers (per-call billing)
 const API_PROVIDERS: Record<string, any> = {
@@ -117,7 +118,7 @@ function createQueryFunction(tier: UserTier): (modelId: string, prompt: string) 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { phase, approvedTrades, rerunModels, additionalExclusions, tier = 'free' } = body;
+    const { phase, approvedTrades, rerunModels, additionalExclusions, tier = 'free', selectedModels } = body;
 
     const supabase = await createClient();
 
@@ -144,13 +145,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const enabledModels = config.enabled_models as string[];
+    // Prefer models from request (frontend selection), fallback to DB config
+    const enabledModels = selectedModels || (config.enabled_models as string[]);
     if (!enabledModels || enabledModels.length === 0) {
       return NextResponse.json(
         { error: 'No models enabled for Arena Mode' },
         { status: 400 }
       );
     }
+    console.log(`🎯 Arena models source: ${selectedModels ? 'frontend selection' : 'database config'}`);
+    console.log(`   Models: ${enabledModels.join(', ')}`)
 
     // Get account info
     const account = await getAccount();
@@ -217,6 +221,11 @@ async function runResearchPhase(
   const lockedStocks = await getLockedStocks();
   console.log(`🔒 Currently locked: ${lockedStocks.length > 0 ? lockedStocks.join(', ') : 'none'}`);
 
+  // Get stocks traded today (for soft guidance in prompts)
+  const todaysTrades = await getTodaysTrades();
+  const stocksTradedToday = todaysTrades.stocksTradedToday;
+  console.log(`📊 Traded today: ${stocksTradedToday.length > 0 ? stocksTradedToday.join(', ') : 'none'}`);
+
   // Create arena run record
   const { data: arenaRun, error: runError } = await supabase
     .from('arena_runs')
@@ -242,7 +251,8 @@ async function runResearchPhase(
     lockedStocks,
     timeframe,
     account,
-    queryModel
+    queryModel,
+    stocksTradedToday
   );
 
   // Update run record with research results

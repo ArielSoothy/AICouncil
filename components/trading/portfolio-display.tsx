@@ -7,6 +7,11 @@ import { Loader2, DollarSign, TrendingUp, TrendingDown, Wallet, BarChart3, Clock
 // Auto-refresh interval: 30 seconds
 const PORTFOLIO_REFRESH_INTERVAL = 30000
 
+interface PortfolioDisplayProps {
+  /** Force a specific broker (useful for Arena Mode which always uses Alpaca) */
+  broker?: 'alpaca' | 'ibkr'
+}
+
 interface PortfolioData {
   broker?: {
     id: string
@@ -39,7 +44,7 @@ interface PortfolioData {
   }
 }
 
-export function PortfolioDisplay() {
+export function PortfolioDisplay({ broker }: PortfolioDisplayProps = {}) {
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null)
   const [loading, setLoading] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -52,7 +57,11 @@ export function PortfolioDisplay() {
     }
 
     try {
-      const response = await fetch('/api/trading/portfolio')
+      // Build URL with optional broker override
+      const url = broker
+        ? `/api/trading/portfolio?broker=${broker}`
+        : '/api/trading/portfolio'
+      const response = await fetch(url)
 
       if (!response.ok) {
         throw new Error('Failed to fetch portfolio')
@@ -72,7 +81,7 @@ export function PortfolioDisplay() {
         setLoading(false)
       }
     }
-  }, [])
+  }, [broker])
 
   // Auto-refresh with visibility handling
   useEffect(() => {

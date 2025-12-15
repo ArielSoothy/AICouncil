@@ -90,7 +90,8 @@ export interface StockConflict {
 function generateArenaPrompt(
   excludedStocks: string[],
   account: AlpacaAccount,
-  timeframe: TradingTimeframe
+  timeframe: TradingTimeframe,
+  stocksTradedToday: string[] = []
 ): string {
   const availableStocks = ARENA_STOCK_UNIVERSE.filter(s => !excludedStocks.includes(s));
 
@@ -112,6 +113,10 @@ ${availableStocks.join(', ')}
 
 ${excludedStocks.length > 0 ? `## EXCLUDED Stocks (DO NOT SELECT - already taken)
 ${excludedStocks.join(', ')}` : ''}
+
+${stocksTradedToday.length > 0 ? `## NOTE: Stocks Already Traded Today
+${stocksTradedToday.join(', ')}
+Consider picking different stocks for portfolio diversification. You CAN still select these if you have a strong conviction.` : ''}
 
 ## Risk Management Guidelines
 - Maximum position size: 20% of buying power
@@ -151,7 +156,8 @@ export async function runSingleModelArena(
   excludedStocks: string[],
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
-  queryModel: (prompt: string) => Promise<string>
+  queryModel: (prompt: string) => Promise<string>,
+  stocksTradedToday: string[] = []
 ): Promise<ArenaModelResult> {
   const startTime = Date.now();
   const modelName = getModelDisplayName(modelId);
@@ -170,8 +176,8 @@ export async function runSingleModelArena(
   };
 
   try {
-    // Generate prompt with exclusions
-    const prompt = generateArenaPrompt(excludedStocks, account, timeframe);
+    // Generate prompt with exclusions and today's traded stocks
+    const prompt = generateArenaPrompt(excludedStocks, account, timeframe, stocksTradedToday);
 
     // Query model
     const response = await queryModel(prompt);
@@ -230,12 +236,16 @@ export async function runAllModelsArena(
   excludedStocks: string[],
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
-  queryModelFn: (modelId: string, prompt: string) => Promise<string>
+  queryModelFn: (modelId: string, prompt: string) => Promise<string>,
+  stocksTradedToday: string[] = []
 ): Promise<ArenaRunResult> {
   const startTime = Date.now();
 
   console.log(`\n${'='.repeat(60)}`);
   console.log(`🏟️ ARENA MODE: Running ${modelIds.length} models in parallel`);
+  if (stocksTradedToday.length > 0) {
+    console.log(`📊 Stocks already traded today: ${stocksTradedToday.join(', ')}`);
+  }
   console.log(`${'='.repeat(60)}`);
 
   // Run all models in parallel
@@ -245,7 +255,8 @@ export async function runAllModelsArena(
       excludedStocks,
       timeframe,
       account,
-      (prompt) => queryModelFn(modelId, prompt)
+      (prompt) => queryModelFn(modelId, prompt),
+      stocksTradedToday
     )
   );
 

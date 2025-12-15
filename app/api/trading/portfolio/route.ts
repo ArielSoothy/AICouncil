@@ -10,17 +10,24 @@ const isProduction = process.env.VERCEL === '1' || process.env.NODE_ENV === 'pro
 
 export async function GET(request: NextRequest) {
   try {
+    // Check for broker override in query params (used by Arena Mode)
+    const { searchParams } = new URL(request.url);
+    const brokerOverride = searchParams.get('broker');
+
     // Read broker selection from cookie (persisted across serverless function restarts)
     const cookieStore = cookies();
     const brokerCookie = cookieStore.get(ACTIVE_BROKER_COOKIE);
     const cookieBrokerId = brokerCookie?.value;
 
     // Determine which broker to use:
-    // 1. If cookie is set, use that
-    // 2. Otherwise: Local → IBKR default, Production → Alpaca default
+    // 1. If query param override is set, use that (highest priority - used by Arena Mode)
+    // 2. If cookie is set, use that
+    // 3. Otherwise: Local → IBKR default, Production → Alpaca default
     let brokerId: 'alpaca' | 'ibkr';
 
-    if (cookieBrokerId && ['alpaca', 'ibkr'].includes(cookieBrokerId)) {
+    if (brokerOverride && ['alpaca', 'ibkr'].includes(brokerOverride)) {
+      brokerId = brokerOverride as 'alpaca' | 'ibkr';
+    } else if (cookieBrokerId && ['alpaca', 'ibkr'].includes(cookieBrokerId)) {
       brokerId = cookieBrokerId as 'alpaca' | 'ibkr';
     } else {
       // Default: Local → IBKR, Production → Alpaca (original intended behavior)
@@ -28,10 +35,9 @@ export async function GET(request: NextRequest) {
     }
 
     const environment = brokerId === 'ibkr' ? 'live' : 'paper';
-    BrokerFactory.setActiveBroker(brokerId, environment);
 
-    // Get the active broker
-    const broker = BrokerFactory.getActiveBroker();
+    // Get the broker directly (don't rely on setActiveBroker/getActiveBroker pattern)
+    const broker = BrokerFactory.getBroker(brokerId, environment);
 
     // Fetch account and positions in parallel
     const [account, positions] = await Promise.all([

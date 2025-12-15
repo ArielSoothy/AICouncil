@@ -22,6 +22,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { UltraModelBadgeSelector } from '@/components/consensus/ultra-model-badge-selector'
+import { PortfolioDisplay } from '@/components/trading/portfolio-display'
 import { useGlobalModelTier } from '@/contexts/trading-preset-context'
 import { getModelsForPreset } from '@/lib/config/model-presets'
 import type { ModelConfig } from '@/types/consensus'
@@ -97,6 +98,19 @@ interface ResearchResult {
   lockedStocks: string[]
 }
 
+interface TodaysActivity {
+  modelsTradedToday: string[]
+  stocksTradedToday: string[]
+  tradeDetails: Array<{
+    modelId: string
+    modelName: string
+    symbol: string
+    action: string
+    createdAt: string
+  }>
+  summary: string
+}
+
 export default function ArenaModePage() {
   // Global tier from header selector
   const { globalTier } = useGlobalModelTier()
@@ -117,13 +131,29 @@ export default function ArenaModePage() {
   const [executingTrades, setExecutingTrades] = useState(false)
   const [rerunningModels, setRerunningModels] = useState<Set<string>>(new Set())
 
+  // Today's activity tracking
+  const [todaysActivity, setTodaysActivity] = useState<TodaysActivity | null>(null)
+
   // Helper to check if using subscription tier
   const isSubscriptionTier = globalTier === 'sub-pro' || globalTier === 'sub-max'
 
   useEffect(() => {
     fetchLeaderboard()
     fetchConfig()
+    fetchTodaysActivity()
   }, [])
+
+  const fetchTodaysActivity = async () => {
+    try {
+      const response = await fetch('/api/arena/today')
+      const data = await response.json()
+      if (data.success) {
+        setTodaysActivity(data)
+      }
+    } catch (error) {
+      console.error('Error fetching today\'s activity:', error)
+    }
+  }
 
   // REPLACE models when tier changes (same as other modes)
   useEffect(() => {
@@ -200,10 +230,12 @@ export default function ArenaModePage() {
     setSelectedTrades(new Set())
 
     try {
+      // Send selected models from frontend (not from DB config)
+      const selectedModels = models.filter(m => m.enabled).map(m => m.model)
       const response = await fetch('/api/arena/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phase: 'research', tier: globalTier })
+        body: JSON.stringify({ phase: 'research', tier: globalTier, selectedModels })
       })
 
       if (!response.ok) {
@@ -276,6 +308,7 @@ export default function ArenaModePage() {
       setSelectedTrades(new Set())
       await fetchLeaderboard()
       await fetchConfig()
+      await fetchTodaysActivity()
 
     } catch (error) {
       console.error('Error executing trades:', error)
@@ -409,6 +442,56 @@ export default function ArenaModePage() {
             Autonomous AI Trading Competition - Real-time Leaderboard
           </p>
         </div>
+
+        {/* Portfolio Display - Alpaca Account Overview (Arena always uses Alpaca) */}
+        <div className="mb-8">
+          <PortfolioDisplay broker="alpaca" />
+        </div>
+
+        {/* Today's Activity Panel */}
+        {todaysActivity && todaysActivity.tradeDetails.length > 0 && (
+          <div className="mb-8 bg-card rounded-lg border p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-semibold">Today's Activity</h2>
+              <span className="text-sm text-muted-foreground ml-auto">
+                {todaysActivity.summary}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {todaysActivity.tradeDetails.map((trade, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
+                >
+                  <span className="font-mono font-bold text-primary">{trade.symbol}</span>
+                  <span className="text-sm text-muted-foreground">→</span>
+                  <span className="text-sm font-medium">{trade.modelName}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    trade.action === 'BUY'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  }`}>
+                    {trade.action}
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {new Date(trade.createdAt).toLocaleTimeString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {todaysActivity.stocksTradedToday.length > 0 && (
+              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-900">
+                <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>
+                    <strong>Stocks traded today:</strong> {todaysActivity.stocksTradedToday.join(', ')}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Model Selection */}
         <div className="mb-8 bg-card rounded-lg border p-6">
