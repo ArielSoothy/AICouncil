@@ -1902,5 +1902,37 @@
 - **Last Modified**: December 13, 2025
 - **DO NOT**: Revert `tr.output` back to `tr.result`, remove synthesizeFindingsFromToolCalls(), or remove debug logging
 
+### 55. Arena Mode - AI Trading Competition
+- **Status**: ✅ ACTIVE & DEVELOPMENT (December 2025)
+- **Location**:
+  - `app/arena/page.tsx` - Main Arena Mode UI
+  - `app/api/arena/execute/route.ts` - Research & execution API
+  - `lib/arena/arena-research.ts` - Parallel model research
+  - `lib/arena/stock-locks.ts` - Exclusive stock ownership
+  - `lib/arena/rotation.ts` - Fair model rotation
+- **Purpose**: Autonomous AI trading competition where models compete with real P&L
+- **Key Features**:
+  - **Uses Global Tier System**: Same `UltraModelBadgeSelector` component as other modes
+  - **Uses Global Presets**: `getModelsForPreset()` from `lib/config/model-presets.ts`
+  - **Modular Architecture**: Shares all model selection logic with Consensus/Trading modes
+  - **Parallel Research Phase**: All models analyze simultaneously
+  - **Bracket Orders**: Entry + stop-loss + take-profit
+  - **Exclusive Stock Ownership**: One model per stock to prevent conflicts
+  - **Rotation System**: Fair model priority rotation
+  - **Real-time Leaderboard**: P&L, Win Rate, Sharpe Ratio
+- **Architecture**:
+  - Phase 1: Research (parallel) → Conflict detection
+  - Phase 2: User review → Approve trades
+  - Phase 3: Execute bracket orders via Alpaca
+- **Tier Support**:
+  - Free/Pro/Max: API providers (per-call billing)
+  - Sub-Pro/Sub-Max: CLI providers (subscription billing)
+- **Files**:
+  - `supabase/migrations/20251215_arena_stock_locks.sql` - Stock locks table
+  - `lib/alpaca/types.ts` - ArenaTradeDecision type
+- **TypeScript**: 0 errors
+- **Last Modified**: December 15, 2025
+- **DO NOT**: Create separate model selector components, duplicate tier filtering functions
+
 ## 🛡️ PROTECTION RULE:
 **Always check this file before making changes. Ask user before modifying any protected feature.**
