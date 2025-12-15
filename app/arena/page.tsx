@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { UltraModelBadgeSelector } from '@/components/consensus/ultra-model-badge-selector'
 import { PortfolioDisplay } from '@/components/trading/portfolio-display'
+import { ProviderBadge } from '@/components/shared/model-badge'
 import { TimeframeSelector, TradingTimeframe } from '@/components/trading/timeframe-selector'
 import { ResearchProgressPanel, ResearchProgressPanelHandle } from '@/components/trading/research-progress-panel'
 import type { ResearchProgressEvent } from '@/types/research-progress'
@@ -75,6 +76,7 @@ interface ArenaModelResult {
   } | null
   error?: string
   duration: number
+  providerType?: 'CLI' | 'API'  // CLI = subscription billing, API = per-call billing
 }
 
 interface StockConflict {
@@ -779,6 +781,10 @@ export default function ArenaModePage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold">{result.modelName}</span>
+                          {/* Provider Badge - CLI (green) = subscription, API (blue) = per-call billing */}
+                          {result.providerType && (
+                            <ProviderBadge providerType={result.providerType} />
+                          )}
                           {isConflict && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
                               Conflict

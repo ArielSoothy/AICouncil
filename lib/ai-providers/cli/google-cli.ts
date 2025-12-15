@@ -45,10 +45,16 @@ function runGeminiCliWithStdin(
       args.push('-m', model);
     }
 
+    // CRITICAL: For subscription mode, we must NOT pass GOOGLE_API_KEY
+    // If API key is present, CLI may use API mode (credits). Without it, uses subscription.
+    const envWithoutApiKey = { ...process.env };
+    delete envWithoutApiKey.GOOGLE_API_KEY;
+    delete envWithoutApiKey.GOOGLE_GENERATIVE_AI_API_KEY;
+
     const child = spawn('/opt/homebrew/bin/gemini', args, {
       shell: '/bin/zsh',
       timeout: 180000,  // 3 minute timeout for complex queries
-      env: { ...process.env },
+      env: envWithoutApiKey, // Subscription mode - no API key!
       cwd: process.cwd(),
     });
 

@@ -109,8 +109,64 @@ if (useSubscription) {
 | Provider | CLI Command | Subscription |
 |----------|-------------|--------------|
 | `ClaudeCLIProvider` | `npx @anthropic-ai/claude-code` | Claude Pro/Max ($20-100/mo) |
-| `CodexCLIProvider` | `npx openai-codex` | ChatGPT Plus/Pro |
-| `GoogleCLIProvider` | `gcloud ai` | Gemini Advanced |
+| `CodexCLIProvider` | `/opt/homebrew/bin/codex` | ChatGPT Plus/Pro |
+| `GoogleCLIProvider` | `/opt/homebrew/bin/gemini` | Gemini Advanced |
+
+### CLI Has TWO Auth Modes (CRITICAL TO UNDERSTAND!)
+
+**Claude Code CLI (`npx @anthropic-ai/claude-code`):**
+```
+API MODE (credits):
+├── Uses ANTHROPIC_API_KEY environment variable
+├── Has --max-budget-usd flag for spending limits
+├── Credits can run out → "Credit balance too low"
+└── DO NOT USE for Sub tiers!
+
+SUBSCRIPTION MODE (unlimited):
+├── Uses setup-token (run: `npx @anthropic-ai/claude-code setup-token`)
+├── Requires Claude Pro/Max subscription
+├── NO credits, NO --max-budget-usd
+├── Unlimited usage within fair use
+└── REQUIRED for Sub tiers!
+```
+
+**OpenAI Codex CLI (`codex`):**
+```
+API MODE: Uses OPENAI_API_KEY → has credits
+SUBSCRIPTION MODE: Uses ChatGPT Plus login → unlimited
+```
+
+**Google Gemini CLI (`gemini`):**
+```
+API MODE: Uses GOOGLE_API_KEY → has credits
+SUBSCRIPTION MODE: Uses OAuth personal account → unlimited
+```
+
+**HOW TO SET UP SUBSCRIPTION MODE:**
+
+**Step 1: Run the setup command for each CLI:**
+```bash
+# Claude Code CLI - requires Claude Pro/Max subscription
+npx @anthropic-ai/claude-code setup-token
+
+# OpenAI Codex CLI - requires ChatGPT Plus/Pro subscription
+codex login
+
+# Google Gemini CLI - requires Gemini Advanced subscription
+gemini auth login
+```
+
+**Step 2: Code removes API keys from environment:**
+```typescript
+const envWithoutApiKey = { ...process.env };
+delete envWithoutApiKey.ANTHROPIC_API_KEY; // Force subscription mode
+
+const child = spawn('npx', args, {
+  env: envWithoutApiKey, // No API key = uses subscription auth
+});
+```
+
+**IMPORTANT**: Even after removing `ANTHROPIC_API_KEY` from env, Claude Code CLI has its **OWN internal credential storage**. If you see "Credit balance too low" in Sub mode, the user needs to run `setup-token` to switch from API credits to subscription auth.
 
 ### Key Files
 - `lib/ai-providers/cli/claude-cli.ts` - Claude subscription provider
@@ -126,6 +182,43 @@ If "Claude CLI Error" appears:
 1. Check terminal for `🔷 Claude CLI raw response:` logs
 2. Verify CLI is authenticated: `npx @anthropic-ai/claude-code --version`
 3. Check subscription status in Claude app settings
+
+### ⚠️ CRITICAL UNDERSTANDING: SUB MODE = SUBSCRIPTION = NO CREDITS
+
+**THIS IS A FUNDAMENTAL RULE THAT CLAUDE KEEPS FORGETTING:**
+
+```
+SUB PRO/MAX MODE:
+├── Uses CLI providers (ClaudeCLIProvider, CodexCLIProvider, GoogleCLIProvider)
+├── CLI providers use MONTHLY SUBSCRIPTION (Claude Pro $20/mo, ChatGPT Plus, etc.)
+├── Subscriptions = UNLIMITED USAGE (within fair use)
+├── There is NO "credit balance" concept for subscriptions
+├── There is NO per-call billing
+└── If you see "Credit balance is too low" → SOMETHING IS BROKEN
+
+PRO/MAX MODE (not sub):
+├── Uses API providers (AnthropicProvider, OpenAIProvider, etc.)
+├── API = PAY PER TOKEN (credits that can run out)
+├── "Credit balance too low" = normal, expected error when out of credits
+└── User needs to add credits to their API account
+```
+
+**IF "Credit balance too low" APPEARS IN SUB MODE:**
+1. The CLI is NOT properly using subscription auth
+2. It may be using API mode instead of subscription mode
+3. Check if `--max-budget-usd` is set (this is an API budget, not subscription)
+4. The CLI tool might need re-authentication with subscription credentials
+5. DO NOT blame API credits - Sub mode doesn't use API credits!
+
+**NEVER SAY:**
+- ❌ "Sub mode is working, CLI just ran out of credits"
+- ❌ "The code is correct, add credits to continue"
+- ❌ "Credit balance proves CLI is being called"
+
+**CORRECT RESPONSE:**
+- ✅ "Credit error in Sub mode = BUG - subscriptions have no credits"
+- ✅ "CLI may be misconfigured to use API instead of subscription"
+- ✅ "Need to investigate why CLI isn't using subscription auth"
 
 ### CRITICAL: NO API FALLBACK FOR SUB TIERS
 **This is a hard rule - NEVER change this behavior!**
@@ -150,6 +243,36 @@ If "Claude CLI Error" appears:
 - Silently fall back to API providers
 - Log "falling back to API" and continue
 - Try to "help" by using API when CLI fails
+
+### Sub Tier Billing Protection - Audit Checklist (December 2025)
+
+**Files with Sub Tier Protection (USE provider-factory.ts):**
+| Route | Status | Protection Method |
+|-------|--------|-------------------|
+| `app/api/trading/consensus/route.ts` | ✅ Fixed | Uses `getProviderForTier()` |
+| `app/api/trading/individual/route.ts` | ✅ Fixed | Uses `getProviderForTier()` |
+| `app/api/trading/debate/route.ts` | ✅ Fixed | Uses `getProviderForTier()` |
+| `app/api/trading/consensus/stream/route.ts` | ✅ Safe | Already had CLI support |
+| `app/api/arena/execute/route.ts` | ✅ Fixed | CLI map cleaned (no API) |
+| `app/api/arena/execute/stream/route.ts` | ✅ Fixed | CLI map cleaned (no API) |
+
+**Files with Tier Block (Don't support Sub tiers yet):**
+| Route | Status | Error Message |
+|-------|--------|---------------|
+| `app/api/agents/debate-stream/route.ts` | ✅ Blocked | "Does not support sub tiers" |
+| `app/api/consensus/route.ts` | ✅ Blocked | "Does not support sub tiers" |
+
+**Central Provider Factory:**
+- `lib/ai-providers/provider-factory.ts` - Single source of truth for tier-aware provider selection
+- Functions: `getProviderForTier()`, `isSubscriptionTier()`, `assertProviderAllowedForTier()`
+
+**Before Adding New Routes:**
+```
+1. Import from provider-factory.ts: getProviderForTier, isSubscriptionTier
+2. NEVER create local PROVIDERS map
+3. ALWAYS use getProviderForTier(tier, providerType)
+4. If CLI not supported → block sub tiers with clear error
+```
 
 ## 🤖 SUB-AGENT SYSTEM:
 **For complex features, use the orchestrated sub-agent system defined in docs/guides/SUB_AGENTS.md:**

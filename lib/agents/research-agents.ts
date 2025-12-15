@@ -112,14 +112,13 @@ function synthesizeFindingsFromToolCalls(
 }
 
 // Get research model from env or default to sonnet
+// Note: Called at module initialization - logs moved to actual research execution
 function getResearchModelConfig(): TierModelConfig {
   const preset = (process.env.RESEARCH_MODEL || 'sonnet').toLowerCase() as ResearchModelPreset;
   const config = RESEARCH_MODEL_PRESETS[preset];
   if (config) {
-    console.log(`🔬 Research model: ${config.displayName} (preset: ${preset})`);
     return config;
   }
-  console.log(`🔬 Research model: Claude 4.5 Sonnet (default)`);
   return RESEARCH_MODEL_PRESETS.sonnet;
 }
 

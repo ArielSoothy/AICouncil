@@ -267,6 +267,38 @@ export function ModelDropdownItem({
 }
 
 // ============================================================================
+// PROVIDER BADGE COMPONENT - CLI vs API Proof
+// Shows which billing mode was actually used for each model query
+// ============================================================================
+
+export type ProviderMode = 'CLI' | 'API'
+
+export interface ProviderBadgeProps {
+  providerType?: ProviderMode
+  className?: string
+}
+
+/**
+ * Badge showing whether CLI (subscription) or API (per-call billing) was used
+ * Displays on each model result to prove billing mode
+ */
+export function ProviderBadge({ providerType, className }: ProviderBadgeProps) {
+  const isCLI = providerType === 'CLI'
+
+  return (
+    <span className={cn(
+      'px-1.5 py-0.5 text-[10px] font-bold rounded',
+      isCLI
+        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+      className
+    )}>
+      {isCLI ? '🔑 CLI' : '🌐 API'}
+    </span>
+  )
+}
+
+// ============================================================================
 // RE-EXPORTS FOR CONVENIENCE
 // ============================================================================
 

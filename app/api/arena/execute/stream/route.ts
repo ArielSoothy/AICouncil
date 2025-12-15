@@ -45,16 +45,15 @@ const API_PROVIDERS: Record<string, any> = {
   xai: new XAIProvider(),
 };
 
-// CLI Providers (subscription billing)
+// CLI Providers (subscription billing) + FREE providers only
+// CRITICAL: Do NOT include API-billed providers (mistral, perplexity, cohere, xai)
+// Only CLI providers (anthropic, openai, google) and FREE providers (groq)
 const CLI_PROVIDERS: Record<string, any> = {
-  anthropic: new ClaudeCLIProvider(),
-  openai: new CodexCLIProvider(),
-  google: new GoogleCLIProvider(),
-  groq: new GroqProvider(),
-  mistral: new MistralProvider(),
-  perplexity: new PerplexityProvider(),
-  cohere: new CohereProvider(),
-  xai: new XAIProvider(),
+  anthropic: new ClaudeCLIProvider(),   // CLI subscription
+  openai: new CodexCLIProvider(),       // CLI subscription
+  google: new GoogleCLIProvider(),      // CLI subscription
+  groq: new GroqProvider(),             // FREE - no billing
+  // REMOVED: mistral, perplexity, cohere, xai - would charge API fees for sub tiers
 };
 
 type UserTier = 'free' | 'pro' | 'max' | 'sub-pro' | 'sub-max';
@@ -159,6 +158,9 @@ export async function POST(request: NextRequest) {
           });
 
           const providers = getProvidersForTier(tier as UserTier);
+          const isSubMode = isSubscriptionTier(tier as UserTier);
+          console.log(`🎯 Arena Mode: tier=${tier}, using ${isSubMode ? 'CLI PROVIDERS (subscription)' : 'API PROVIDERS (per-call)'}`);
+
           const results: ArenaModelResult[] = [];
           const startTime = Date.now();
 
@@ -176,7 +178,7 @@ export async function POST(request: NextRequest) {
             });
 
             const modelStartTime = Date.now();
-            let result: ArenaModelResult = {
+            let result: ArenaModelResult & { providerType?: 'CLI' | 'API' } = {
               modelId,
               modelName,
               status: 'pending',
@@ -185,6 +187,7 @@ export async function POST(request: NextRequest) {
               research: null,
               decision: null,
               duration: 0,
+              providerType: isSubMode ? 'CLI' : 'API', // Billing mode proof for UI
             };
 
             try {
@@ -249,6 +252,7 @@ export async function POST(request: NextRequest) {
                 confidence: result.decision.confidence,
                 duration: Date.now() - modelStartTime,
                 tokensUsed: response.tokens?.total || 0,
+                provider: isSubMode ? 'CLI' as const : 'API' as const, // Billing mode proof
                 timestamp: Date.now()
               });
 

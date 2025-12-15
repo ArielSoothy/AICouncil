@@ -46,10 +46,15 @@ function runCodexCliWithStdin(
     // Passing specific models like gpt-4o causes:
     // "The 'gpt-4o' model is not supported when using Codex with a ChatGPT account."
 
+    // CRITICAL: For subscription mode, we must NOT pass OPENAI_API_KEY
+    // If API key is present, CLI may use API mode (credits). Without it, uses subscription.
+    const envWithoutApiKey = { ...process.env };
+    delete envWithoutApiKey.OPENAI_API_KEY;
+
     const child = spawn('/opt/homebrew/bin/codex', args, {
       shell: '/bin/zsh',
       timeout: 180000,  // 3 minute timeout for complex queries
-      env: { ...process.env },
+      env: envWithoutApiKey, // Subscription mode - no API key!
       cwd: process.cwd(),
     });
 

@@ -38,17 +38,23 @@ function runClaudeCliWithStdin(
       '@anthropic-ai/claude-code',
       '-p', '-',  // Read prompt from stdin
       '--output-format', 'json',
-      '--max-budget-usd', '5',
+      // REMOVED: '--max-budget-usd', '5' - This is for API mode only!
+      // Subscription mode has unlimited usage, no budget needed
     ];
 
     if (model) {
       args.push('--model', model);
     }
 
+    // CRITICAL: For subscription mode, we must NOT pass ANTHROPIC_API_KEY
+    // If API key is present, CLI uses API mode (credits). Without it, uses subscription.
+    const envWithoutApiKey = { ...process.env };
+    delete envWithoutApiKey.ANTHROPIC_API_KEY;
+
     const child = spawn('npx', args, {
       shell: '/bin/zsh',
       timeout: 120000,  // 2 minute timeout
-      env: { ...process.env },
+      env: envWithoutApiKey, // Subscription mode - no API key!
     });
 
     let stdout = '';
@@ -67,7 +73,14 @@ function runClaudeCliWithStdin(
     });
 
     child.on('close', (code) => {
-      if (code !== 0 && !stdout) {
+      // Filter out Node.js warnings from stderr (these aren't real errors)
+      const isJustWarning = stderr && (
+        stderr.includes('Warning:') ||
+        stderr.includes('DeprecationWarning') ||
+        stderr.includes('NODE_TLS_REJECT_UNAUTHORIZED')
+      );
+
+      if (code !== 0 && !stdout && !isJustWarning) {
         reject(new Error(stderr || `Process exited with code ${code}`));
       } else {
         resolve({ stdout, stderr });
@@ -141,12 +154,19 @@ export class ClaudeCLIProvider implements AIProvider {
 
       const responseTime = Date.now() - startTime;
 
-      // Log stderr even if we have stdout (may contain warnings)
-      if (stderr) {
+      // Check if stderr contains actual errors or just warnings
+      const isJustWarning = stderr && (
+        stderr.includes('Warning:') ||
+        stderr.includes('DeprecationWarning') ||
+        stderr.includes('NODE_TLS_REJECT_UNAUTHORIZED')
+      );
+
+      // Log stderr if it contains real errors (not just warnings)
+      if (stderr && !isJustWarning) {
         console.log('🔷 Claude CLI stderr:', stderr);
       }
 
-      if (stderr && !stdout) {
+      if (stderr && !stdout && !isJustWarning) {
         console.error('❌ Claude CLI stderr (no stdout):', stderr);
         throw new Error(stderr);
       }
@@ -165,13 +185,16 @@ export class ClaudeCLIProvider implements AIProvider {
 
       // Check for error in response
       if (response.is_error || response.type === 'error') {
+        // When is_error=true and type=result, the error message is in the 'result' field
+        const errorMessage = response.error || response.result || `Claude CLI returned an error (is_error=${response.is_error}, type=${response.type})`;
         console.error('❌ Claude CLI error response:', {
           is_error: response.is_error,
           type: response.type,
           error: response.error,
+          result: response.result,
           subtype: response.subtype,
         });
-        throw new Error(response.error || `Claude CLI returned an error (is_error=${response.is_error}, type=${response.type})`);
+        throw new Error(errorMessage);
       }
 
       const responseText = response.result || stdout.trim();
@@ -208,6 +231,17 @@ export class ClaudeCLIProvider implements AIProvider {
 
       console.error('❌ Claude CLI error:', errorMessage);
 
+      // Provide helpful error message for common issues
+      let userFriendlyError = `Claude CLI Error: ${errorMessage}`;
+
+      if (errorMessage.includes('Credit balance is too low') || errorMessage.includes('credit')) {
+        userFriendlyError =
+          `Claude CLI Error: Credit balance too low. ` +
+          `This means you're using API credits instead of your Claude subscription. ` +
+          `To fix: Run 'npx @anthropic-ai/claude-code setup-token' in terminal to switch to subscription mode.`;
+        console.error('⚠️ User needs to run: npx @anthropic-ai/claude-code setup-token');
+      }
+
       return {
         id: `claude-cli-error-${Date.now()}`,
         provider: 'anthropic',
@@ -217,7 +251,7 @@ export class ClaudeCLIProvider implements AIProvider {
         responseTime,
         tokens: { prompt: 0, completion: 0, total: 0 },
         timestamp: new Date(),
-        error: `Claude CLI Error: ${errorMessage}`,
+        error: userFriendlyError,
       };
     }
   }

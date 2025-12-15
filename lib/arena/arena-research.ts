@@ -57,6 +57,9 @@ export interface ArenaModelResult {
 
   // Timing
   duration: number;
+
+  // Provider billing mode proof (CLI = subscription, API = per-call billing)
+  providerType?: 'CLI' | 'API';
 }
 
 export interface ArenaRunResult {
