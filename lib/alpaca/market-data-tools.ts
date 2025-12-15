@@ -615,15 +615,13 @@ export const checkEarningsDateTool: AnyTool = createTool({
     symbol: z.string().describe('Stock ticker symbol'),
   }),
   execute: async ({ symbol }: { symbol: string }) => {
-    // Note: Alpaca's free tier doesn't provide earnings calendar
-    // This is a placeholder that would need a different data source
-    // For now, we'll return a message indicating this limitation
-
+    // HONEST ERROR - Alpaca's free tier doesn't provide earnings calendar
+    // NO MOCK DATA - Return failure instead of pretending to succeed
     return {
       symbol: symbol.toUpperCase(),
-      message: 'Earnings calendar requires additional data source. Alpaca free tier does not provide this data.',
-      suggestion: 'Check company investor relations page or financial news for earnings date.',
-      success: true
+      error: 'Earnings calendar not available - Alpaca free tier does not provide this data.',
+      suggestion: 'Check company investor relations page, Yahoo Finance, or financial news for earnings date.',
+      success: false  // CRITICAL: Return FALSE when data unavailable
     };
   },
 });

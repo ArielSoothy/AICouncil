@@ -59,6 +59,9 @@ export interface TradeDecision {
   confidence: number;
   model?: string; // Optional model ID for judge weighting
 
+  // Provider billing mode proof (CLI = subscription, API = per-call billing)
+  providerType?: 'CLI' | 'API';
+
   // Tool usage tracking (Hybrid Research Mode)
   toolsUsed?: boolean; // Whether this decision used AI research tools
   toolCallCount?: number; // Number of tool calls made

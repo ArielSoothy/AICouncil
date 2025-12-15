@@ -9,6 +9,7 @@ import { ShareButtons } from '@/components/conversation/share-buttons'
 import { hasInternetAccess } from '@/lib/user-tiers'
 import { FollowUpQuestionsCard } from './follow-up-questions-card'
 import { Clock, DollarSign, Brain, CheckCircle, XCircle, BarChart3, ChevronDown, ChevronUp, Globe, ExternalLink } from 'lucide-react'
+import { ProviderBadge } from '@/components/shared/model-badge'
 import { useEffect } from 'react'
 import { MODEL_POWER, MODEL_COSTS_PER_1K } from '@/lib/model-metadata'
 
@@ -63,7 +64,7 @@ const estimateModelCost = (model: string, tokensUsed: number): number => {
 
 // Model Response Card Component with expand/collapse functionality
 interface ModelResponseCardProps {
-  response: { model: string; response: string; tokensUsed: number; responseTime: number; usedWebSearch?: boolean }
+  response: { model: string; response: string; tokensUsed: number; responseTime: number; usedWebSearch?: boolean; providerType?: 'CLI' | 'API' }
   mode: string
   query: string
   whyMap: Record<string, string>
@@ -96,6 +97,7 @@ function ModelResponseCard({ response, mode, query, whyMap }: ModelResponseCardP
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium text-primary flex items-center gap-2">
             <span>{response.model.split('/').pop() || response.model}</span>
+            <ProviderBadge providerType={response.providerType} />
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300" title="Model influence weight (0.5–1.0)">
               {(() => { const mk = (response.model.split('/')?.pop() || response.model); const w = MODEL_POWER[mk as keyof typeof MODEL_POWER] || 0.7; return `W:${w.toFixed(2)}` })()}
             </span>

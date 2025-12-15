@@ -443,6 +443,8 @@ export async function POST(request: NextRequest) {
                 decision.model = currentModelId;
                 decision.toolsUsed = false;
                 decision.toolCallCount = 0;
+                // Track provider type for billing proof in UI
+                decision.providerType = (researchTier === 'sub-pro' || researchTier === 'sub-max') ? 'CLI' : 'API';
 
                 const decisionDuration = Date.now() - decisionStartTime;
 
@@ -457,6 +459,7 @@ export async function POST(request: NextRequest) {
                   tokensUsed: result.tokens?.total || 0,
                   inputTokens: result.tokens?.prompt || 0,
                   outputTokens: result.tokens?.completion || 0,
+                  provider: decision.providerType,  // CLI or API for billing proof
                   timestamp: Date.now()
                 });
 

@@ -85,13 +85,12 @@ export class DuckDuckGoSearchService {
         count++;
       }
 
-      // Fallback mock results for development
+      // NO MOCK DATA - Return actual results or nothing
+      // If no results parsed, log warning and return empty array (NOT fake data)
       if (results.length === 0) {
-        results.push({
-          title: 'DuckDuckGo Search Result',
-          url: 'https://duckduckgo.com',
-          snippet: `Search results for "${query}" - Web search is working but HTML parsing needs implementation`
-        });
+        console.warn(`⚠️ DuckDuckGo: No results parsed for "${query}" - HTML structure may have changed`);
+        // Return empty results, NOT fake data
+        // User will see "No results found" which is honest
       }
 
       const searchResult: WebSearchResult = {

@@ -103,6 +103,7 @@ export interface DecisionCompleteEvent {
   tokensUsed?: number // Total tokens (for cost tracking)
   inputTokens?: number // Input/prompt tokens
   outputTokens?: number // Output/completion tokens
+  provider?: 'CLI' | 'API' // Billing mode proof (CLI = subscription, API = per-call)
   timestamp: number
 }
 
@@ -244,6 +245,7 @@ export interface DecisionProgress {
   tokensUsed?: number // Total tokens (for cost tracking)
   inputTokens?: number // Input/prompt tokens
   outputTokens?: number // Output/completion tokens
+  provider?: 'CLI' | 'API' // Billing mode proof (CLI = subscription, API = per-call)
   startTime?: number
 }
 

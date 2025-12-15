@@ -18,6 +18,7 @@ import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import type { AlpacaAccount } from '@/lib/alpaca/types';
 import type { ArenaTradeDecision } from '@/lib/alpaca/types';
 import { getModelDisplayName } from '@/lib/trading/models-config';
+import { getLatestQuote } from '@/lib/alpaca/client';
 
 // Popular stocks for Arena Mode selection
 export const ARENA_STOCK_UNIVERSE = [
@@ -87,6 +88,47 @@ export interface StockConflict {
 }
 
 /**
+ * Fetch current prices for multiple stocks in parallel
+ * Returns map of symbol -> price (or null if fetch failed)
+ */
+export async function fetchCurrentPrices(symbols: string[]): Promise<Record<string, number | null>> {
+  console.log(`📊 Fetching current prices for ${symbols.length} stocks...`);
+
+  const prices: Record<string, number | null> = {};
+
+  // Fetch in parallel with error handling per symbol
+  await Promise.all(
+    symbols.map(async (symbol) => {
+      try {
+        const quote = await getLatestQuote(symbol);
+        prices[symbol] = quote.price;
+      } catch (error) {
+        console.warn(`⚠️ Failed to get price for ${symbol}:`, error);
+        prices[symbol] = null;
+      }
+    })
+  );
+
+  const successCount = Object.values(prices).filter(p => p !== null).length;
+  console.log(`📊 Got prices for ${successCount}/${symbols.length} stocks`);
+
+  return prices;
+}
+
+/**
+ * Format prices for prompt display
+ */
+function formatPricesForPrompt(prices: Record<string, number | null>): string {
+  const lines: string[] = [];
+  for (const [symbol, price] of Object.entries(prices)) {
+    if (price !== null) {
+      lines.push(`- ${symbol}: $${price.toFixed(2)}`);
+    }
+  }
+  return lines.length > 0 ? lines.join('\n') : 'Price data unavailable';
+}
+
+/**
  * Generate the stock selection + decision prompt
  * Model picks stock AND provides full trade decision in one call
  */
@@ -94,9 +136,11 @@ export function generateArenaPrompt(
   excludedStocks: string[],
   account: AlpacaAccount,
   timeframe: TradingTimeframe,
-  stocksTradedToday: string[] = []
+  stocksTradedToday: string[] = [],
+  currentPrices: Record<string, number | null> = {}
 ): string {
   const availableStocks = ARENA_STOCK_UNIVERSE.filter(s => !excludedStocks.includes(s));
+  const hasPrices = Object.keys(currentPrices).length > 0;
 
   return `You are a professional trader competing in an AI Trading Arena.
 
@@ -113,6 +157,9 @@ export function generateArenaPrompt(
 
 ## Available Stocks (${availableStocks.length} options)
 ${availableStocks.join(', ')}
+
+${hasPrices ? `## CURRENT MARKET PRICES (Use these for your entry price!)
+${formatPricesForPrompt(currentPrices)}` : ''}
 
 ${excludedStocks.length > 0 ? `## EXCLUDED Stocks (DO NOT SELECT - already taken)
 ${excludedStocks.join(', ')}` : ''}
@@ -143,10 +190,11 @@ Consider picking different stocks for portfolio diversification. You CAN still s
 }
 
 IMPORTANT:
-- entryPrice: Current market estimate or your target limit price
+- entryPrice: MUST use the CURRENT MARKET PRICE shown above (not a guess!)
 - stopLoss: Price to exit if trade goes against you (REQUIRED)
 - takeProfit: Price to exit with profit (REQUIRED)
 - quantity: Number of shares (respect 20% max position size)
+- Calculate stopLoss and takeProfit based on the ACTUAL current price
 
 Respond with ONLY the JSON object, no additional text.`;
 }
@@ -160,7 +208,8 @@ export async function runSingleModelArena(
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
   queryModel: (prompt: string) => Promise<string>,
-  stocksTradedToday: string[] = []
+  stocksTradedToday: string[] = [],
+  currentPrices: Record<string, number | null> = {}
 ): Promise<ArenaModelResult> {
   const startTime = Date.now();
   const modelName = getModelDisplayName(modelId);
@@ -179,8 +228,8 @@ export async function runSingleModelArena(
   };
 
   try {
-    // Generate prompt with exclusions and today's traded stocks
-    const prompt = generateArenaPrompt(excludedStocks, account, timeframe, stocksTradedToday);
+    // Generate prompt with exclusions, today's traded stocks, and real-time prices
+    const prompt = generateArenaPrompt(excludedStocks, account, timeframe, stocksTradedToday, currentPrices);
 
     // Query model
     const response = await queryModel(prompt);
@@ -240,7 +289,8 @@ export async function runAllModelsArena(
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
   queryModelFn: (modelId: string, prompt: string) => Promise<string>,
-  stocksTradedToday: string[] = []
+  stocksTradedToday: string[] = [],
+  currentPrices?: Record<string, number | null>
 ): Promise<ArenaRunResult> {
   const startTime = Date.now();
 
@@ -251,6 +301,9 @@ export async function runAllModelsArena(
   }
   console.log(`${'='.repeat(60)}`);
 
+  // Fetch prices once if not provided (for parallel execution)
+  const prices = currentPrices ?? await fetchCurrentPrices(ARENA_STOCK_UNIVERSE);
+
   // Run all models in parallel
   const resultsPromises = modelIds.map(modelId =>
     runSingleModelArena(
@@ -259,7 +312,8 @@ export async function runAllModelsArena(
       timeframe,
       account,
       (prompt) => queryModelFn(modelId, prompt),
-      stocksTradedToday
+      stocksTradedToday,
+      prices
     )
   );
 
@@ -335,11 +389,15 @@ export async function rerunModelsWithExclusions(
   previousExclusions: string[],
   timeframe: TradingTimeframe,
   account: AlpacaAccount,
-  queryModelFn: (modelId: string, prompt: string) => Promise<string>
+  queryModelFn: (modelId: string, prompt: string) => Promise<string>,
+  currentPrices?: Record<string, number | null>
 ): Promise<ArenaModelResult[]> {
   const allExclusions = [...new Set([...previousExclusions, ...additionalExclusions])];
 
   console.log(`\n🔄 Re-running ${modelIds.length} models with exclusions: ${additionalExclusions.join(', ')}`);
+
+  // Fetch prices once if not provided
+  const prices = currentPrices ?? await fetchCurrentPrices(ARENA_STOCK_UNIVERSE);
 
   const results = await Promise.all(
     modelIds.map(modelId =>
@@ -348,7 +406,9 @@ export async function rerunModelsWithExclusions(
         allExclusions,
         timeframe,
         account,
-        (prompt) => queryModelFn(modelId, prompt)
+        (prompt) => queryModelFn(modelId, prompt),
+        [],
+        prices
       )
     )
   );

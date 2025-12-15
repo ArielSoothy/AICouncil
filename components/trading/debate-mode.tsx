@@ -18,6 +18,7 @@ import { ResearchActivityPanel } from './research-activity-panel'
 import { ResearchReport } from '@/types/research-agents'
 import { useCostTrackerOptional } from '@/contexts/cost-tracker-context'
 import { getProviderForModel } from '@/lib/trading/models-config'
+import { ProviderBadge } from '@/components/shared/model-badge'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -54,6 +55,8 @@ interface DebateAgent {
     quantity?: number
     reasoning: string | ReasoningDetails
     confidence: number
+    // Provider billing proof (CLI = subscription, API = per-call)
+    providerType?: 'CLI' | 'API'
   }
 }
 
@@ -599,7 +602,10 @@ export function DebateMode() {
                       <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                         {agent.role}
                       </div>
-                      <div className="font-semibold">{agent.name}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold">{agent.name}</div>
+                        <ProviderBadge providerType={agent.decision.providerType} />
+                      </div>
                     </div>
                     <ActionBadge action={agent.decision.action} />
                   </div>

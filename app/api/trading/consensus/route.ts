@@ -5,14 +5,8 @@ import { generateDecisionPrompt, type ResearchFindings } from '@/lib/alpaca/enha
 import { runResearchAgents, type ResearchReport, type ResearchTier } from '@/lib/agents/research-agents';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { ResearchCache } from '@/lib/trading/research-cache';
-import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
-import { OpenAIProvider } from '@/lib/ai-providers/openai';
-import { GoogleProvider } from '@/lib/ai-providers/google';
-import { GroqProvider } from '@/lib/ai-providers/groq';
-import { MistralProvider } from '@/lib/ai-providers/mistral';
-import { PerplexityProvider } from '@/lib/ai-providers/perplexity';
-import { CohereProvider } from '@/lib/ai-providers/cohere';
-import { XAIProvider } from '@/lib/ai-providers/xai';
+import { getProviderForTier, isSubscriptionTier } from '@/lib/ai-providers/provider-factory';
+import type { PresetTier } from '@/lib/config/model-presets';
 import { getModelDisplayName, getProviderForModel as getProviderType } from '@/lib/trading/models-config';
 import { getModelInfo } from '@/lib/models/model-registry';
 import type { TradeDecision } from '@/lib/alpaca/types';
@@ -21,17 +15,8 @@ import { generateTradingJudgePrompt, parseTradingJudgeResponse } from '@/lib/tra
 import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
 import { calculateTradingScore, formatTradingScoreForPrompt, hashToSeed, type TradingScore } from '@/lib/trading/scoring-engine';
 
-// Initialize all providers
-const PROVIDERS = {
-  anthropic: new AnthropicProvider(),
-  openai: new OpenAIProvider(),
-  google: new GoogleProvider(),
-  groq: new GroqProvider(),
-  mistral: new MistralProvider(),
-  perplexity: new PerplexityProvider(),
-  cohere: new CohereProvider(),
-  xai: new XAIProvider(),
-};
+// NOTE: Provider initialization moved to provider-factory.ts
+// This route uses getProviderForTier() to get the appropriate provider based on tier
 
 // Initialize research cache
 const researchCache = new ResearchCache();
@@ -292,11 +277,21 @@ export async function POST(request: NextRequest) {
     const decisionsPromises = selectedModels.map(async (modelId: string) => {
       try {
         const providerType = getProviderType(modelId);
-        if (!providerType || !PROVIDERS[providerType]) {
+        if (!providerType) {
           throw new Error(`Unknown model or provider: ${modelId}`);
         }
 
-        const provider = PROVIDERS[providerType];
+        // Get provider based on tier - CLI for sub-pro/sub-max, API for others
+        const { provider, error: providerError } = getProviderForTier(
+          researchTier as PresetTier,
+          providerType
+        );
+
+        if (providerError || !provider) {
+          // For sub tiers: This is a billing protection error - do NOT fall back to API
+          throw new Error(providerError || `No provider available for ${providerType}`);
+        }
+
         const modelName = getModelDisplayName(modelId);
 
         backendLogger.info('model', `Querying ${modelName}`, { provider: providerType, modelId }, modelId);
@@ -357,6 +352,9 @@ export async function POST(request: NextRequest) {
         decision.toolsUsed = false; // Decision model didn't use tools
         decision.toolCallCount = 0; // But research agents used 30-40 tools
 
+        // Track provider type for billing proof in UI
+        decision.providerType = isSubscriptionTier(researchTier as PresetTier) ? 'CLI' : 'API';
+
         backendLogger.success('model', `${modelName} decided: ${decision.action}`, {
           confidence: decision.confidence,
           duration: `${Date.now() - modelStartTime}ms`
@@ -401,8 +399,14 @@ export async function POST(request: NextRequest) {
     // Step 5: Run LLM Judge Analysis (uses Llama 3.3 70B for intelligent synthesis)
     const judgePrompt = generateTradingJudgePrompt(decisions, votes, consensusAction);
 
-    // Use Groq's Llama 3.3 70B (free) as judge
-    const groqProvider = PROVIDERS.groq;
+    // Use Groq's Llama 3.3 70B (FREE) as judge - safe for all tiers
+    const { provider: groqProvider, error: groqError } = getProviderForTier(
+      researchTier as PresetTier,
+      'groq'
+    );
+    if (groqError || !groqProvider) {
+      throw new Error(groqError || 'Groq provider not available for judge');
+    }
     const judgeResponse = await groqProvider.query(judgePrompt, {
       provider: 'groq',
       model: 'llama-3.3-70b-versatile',

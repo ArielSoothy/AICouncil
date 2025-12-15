@@ -18,6 +18,7 @@ import { ResearchActivityPanel } from './research-activity-panel'
 import { ResearchReport } from '@/types/research-agents'
 import { useCostTrackerOptional } from '@/contexts/cost-tracker-context'
 import { getProviderForModel } from '@/lib/trading/models-config'
+import { ProviderBadge } from '@/components/shared/model-badge'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -39,6 +40,8 @@ interface TradingDecision {
   toolsUsed?: boolean
   toolCallCount?: number
   toolNames?: string[]
+  // Provider billing proof (CLI = subscription, API = per-call)
+  providerType?: 'CLI' | 'API'
 }
 
 interface AnalysisContext {
@@ -502,7 +505,10 @@ export function IndividualMode() {
             <div key={index} className="bg-card rounded-lg border p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex flex-col gap-1 flex-1 min-w-0">
-                  <h4 className="font-semibold">{decision.model}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold">{decision.model}</h4>
+                    <ProviderBadge providerType={decision.providerType} />
+                  </div>
                   {decision.toolsUsed && (
                     <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
                       <span>🔍</span>

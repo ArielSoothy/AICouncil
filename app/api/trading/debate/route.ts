@@ -5,18 +5,12 @@ import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
 import { runResearchAgents, type ResearchReport, type ResearchTier, type ResearchModelPreset } from '@/lib/agents/research-agents';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { ResearchCache } from '@/lib/trading/research-cache';
-import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
+import { getProviderForTier, isSubscriptionTier, getProvidersForTier } from '@/lib/ai-providers/provider-factory';
+import type { PresetTier } from '@/lib/config/model-presets';
+import { getModelDisplayName as getModelName, getProviderForModel as getProviderFromConfig } from '@/lib/trading/models-config';
 
 // Initialize research cache
 const researchCache = new ResearchCache();
-import { OpenAIProvider } from '@/lib/ai-providers/openai';
-import { GoogleProvider } from '@/lib/ai-providers/google';
-import { GroqProvider } from '@/lib/ai-providers/groq';
-import { MistralProvider } from '@/lib/ai-providers/mistral';
-import { PerplexityProvider } from '@/lib/ai-providers/perplexity';
-import { CohereProvider } from '@/lib/ai-providers/cohere';
-import { XAIProvider } from '@/lib/ai-providers/xai';
-import { getModelDisplayName as getModelName, getProviderForModel as getProviderFromConfig } from '@/lib/trading/models-config';
 import { getModelInfo } from '@/lib/models/model-registry';
 import type { TradeDecision } from '@/lib/alpaca/types';
 // Model fallback system imports
@@ -77,32 +71,6 @@ function extractJSON(text: string): string {
   }
 }
 
-// Helper function to get provider instance for a model
-function getProviderForModel(modelId: string, providers: {
-  anthropic: AnthropicProvider;
-  openai: OpenAIProvider;
-  google: GoogleProvider;
-  groq: GroqProvider;
-  mistral: MistralProvider;
-  perplexity: PerplexityProvider;
-  cohere: CohereProvider;
-  xai: XAIProvider;
-}) {
-  const providerType = getProviderFromConfig(modelId);
-
-  if (providerType === 'anthropic') return providers.anthropic;
-  if (providerType === 'openai') return providers.openai;
-  if (providerType === 'google') return providers.google;
-  if (providerType === 'groq') return providers.groq;
-  if (providerType === 'mistral') return providers.mistral;
-  if (providerType === 'perplexity') return providers.perplexity;
-  if (providerType === 'cohere') return providers.cohere;
-  if (providerType === 'xai') return providers.xai;
-
-  // Default to anthropic if unknown
-  return providers.anthropic;
-}
-
 // Helper function to get provider name from model ID
 function getProviderName(modelId: string): 'anthropic' | 'openai' | 'google' | 'groq' | 'mistral' | 'perplexity' | 'cohere' | 'xai' {
   const providerType = getProviderFromConfig(modelId);
@@ -120,20 +88,11 @@ interface FallbackInfo {
   round: number;
 }
 
-// Helper function to query with fallback
+// Helper function to query with fallback (tier-aware)
 async function queryWithFallback(
   prompt: string,
   modelId: string,
-  providers: {
-    anthropic: AnthropicProvider;
-    openai: OpenAIProvider;
-    google: GoogleProvider;
-    groq: GroqProvider;
-    mistral: MistralProvider;
-    perplexity: PerplexityProvider;
-    cohere: CohereProvider;
-    xai: XAIProvider;
-  },
+  tier: PresetTier,
   options: {
     temperature: number;
     maxTokens: number;
@@ -143,17 +102,26 @@ async function queryWithFallback(
   },
   fallbacks: FallbackInfo[],
   attemptedModels: string[] = []
-): Promise<{ response: string; modelUsed: string; tokensUsed?: number }> {
+): Promise<{ response: string; modelUsed: string; tokensUsed?: number; providerType: 'CLI' | 'API' }> {
   // Log warning if model has been unstable
   if (isModelUnstable(modelId)) {
     console.warn(`⚠️ [Debate ${options.role} R${options.round}] ${getFallbackModelName(modelId)} has been unstable recently`);
   }
 
   try {
-    const provider = getProviderForModel(modelId, providers);
+    const providerType = getProviderName(modelId);
+
+    // Get provider based on tier - CLI for sub-pro/sub-max, API for others
+    const { provider, error: providerError } = getProviderForTier(tier, providerType);
+
+    if (providerError || !provider) {
+      // For sub tiers: This is a billing protection error - do NOT fall back
+      throw new Error(providerError || `No provider available for ${providerType}`);
+    }
+
     const result = await provider.query(prompt, {
       model: modelId,
-      provider: getProviderName(modelId),
+      provider: providerType,
       temperature: options.temperature,
       maxTokens: options.maxTokens,
       enabled: true,
@@ -166,6 +134,7 @@ async function queryWithFallback(
       response: result.response,
       modelUsed: modelId,
       tokensUsed: result.tokens?.total,
+      providerType: isSubscriptionTier(tier) ? 'CLI' as const : 'API' as const, // Billing proof
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -174,7 +143,13 @@ async function queryWithFallback(
     // Record failure for instability tracking
     recordModelFailure(modelId, errorMessage);
 
-    // Get fallback model
+    // SUB TIERS: NO FALLBACK - prevents accidental API billing
+    if (isSubscriptionTier(tier)) {
+      console.error(`❌ Sub tier model failed, NO FALLBACK allowed: ${errorMessage}`);
+      throw new Error(`Sub tier error (no fallback): ${errorMessage}`);
+    }
+
+    // Get fallback model (only for non-sub tiers)
     const fallbackModelId = getFallbackModel(modelId, [...attemptedModels, modelId]);
 
     if (fallbackModelId) {
@@ -195,7 +170,7 @@ async function queryWithFallback(
       return queryWithFallback(
         prompt,
         fallbackModelId,
-        providers,
+        tier,
         options,
         fallbacks,
         [...attemptedModels, modelId]
@@ -470,17 +445,8 @@ export async function POST(request: NextRequest) {
       `${scoreSection}\n\n${researchSection}\n\n⚠️ DEBATE CONTEXT: The deterministic score recommends ${deterministicScore?.recommendation || 'N/A'}. Your role is to debate this recommendation.\n\n⚠️ ⚠️ ⚠️ CRITICAL OUTPUT FORMAT REQUIREMENT ⚠️ ⚠️ ⚠️`
     );
 
-    // Initialize all AI providers
-    const providers = {
-      anthropic: new AnthropicProvider(),
-      openai: new OpenAIProvider(),
-      google: new GoogleProvider(),
-      groq: new GroqProvider(),
-      mistral: new MistralProvider(),
-      perplexity: new PerplexityProvider(),
-      cohere: new CohereProvider(),
-      xai: new XAIProvider(),
-    };
+    // NOTE: Provider initialization moved to provider-factory.ts
+    // This route uses getProviderForTier() to get the appropriate provider based on tier
 
     // Track fallbacks for response
     const fallbacks: FallbackInfo[] = [];
@@ -495,13 +461,14 @@ export async function POST(request: NextRequest) {
     const analystResultWithFallback = await queryWithFallback(
       analystPrompt,
       analystModel,
-      providers,
+      researchTier as PresetTier,
       { temperature: 0.2, maxTokens: 2000, seed, role: 'Analyst', round: 1 },
       fallbacks
     );
     const analystDecision: TradeDecision = JSON.parse(extractJSON(analystResultWithFallback.response));
     analystDecision.toolsUsed = false; // Analyst didn't use tools (research agents did)
     analystDecision.toolCallCount = 0;
+    analystDecision.providerType = analystResultWithFallback.providerType; // Billing proof
     const analystModelUsed = analystResultWithFallback.modelUsed;
 
     // Critic (Dynamic model) - with fallback
@@ -509,13 +476,14 @@ export async function POST(request: NextRequest) {
     const criticResultWithFallback = await queryWithFallback(
       criticPrompt,
       criticModel,
-      providers,
+      researchTier as PresetTier,
       { temperature: 0.2, maxTokens: 2000, seed, role: 'Critic', round: 1 },
       fallbacks
     );
     const criticDecision: TradeDecision = JSON.parse(extractJSON(criticResultWithFallback.response));
     criticDecision.toolsUsed = false;
     criticDecision.toolCallCount = 0;
+    criticDecision.providerType = criticResultWithFallback.providerType; // Billing proof
     const criticModelUsed = criticResultWithFallback.modelUsed;
 
     // Synthesizer (Dynamic model) - with fallback
@@ -525,13 +493,14 @@ export async function POST(request: NextRequest) {
     const synthesizerResultWithFallback = await queryWithFallback(
       synthesizerPrompt,
       synthesizerModel,
-      providers,
+      researchTier as PresetTier,
       { temperature: 0.2, maxTokens: 2000, seed, role: 'Synthesizer', round: 1 },
       fallbacks
     );
     const synthesizerDecision: TradeDecision = JSON.parse(extractJSON(synthesizerResultWithFallback.response));
     synthesizerDecision.toolsUsed = false;
     synthesizerDecision.toolCallCount = 0;
+    synthesizerDecision.providerType = synthesizerResultWithFallback.providerType; // Billing proof
     const synthesizerModelUsed = synthesizerResultWithFallback.modelUsed;
 
     const round1 = [
@@ -557,13 +526,14 @@ export async function POST(request: NextRequest) {
     const analystR2ResultWithFallback = await queryWithFallback(
       analystR2Prompt,
       analystModelUsed, // Use the model from Round 1 (may be fallback)
-      providers,
+      researchTier as PresetTier,
       { temperature: 0.2, maxTokens: 2000, seed, role: 'Analyst', round: 2 },
       fallbacks
     );
     const analystR2Decision: TradeDecision = JSON.parse(extractJSON(analystR2ResultWithFallback.response));
     analystR2Decision.toolsUsed = false;
     analystR2Decision.toolCallCount = 0;
+    analystR2Decision.providerType = analystR2ResultWithFallback.providerType; // Billing proof
     const analystR2ModelUsed = analystR2ResultWithFallback.modelUsed;
 
     // Round 2 Critic refinement - with fallback
@@ -575,13 +545,14 @@ export async function POST(request: NextRequest) {
     const criticR2ResultWithFallback = await queryWithFallback(
       criticR2Prompt,
       criticModelUsed, // Use the model from Round 1 (may be fallback)
-      providers,
+      researchTier as PresetTier,
       { temperature: 0.2, maxTokens: 2000, seed, role: 'Critic', round: 2 },
       fallbacks
     );
     const criticR2Decision: TradeDecision = JSON.parse(extractJSON(criticR2ResultWithFallback.response));
     criticR2Decision.toolsUsed = false;
     criticR2Decision.toolCallCount = 0;
+    criticR2Decision.providerType = criticR2ResultWithFallback.providerType; // Billing proof
     const criticR2ModelUsed = criticR2ResultWithFallback.modelUsed;
 
     // Round 2 Synthesizer final decision - with fallback
@@ -593,13 +564,14 @@ export async function POST(request: NextRequest) {
     const synthesizerR2ResultWithFallback = await queryWithFallback(
       synthesizerR2Prompt,
       synthesizerModelUsed, // Use the model from Round 1 (may be fallback)
-      providers,
+      researchTier as PresetTier,
       { temperature: 0.2, maxTokens: 2000, seed, role: 'Synthesizer', round: 2 },
       fallbacks
     );
     const synthesizerR2Decision: TradeDecision = JSON.parse(extractJSON(synthesizerR2ResultWithFallback.response));
     synthesizerR2Decision.toolsUsed = false;
     synthesizerR2Decision.toolCallCount = 0;
+    synthesizerR2Decision.providerType = synthesizerR2ResultWithFallback.providerType; // Billing proof
     const synthesizerR2ModelUsed = synthesizerR2ResultWithFallback.modelUsed;
 
     const round2 = [

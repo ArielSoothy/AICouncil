@@ -14,7 +14,7 @@ import { getModelDisplayName, getProviderForModel as getProviderType } from '@/l
 import { getLockedStocks } from '@/lib/arena/stock-locks';
 import { getTodayRotation } from '@/lib/arena/rotation';
 import { getTodaysTrades } from '@/lib/arena/trade-guards';
-import { generateArenaPrompt, extractJSON } from '@/lib/arena/arena-research';
+import { generateArenaPrompt, extractJSON, fetchCurrentPrices, ARENA_STOCK_UNIVERSE } from '@/lib/arena/arena-research';
 import type { ArenaModelResult, StockConflict, ArenaRunResult } from '@/lib/arena/arena-research';
 
 // API Providers (for Free/Pro/Max tiers - per-call billing)
@@ -164,6 +164,17 @@ export async function POST(request: NextRequest) {
           const results: ArenaModelResult[] = [];
           const startTime = Date.now();
 
+          // PHASE 1: Fetch current market prices for all stocks
+          sendEvent({
+            type: 'phase_start',
+            phase: 1,
+            message: 'Fetching current market prices...',
+            timestamp: Date.now()
+          });
+          const currentPrices = await fetchCurrentPrices(ARENA_STOCK_UNIVERSE);
+          const priceCount = Object.values(currentPrices).filter(p => p !== null).length;
+          console.log(`📊 Arena: Got ${priceCount}/${ARENA_STOCK_UNIVERSE.length} prices`);
+
           // Run models sequentially to emit progress events in order
           for (const modelId of orderedModels) {
             const modelName = getModelDisplayName(modelId);
@@ -199,8 +210,8 @@ export async function POST(request: NextRequest) {
                 throw new Error(`No provider found for ${providerType}`);
               }
 
-              // Generate prompt
-              const prompt = generateArenaPrompt(lockedStocks, account, timeframe, stocksTradedToday);
+              // Generate prompt with real-time market prices
+              const prompt = generateArenaPrompt(lockedStocks, account, timeframe, stocksTradedToday, currentPrices);
 
               // Query model
               const response = await provider.query(prompt, {

@@ -32,18 +32,32 @@ export async function POST(request: NextRequest) {
     console.error('Failed to parse request body:', parseError)
     return new Response('Invalid request body', { status: 400 })
   }
-  const { 
-    query, 
-    agents = [], 
-    responseMode = 'normal', 
+  const {
+    query,
+    agents = [],
+    responseMode = 'normal',
     round1Mode = 'agents',
     rounds = 1,
     enableWebSearch = false,
     includeComparison = false,
     comparisonModel = null,
     includeConsensusComparison = false,
-    consensusModels = []
+    consensusModels = [],
+    tier = 'free' // Default to free tier
   } = body
+
+  // BILLING PROTECTION: Block sub tiers from using this API-only endpoint
+  // Sub tiers use CLI providers which this route doesn't support yet
+  if (tier === 'sub-pro' || tier === 'sub-max') {
+    console.error(`❌ BILLING PROTECTION: Sub tier (${tier}) attempted to use API-only debate endpoint`);
+    return new Response(
+      JSON.stringify({
+        error: `Agent Debate does not support ${tier} tier. Please use Free, Pro, or Max tier instead.`,
+        action: 'switch_tier'
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
   
   console.log('Debate request received:', {
     hasQuery: !!query,

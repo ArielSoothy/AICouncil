@@ -4,18 +4,12 @@ import { generateDecisionPrompt, type ResearchFindings } from '@/lib/alpaca/enha
 import { runResearchAgents, type ResearchReport, type ResearchTier, type ResearchModelPreset } from '@/lib/agents/research-agents';
 import type { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { ResearchCache } from '@/lib/trading/research-cache';
-import { AnthropicProvider } from '@/lib/ai-providers/anthropic';
+import { getProviderForTier, isSubscriptionTier } from '@/lib/ai-providers/provider-factory';
+import type { PresetTier } from '@/lib/config/model-presets';
+import { getModelDisplayName, getProviderForModel as getProviderType } from '@/lib/trading/models-config';
 
 // Initialize research cache
 const researchCache = new ResearchCache();
-import { OpenAIProvider } from '@/lib/ai-providers/openai';
-import { GoogleProvider } from '@/lib/ai-providers/google';
-import { GroqProvider } from '@/lib/ai-providers/groq';
-import { MistralProvider } from '@/lib/ai-providers/mistral';
-import { PerplexityProvider } from '@/lib/ai-providers/perplexity';
-import { CohereProvider } from '@/lib/ai-providers/cohere';
-import { XAIProvider } from '@/lib/ai-providers/xai';
-import { getModelDisplayName, getProviderForModel as getProviderType } from '@/lib/trading/models-config';
 import { getModelInfo } from '@/lib/models/model-registry';
 import { getFallbackModel, recordModelFailure, isModelUnstable } from '@/lib/trading/model-fallback';
 import type { TradeDecision } from '@/lib/alpaca/types';
@@ -23,17 +17,8 @@ import type { TradeDecision } from '@/lib/alpaca/types';
 import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
 import { calculateTradingScore, formatTradingScoreForPrompt, hashToSeed, type TradingScore } from '@/lib/trading/scoring-engine';
 
-// Initialize all providers
-const PROVIDERS = {
-  anthropic: new AnthropicProvider(),
-  openai: new OpenAIProvider(),
-  google: new GoogleProvider(),
-  groq: new GroqProvider(),
-  mistral: new MistralProvider(),
-  perplexity: new PerplexityProvider(),
-  cohere: new CohereProvider(),
-  xai: new XAIProvider(),
-};
+// NOTE: Provider initialization moved to provider-factory.ts
+// This route uses getProviderForTier() to get the appropriate provider based on tier
 
 /**
  * Robust JSON extraction from model responses
@@ -303,11 +288,20 @@ export async function POST(request: NextRequest) {
 
         try {
           const providerType = getProviderType(currentModelId);
-          if (!providerType || !PROVIDERS[providerType]) {
+          if (!providerType) {
             throw new Error(`Unknown model or provider: ${currentModelId}`);
           }
 
-          const provider = PROVIDERS[providerType];
+          // Get provider based on tier - CLI for sub-pro/sub-max, API for others
+          const { provider, error: providerError } = getProviderForTier(
+            researchTier as PresetTier,
+            providerType
+          );
+
+          if (providerError || !provider) {
+            // For sub tiers: This is a billing protection error - do NOT fall back
+            throw new Error(providerError || `No provider available for ${providerType}`);
+          }
 
           // Generate seed from deterministic score for reproducibility (OpenAI supports this)
           const seed = deterministicScore ? hashToSeed(deterministicScore.inputHash) : undefined;
@@ -341,6 +335,7 @@ export async function POST(request: NextRequest) {
             toolCallCount: 0, // But research agents used 30-40 tools
             tokens: result.tokens, // Include token usage for cost tracking
             fallbacks: fallbackLog.length > 0 ? fallbackLog : undefined, // Include fallback history if any
+            providerType: isSubscriptionTier(researchTier as PresetTier) ? 'CLI' as const : 'API' as const, // Billing proof
           };
 
         } catch (error) {
@@ -350,7 +345,22 @@ export async function POST(request: NextRequest) {
           recordModelFailure(currentModelId, errorMessage);
           attemptedModels.push(currentModelId);
 
-          // Try fallback model
+          // SUB TIERS: NO FALLBACK - prevents accidental API billing
+          // If sub tier fails, show error to user instead of trying other models
+          if (isSubscriptionTier(researchTier as PresetTier)) {
+            console.error(`❌ Sub tier model failed, NO FALLBACK allowed: ${errorMessage}`);
+            return {
+              model: modelName,
+              modelId: currentModelId,
+              action: 'HOLD' as const,
+              symbol: targetSymbol,
+              quantity: 0,
+              reasoning: `Error: ${errorMessage}. Sub tier does not allow fallback to API-billed models.`,
+              confidence: 0,
+            };
+          }
+
+          // Try fallback model (only for non-sub tiers)
           const fallbackModelId = getFallbackModel(currentModelId, attemptedModels);
 
           if (fallbackModelId) {

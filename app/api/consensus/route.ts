@@ -544,7 +544,21 @@ export async function POST(request: NextRequest) {
 
     // Use testing tier override if provided (for development testing only)
     const effectiveTier = testingTierOverride || userTier
-    
+
+    // BILLING PROTECTION: Block sub tiers from using this API-only endpoint
+    // Cast to string to avoid TypeScript issues with different tier type definitions
+    const tierString = String(effectiveTier);
+    if (tierString === 'sub-pro' || tierString === 'sub-max') {
+      console.error(`❌ BILLING PROTECTION: Sub tier (${effectiveTier}) attempted to use API-only consensus endpoint`);
+      return NextResponse.json(
+        {
+          error: `Consensus Mode does not support ${effectiveTier} tier. Please use Free, Pro, or Max tier instead.`,
+          action: 'switch_tier'
+        },
+        { status: 400 }
+      );
+    }
+
     // Validate models are available for user's tier (or premium query tier)
     const filteredModels = models.filter(model => 
       model.enabled && canUseModel(effectiveTier, model.provider, model.model)

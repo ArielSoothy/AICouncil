@@ -35,18 +35,15 @@ const API_PROVIDERS: Record<string, any> = {
   xai: new XAIProvider(),
 };
 
-// CLI Providers (subscription billing)
+// CLI Providers (subscription billing) + FREE providers only
+// CRITICAL: Do NOT include API-billed providers (mistral, perplexity, cohere, xai)
+// Only CLI providers (anthropic, openai, google) and FREE providers (groq)
 const CLI_PROVIDERS: Record<string, any> = {
-  anthropic: new ClaudeCLIProvider(),
-  openai: new CodexCLIProvider(),
-  google: new GoogleCLIProvider(),
-  // Groq, Mistral, Perplexity, Cohere, xAI don't have CLI providers
-  // They fall back to API providers (most are free anyway)
-  groq: new GroqProvider(),      // Groq is FREE - no cost concern
-  mistral: new MistralProvider(),
-  perplexity: new PerplexityProvider(),
-  cohere: new CohereProvider(),
-  xai: new XAIProvider(),
+  anthropic: new ClaudeCLIProvider(),   // CLI subscription
+  openai: new CodexCLIProvider(),       // CLI subscription
+  google: new GoogleCLIProvider(),      // CLI subscription
+  groq: new GroqProvider(),             // FREE - no billing
+  // REMOVED: mistral, perplexity, cohere, xai - would charge API fees for sub tiers
 };
 
 type UserTier = 'free' | 'pro' | 'max' | 'sub-pro' | 'sub-max';

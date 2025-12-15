@@ -173,7 +173,7 @@ export type TradingStreamEvent =
   | { type: 'phase_start'; phase: number; message: string; timestamp: number }
   | { type: 'agent_complete'; agent: string; timestamp: number }
   | { type: 'decision_start'; modelName: string; modelId: string; timestamp: number }
-  | { type: 'decision_complete'; modelName: string; modelId: string; action: string; confidence: number; duration: number; tokensUsed: number; inputTokens: number; outputTokens: number; timestamp: number }
+  | { type: 'decision_complete'; modelName: string; modelId: string; action: string; confidence: number; duration: number; tokensUsed: number; inputTokens: number; outputTokens: number; provider?: 'CLI' | 'API'; timestamp: number }
   | { type: 'judge_start'; message: string; timestamp: number }
   | { type: 'judge_complete'; judgeResult: any; timestamp: number }
   | { type: 'final_result'; result: any; timestamp: number }

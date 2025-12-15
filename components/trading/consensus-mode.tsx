@@ -19,6 +19,7 @@ import { useTradingPreset } from '@/contexts/trading-preset-context'
 import { getModelsForPreset } from '@/lib/config/model-presets'
 import { useCostTrackerOptional } from '@/contexts/cost-tracker-context'
 import { getProviderForModel } from '@/lib/trading/models-config'
+import { ProviderBadge } from '@/components/shared/model-badge'
 
 interface ReasoningDetails {
   bullishCase?: string
@@ -40,6 +41,8 @@ interface TradingDecision {
   toolsUsed?: boolean
   toolCallCount?: number
   toolNames?: string[]
+  // Provider billing proof (CLI = subscription, API = per-call)
+  providerType?: 'CLI' | 'API'
 }
 
 interface ConsensusResult {
@@ -935,7 +938,10 @@ function TradingDecisionCard({ decision }: { decision: TradingDecision }) {
       {/* Model Name & Action Badge */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex flex-col gap-1 flex-1 min-w-0">
-          <h4 className="font-medium text-sm truncate">{modelName}</h4>
+          <div className="flex items-center gap-2">
+            <h4 className="font-medium text-sm truncate">{modelName}</h4>
+            <ProviderBadge providerType={decision.providerType} />
+          </div>
           {decision.toolsUsed && (
             <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
               <span>🔍</span>
