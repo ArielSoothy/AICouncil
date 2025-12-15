@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Header } from '@/components/ui/header'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,6 +24,8 @@ import {
 import { UltraModelBadgeSelector } from '@/components/consensus/ultra-model-badge-selector'
 import { PortfolioDisplay } from '@/components/trading/portfolio-display'
 import { TimeframeSelector, TradingTimeframe } from '@/components/trading/timeframe-selector'
+import { ResearchProgressPanel, ResearchProgressPanelHandle } from '@/components/trading/research-progress-panel'
+import type { ResearchProgressEvent } from '@/types/research-progress'
 import { useGlobalModelTier } from '@/contexts/trading-preset-context'
 import { getModelsForPreset } from '@/lib/config/model-presets'
 import type { ModelConfig } from '@/types/consensus'
@@ -138,6 +140,9 @@ export default function ArenaModePage() {
   // Trading timeframe (Day Trading is default - most common use case)
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('day')
 
+  // Progress panel ref for real-time updates
+  const progressPanelRef = useRef<ResearchProgressPanelHandle>(null)
+
   // Helper to check if using subscription tier
   const isSubscriptionTier = globalTier === 'sub-pro' || globalTier === 'sub-max'
 
@@ -227,7 +232,7 @@ export default function ArenaModePage() {
     }
   }
 
-  // Phase 1: Run research phase (all models analyze in parallel)
+  // Phase 1: Run research phase (all models analyze with real-time progress)
   const executeResearchPhase = async () => {
     setExecuting(true)
     setResearchResults(null)
@@ -236,30 +241,87 @@ export default function ArenaModePage() {
     try {
       // Send selected models from frontend (not from DB config)
       const selectedModels = models.filter(m => m.enabled).map(m => m.model)
-      const response = await fetch('/api/arena/execute', {
+
+      // Use streaming endpoint for real-time progress
+      const response = await fetch('/api/arena/execute/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phase: 'research', tier: globalTier, selectedModels, timeframe })
+        body: JSON.stringify({ selectedModels, timeframe, tier: globalTier })
       })
 
       if (!response.ok) {
         const error = await response.json()
         alert(`Error: ${error.error}`)
+        setExecuting(false)
         return
       }
 
-      const data: ResearchResult = await response.json()
-      setResearchResults(data)
+      // Process SSE stream
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('No reader available')
+      }
 
-      // Auto-select all successful trades that don't have conflicts
-      const conflictSymbols = new Set(data.conflicts.map(c => c.symbol))
-      const autoSelected = new Set<string>()
-      for (const result of data.results) {
-        if (result.status === 'success' && result.selectedSymbol && !conflictSymbols.has(result.selectedSymbol)) {
-          autoSelected.add(result.modelId)
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // Process complete events in buffer
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const eventData = line.slice(6) // Remove 'data: ' prefix
+              const event: ResearchProgressEvent = JSON.parse(eventData)
+
+              // Send to progress panel
+              progressPanelRef.current?.processEvent(event)
+
+              // Handle final result
+              if (event.type === 'final_result') {
+                const research = event.research as any
+                const data: ResearchResult = {
+                  success: true,
+                  phase: 'research',
+                  runId: research?.runId || '',
+                  results: research?.results || [],
+                  conflicts: research?.conflicts || [],
+                  hasConflicts: research?.hasConflicts || false,
+                  uniqueStocks: research?.uniqueStocks || [],
+                  summary: research?.summary || { totalModels: 0, successfulModels: 0, failedModels: 0, duration: 0 },
+                  rotationOrder: research?.rotationOrder || [],
+                  lockedStocks: research?.lockedStocks || [],
+                }
+                setResearchResults(data)
+
+                // Auto-select all successful trades that don't have conflicts
+                const conflictSymbols = new Set(data.conflicts.map(c => c.symbol))
+                const autoSelected = new Set<string>()
+                for (const result of data.results) {
+                  if (result.status === 'success' && result.selectedSymbol && !conflictSymbols.has(result.selectedSymbol)) {
+                    autoSelected.add(result.modelId)
+                  }
+                }
+                setSelectedTrades(autoSelected)
+              }
+
+              // Handle error event
+              if (event.type === 'error') {
+                console.error('Arena stream error:', event.message)
+              }
+            } catch (e) {
+              console.warn('Failed to parse SSE event:', e)
+            }
+          }
         }
       }
-      setSelectedTrades(autoSelected)
 
     } catch (error) {
       console.error('Error executing research phase:', error)
@@ -583,6 +645,17 @@ export default function ArenaModePage() {
             </div>
           </div>
         </div>
+
+        {/* Real-Time Research Progress Panel */}
+        {executing && (
+          <div className="mb-8">
+            <ResearchProgressPanel
+              ref={progressPanelRef}
+              mode="arena"
+              onError={(error) => console.error('Progress panel error:', error)}
+            />
+          </div>
+        )}
 
         {/* Research Results (Phase 1) */}
         {researchResults && (

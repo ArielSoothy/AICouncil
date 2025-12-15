@@ -97,6 +97,7 @@ export interface DecisionCompleteEvent {
   modelName: string
   modelId: string
   action: 'BUY' | 'SELL' | 'HOLD'
+  symbol?: string // Stock symbol selected (for Arena mode)
   confidence: number
   duration: number // ms
   tokensUsed?: number // Total tokens (for cost tracking)
@@ -237,6 +238,7 @@ export interface DecisionProgress {
   modelId: string
   status: 'pending' | 'running' | 'complete' | 'error'
   action?: 'BUY' | 'SELL' | 'HOLD'
+  symbol?: string // Stock symbol selected (for Arena mode)
   confidence?: number
   duration: number // ms
   tokensUsed?: number // Total tokens (for cost tracking)

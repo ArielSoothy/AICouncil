@@ -23,6 +23,10 @@ interface ResearchProgressPanelProps {
   onComplete?: (data: { consensus: any; decisions: any[]; research: any }) => void
   /** Callback when error occurs */
   onError?: (error: string) => void
+  /** Mode: 'trading' shows all 3 phases, 'arena' skips Phase 1 (research agents) */
+  mode?: 'trading' | 'arena'
+  /** Custom title for the panel */
+  title?: string
 }
 
 /**
@@ -54,10 +58,14 @@ export const ResearchProgressPanel = forwardRef<ResearchProgressPanelHandle, Res
   initialState,
   onProgressUpdate,
   onComplete,
-  onError
+  onError,
+  mode = 'trading',
+  title
 }, ref) {
+  const isArenaMode = mode === 'arena'
   const [state, setState] = useState<ResearchProgressState>(() => ({
-    phase: 1,
+    // Arena starts at phase 2 (skips research agents), Trading starts at phase 1
+    phase: isArenaMode ? 2 : 1,
     agents: [
       { agent: 'technical', model: '', provider: '', status: 'pending', toolCalls: [], toolCount: 0, duration: 0, tokensUsed: 0 },
       { agent: 'fundamental', model: '', provider: '', status: 'pending', toolCalls: [], toolCount: 0, duration: 0, tokensUsed: 0 },
@@ -149,6 +157,7 @@ export const ResearchProgressPanel = forwardRef<ResearchProgressPanelHandle, Res
               ...updated.decisions[decisionIndex],
               status: 'complete',
               action: event.action,
+              symbol: event.symbol,
               confidence: event.confidence,
               duration: event.duration
             }
@@ -205,7 +214,7 @@ export const ResearchProgressPanel = forwardRef<ResearchProgressPanelHandle, Res
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-semibold flex items-center gap-2">
-            Research Progress
+            {title || (isArenaMode ? 'Arena Research Progress' : 'Research Progress')}
             {state.isCached && (
               <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-950 text-green-600 border border-green-200 dark:border-green-800">
                 ⚡ Cached
@@ -213,14 +222,19 @@ export const ResearchProgressPanel = forwardRef<ResearchProgressPanelHandle, Res
             )}
           </h3>
           <p className="text-sm text-muted-foreground">
-            {state.isCached ? 'Using cached research data - instant results' : `Phase ${state.phase}/3: ${state.phase === 1 ? 'Research Agents Gathering Data' : state.phase === 2 ? 'Decision Models Analyzing' : 'Judge Synthesizing Consensus'}`}
+            {state.isCached
+              ? 'Using cached research data - instant results'
+              : isArenaMode
+                ? (state.phase === 'complete' ? 'Analysis complete' : 'AI Models analyzing market opportunities...')
+                : `Phase ${state.phase}/3: ${state.phase === 1 ? 'Research Agents Gathering Data' : state.phase === 2 ? 'Decision Models Analyzing' : 'Judge Synthesizing Consensus'}`
+            }
           </p>
         </div>
-        <PhaseIndicator phase={state.phase} />
+        <PhaseIndicator phase={state.phase} isArenaMode={isArenaMode} />
       </div>
 
-      {/* Phase 1: Research Agents */}
-      {(state.phase === 1 || state.phase === 2 || state.phase === 3 || state.phase === 'complete') && (
+      {/* Phase 1: Research Agents (only shown in Trading mode, not Arena) */}
+      {!isArenaMode && (state.phase === 1 || state.phase === 2 || state.phase === 3 || state.phase === 'complete') && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
@@ -236,25 +250,33 @@ export const ResearchProgressPanel = forwardRef<ResearchProgressPanelHandle, Res
         </div>
       )}
 
-      {/* Phase 2: Decision Models */}
-      {(state.phase === 2 || state.phase === 3 || state.phase === 'complete') && state.decisions.length > 0 && (
+      {/* Phase 2: Decision Models (Phase 1 in Arena mode) */}
+      {(state.phase === 2 || state.phase === 3 || state.phase === 'complete') && (isArenaMode || state.decisions.length > 0) && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-              <span className="text-purple-600 dark:text-purple-300 font-semibold text-sm">2</span>
+              <span className="text-purple-600 dark:text-purple-300 font-semibold text-sm">{isArenaMode ? '1' : '2'}</span>
             </div>
-            <h4 className="font-medium">Decision Models ({state.decisions.length})</h4>
+            <h4 className="font-medium">
+              {isArenaMode ? 'AI Model Decisions' : 'Decision Models'} ({state.decisions.length})
+            </h4>
           </div>
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-            {state.decisions.map((decision) => (
-              <DecisionCard key={decision.modelId} decision={decision} />
-            ))}
-          </div>
+          {state.decisions.length > 0 ? (
+            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+              {state.decisions.map((decision) => (
+                <DecisionCard key={decision.modelId} decision={decision} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground p-4 border border-dashed rounded-lg text-center">
+              Waiting for models to start analyzing...
+            </div>
+          )}
         </div>
       )}
 
-      {/* Phase 3: Judge Consensus */}
-      {(state.phase === 3 || state.phase === 'complete') && (
+      {/* Phase 3: Judge Consensus (only shown in Trading mode, not Arena) */}
+      {!isArenaMode && (state.phase === 3 || state.phase === 'complete') && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
@@ -293,12 +315,22 @@ export const ResearchProgressPanel = forwardRef<ResearchProgressPanelHandle, Res
 })
 
 /** Phase Indicator Component */
-function PhaseIndicator({ phase }: { phase: 1 | 2 | 3 | 'complete' }) {
+function PhaseIndicator({ phase, isArenaMode = false }: { phase: 1 | 2 | 3 | 'complete'; isArenaMode?: boolean }) {
   if (phase === 'complete') {
     return (
       <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 dark:bg-green-950">
         <CheckCircle className="w-4 h-4 text-green-600" />
         <span className="text-sm font-medium text-green-600">Complete</span>
+      </div>
+    )
+  }
+
+  // Arena mode: simpler indicator (no phase count)
+  if (isArenaMode) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950">
+        <Loader2 className="w-4 h-4 text-purple-600 animate-spin" />
+        <span className="text-sm font-medium text-purple-600">Analyzing</span>
       </div>
     )
   }
@@ -399,10 +431,18 @@ function DecisionCard({ decision }: { decision: DecisionProgress }) {
 
       {decision.status === 'complete' && (
         <div className="space-y-1 text-xs">
+          {decision.symbol && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Symbol:</span>
+              <span className="font-mono font-bold text-primary">{decision.symbol}</span>
+            </div>
+          )}
           {decision.action && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">Action:</span>
-              <span className="font-semibold">{decision.action}</span>
+              <span className={`font-semibold ${decision.action === 'BUY' ? 'text-green-600' : decision.action === 'SELL' ? 'text-red-600' : ''}`}>
+                {decision.action}
+              </span>
             </div>
           )}
           {decision.confidence !== undefined && (

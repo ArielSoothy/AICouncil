@@ -87,7 +87,7 @@ export interface StockConflict {
  * Generate the stock selection + decision prompt
  * Model picks stock AND provides full trade decision in one call
  */
-function generateArenaPrompt(
+export function generateArenaPrompt(
   excludedStocks: string[],
   account: AlpacaAccount,
   timeframe: TradingTimeframe,
@@ -370,7 +370,7 @@ export async function runDeepResearch(
 /**
  * Extract JSON from model response (handles markdown code blocks)
  */
-function extractJSON(text: string): string {
+export function extractJSON(text: string): string {
   let cleaned = text.trim();
 
   // Remove markdown code blocks
@@ -393,9 +393,9 @@ function extractJSON(text: string): string {
   }
 
   // Fix common JSON issues
+  // Remove trailing commas before closing braces/brackets
   cleaned = cleaned
     .replace(/,(\s*[}\]])/g, '$1')
-    .replace(/'/g, '"')
     .trim();
 
   return cleaned;
