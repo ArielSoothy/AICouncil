@@ -374,7 +374,7 @@ import { ModelBadge, ModelDropdownItem } from '@/components/shared/model-badge'
 |------|---------|--------------|
 | **docs/workflow/WORKFLOW.md** | Step-by-step session method | Every session start |
 | **docs/workflow/PRIORITIES.md** | Current TODOs + progress | Every session start |
-| **docs/workflow/FEATURES.md** | Protected features | Before any changes |
+| **docs/workflow/FEATURES.md** | Protected features INDEX | Before any changes |
 | **docs/architecture/PROJECT_OVERVIEW.md** | Architecture + vision + status | For context |
 | **docs/architecture/PROJECT_STRUCTURE.md** | Complete codebase structure + navigation | When navigating codebase or adding files |
 | **docs/architecture/UNIFIED_DEBATE_ENGINE.md** | 🎯 Core product architecture, research modes, MADR | Debate engine work |
@@ -383,6 +383,18 @@ import { ModelBadge, ModelDropdownItem } from '@/components/shared/model-badge'
 | **docs/guides/SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
 | **docs/features/TRADING_ENHANCEMENTS.md** | Paper trading system (Phase 2) | Trading feature work |
 | **DOCUMENTATION_MAP.md** | Complete documentation index | Finding specific docs |
+
+### 📁 Protected Features (Split Files - December 2025)
+
+**IMPORTANT**: Features documentation is split for readability. When checking protected features:
+
+| File | Features | Check Before Modifying |
+|------|----------|----------------------|
+| **docs/features/CORE_DEBATE.md** | 1-18 | Debate system, UI, memory, agents |
+| **docs/features/TRADING_SYSTEM.md** | 19-54 | Trading, providers, models, research |
+| **docs/features/ARENA_MODE.md** | 55-56 | Arena competition mode |
+
+**Always read the relevant split file before modifying any feature!**
 
 
 ## 📋 CONVERSATION PROMPT TEMPLATE:

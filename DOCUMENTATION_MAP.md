@@ -129,9 +129,21 @@ Daily workflow, task management, and protected features:
 |------|---------|--------------|
 | **WORKFLOW.md** | Step-by-step development process | Every session start |
 | **PRIORITIES.md** | Current TODO list & progress tracking | Every session start |
-| **FEATURES.md** | Protected features (prevent breakage) | Before any code changes |
+| **FEATURES.md** | Protected features INDEX (see split files below) | Before any code changes |
 
 **Path**: `/docs/workflow/`
+
+### 📁 Protected Features (Split Files - December 2025)
+
+Features documentation is split for better readability:
+
+| File | Features | Check Before Modifying |
+|------|----------|----------------------|
+| **CORE_DEBATE.md** | 1-18 | Debate system, UI, memory, agents |
+| **TRADING_SYSTEM.md** | 19-54 | Trading, providers, models, research |
+| **ARENA_MODE.md** | 55-56 | Arena competition mode |
+
+**Path**: `/docs/features/`
 
 ---
 
