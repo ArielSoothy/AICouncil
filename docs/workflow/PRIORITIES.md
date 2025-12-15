@@ -17,17 +17,30 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ Comprehensive Website Testing & Bug Fixes (December 15, 2025)
-**Goal:** Test all modes of website in Free tier, fix issues found
+**Current Session:** ✅ Arena Real-Time Prices + CLI Provider Fixes (December 15, 2025)
+**Goal:** Fix Arena price guessing bug, verify CLI subscription mode, end-to-end test
 
 **Progress:**
-- ✅ Tested Consensus Mode (Free tier) - Working perfectly
-- ✅ Tested Agent Debate (Free tier) - All 4 agents respond, Round 1+2 work
-- ✅ Fixed Issue #1: Model not found in TRADING_MODELS warnings
-- ✅ Fixed Issue #4: Auth page showing old "Consensus AI" branding
-- ✅ Clarified Issue #5: Admin page requires auth (not a bug)
-- ✅ Clarified Issue #6: Judge web search "No results" is non-blocking
-- ⚠️ Issue #2 OPEN: Trading Debate Mode fails with IBKR 401 error
+- ✅ Fixed Arena price bug - models now use real-time Alpaca prices
+- ✅ Added `fetchCurrentPrices()` to get 31 stock prices from Alpaca API
+- ✅ CLI providers properly remove API keys from env (subscription mode)
+- ✅ TLS warning filter (Node.js warnings not treated as errors)
+- ✅ ProviderBadge shows 🔑 CLI / 🌐 API on all Arena results
+- ✅ End-to-end test with Groq FREE model (llama-3.3-70b-versatile)
+- ✅ Test result: AAPL entry $274.67 vs current $274.71 (< 0.02% error!)
+- ✅ No mock data, no fake fallbacks - production ready
+
+**Before vs After:**
+| Model | Before (Training Data) | After (Real-Time) |
+|-------|------------------------|-------------------|
+| GPT-5 Codex | NVDA @ $890 ❌ | NVDA @ ~$177 ✅ |
+| Gemini 2.5 Pro | NVDA @ $150 ❌ | NVDA @ ~$177 ✅ |
+
+**Commits:**
+- `86ae662` - feat: Arena real-time prices + end-to-end validation
+
+**Previous Session:** ✅ Comprehensive Website Testing & Bug Fixes (December 15, 2025)
+**Goal:** Test all modes of website in Free tier, fix issues found
 
 **Issues Summary:**
 | # | Issue | Status |

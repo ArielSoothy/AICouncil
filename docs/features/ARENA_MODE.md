@@ -86,3 +86,27 @@
 - **TypeScript**: 0 errors
 - **Last Modified**: December 15, 2025
 - **DO NOT**: Create separate progress panel for Arena (reuses Trading component), remove symbol display from decision cards
+
+### 57. Arena Real-Time Market Prices
+- **Status**: ✅ ACTIVE & COMPLETE (December 15, 2025)
+- **Location**:
+  - `lib/arena/arena-research.ts` - `fetchCurrentPrices()` function
+  - `app/api/arena/execute/stream/route.ts` - Price fetching before model loop
+- **Purpose**: Provide real-time market prices to AI models instead of letting them guess from training data
+- **Key Features**:
+  - **Price Fetching**: `fetchCurrentPrices(ARENA_STOCK_UNIVERSE)` fetches 31 stock prices in parallel from Alpaca API
+  - **Prompt Injection**: Prices shown in `## CURRENT MARKET PRICES` section
+  - **Enforced Usage**: Models instructed to use ACTUAL price, not guess
+  - **Error Handling**: Graceful fallback for individual stock failures
+- **Before Fix** (Training Data Guessing):
+  - GPT-5 Codex: NVDA @ $890 (late 2024 training)
+  - Gemini 2.5 Pro: NVDA @ $150 (early 2024 training)
+- **After Fix** (Real-Time Prices):
+  - All models: NVDA @ ~$177 (current market)
+  - Entry matches current price within $0.04 (< 0.02% error)
+- **Test Validation**: End-to-end with Groq llama-3.3-70b-versatile (FREE)
+  - AAPL Entry: $274.67 vs Current: $274.71 ✅
+  - Server logs: `📊 Got prices for 31/31 stocks`
+- **TypeScript**: 0 errors
+- **Last Modified**: December 15, 2025
+- **DO NOT**: Remove price fetching, let models guess prices from training data
