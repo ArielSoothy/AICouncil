@@ -17,22 +17,33 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ Model Health Check System & Production Fixes (December 14, 2025)
-**Goal:** Test all models, fix broken IDs, hide dev tools on production
+**Current Session:** ✅ Comprehensive Website Testing & Bug Fixes (December 15, 2025)
+**Goal:** Test all modes of website in Free tier, fix issues found
 
 **Progress:**
-- ✅ Added Model Health Check ping test (ultra-cheap ~$0.0001/model)
-- ✅ Added 3 test types: ping, JSON, tools
-- ✅ Fixed maxTokens from 10 to 50 (OpenAI minimum)
-- ✅ Fixed GPT-5.1 Codex Mini ID: `gpt-5-codex-mini` → `gpt-5.1-codex-mini`
-- ✅ Fixed Claude 4.5 Opus ID: `claude-opus-4-5-20251124` → `claude-opus-4-5-20251101`
-- ✅ Added 3 new model statuses: `deprecated`, `responses_api_only`, `not_supported`
-- ✅ Marked broken models: Codex Mini Latest, GPT-3.5 Turbo 16k, Grok 2 Image
-- ✅ Removed Gemini from research models (5 req/min too low for 4 agents)
-- ✅ Fixed production detection with hostname-based check (reliable client-side)
-- ✅ ModelTester now hidden on production via `checkIsProduction()` function
+- ✅ Tested Consensus Mode (Free tier) - Working perfectly
+- ✅ Tested Agent Debate (Free tier) - All 4 agents respond, Round 1+2 work
+- ✅ Fixed Issue #1: Model not found in TRADING_MODELS warnings
+- ✅ Fixed Issue #4: Auth page showing old "Consensus AI" branding
+- ✅ Clarified Issue #5: Admin page requires auth (not a bug)
+- ✅ Clarified Issue #6: Judge web search "No results" is non-blocking
+- ⚠️ Issue #2 OPEN: Trading Debate Mode fails with IBKR 401 error
 
-**Test Results:** 32/37 models passed (86%), 5 rate-limited Grok models (temporary)
+**Issues Summary:**
+| # | Issue | Status |
+|---|-------|--------|
+| 1 | Model not found warnings | ✅ Fixed |
+| 2 | Trading Debate IBKR error | 🔍 Open |
+| 3 | Portfolio loading (IBKR offline) | ✅ Expected |
+| 4 | Auth page branding | ✅ Fixed |
+| 5 | Admin page loading | ✅ Requires auth |
+| 6 | Judge web search | ✅ Non-blocking |
+
+**Previous Session:** ✅ Model Health Check System & Production Fixes (December 14, 2025)
+- Added Model Health Check ping test (ultra-cheap ~$0.0001/model)
+- Fixed broken model IDs (GPT-5.1 Codex Mini, Claude 4.5 Opus)
+- ModelTester hidden on production
+- Test Results: 32/37 models passed (86%)
 
 **Files Modified:**
 ```
