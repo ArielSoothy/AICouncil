@@ -359,10 +359,26 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Get broker account info and positions
     const broker = getActiveBroker();
-    const [brokerAccount, brokerPositions] = await Promise.all([
-      broker.getAccount(),
-      broker.getPositions(),
-    ]);
+    let brokerAccount;
+    let brokerPositions;
+
+    try {
+      [brokerAccount, brokerPositions] = await Promise.all([
+        broker.getAccount(),
+        broker.getPositions(),
+      ]);
+    } catch (brokerError) {
+      const errorMsg = brokerError instanceof Error ? brokerError.message : 'Unknown broker error';
+      console.error('❌ Broker connection failed:', errorMsg);
+      return NextResponse.json(
+        {
+          error: 'Broker not connected. Please authenticate with IBKR Gateway or switch to Alpaca.',
+          details: errorMsg,
+          action: 'authenticate_broker'
+        },
+        { status: 401 }
+      );
+    }
 
     // Map to legacy format for compatibility with existing prompts
     const account = {

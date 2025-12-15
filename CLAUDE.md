@@ -2,6 +2,23 @@
 
 **AI Council Development - Structured Workflow System**
 
+## 🚫 ABSOLUTE RULES - NEVER VIOLATE
+
+### NO MOCK DATA - EVER
+```
+⛔ NEVER use mock data, fake data, placeholder data, or dummy data
+⛔ NEVER suggest "fallback to mock data" as a solution
+⛔ NEVER create test fixtures that pretend to be real data
+
+✅ If a service is unavailable → show clear error message to user
+✅ If auth fails → prompt user to authenticate
+✅ If API is down → tell user to check connection/credentials
+```
+
+**Why**: Mock data hides real problems and creates false confidence. Users deserve to see real errors so they can fix them.
+
+---
+
 ## 🛡️ DEFENSIVE DEVELOPMENT - PREVENTING FEATURE BREAKAGE
 
 ### The Core Problem:
