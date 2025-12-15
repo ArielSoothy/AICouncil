@@ -20,6 +20,8 @@ import {
   Target,
   Shield,
   Zap,
+  History,
+  DollarSign,
 } from 'lucide-react'
 import { UltraModelBadgeSelector } from '@/components/consensus/ultra-model-badge-selector'
 import { PortfolioDisplay } from '@/components/trading/portfolio-display'
@@ -116,6 +118,32 @@ interface TodaysActivity {
   summary: string
 }
 
+interface TradeHistoryItem {
+  id: string
+  modelId: string
+  modelName: string
+  provider: string
+  symbol: string
+  action: string
+  quantity: number
+  entryPrice: number | null
+  stopLoss: number | null
+  takeProfit: number | null
+  exitPrice: number | null
+  filledPrice: number | null
+  pnl: number | null
+  pnlPercent: number | null
+  status: 'active' | 'closed'
+  bracketStatus: string | null
+  exitReason: string | null
+  confidence: number | null
+  reasoning: string
+  timeframe: string | null
+  createdAt: string
+  filledAt: string | null
+  exitAt: string | null
+}
+
 export default function ArenaModePage() {
   // Global tier from header selector
   const { globalTier } = useGlobalModelTier()
@@ -139,6 +167,14 @@ export default function ArenaModePage() {
   // Today's activity tracking
   const [todaysActivity, setTodaysActivity] = useState<TodaysActivity | null>(null)
 
+  // Trade History
+  const [tradeHistory, setTradeHistory] = useState<TradeHistoryItem[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'active' | 'closed'>('all')
+  const [historyExpanded, setHistoryExpanded] = useState(true)
+  const [expandedTradeIds, setExpandedTradeIds] = useState<Set<string>>(new Set())
+  const [historySummary, setHistorySummary] = useState({ total: 0, active: 0, closed: 0 })
+
   // Trading timeframe (Day Trading is default - most common use case)
   const [timeframe, setTimeframe] = useState<TradingTimeframe>('day')
 
@@ -152,6 +188,7 @@ export default function ArenaModePage() {
     fetchLeaderboard()
     fetchConfig()
     fetchTodaysActivity()
+    fetchTradeHistory()
   }, [])
 
   const fetchTodaysActivity = async () => {
@@ -164,6 +201,66 @@ export default function ArenaModePage() {
     } catch (error) {
       console.error('Error fetching today\'s activity:', error)
     }
+  }
+
+  const fetchTradeHistory = async (filter: 'all' | 'active' | 'closed' = historyFilter) => {
+    setHistoryLoading(true)
+    try {
+      const response = await fetch(`/api/arena/history?status=${filter}&limit=50`)
+      const data = await response.json()
+      if (data.success) {
+        setTradeHistory(data.trades)
+        setHistorySummary({
+          total: data.totalTrades,
+          active: data.activeTrades,
+          closed: data.closedTrades,
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching trade history:', error)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const handleHistoryFilterChange = (filter: 'all' | 'active' | 'closed') => {
+    setHistoryFilter(filter)
+    fetchTradeHistory(filter)
+  }
+
+  const toggleTradeExpanded = (tradeId: string) => {
+    const newExpanded = new Set(expandedTradeIds)
+    if (newExpanded.has(tradeId)) {
+      newExpanded.delete(tradeId)
+    } else {
+      newExpanded.add(tradeId)
+    }
+    setExpandedTradeIds(newExpanded)
+  }
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays}d ago`
+    return date.toLocaleDateString()
+  }
+
+  const formatExitReason = (reason: string | null) => {
+    if (!reason) return 'Unknown'
+    if (reason.includes('stop_hit') || reason.includes('stop_loss')) return 'Stop Loss Hit'
+    if (reason.includes('profit_hit') || reason.includes('take_profit')) return 'Take Profit Hit'
+    if (reason.includes('expired')) return 'Timeframe Expired'
+    if (reason.includes('cancelled')) return 'Cancelled'
+    return reason.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
   }
 
   // REPLACE models when tier changes (same as other modes)
@@ -561,6 +658,208 @@ export default function ArenaModePage() {
           </div>
         )}
 
+        {/* Trade History Panel - Collapsible */}
+        <div className="mb-8 bg-card rounded-lg border">
+          <button
+            onClick={() => setHistoryExpanded(!historyExpanded)}
+            className="w-full p-6 flex items-center justify-between hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <History className="w-6 h-6 text-primary" />
+              <div className="text-left">
+                <h2 className="text-xl font-semibold">Trade History</h2>
+                <p className="text-sm text-muted-foreground">
+                  {historySummary.total} total trades ({historySummary.active} active, {historySummary.closed} closed)
+                </p>
+              </div>
+            </div>
+            {historyExpanded ? (
+              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+            )}
+          </button>
+
+          {historyExpanded && (
+            <div className="border-t">
+              {/* Filter Tabs */}
+              <div className="p-4 border-b bg-muted/30">
+                <div className="flex gap-2">
+                  {(['all', 'active', 'closed'] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => handleHistoryFilterChange(filter)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        historyFilter === filter
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted hover:bg-muted/80'
+                      }`}
+                    >
+                      {filter === 'all' ? 'All' : filter === 'active' ? 'Active' : 'Closed'}
+                      <span className="ml-1 text-xs opacity-70">
+                        ({filter === 'all' ? historySummary.total : filter === 'active' ? historySummary.active : historySummary.closed})
+                      </span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => fetchTradeHistory(historyFilter)}
+                    className="ml-auto px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                    disabled={historyLoading}
+                  >
+                    <RefreshCw className={`w-4 h-4 ${historyLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Trade List */}
+              <div className="divide-y max-h-[600px] overflow-y-auto">
+                {historyLoading ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin" />
+                    Loading trade history...
+                  </div>
+                ) : tradeHistory.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <History className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-lg font-medium">No trades yet</p>
+                    <p className="text-sm">Execute trades in Arena Mode to see your history here</p>
+                  </div>
+                ) : (
+                  tradeHistory.map((trade) => {
+                    const isExpanded = expandedTradeIds.has(trade.id)
+                    const isProfitable = trade.pnl !== null && trade.pnl > 0
+                    const isLoss = trade.pnl !== null && trade.pnl < 0
+
+                    return (
+                      <div key={trade.id} className="p-4 hover:bg-muted/30 transition-colors">
+                        {/* Trade Header */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* Symbol */}
+                              <span className="font-mono font-bold text-lg text-primary">
+                                {trade.symbol}
+                              </span>
+
+                              {/* Action Badge */}
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                trade.action === 'BUY'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                  : trade.action === 'SELL'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                              }`}>
+                                {trade.action}
+                              </span>
+
+                              {/* Model Name */}
+                              <span className="text-sm font-medium">{trade.modelName}</span>
+
+                              {/* Status Badge */}
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                trade.status === 'active'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                  : isProfitable
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                  : isLoss
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                              }`}>
+                                {trade.status === 'active' ? 'ACTIVE' : 'CLOSED'}
+                              </span>
+                            </div>
+
+                            {/* Price Row */}
+                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                              <div className="flex items-center gap-1">
+                                <Target className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-muted-foreground">Entry:</span>
+                                <span className="font-medium">
+                                  ${trade.entryPrice?.toFixed(2) || trade.filledPrice?.toFixed(2) || 'Market'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Shield className="w-3 h-3 text-red-500" />
+                                <span className="text-muted-foreground">SL:</span>
+                                <span className="text-red-600">${trade.stopLoss?.toFixed(2) || '-'}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3 text-green-500" />
+                                <span className="text-muted-foreground">TP:</span>
+                                <span className="text-green-600">${trade.takeProfit?.toFixed(2) || '-'}</span>
+                              </div>
+                            </div>
+
+                            {/* P&L Row for closed trades */}
+                            {trade.status === 'closed' && trade.pnl !== null && (
+                              <div className="mt-2 flex items-center gap-4 text-sm">
+                                <div className="flex items-center gap-1">
+                                  <DollarSign className="w-3 h-3" />
+                                  <span className="text-muted-foreground">Exit:</span>
+                                  <span className="font-medium">${trade.exitPrice?.toFixed(2) || '-'}</span>
+                                </div>
+                                <div className={`flex items-center gap-1 font-semibold ${
+                                  isProfitable ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  {isProfitable ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                  <span>
+                                    {isProfitable ? '+' : ''}${trade.pnl.toFixed(2)}
+                                    {trade.pnlPercent !== null && (
+                                      <span className="ml-1 text-xs">
+                                        ({isProfitable ? '+' : ''}{trade.pnlPercent.toFixed(1)}%)
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatExitReason(trade.exitReason)}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Meta Row */}
+                            <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                              {trade.confidence !== null && (
+                                <span>Confidence: {(trade.confidence * 100).toFixed(0)}%</span>
+                              )}
+                              {trade.timeframe && (
+                                <span className="capitalize">{trade.timeframe} Trading</span>
+                              )}
+                              <span>{formatTimeAgo(trade.createdAt)}</span>
+                            </div>
+                          </div>
+
+                          {/* Expand Button */}
+                          {trade.reasoning && (
+                            <button
+                              onClick={() => toggleTradeExpanded(trade.id)}
+                              className="p-2 hover:bg-muted rounded-lg"
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Expanded Reasoning */}
+                        {isExpanded && trade.reasoning && (
+                          <div className="mt-3 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                            <strong className="text-foreground">Reasoning:</strong>
+                            <p className="mt-1">{trade.reasoning}</p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Trading Timeframe Selection */}
         <div className="mb-8 bg-card rounded-lg border p-6">
           <TimeframeSelector value={timeframe} onChange={setTimeframe} />
@@ -949,19 +1248,95 @@ export default function ArenaModePage() {
                 ) : leaderboard.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
-                      <div className="flex flex-col items-center gap-2">
-                        <Trophy className="w-12 h-12 text-muted-foreground/50" />
-                        <p className="text-lg font-medium">No trading data yet</p>
-                        <p className="text-sm">Run Arena Mode to start the competition!</p>
-                        <Button
-                          onClick={executeResearchPhase}
-                          disabled={executing || !config?.is_enabled}
-                          className="mt-4 gap-2"
-                        >
-                          <Play className="w-4 h-4" />
-                          Start First Run
-                        </Button>
-                      </div>
+                      {historySummary.active > 0 ? (
+                        /* Enhanced empty state - show active trades info */
+                        <div className="flex flex-col items-center gap-4 max-w-md mx-auto">
+                          <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900 w-full">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Clock className="w-5 h-5 text-blue-500" />
+                              <p className="font-medium text-blue-800 dark:text-blue-200">
+                                Leaderboard Updates When Trades Close
+                              </p>
+                            </div>
+                            <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                              You have <strong>{historySummary.active} active trade{historySummary.active !== 1 ? 's' : ''}</strong> in progress.
+                              The leaderboard will populate when positions close.
+                            </p>
+                            {/* Show active trades from history */}
+                            {tradeHistory.filter(t => t.status === 'active').length > 0 && (
+                              <div className="space-y-2 text-left">
+                                {tradeHistory.filter(t => t.status === 'active').slice(0, 5).map((trade) => (
+                                  <div
+                                    key={trade.id}
+                                    className="flex items-center gap-2 p-2 bg-blue-100/50 dark:bg-blue-900/30 rounded text-sm"
+                                  >
+                                    <span className="font-mono font-bold text-blue-800 dark:text-blue-200">
+                                      {trade.modelName}
+                                    </span>
+                                    <span className="text-blue-600 dark:text-blue-400">→</span>
+                                    <span className="font-mono">{trade.symbol}</span>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                      trade.action === 'BUY'
+                                        ? 'bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                        : 'bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                    }`}>
+                                      {trade.action}
+                                    </span>
+                                  </div>
+                                ))}
+                                {tradeHistory.filter(t => t.status === 'active').length > 5 && (
+                                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                                    +{tradeHistory.filter(t => t.status === 'active').length - 5} more active trades...
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <p className="font-medium mb-1">Positions will close when:</p>
+                            <ul className="space-y-1">
+                              <li className="flex items-center gap-2">
+                                <CheckCircle className="w-3 h-3 text-green-500" />
+                                Stop-loss is hit
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <CheckCircle className="w-3 h-3 text-green-500" />
+                                Take-profit is hit
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <CheckCircle className="w-3 h-3 text-green-500" />
+                                Timeframe expires (Day: 6h, Swing: 48h)
+                              </li>
+                            </ul>
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setHistoryExpanded(true)
+                              handleHistoryFilterChange('active')
+                            }}
+                            className="gap-2"
+                          >
+                            <History className="w-4 h-4" />
+                            View Trade History
+                          </Button>
+                        </div>
+                      ) : (
+                        /* Original empty state - no trades at all */
+                        <div className="flex flex-col items-center gap-2">
+                          <Trophy className="w-12 h-12 text-muted-foreground/50" />
+                          <p className="text-lg font-medium">No trading data yet</p>
+                          <p className="text-sm">Run Arena Mode to start the competition!</p>
+                          <Button
+                            onClick={executeResearchPhase}
+                            disabled={executing || !config?.is_enabled}
+                            className="mt-4 gap-2"
+                          >
+                            <Play className="w-4 h-4" />
+                            Start First Run
+                          </Button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ) : (
