@@ -548,6 +548,43 @@ export default function DevPage() {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-6">
         <div className="max-w-7xl mx-auto">
+          {/* Recruiter Banner */}
+          <div className="mb-6 bg-gradient-to-r from-blue-950 to-purple-950 border border-blue-800 rounded-lg p-6">
+            <div className="flex items-start gap-4">
+              <div className="bg-blue-500 rounded-full p-3">
+                <Layers className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold mb-2">Developer Tools & System Architecture</h1>
+                <p className="text-blue-100 mb-4">
+                  This is the technical debugging and monitoring dashboard for Verdict AI.
+                  Built to demonstrate production-grade tooling for AI automation systems.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                  <div className="bg-gray-900/50 rounded-lg p-3">
+                    <div className="text-blue-400 text-sm font-semibold mb-1">Architecture Tab</div>
+                    <div className="text-xs text-gray-300">Visual flow diagrams showing how 46 AI models orchestrate across consensus, debate, and individual modes</div>
+                  </div>
+                  <div className="bg-gray-900/50 rounded-lg p-3">
+                    <div className="text-green-400 text-sm font-semibold mb-1">Backend Tab</div>
+                    <div className="text-xs text-gray-300">Real-time monitoring of API calls, research agents, caching, and model execution (live production logs)</div>
+                  </div>
+                  <div className="bg-gray-900/50 rounded-lg p-3">
+                    <div className="text-purple-400 text-sm font-semibold mb-1">Research Taxonomy</div>
+                    <div className="text-xs text-gray-300">Structured data pipeline showing market data, news, technical analysis, and SEC filings integration</div>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center gap-2 text-xs text-blue-200">
+                  <Info className="w-4 h-4" />
+                  <span>
+                    <strong>For recruiters/technical evaluation:</strong> This demonstrates internal tool development,
+                    AI agent orchestration, workflow automation, and real-time monitoring - core skills for AI automation engineering.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <Tabs defaultValue="architecture" className="space-y-6">
             <TabsList className="grid w-full grid-cols-3 bg-gray-800">
               <TabsTrigger

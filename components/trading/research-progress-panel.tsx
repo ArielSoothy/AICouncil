@@ -180,6 +180,10 @@ export const ResearchProgressPanel = forwardRef<ResearchProgressPanelHandle, Res
 
         case 'error':
           updated.error = event.message
+          // Handle phase 3 (judge) errors
+          if (event.phase === 3) {
+            updated.judgeStatus = 'error'
+          }
           if (event.agent) {
             const agentIndex = updated.agents.findIndex(a => a.agent === event.agent)
             if (agentIndex !== -1) {
@@ -462,7 +466,7 @@ function DecisionCard({ decision }: { decision: DecisionProgress }) {
 }
 
 /** Judge Consensus Card */
-function JudgeCard({ status }: { status: 'pending' | 'running' | 'complete' }) {
+function JudgeCard({ status }: { status: 'pending' | 'running' | 'complete' | 'error' }) {
   return (
     <div className="p-4 rounded-lg border bg-card">
       <div className="flex items-center justify-between">
