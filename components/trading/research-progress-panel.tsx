@@ -182,7 +182,7 @@ export const ResearchProgressPanel = forwardRef<ResearchProgressPanelHandle, Res
           updated.error = event.message
           // Handle phase 3 (judge) errors
           if (event.phase === 3) {
-            updated.judgeStatus = 'error'
+            updated.judgeStatus = 'error' as ResearchProgressState['judgeStatus']
           }
           if (event.agent) {
             const agentIndex = updated.agents.findIndex(a => a.agent === event.agent)

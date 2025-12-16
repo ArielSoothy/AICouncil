@@ -199,7 +199,7 @@ export interface ResearchProgressState {
   phase: 1 | 2 | 3 | 'complete'
   agents: AgentProgress[]
   decisions: DecisionProgress[]
-  judgeStatus: 'pending' | 'running' | 'complete'
+  judgeStatus: 'pending' | 'running' | 'complete' | 'error'
   totalDuration: number // ms
   isCached: boolean
   error?: string
