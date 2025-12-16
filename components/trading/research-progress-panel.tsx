@@ -87,7 +87,7 @@ export const ResearchProgressPanel = forwardRef<ResearchProgressPanelHandle, Res
    */
   const processEvent = (event: ResearchProgressEvent) => {
     setState(prev => {
-      const updated = { ...prev }
+      const updated: ResearchProgressState = { ...prev }
 
       switch (event.type) {
         case 'phase_start':
