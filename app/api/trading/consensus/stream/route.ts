@@ -558,55 +558,120 @@ export async function POST(request: NextRequest) {
 
           const judgeStartTime = Date.now();
 
-          // Use judge system
-          const judgePrompt = generateTradingJudgePrompt(decisions, votes, consensusAction);
-          const judgeProvider = PROVIDERS.anthropic;
-          const judgeResult = await judgeProvider.query(judgePrompt, {
-            model: 'claude-sonnet-4-5-20250929',
-            provider: 'anthropic',
-            temperature: 0.3,
-            maxTokens: 2000,
-            enabled: true,
-            useTools: false,
-            maxSteps: 1,
-          });
+          // Use judge system with error handling
+          let parsedJudgeResult;
+          let judgeDuration;
+          let consensus;
 
-          const parsedJudgeResult = parseTradingJudgeResponse(judgeResult.response);
-          const judgeDuration = Date.now() - judgeStartTime;
+          try {
+            const judgePrompt = generateTradingJudgePrompt(decisions, votes, consensusAction);
+            const judgeProvider = PROVIDERS.anthropic;
+            const judgeResult = await judgeProvider.query(judgePrompt, {
+              model: 'claude-sonnet-4-5-20250929',
+              provider: 'anthropic',
+              temperature: 0.3,
+              maxTokens: 2000,
+              enabled: true,
+              useTools: false,
+              maxSteps: 1,
+            });
 
-          // Calculate agreement level
-          const agreementPercentage = decisions.length > 0 ? maxVotes / decisions.length : 0;
-          let agreementLevel: number;
-          if (agreementPercentage >= 0.75) {
-            agreementLevel = 0.9;
-          } else if (agreementPercentage >= 0.5) {
-            agreementLevel = 0.7;
-          } else {
-            agreementLevel = 0.4;
+            // Check for API errors
+            if (judgeResult.error) {
+              throw new Error(`Judge provider error: ${judgeResult.error}`);
+            }
+
+            // Check for empty response
+            if (!judgeResult.response || judgeResult.response.trim().length === 0) {
+              throw new Error(`Empty response from judge (possible rate limit)`);
+            }
+
+            parsedJudgeResult = parseTradingJudgeResponse(judgeResult.response);
+            judgeDuration = Date.now() - judgeStartTime;
+
+            // Calculate agreement level
+            const agreementPercentage = decisions.length > 0 ? maxVotes / decisions.length : 0;
+            let agreementLevel: number;
+            if (agreementPercentage >= 0.75) {
+              agreementLevel = 0.9;
+            } else if (agreementPercentage >= 0.5) {
+              agreementLevel = 0.7;
+            } else {
+              agreementLevel = 0.4;
+            }
+
+            // Build consensus object
+            consensus = {
+              action: parsedJudgeResult.bestAction,
+              symbol: parsedJudgeResult.symbol,
+              quantity: parsedJudgeResult.quantity,
+              reasoning: parsedJudgeResult.unifiedReasoning,
+              confidence: parsedJudgeResult.confidence,
+              agreement: agreementLevel,
+              votes,
+              modelCount: decisions.length,
+            };
+
+            sendEvent({
+              type: 'judge_complete',
+              consensusAction: consensus.action,
+              agreement: agreementLevel,
+              duration: judgeDuration,
+              tokensUsed: judgeResult.tokens?.total || 0,
+              inputTokens: judgeResult.tokens?.prompt || 0,
+              outputTokens: judgeResult.tokens?.completion || 0,
+              timestamp: Date.now()
+            });
+
+          } catch (error) {
+            console.error('Judge model error:', error);
+            judgeDuration = Date.now() - judgeStartTime;
+
+            // Return fallback consensus
+            const agreementPercentage = decisions.length > 0 ? maxVotes / decisions.length : 0;
+            let agreementLevel: number;
+            if (agreementPercentage >= 0.75) {
+              agreementLevel = 0.9;
+            } else if (agreementPercentage >= 0.5) {
+              agreementLevel = 0.7;
+            } else {
+              agreementLevel = 0.4;
+            }
+
+            parsedJudgeResult = {
+              bestAction: consensusAction,
+              symbol: symbol.toUpperCase(),
+              quantity: 0,
+              unifiedReasoning: `Judge model unavailable: ${error instanceof Error ? error.message : String(error)}. Based on individual model votes: ${consensusAction} (${maxVotes}/${decisions.length} models agree).`,
+              confidence: 0,
+              consensusScore: 50,
+              disagreements: [],
+              riskLevel: 'High' as const,
+              tokenUsage: 0
+            };
+
+            consensus = {
+              action: parsedJudgeResult.bestAction,
+              symbol: parsedJudgeResult.symbol,
+              quantity: parsedJudgeResult.quantity,
+              reasoning: parsedJudgeResult.unifiedReasoning,
+              confidence: parsedJudgeResult.confidence,
+              agreement: agreementLevel,
+              votes,
+              modelCount: decisions.length,
+            };
+
+            sendEvent({
+              type: 'judge_complete',
+              consensusAction: consensus.action,
+              agreement: agreementLevel,
+              duration: judgeDuration,
+              tokensUsed: 0,
+              inputTokens: 0,
+              outputTokens: 0,
+              timestamp: Date.now()
+            });
           }
-
-          // Build consensus object
-          const consensus = {
-            action: parsedJudgeResult.bestAction,
-            symbol: parsedJudgeResult.symbol,
-            quantity: parsedJudgeResult.quantity,
-            reasoning: parsedJudgeResult.unifiedReasoning,
-            confidence: parsedJudgeResult.confidence,
-            agreement: agreementLevel,
-            votes,
-            modelCount: decisions.length,
-          };
-
-          sendEvent({
-            type: 'judge_complete',
-            consensusAction: consensus.action,
-            agreement: agreementLevel,
-            duration: judgeDuration,
-            tokensUsed: judgeResult.tokens?.total || 0,
-            inputTokens: judgeResult.tokens?.prompt || 0,
-            outputTokens: judgeResult.tokens?.completion || 0,
-            timestamp: Date.now()
-          });
 
           // FINAL: Send complete results
           // Research data sent as direct properties (UI expects research.technical, not research.agents[])
