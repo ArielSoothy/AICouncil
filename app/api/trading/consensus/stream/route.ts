@@ -223,8 +223,8 @@ export async function POST(request: NextRequest) {
           const symbol = normalizedSymbol || (positions.length > 0 ? positions[0].symbol : 'AAPL');
 
           // PHASE 1: RESEARCH (with caching)
-          // Include researchTier in cache key so different tiers don't share cache
-          const cacheSymbol = `${symbol}-${researchTier}`; // e.g., "TEAD-free" vs "TEAD-pro"
+          // Cache key: symbol + timeframe (research quality is consistent across tiers)
+          // Note: Different tiers use different models but research output should be similar
 
           sendEvent({
             type: 'phase_start',
@@ -233,8 +233,8 @@ export async function POST(request: NextRequest) {
             timestamp: Date.now()
           });
 
-          // Check cache first (tier-aware)
-          let researchReport = await researchCache.get(cacheSymbol, timeframe);
+          // Check cache first
+          let researchReport = await researchCache.get(symbol, timeframe);
 
           if (researchReport) {
             // Cache hit! Skip research and use cached data
@@ -317,8 +317,8 @@ export async function POST(request: NextRequest) {
               totalToolCalls: researchReport.totalToolCalls,
             });
 
-            // Cache the results for next time (tier-aware key)
-            await researchCache.set(cacheSymbol, timeframe, researchReport);
+            // Cache the results for next time
+            await researchCache.set(symbol, timeframe, researchReport);
           }
 
           // PHASE 2: DECISION MODELS
