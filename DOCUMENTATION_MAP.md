@@ -61,6 +61,7 @@ These files MUST be read at the start of every development session:
 │   ├── guides/                         # Best practices & development guides
 │   │   ├── BEST_PRACTICES.md           # Debugging patterns & successful methods
 │   │   ├── SUB_AGENTS.md               # Sub-agent specifications & orchestration
+│   │   ├── ERROR_TAXONOMY.md           # Complete LLM error types & handling (NEW)
 │   │   ├── MANUAL_STEPS.md             # Manual steps for deployment
 │   │   ├── RESEARCH_CACHE_TESTING.md   # Research caching system testing guide
 │   │   ├── IBKR_AUTH_TROUBLESHOOTING.md # IBKR Gateway auth flow & troubleshooting
@@ -214,6 +215,7 @@ Development guidelines, debugging patterns, and orchestration:
 |------|---------|--------------|
 | **BEST_PRACTICES.md** | Debugging patterns, successful fix methods | When encountering issues |
 | **SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
+| **ERROR_TAXONOMY.md** | Complete LLM error types & handling (15 categories) | Model errors, Sub mode bugs, error handling |
 | **MANUAL_STEPS.md** | Manual steps required for deployment | Before deployment |
 | **RESEARCH_CACHE_TESTING.md** | Research caching system testing guide | Testing Phase 2C caching |
 | **IBKR_AUTH_TROUBLESHOOTING.md** | IBKR Gateway auth flow & troubleshooting | IBKR auth issues |
