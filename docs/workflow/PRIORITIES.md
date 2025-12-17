@@ -17,11 +17,11 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ **WORKING CHECKPOINT** - Judge Error Fix + Error Taxonomy (December 17, 2025)
-**Goal:** Fix judge "empty response" error in Sub Pro mode, comprehensive error handling docs
+**Current Session:** ✅ **WORKING CHECKPOINT** - Judge Fix + Cache Fix (December 17, 2025)
+**Goal:** Fix judge "empty response" error in Sub Pro mode + fix research cache not working
 
 **Progress:**
-- ✅ **CRITICAL FIX:** Judge was hardcoded to API provider, ignored Sub Pro/Max tier
+- ✅ **CRITICAL FIX #1:** Judge was hardcoded to API provider, ignored Sub Pro/Max tier
 - ✅ Root cause: `const judgeProvider = PROVIDERS.anthropic` (always API, never CLI)
 - ✅ Fixed: Judge now uses `getProviderForModelAndTier()` like decision models
 - ✅ Sub Pro/Max: Uses ClaudeCLIProvider (subscription)
@@ -30,6 +30,10 @@
 - ✅ Sub mode bug detection: Alerts if BUDGET_LIMIT appears (should NEVER happen)
 - ✅ Created ERROR_TAXONOMY.md (838 lines, 15 error categories)
 - ✅ Documented all failure modes: rate limit, budget, auth, CLI, tools, JSON, etc.
+- ✅ **CRITICAL FIX #2:** Research cache was using wrong cache key format
+- ✅ Root cause: Code used `"${symbol}-${tier}"` but database schema expects separate columns
+- ✅ Fixed: Changed from `researchCache.get('AAPL-sub-pro', 'day')` to `researchCache.get('AAPL', 'day')`
+- ✅ Result: Cache will now match database rows correctly (symbol + timeframe)
 
 **The Bug:**
 ```typescript
@@ -47,8 +51,20 @@ const { provider: judgeProvider } = getProviderForModelAndTier('anthropic', rese
 4. No ANTHROPIC_API_KEY in Sub mode
 5. Result: "Unable to analyze - empty response"
 
+**The Cache Bug:**
+```typescript
+// ❌ BEFORE: Compound cache key doesn't match database schema
+const cacheSymbol = `${symbol}-${researchTier}`; // "AAPL-sub-pro"
+await researchCache.get(cacheSymbol, timeframe);
+// Looks for: symbol='AAPL-SUB-PRO', timeframe='day' → NEVER MATCHES
+
+// ✅ AFTER: Separate symbol and timeframe
+await researchCache.get(symbol, timeframe);
+// Looks for: symbol='AAPL', timeframe='day' → CORRECT
+```
+
 **Files Modified:**
-- `app/api/trading/consensus/stream/route.ts` - Judge provider + error classification
+- `app/api/trading/consensus/stream/route.ts` - Judge provider + error classification + cache key fix
 - `docs/guides/ERROR_TAXONOMY.md` - NEW: 15 error categories with detection/fix guides
 - `DOCUMENTATION_MAP.md` - Added ERROR_TAXONOMY.md reference
 
@@ -56,6 +72,7 @@ const { provider: judgeProvider } = getProviderForModelAndTier('anthropic', rese
 - `b894837` - fix(judge): Add error handling for judge model failures
 - `b85e3dd` - fix(judge): Use tier-aware provider selection + error classification
 - `91a37f9` - docs: Add comprehensive ERROR_TAXONOMY.md (15 error types)
+- `4ffbfeb` - fix(cache): Remove tier from cache key to match database schema
 
 **Previous Session:** ✅ Arena Real-Time Prices + CLI Provider Fixes (December 15, 2025)
 **Goal:** Fix Arena price guessing bug, verify CLI subscription mode, end-to-end test
