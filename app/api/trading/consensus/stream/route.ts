@@ -565,7 +565,14 @@ export async function POST(request: NextRequest) {
 
           try {
             const judgePrompt = generateTradingJudgePrompt(decisions, votes, consensusAction);
-            const judgeProvider = PROVIDERS.anthropic;
+
+            // Get judge provider based on tier - CLI for sub-pro/sub-max, API for others
+            // CRITICAL: Sub tiers use CLI ONLY - no fallback to API (same as decision models)
+            const { provider: judgeProvider, error: judgeProviderError } = getProviderForModelAndTier('anthropic', researchTier);
+            if (judgeProviderError || !judgeProvider) {
+              throw new Error(judgeProviderError || `No judge provider available for tier: ${researchTier}`);
+            }
+
             const judgeResult = await judgeProvider.query(judgePrompt, {
               model: 'claude-sonnet-4-5-20250929',
               provider: 'anthropic',
@@ -624,7 +631,25 @@ export async function POST(request: NextRequest) {
             });
 
           } catch (error) {
-            console.error('Judge model error:', error);
+            // Classify the error for structured logging and UI display
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const classification = classifyError(errorMessage);
+
+            // Log with color (matches decision model pattern)
+            console.log(
+              `\x1b[${classification.consoleColor}m🚨 [Judge ${classification.category}] ${errorMessage}\x1b[0m`
+            );
+
+            // SUB MODE BUG DETECTION: Budget errors should NEVER happen in Sub mode
+            const useSubscription = researchTier === 'sub-pro' || researchTier === 'sub-max';
+            if (useSubscription && classification.category === 'BUDGET_LIMIT') {
+              console.error(
+                `\x1b[31m🐛 CRITICAL BUG: BUDGET_LIMIT error in ${researchTier} mode!\x1b[0m\n` +
+                `Subscriptions have NO credit limits. CLI may not be using subscription auth.\n` +
+                `Check if CLI is properly authenticated with subscription credentials.`
+              );
+            }
+
             judgeDuration = Date.now() - judgeStartTime;
 
             // Return fallback consensus
@@ -642,7 +667,7 @@ export async function POST(request: NextRequest) {
               bestAction: consensusAction,
               symbol: symbol.toUpperCase(),
               quantity: 0,
-              unifiedReasoning: `Judge model unavailable: ${error instanceof Error ? error.message : String(error)}. Based on individual model votes: ${consensusAction} (${maxVotes}/${decisions.length} models agree).`,
+              unifiedReasoning: `Judge model unavailable (${classification.userMessage}): ${errorMessage}. Based on individual model votes: ${consensusAction} (${maxVotes}/${decisions.length} models agree).`,
               confidence: 0,
               consensusScore: 50,
               disagreements: [],
