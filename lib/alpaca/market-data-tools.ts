@@ -44,6 +44,7 @@ function getAlpacaClient(): Alpaca {
     secretKey: process.env.ALPACA_SECRET_KEY!,
     paper: true,
     baseUrl: process.env.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets',
+    feed: 'iex', // Use IEX feed (free, 15-min delayed) instead of SIP (requires subscription)
   });
 }
 
@@ -108,6 +109,7 @@ async function getBarsWithFallback(
       end: end.toISOString(),
       timeframe,
       limit,
+      feed: 'iex', // Use IEX feed (free, 15-min delayed)
     });
 
     const bars: BrokerBar[] = [];
