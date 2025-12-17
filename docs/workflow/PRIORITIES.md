@@ -17,8 +17,8 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ **WORKING CHECKPOINT** - Judge Fix + Cache Fix (December 17, 2025)
-**Goal:** Fix judge "empty response" error in Sub Pro mode + fix research cache not working
+**Current Session:** ✅ **WORKING CHECKPOINT** - Judge + Cache + Alpaca Fixes (December 17, 2025)
+**Goal:** Fix judge "empty response" error + research cache + Alpaca 403 subscription error
 
 **Progress:**
 - ✅ **CRITICAL FIX #1:** Judge was hardcoded to API provider, ignored Sub Pro/Max tier
@@ -34,6 +34,10 @@
 - ✅ Root cause: Code used `"${symbol}-${tier}"` but database schema expects separate columns
 - ✅ Fixed: Changed from `researchCache.get('AAPL-sub-pro', 'day')` to `researchCache.get('AAPL', 'day')`
 - ✅ Result: Cache will now match database rows correctly (symbol + timeframe)
+- ✅ **CRITICAL FIX #3:** Alpaca tools failing with "403: subscription does not permit querying recent SIP data"
+- ✅ Root cause: Free Alpaca tier doesn't include real-time SIP data (requires $9-90/mo subscription)
+- ✅ Fixed: Added `feed: 'iex'` to use free IEX data (15-min delayed, sufficient for research)
+- ✅ Result: All 10 trading tools now work without Alpaca subscription
 
 **The Bug:**
 ```typescript
@@ -63,8 +67,28 @@ await researchCache.get(symbol, timeframe);
 // Looks for: symbol='AAPL', timeframe='day' → CORRECT
 ```
 
+**The Alpaca Bug:**
+```typescript
+// ❌ BEFORE: Default SIP feed requires subscription
+const alpaca = new Alpaca({
+  keyId: process.env.ALPACA_API_KEY,
+  secretKey: process.env.ALPACA_SECRET_KEY,
+  paper: true,
+});
+// Result: 403 subscription does not permit querying recent SIP data
+
+// ✅ AFTER: Use free IEX feed (15-min delayed)
+const alpaca = new Alpaca({
+  keyId: process.env.ALPACA_API_KEY,
+  secretKey: process.env.ALPACA_SECRET_KEY,
+  paper: true,
+  feed: 'iex', // FREE data feed
+});
+```
+
 **Files Modified:**
 - `app/api/trading/consensus/stream/route.ts` - Judge provider + error classification + cache key fix
+- `lib/alpaca/market-data-tools.ts` - Added IEX feed for free data access
 - `docs/guides/ERROR_TAXONOMY.md` - NEW: 15 error categories with detection/fix guides
 - `DOCUMENTATION_MAP.md` - Added ERROR_TAXONOMY.md reference
 
@@ -73,6 +97,7 @@ await researchCache.get(symbol, timeframe);
 - `b85e3dd` - fix(judge): Use tier-aware provider selection + error classification
 - `91a37f9` - docs: Add comprehensive ERROR_TAXONOMY.md (15 error types)
 - `4ffbfeb` - fix(cache): Remove tier from cache key to match database schema
+- `be8c67d` - fix(alpaca): Use IEX feed for free market data access
 
 **Previous Session:** ✅ Arena Real-Time Prices + CLI Provider Fixes (December 15, 2025)
 **Goal:** Fix Arena price guessing bug, verify CLI subscription mode, end-to-end test
