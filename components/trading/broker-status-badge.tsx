@@ -227,7 +227,7 @@ interface IBKRAuthButtonProps {
 
 /**
  * Simple IBKR authentication button for local development.
- * - Polls /api/trading/ibkr-auth every 10 seconds
+ * - Polls /api/trading/ibkr-auth every 10 minutes
  * - Shows Gateway status + login button
  * - Hidden on production
  */
@@ -260,10 +260,10 @@ export function IBKRAuthButton({ className, onAuthChange }: IBKRAuthButtonProps)
     }
   }, [prevAuth, onAuthChange])
 
-  // Poll on mount and every 10 seconds
+  // Poll on mount and every 10 minutes
   useEffect(() => {
     checkStatus()
-    const interval = setInterval(checkStatus, 10000)
+    const interval = setInterval(checkStatus, 600000) // 10 minutes = 600000ms
     return () => clearInterval(interval)
   }, [checkStatus])
 

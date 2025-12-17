@@ -17,8 +17,8 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ **WORKING CHECKPOINT** - Judge + Cache + Alpaca Fixes (December 17, 2025)
-**Goal:** Fix judge "empty response" error + research cache + Alpaca 403 subscription error
+**Current Session:** ✅ **WORKING CHECKPOINT** - Judge + Cache + Alpaca + IBKR Fixes (December 17, 2025)
+**Goal:** Fix judge "empty response" error + research cache + Alpaca 403 subscription error + IBKR session competition
 
 **Progress:**
 - ✅ **CRITICAL FIX #1:** Judge was hardcoded to API provider, ignored Sub Pro/Max tier
@@ -38,6 +38,10 @@
 - ✅ Root cause: Free Alpaca tier doesn't include real-time SIP data (requires $9-90/mo subscription)
 - ✅ Fixed: Added `feed: 'iex'` to use free IEX data (15-min delayed, sufficient for research)
 - ✅ Result: All 10 trading tools now work without Alpaca subscription
+- ✅ **CRITICAL FIX #4:** IBKR session competition - phone kept getting disconnected
+- ✅ Root cause: UI polled IBKR status every 10 seconds, called ssodh/init with `compete: true`
+- ✅ Fixed: Changed polling interval from 10 seconds to 10 minutes (600000ms)
+- ✅ Result: Website checks status much less frequently, stops competing with phone session
 
 **The Bug:**
 ```typescript
@@ -89,6 +93,7 @@ const alpaca = new Alpaca({
 **Files Modified:**
 - `app/api/trading/consensus/stream/route.ts` - Judge provider + error classification + cache key fix
 - `lib/alpaca/market-data-tools.ts` - Added IEX feed for free data access
+- `components/trading/broker-status-badge.tsx` - Reduced IBKR polling from 10s to 10min
 - `docs/guides/ERROR_TAXONOMY.md` - NEW: 15 error categories with detection/fix guides
 - `DOCUMENTATION_MAP.md` - Added ERROR_TAXONOMY.md reference
 
