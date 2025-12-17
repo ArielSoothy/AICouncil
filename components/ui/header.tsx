@@ -95,15 +95,13 @@ export function Header() {
             </Link>
           )}
 
-          {/* Dev Tools - Development only */}
-          {process.env.NODE_ENV === 'development' && (
-            <Link href="/dev">
-              <Button variant="ghost" size="sm" className="text-cyan-600 hover:text-cyan-700">
-                <Layers className="h-4 w-4 mr-2" />
-                Dev
-              </Button>
-            </Link>
-          )}
+          {/* Dev Tools - Always visible for recruiter demos */}
+          <Link href="/dev">
+            <Button variant="ghost" size="sm" className="text-cyan-600 hover:text-cyan-700">
+              <Layers className="h-4 w-4 mr-2" />
+              Dev
+            </Button>
+          </Link>
           {user ? (
             <>
               <Link href="/dashboard">
@@ -228,15 +226,13 @@ export function Header() {
               </Link>
             )}
 
-            {/* Dev Tools - Development only */}
-            {process.env.NODE_ENV === 'development' && (
-              <Link href="/dev" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button variant="ghost" size="sm" className="w-full justify-start text-cyan-600 hover:text-cyan-700">
-                  <Layers className="h-4 w-4 mr-2" />
-                  Dev Tools
-                </Button>
-              </Link>
-            )}
+            {/* Dev Tools - Always visible for recruiter demos */}
+            <Link href="/dev" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="ghost" size="sm" className="w-full justify-start text-cyan-600 hover:text-cyan-700">
+                <Layers className="h-4 w-4 mr-2" />
+                Dev Tools
+              </Button>
+            </Link>
 
             {user ? (
               <>
