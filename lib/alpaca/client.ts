@@ -305,6 +305,7 @@ export async function getLatestQuote(symbol: string): Promise<{ price: number; t
  * @param reasoning - Trade reasoning from AI
  * @param confidence - Confidence score (0-1)
  * @param alpacaOrderId - Alpaca order ID
+ * @param userId - User ID for RLS (optional for backward compatibility)
  */
 export async function saveTrade(
   mode: string,
@@ -314,7 +315,8 @@ export async function saveTrade(
   price: number,
   reasoning: string,
   confidence: number,
-  alpacaOrderId: string
+  alpacaOrderId: string,
+  userId?: string
 ) {
   try {
     // Use direct Supabase client for script compatibility
@@ -323,7 +325,7 @@ export async function saveTrade(
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    console.log('Attempting to save:', { mode, symbol, action, quantity, price, confidence });
+    console.log('Attempting to save:', { mode, symbol, action, quantity, price, confidence, userId });
 
     const { data, error} = await supabase
       .from('paper_trades')
@@ -336,6 +338,7 @@ export async function saveTrade(
         reasoning,
         confidence,
         alpaca_order_id: alpacaOrderId,
+        user_id: userId || null, // Include user_id for RLS
       })
       .select();
 
