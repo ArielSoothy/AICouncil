@@ -25,6 +25,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # Local env files
+# SECURITY NOTE (Dec 22, 2025): .env.local contains production API keys
+# Verified never committed to git history (checked: git log --all --full-history -- .env.local)
+# Keys remain secure - only visible locally, never pushed to remote
 .env*.local
 .env
 

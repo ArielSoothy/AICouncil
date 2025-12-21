@@ -35,53 +35,43 @@ export default function AdminAnalyticsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Simple admin check - in MVP, just check if user email is admin
+  // SECURITY FIX (Dec 22, 2025): Removed client-side password check
+  // Authentication now handled by API endpoint (/api/admin/analytics)
+  // API verifies Supabase auth + admin email match
   const [isAdmin, setIsAdmin] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
 
   useEffect(() => {
-    // Simple admin check for MVP
+    // Load analytics - API will enforce authentication
     const checkAdminAccess = async () => {
       try {
-        // In development mode, bypass password prompt
-        if (process.env.NODE_ENV === 'development') {
+        // Try to load analytics - API will return 401/403 if not authorized
+        const response = await fetch('/api/admin/analytics')
+
+        if (response.status === 401) {
+          setError('Please log in to access the admin dashboard.')
+          setIsAdmin(false)
+        } else if (response.status === 403) {
+          setError('Access denied. Admin privileges required.')
+          setIsAdmin(false)
+        } else if (response.ok) {
+          const data = await response.json()
+          setAnalytics(data)
           setIsAdmin(true)
-          loadAnalytics()
+          setIsLoading(false)
         } else {
-          // Production: prompt for admin password
-          // Password should be set via ADMIN_PASSWORD env variable
-          const adminPassword = prompt('Enter admin password:')
-          const expectedPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ''
-          if (expectedPassword && adminPassword === expectedPassword) {
-            setIsAdmin(true)
-            loadAnalytics()
-          } else {
-            setError('Access denied. Admin access required.')
-          }
+          setError('Failed to load analytics data')
+          setIsAdmin(false)
         }
       } catch {
-        setError('Authentication failed')
+        setError('Authentication failed. Please ensure you are logged in.')
+        setIsAdmin(false)
       }
       setCheckingAuth(false)
     }
 
     checkAdminAccess()
   }, [])
-
-  const loadAnalytics = async () => {
-    try {
-      const response = await fetch('/api/admin/analytics')
-      if (!response.ok) {
-        throw new Error('Failed to load analytics')
-      }
-      const data = await response.json()
-      setAnalytics(data)
-    } catch (error) {
-      setError('Failed to load analytics data')
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   if (checkingAuth) {
     return (

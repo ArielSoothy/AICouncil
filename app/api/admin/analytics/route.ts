@@ -5,6 +5,25 @@ export async function GET() {
   try {
     const supabase = await createClient()
 
+    // SECURITY: Verify user authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // SECURITY: Verify admin role (check if user email matches admin)
+    const adminEmail = process.env.ADMIN_EMAIL
+    if (adminEmail && user.email !== adminEmail) {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      )
+    }
+
     // Get total conversations
     const { count: totalConversations } = await supabase
       .from('conversations')
