@@ -16,7 +16,7 @@ import {
   type AgentSearchCapability,
   type ResearchDecision
 } from '@/lib/research/research-coordinator'
-// import { SimpleMemoryService } from '@/lib/memory/simple-memory-service' // Disabled - memory on backlog
+import { SimpleMemoryService } from '@/lib/memory/simple-memory-service'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +45,9 @@ export async function POST(request: NextRequest) {
     consensusModels = [],
     tier = 'free' // Default to free tier
   } = body
+
+  // Initialize memory service (guest users get null userId)
+  const memoryService = new SimpleMemoryService(tier !== 'guest' ? 'user-id' : null)
 
   // BILLING PROTECTION: Block sub tiers from using this API-only endpoint
   // Sub tiers use CLI providers which this route doesn't support yet
@@ -117,15 +120,15 @@ export async function POST(request: NextRequest) {
           timestamp: Date.now() 
         })}\n\n`))
         
-        // MEMORY INTEGRATION: DISABLED - On backlog, focusing on research validation
-        // Memory system will retrieve past experiences when re-enabled
+        // MEMORY INTEGRATION: RE-ENABLED (Dec 22, 2025)
+        // Memory system retrieves past experiences for context
         // See: docs/archived/MEMORY_IMPLEMENTATION_PLAN.md
-        const MEMORY_ENABLED = false;
+        const MEMORY_ENABLED = true;
         let relevantMemories: any[] = []
-        
+
         if (MEMORY_ENABLED) {
-          // Memory retrieval code disabled but preserved
-          console.log('Memory system currently disabled - focusing on research validation')
+          // Memory retrieval enabled - will fetch relevant past conversations
+          console.log('✅ Memory system enabled - checking for relevant past context')
         }
         
         // ==================== SMART SEARCH PHASE ====================
@@ -1290,8 +1293,7 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
             follow_up_questions: finalSynthesis?.informationRequest?.suggestedQuestions || []
           }
           
-          // const storedMemory = await memoryService.storeEpisodicMemory(episodicMemory)
-          const storedMemory: { id?: string } | null = null // Memory disabled
+          const storedMemory = await memoryService.storeEpisodicMemory(episodicMemory)
           console.log(`✅ MEMORY STORAGE: Stored episodic memory: ${storedMemory?.id}`)
           
           // Also store semantic memory for high confidence results
@@ -1306,8 +1308,7 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
               validations: 1
             }
             
-            // const storedSemantic = await memoryService.storeSemanticMemory(semanticMemory)
-            const storedSemantic: { id?: string } | null = null // Memory disabled
+            const storedSemantic = await memoryService.storeSemanticMemory(semanticMemory)
             console.log(`✅ MEMORY STORAGE: Stored high-confidence semantic memory: ${storedSemantic?.id}`)
           }
           

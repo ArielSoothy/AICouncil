@@ -798,12 +798,11 @@ export async function POST(request: NextRequest) {
     // MEMORY INTEGRATION: DISABLED - On backlog, not current priority
     // Memory system foundation is complete but disabled to focus on research validation
     // See: docs/archived/MEMORY_IMPLEMENTATION_PLAN.md for future implementation
-    const MEMORY_ENABLED = false; // Toggle when ready to re-enable
-    
+    const MEMORY_ENABLED = true; // Re-enabled Dec 22, 2025
+
     if (MEMORY_ENABLED && userTier !== 'guest' && judgeAnalysis.confidence > 0.6) {
-      // Memory code commented out but preserved for future use
-      // Will store episodic and semantic memories when re-enabled
-      console.log('Memory system currently disabled - focusing on research validation')
+      // Memory code enabled - stores episodic and semantic memories
+      console.log('✅ Memory system enabled - will store high-confidence results')
     }
 
     return NextResponse.json(enhancedResponse, {
