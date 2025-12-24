@@ -61,7 +61,8 @@ These files MUST be read at the start of every development session:
 │   ├── guides/                         # Best practices & development guides
 │   │   ├── BEST_PRACTICES.md           # Debugging patterns & successful methods
 │   │   ├── SUB_AGENTS.md               # Sub-agent specifications & orchestration
-│   │   ├── ERROR_TAXONOMY.md           # Complete LLM error types & handling (NEW)
+│   │   ├── MULTI_MODEL_ORCHESTRATION.md # Multi-model orchestration (Claude+Gemini+Codex) (NEW)
+│   │   ├── ERROR_TAXONOMY.md           # Complete LLM error types & handling
 │   │   ├── MANUAL_STEPS.md             # Manual steps for deployment
 │   │   ├── RESEARCH_CACHE_TESTING.md   # Research caching system testing guide
 │   │   ├── IBKR_AUTH_TROUBLESHOOTING.md # IBKR Gateway auth flow & troubleshooting
@@ -215,6 +216,7 @@ Development guidelines, debugging patterns, and orchestration:
 |------|---------|--------------|
 | **BEST_PRACTICES.md** | Debugging patterns, successful fix methods | When encountering issues |
 | **SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
+| **MULTI_MODEL_ORCHESTRATION.md** | Multi-model orchestration (Claude + Gemini + Codex) for complex tasks (NEW) | High-stakes decisions, code review, architecture |
 | **ERROR_TAXONOMY.md** | Complete LLM error types & handling (15 categories) | Model errors, Sub mode bugs, error handling |
 | **MANUAL_STEPS.md** | Manual steps required for deployment | Before deployment |
 | **RESEARCH_CACHE_TESTING.md** | Research caching system testing guide | Testing Phase 2C caching |
@@ -328,6 +330,11 @@ Historical documentation and research (reference only):
 1. Read docs/guides/SUB_AGENTS.md (orchestration overview)
 2. Launch orchestration-master for complex tasks
 3. Check .claude/agents/ for specific agent specs
+
+### Multi-Model Orchestration (NEW)
+1. Read docs/guides/MULTI_MODEL_ORCHESTRATION.md (when to use, templates)
+2. Use for: architecture decisions, security reviews, protected features
+3. Pattern: Claude + Gemini + Codex consensus
 
 ### Debugging Issues
 1. Read docs/guides/BEST_PRACTICES.md (successful patterns)
