@@ -16,7 +16,7 @@ export function Header() {
   const pathname = usePathname()
 
   // Pages that use AI models and should show the tier selector
-  const modelUsingPages = ['/', '/agents', '/trading', '/ultra', '/arena']
+  const modelUsingPages = ['/', '/agents', '/ultra']
   const showTierSelector = modelUsingPages.includes(pathname)
 
   return (
@@ -54,12 +54,15 @@ export function Header() {
             </Button>
           </Link>
 
-          <Link href="/trading">
-            <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Trading
-            </Button>
-          </Link>
+          {/* Trading - Development only (local testing) */}
+          {process.env.NODE_ENV === 'development' && (
+            <Link href="/trading">
+              <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Trading
+              </Button>
+            </Link>
+          )}
 
           {/* Arena Mode - Development only */}
           {process.env.NODE_ENV === 'development' && (
@@ -175,12 +178,15 @@ export function Header() {
               </Button>
             </Link>
 
-            <Link href="/trading" onClick={() => setIsMobileMenuOpen(false)}>
-              <Button variant="ghost" size="sm" className="w-full justify-start text-green-600 hover:text-green-700">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                Trading
-              </Button>
-            </Link>
+            {/* Trading - Development only (local testing) */}
+            {process.env.NODE_ENV === 'development' && (
+              <Link href="/trading" onClick={() => setIsMobileMenuOpen(false)}>
+                <Button variant="ghost" size="sm" className="w-full justify-start text-green-600 hover:text-green-700">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Trading
+                </Button>
+              </Link>
+            )}
 
             {/* Arena Mode - Development only */}
             {process.env.NODE_ENV === 'development' && (

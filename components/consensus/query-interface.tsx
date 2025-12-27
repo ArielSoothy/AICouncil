@@ -11,7 +11,9 @@ import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
+import { useGuestMode } from '@/hooks/use-guest-mode'
 import { ConversationHistoryDropdown } from '@/components/conversation/conversation-history-dropdown'
+import { GuestLimitCTA } from './guest-limit-cta'
 import { SavedConversation } from '@/lib/types/conversation'
 import { Send, Loader2, GitCompare, Search, Sparkles, Info } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
@@ -49,6 +51,7 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
   const searchParams = useSearchParams()
   const isGuestMode = searchParams.get('mode') === 'guest'
   const { toast } = useToast()
+  const guestMode = useGuestMode()
 
   // Override userTier for guest mode or testing
   const baseUserTier = isGuestMode ? 'guest' : userTier
@@ -187,6 +190,16 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
   const handleSubmit = async () => {
     if (!prompt.trim() || isLoading) return
 
+    // Check guest mode limit
+    if (guestMode.isGuest && guestMode.isGuestLimitReached) {
+      toast({
+        variant: "default",
+        title: "Free Queries Used",
+        description: "Sign up to continue using Verdict AI for better decisions.",
+      })
+      return
+    }
+
     // Premium queries not implemented yet - skip credit check
 
     setIsLoading(true)
@@ -215,7 +228,12 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
 
       const consensusResult = await response.json()
       setResult(consensusResult)
-      
+
+      // Track guest query
+      if (guestMode.isGuest) {
+        guestMode.trackQuery()
+      }
+
       // Show success notification
       toast({
         variant: "success",
@@ -503,6 +521,16 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
         </div>
       </div>
 
+      {/* Guest Limit CTA */}
+      {guestMode.isGuest && guestMode.isGuestLimitReached && !result && (
+        <div className="mt-6">
+          <GuestLimitCTA
+            queriesUsed={guestMode.queriesUsed}
+            maxFreeQueries={guestMode.maxFreeQueries}
+          />
+        </div>
+      )}
+
       {result && (
         <div ref={resultsRef}>
           <EnhancedConsensusDisplay
@@ -517,6 +545,16 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
               setTimeout(() => handleSubmit(), 100)
             }}
           />
+
+          {/* Show upgrade CTA after seeing results if guest limit reached */}
+          {guestMode.isGuest && guestMode.isGuestLimitReached && (
+            <div className="mt-6">
+              <GuestLimitCTA
+                queriesUsed={guestMode.queriesUsed}
+                maxFreeQueries={guestMode.maxFreeQueries}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

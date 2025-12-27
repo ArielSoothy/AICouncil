@@ -8,12 +8,19 @@ export const BRANDING = {
   PROJECT_NAME: "Verdict AI",
   
   // Full project title with tagline
-  PROJECT_TITLE: "Verdict AI - Multi-Model Decision Engine",
-  
+  PROJECT_TITLE: "Verdict AI - Multi-Model AI Debates for Better Decisions",
+
   // Short taglines
-  TAGLINE_PRIMARY: "Why ask one AI when you can ask them all?",
-  TAGLINE_SECONDARY: "Get consensus from multiple AI models for better decisions, fewer mistakes, lower costs",
-  
+  TAGLINE_PRIMARY: "Multi-Model AI Debates for Better Decisions",
+  TAGLINE_SECONDARY: "Get better answers through AI model debates",
+
+  // 3-Step Value Proposition
+  VALUE_STEPS: [
+    { step: 1, title: "Ask", description: "Submit your question or decision" },
+    { step: 2, title: "Models Debate", description: "AI models discuss and challenge each other" },
+    { step: 3, title: "Clear Verdict", description: "Get consensus and recommended action" }
+  ] as const,
+
   // Action-oriented messaging
   ACTION_VERBS: {
     ASK: "Ask Verdict",
@@ -28,8 +35,8 @@ export const BRANDING = {
   DOMAIN_NAME: "verdict.ai", // Future domain consideration
   
   // Meta tags and SEO
-  META_DESCRIPTION: "Get consensus from multiple AI models with Verdict AI. Better decisions through ensemble intelligence, hallucination detection, and cost optimization.",
-  META_KEYWORDS: ["AI consensus", "multi-model", "decision engine", "AI ensemble", "verdict"] as string[],
+  META_DESCRIPTION: "Get better answers through AI model debates. Verdict AI lets multiple AI models discuss your questions and reach clear consensus for better decisions.",
+  META_KEYWORDS: ["AI debates", "multi-model", "decision engine", "AI consensus", "verdict", "AI discussion"] as string[],
   
   // Social/sharing
   TWITTER_HANDLE: "@VerdictAI",
