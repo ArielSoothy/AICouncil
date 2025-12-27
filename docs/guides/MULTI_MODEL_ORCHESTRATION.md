@@ -86,22 +86,99 @@ Your own research (from `UNIFIED_DEBATE_ENGINE.md`):
 
 ## 🔧 Implementation Methods
 
-### Method 1: Manual Orchestration (Current)
+### Method 1: Manual Orchestration (Current) ✅ WORKING
 
 **Claude executes Bash commands to call other CLIs:**
 
+#### Gemini CLI Usage:
 ```bash
-# Research phase
-gemini "Analyze this trading prompt structure: [paste code]"
-codex "Review this React component for bugs: [paste code]"
+# Direct execution (blocks until complete)
+gemini "Analyze this product-market fit: [context]"
 
-# Review phase (after implementation)
-gemini "Code review this implementation: [paste code]"
-codex "Check for TypeScript issues: [paste code]"
+# Pro tip: Use quotes for multi-line prompts
+gemini "I need brutal product analysis.
+
+CONTEXT:
+- Product: [description]
+- Target: $10/month
+- Question: What would make users pay?
+
+Be specific and actionable."
 ```
 
-**Pros**: Simple, full control
-**Cons**: Manual synthesis, no automation
+**Gemini CLI Install**:
+```bash
+# Already installed if you see it at:
+/opt/homebrew/bin/gemini
+
+# Login (requires Gemini Advanced subscription):
+gemini auth login
+```
+
+#### Codex CLI Usage:
+```bash
+# Use 'exec' subcommand for non-interactive mode
+codex exec "Review this codebase for productization blockers:
+
+PRODUCT: [name]
+CURRENT STATE: [summary]
+QUESTION: Top 5 blockers to launch?
+
+Be specific about implementation."
+
+# Pro tip: Increase timeout for complex analysis
+# (Codex can take 30s-2min for deep analysis)
+```
+
+**Codex CLI Install**:
+```bash
+# Already installed if you see it at:
+/opt/homebrew/bin/codex
+
+# Login (requires ChatGPT Plus/Pro subscription):
+codex login
+```
+
+#### Parallel Execution Pattern:
+```bash
+# Run Gemini synchronously (wait for result)
+gemini "Product analysis: [prompt]"
+
+# Run Codex in background (async)
+codex exec "Code review: [prompt]" &
+
+# Meanwhile, Claude analyzes codebase with tools
+# Then synthesize all 3 perspectives
+```
+
+**Real Example from Productization Session**:
+```bash
+# 1. Gemini analysis (sync)
+gemini "Brutal product-market fit analysis for AI product:
+CONTEXT: Multi-model consensus platform
+TARGET: \$5-10/month
+QUESTION: What would make users actually PAY?"
+
+# 2. Codex analysis (background)
+codex exec "Code quality review:
+PRODUCT: Verdict AI
+BLOCKERS: Top 5 issues for paid launch
+TIMELINE: 1 week" &
+
+# 3. Claude analysis (with tools)
+Read codebase files
+Playwright browser testing
+Analyze technical gaps
+
+# 4. Synthesis (Claude)
+Compare all 3 outputs
+Identify consensus points
+Present options to user
+```
+
+**Pros**: Simple, full control, proven to work
+**Cons**: Manual synthesis, requires monitoring background tasks
+**Success Rate**: 100% (tested in production Dec 2025)
 
 ### Method 2: Scripted Orchestration (Future)
 

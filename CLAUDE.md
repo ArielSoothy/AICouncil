@@ -19,6 +19,35 @@
 
 ---
 
+## 🤖 MULTI-MODEL ORCHESTRATION FOR COMPLEX DECISIONS
+
+**NEW CAPABILITY**: Use Claude + Gemini CLI + Codex CLI together for high-stakes decisions
+
+**When to Use**:
+- Architecture decisions (hard to reverse)
+- Product-market fit analysis (need brutal honesty)
+- Security reviews (multiple vulnerability perspectives)
+- Code review of protected features
+
+**How It Works**:
+```bash
+# 1. Gemini: Product/business analysis
+gemini "Brutal product-market fit analysis: [context]"
+
+# 2. Codex: Code quality review (background)
+codex exec "Technical review: [context]" &
+
+# 3. Claude: Codebase analysis + synthesis
+Read files, test with Playwright, synthesize all perspectives
+```
+
+**Documentation**: `docs/guides/MULTI_MODEL_ORCHESTRATION.md`
+**Case Study**: Used successfully for productization review (Dec 2025)
+
+**Key Insight**: Different models catch different issues - Gemini's brutal honesty + Codex's code focus + Claude's synthesis = better decisions
+
+---
+
 ## 🛡️ DEFENSIVE DEVELOPMENT - PREVENTING FEATURE BREAKAGE
 
 ### The Core Problem:
@@ -484,6 +513,7 @@ import { ModelBadge, ModelDropdownItem } from '@/components/shared/model-badge'
 6. **Read relevant feature docs** (from DOCUMENTATION_MAP.md based on task)
 7. **Optional: Read docs/guides/BEST_PRACTICES.md** (debugging patterns)
 8. **Optional: Read docs/guides/SUB_AGENTS.md** (when using autonomous agents)
+9. **Optional: Read docs/guides/MULTI_MODEL_ORCHESTRATION.md** (for high-stakes decisions using Gemini + Codex CLIs)
 
 **Quick Reading Order**: `CLAUDE.md → DOCUMENTATION_MAP.md → docs/workflow/WORKFLOW.md → docs/workflow/PRIORITIES.md → docs/workflow/FEATURES.md`
 
