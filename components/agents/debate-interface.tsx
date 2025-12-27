@@ -139,7 +139,6 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
   const handleModelConfigChange = useCallback((newConfigs: ModelConfig[]) => {
     setModelConfigs(newConfigs)
   }, [])
-  const [selectedLLMsRound2, setSelectedLLMsRound2] = useState<Array<{ provider: string; model: string }>>([])
   const [rounds, setRounds] = useState(DEBATE_CONFIG.defaultRounds)
   const [isLoading, setIsLoading] = useState(false)
   const [debateSession, setDebateSession] = useState<DebateSession | null>(null)
@@ -1796,27 +1795,6 @@ export function AgentDebateInterface({ userTier }: AgentDebateInterfaceProps) {
               userTier={userTier}
               globalTier={globalTier}
             />
-          )}
-          
-          {/* Round 2 Agent Selection - Always use agents for deeper debate */}
-          {(autoRound2 || rounds > 1) && (
-            <Card className="p-6 bg-black/40 border-zinc-800">
-              <div className="space-y-4">
-                <Label className="text-base font-semibold">
-                  Round 2: Agent Personas (if disagreement detected)
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Agents will debate with specialized personas for deeper analysis
-                </p>
-                <AgentSelector
-                  selectedAgents={selectedAgents}
-                  onAgentsChange={setSelectedAgents}
-                  availableModels={availableModels}
-                  userTier={userTier}
-                  globalTier={globalTier}
-                />
-              </div>
-            </Card>
           )}
 
           {/* Cost Estimation Card */}
