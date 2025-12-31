@@ -534,7 +534,7 @@ import { ModelBadge, ModelDropdownItem } from '@/components/shared/model-badge'
 | **docs/architecture/RESEARCH_DRIVEN_DEBATE.md** | Research-first debate implementation | Debate debugging |
 | **docs/guides/BEST_PRACTICES.md** | Debugging patterns | When issues arise |
 | **docs/guides/SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
-| **docs/features/TRADING_ENHANCEMENTS.md** | Paper trading system (Phase 2) | Trading feature work |
+| **docs/trading/** | Trading system documentation (data sources, features, enhancements) | Trading feature work |
 | **DOCUMENTATION_MAP.md** | Complete documentation index | Finding specific docs |
 
 ### 📁 Protected Features (Split Files - December 2025)
@@ -544,7 +544,7 @@ import { ModelBadge, ModelDropdownItem } from '@/components/shared/model-badge'
 | File | Features | Check Before Modifying |
 |------|----------|----------------------|
 | **docs/features/CORE_DEBATE.md** | 1-18 | Debate system, UI, memory, agents |
-| **docs/features/TRADING_SYSTEM.md** | 19-54 | Trading, providers, models, research |
+| **docs/trading/TRADING_SYSTEM.md** | 19-54 | Trading, providers, models, research |
 | **docs/features/ARENA_MODE.md** | 55-56 | Arena competition mode |
 
 **Always read the relevant split file before modifying any feature!**

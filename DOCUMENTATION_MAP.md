@@ -44,10 +44,21 @@ These files MUST be read at the start of every development session:
 │   │   ├── UNIFIED_DEBATE_ENGINE.md    # Core debate architecture (MADR-inspired) (NEW)
 │   │   └── RESEARCH_DRIVEN_DEBATE.md   # Research-first debate implementation
 │   │
-│   ├── features/                       # Feature-specific documentation
-│   │   ├── GLOBAL_TIER_SELECTOR.md     # App-wide Free/Pro/Max tier system (NEW)
-│   │   ├── TRADING_ENHANCEMENTS.md     # Paper trading system (Phase 2)
+│   ├── trading/                        # Trading system documentation (CONSOLIDATED)
+│   │   ├── README.md                   # Trading docs index & quick reference
+│   │   ├── TRADING_DATA_SOURCES.md     # All data sources (Yahoo, SEC, Alpaca, IBKR)
+│   │   ├── TRADING_SYSTEM.md           # Protected features #19-54
+│   │   ├── TRADING_ENHANCEMENTS.md     # Phase 2 implementation details
 │   │   ├── TRADING_DECISION_PROCESS.md # How AI models make trading decisions
+│   │   ├── TRADING_DATA_TAXONOMY.md    # Data classification & categories
+│   │   ├── TRADING_TOOL_USE_STRATEGY.md # Tool calling patterns
+│   │   ├── RESEARCH_CACHE_TESTING.md   # Cache system testing guide
+│   │   └── MIGRATION_YAHOO_FINANCE.md  # Historical: Yahoo Finance migration
+│   │
+│   ├── features/                       # Feature-specific documentation
+│   │   ├── GLOBAL_TIER_SELECTOR.md     # App-wide Free/Pro/Max tier system
+│   │   ├── CORE_DEBATE.md              # Protected features #1-18
+│   │   ├── ARENA_MODE.md               # Protected features #55-56
 │   │   ├── ULTRA_MODE_REDESIGN_PLAN.md # Ultra Mode architecture
 │   │   ├── PRO_MODE_FIX_ANALYSIS.md    # Pro Mode auth fix analysis
 │   │   ├── MEMORY_IMPLEMENTATION_PLAN.md # Memory system plan
@@ -141,11 +152,9 @@ Features documentation is split for better readability:
 
 | File | Features | Check Before Modifying |
 |------|----------|----------------------|
-| **CORE_DEBATE.md** | 1-18 | Debate system, UI, memory, agents |
-| **TRADING_SYSTEM.md** | 19-54 | Trading, providers, models, research |
-| **ARENA_MODE.md** | 55-56 | Arena competition mode |
-
-**Path**: `/docs/features/`
+| **docs/features/CORE_DEBATE.md** | 1-18 | Debate system, UI, memory, agents |
+| **docs/trading/TRADING_SYSTEM.md** | 19-54 | Trading, providers, models, research |
+| **docs/features/ARENA_MODE.md** | 55-56 | Arena competition mode |
 
 ---
 
@@ -169,28 +178,46 @@ System design, tech stack, and configuration:
 
 ---
 
-## 🚀 FEATURE DOCUMENTATION (docs/features/)
+## 📈 TRADING DOCUMENTATION (docs/trading/)
 
-Detailed documentation for major features:
+**NEW**: Consolidated trading documentation folder with all trading-related docs:
 
 | File | Purpose | When to Read |
 |------|---------|--------------|
-| **TRADING_ENHANCEMENTS.md** | Complete trading system documentation (Phase 2) | Trading feature work |
-| **TRADING_DECISION_PROCESS.md** | How AI models make trading decisions (prompts, research process, limitations) | Understanding trading logic |
+| **README.md** | Trading docs index & quick reference | First stop for trading work |
+| **TRADING_DATA_SOURCES.md** | All data sources (Yahoo, SEC, Alpaca, IBKR) | Understanding where data comes from |
+| **TRADING_SYSTEM.md** | Protected features #19-54 | Before modifying trading code |
+| **TRADING_ENHANCEMENTS.md** | Phase 2 implementation details | Adding new features |
+| **TRADING_DECISION_PROCESS.md** | How AI models make decisions | Understanding trading logic |
+| **TRADING_DATA_TAXONOMY.md** | Data classification & categories | Data modeling work |
+| **TRADING_TOOL_USE_STRATEGY.md** | Tool calling patterns | Optimizing research agents |
+| **RESEARCH_CACHE_TESTING.md** | Cache system testing guide | Debugging cache issues |
+
+**Path**: `/docs/trading/`
+
+### Data Sources Summary
+- **Yahoo Finance**: Quotes, bars, news, fundamentals (FREE)
+- **SEC EDGAR**: 10-K, 10-Q, filings, ratios (FREE)
+- **Alpaca**: Broker data, positions, orders (FREE paper trading)
+- **IBKR**: Full real-time data (optional)
+
+---
+
+## 🚀 FEATURE DOCUMENTATION (docs/features/)
+
+Detailed documentation for non-trading features:
+
+| File | Purpose | When to Read |
+|------|---------|--------------|
+| **CORE_DEBATE.md** | Protected features #1-18 | Before modifying debate system |
+| **ARENA_MODE.md** | Protected features #55-56 | Before modifying arena mode |
+| **GLOBAL_TIER_SELECTOR.md** | App-wide Free/Pro/Max tier system | Tier system changes |
 | **ULTRA_MODE_REDESIGN_PLAN.md** | Ultra Mode architecture redesign | Ultra Mode changes |
 | **PRO_MODE_FIX_ANALYSIS.md** | Pro Mode authentication fix analysis | Pro Mode work |
 | **MEMORY_IMPLEMENTATION_PLAN.md** | Memory system implementation plan | Memory feature work |
 | **FUTURE_PROJECT_MEMORYCODE.md** | Future project ideas & concepts | Planning future features |
 
 **Path**: `/docs/features/`
-
-### Trading System Deep Dive (TRADING_ENHANCEMENTS.md)
-- 43 models across 8 providers
-- Professional timeframe analysis (Day, Swing, Position, Long-term)
-- Enhanced prompts with risk management
-- Model selection UI architecture
-- Phase 2A pending: Timeframe integration
-- Phase 2B planned: Trading Master agent system
 
 ---
 
@@ -216,10 +243,9 @@ Development guidelines, debugging patterns, and orchestration:
 |------|---------|--------------|
 | **BEST_PRACTICES.md** | Debugging patterns, successful fix methods | When encountering issues |
 | **SUB_AGENTS.md** | Sub-agent specifications & orchestration | When using autonomous agents |
-| **MULTI_MODEL_ORCHESTRATION.md** | Multi-model orchestration (Claude + Gemini + Codex) for complex tasks (NEW) | High-stakes decisions, code review, architecture |
+| **MULTI_MODEL_ORCHESTRATION.md** | Multi-model orchestration (Claude + Gemini + Codex) for complex tasks | High-stakes decisions, code review, architecture |
 | **ERROR_TAXONOMY.md** | Complete LLM error types & handling (15 categories) | Model errors, Sub mode bugs, error handling |
 | **MANUAL_STEPS.md** | Manual steps required for deployment | Before deployment |
-| **RESEARCH_CACHE_TESTING.md** | Research caching system testing guide | Testing Phase 2C caching |
 | **IBKR_AUTH_TROUBLESHOOTING.md** | IBKR Gateway auth flow & troubleshooting | IBKR auth issues |
 | **evals.md** | Evaluation metrics and testing guidelines | Quality assurance |
 
@@ -321,10 +347,11 @@ Historical documentation and research (reference only):
 6. Check docs/architecture/PROJECT_OVERVIEW.md for context
 
 ### Working on Trading Features
-1. Read docs/features/TRADING_ENHANCEMENTS.md (system architecture)
-2. Read docs/features/TRADING_DECISION_PROCESS.md (how AI models research & decide)
-3. Read docs/architecture/AI_MODELS_SETUP.md (model configuration)
-4. Check docs/workflow/FEATURES.md (protected features)
+1. Read docs/trading/README.md (trading docs index)
+2. Read docs/trading/TRADING_DATA_SOURCES.md (where data comes from)
+3. Read docs/trading/TRADING_SYSTEM.md (protected features #19-54)
+4. Read docs/trading/TRADING_ENHANCEMENTS.md (Phase 2 details)
+5. Read docs/architecture/AI_MODELS_SETUP.md (model configuration)
 
 ### Using Sub-Agents
 1. Read docs/guides/SUB_AGENTS.md (orchestration overview)
