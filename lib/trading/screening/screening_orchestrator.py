@@ -50,7 +50,7 @@ class ScreeningOrchestrator:
         self,
         host: str = '127.0.0.1',
         port: int = 7496,
-        client_id: int = 30,  # Use unique client ID (changed to 30 to avoid conflicts)
+        client_id: int = 99,  # Use unique client ID (99 confirmed working in connection test)
         finnhub_api_key: Optional[str] = None
     ):
         """
