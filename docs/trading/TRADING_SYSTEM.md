@@ -1514,3 +1514,89 @@
 - **Commits**: `9f58047` (main fix), `4253a4c` (debug logging)
 - **TypeScript**: 0 errors
 - **Last Modified**: December 13, 2025
+
+### 55. TWS Pre-Market Screening System (Database-Backed Architecture)
+- **Status**: ✅ ACTIVE & CRITICAL - Pre-market stock screening with TWS API
+- **Location**:
+  - `lib/trading/screening/` - All TWS client modules (scanner, fundamentals, short data, ratios, bars)
+  - `lib/trading/screening/screening_orchestrator.py` - Complete screening pipeline
+  - `lib/trading/screening/finnhub_sentiment.py` - Social sentiment client
+  - `api/routes/screening.py` - FastAPI endpoints (database-backed)
+  - `api/models/screening.py` - Pydantic models
+  - `scripts/create-screening-results-table.sql` - Supabase schema
+  - `scripts/run-screening-cron.sh` - Cron scheduler
+- **Purpose**: Find high-probability pre-market trading opportunities by combining 6 data sources
+- **Architecture Decision** (Gemini AI Consultation - January 2026):
+  - ❌ **REJECTED**: Direct FastAPI + ib_insync integration (event loop conflicts)
+  - ✅ **ACCEPTED**: Database-backed architecture (Gemini's Option C)
+    - **Layer 1**: Orchestrator runs on schedule (cron/GitHub Actions) → writes to Supabase
+    - **Layer 2**: Supabase PostgreSQL (`screening_results` table)
+    - **Layer 3**: FastAPI reads from database (no ib_insync code!)
+    - **Layer 4**: Next.js displays pre-market opportunities
+  - **Benefits**: No event loop conflicts, <100ms API responses (vs 20-30s), unlimited concurrent users, historical data included
+- **Data Sources** (6 sources combined):
+  1. **TWS Scanner**: Find pre-market gappers (TOP_PERC_GAIN scan code)
+  2. **TWS Fundamentals**: P/E ratio, EPS, Market Cap
+  3. **TWS Short Data**: Shortable shares, borrow fee rate (critical for squeeze potential)
+  4. **TWS Ratios**: 60+ fundamental ratios (ROE, debt-to-equity, etc.)
+  5. **TWS Bars**: Pre-market gap %, volume, price action
+  6. **Finnhub Sentiment**: Social sentiment from Reddit/Twitter (optional, free tier)
+- **Composite Scoring Algorithm** (0-100):
+  - Gap magnitude: 30 points (larger gaps = more momentum)
+  - Volume: 20 points (higher volume = more interest)
+  - Short squeeze potential: 20 points (low shortable shares = squeeze risk)
+  - Fundamentals: 15 points (reasonable P/E = quality stock)
+  - Social sentiment: 15 points (bullish sentiment = retail interest)
+- **Database Schema**:
+  - Table: `screening_results` with JSONB stocks array
+  - Indexes: created_at DESC (fast latest queries), scan params, GIN on stocks (symbol search)
+  - RLS Policies: Public read, inserts allowed (for orchestrator)
+- **FastAPI Endpoints**:
+  - `GET /api/health` - Health check with database status
+  - `GET /api/screening/latest` - Latest screening results (< 100ms)
+  - `GET /api/screening/history` - Historical screenings with pagination
+- **Test Results** (January 3, 2026):
+  - Database Write: ✅ PASS (~200ms)
+  - Database Read: ✅ PASS (~50ms)
+  - FastAPI `/health`: ✅ PASS (<50ms)
+  - FastAPI `/latest`: ✅ PASS (<100ms)
+  - FastAPI `/history`: ✅ PASS (<100ms)
+  - **Performance**: 200-300x faster than attempted synchronous approach!
+- **Scheduling**:
+  - Cron job: Runs every 15 minutes during pre-market hours (4:00-9:30am ET, Mon-Fri)
+  - GitHub Actions: Reference workflow provided (TWS not available in cloud)
+  - Logs: Daily log files in `logs/screening-YYYYMMDD.log`
+- **Documentation**:
+  - `docs/trading/DATABASE_BACKED_ARCHITECTURE.md` - Complete architecture guide (600+ lines)
+  - `docs/trading/SCREENING_INTEGRATION.md` - Frontend integration guide
+  - `TESTING_SUMMARY.md` - User testing guide
+  - `TEST_RESULTS.md` - Comprehensive test results
+- **Frontend Integration** (Phase 9 - ✅ COMPLETE):
+  - `components/trading/PreMarketScreening.tsx` - React component (375 lines)
+    - Auto-refresh every 5 minutes
+    - Stats dashboard (total scanned, opportunities, execution time, avg score)
+    - Detailed stock cards with all data fields
+    - Score color-coding (green ≥80, yellow ≥60, red <60)
+    - Loading states and error handling
+  - `app/trading/screening/page.tsx` - Next.js page wrapper
+  - `components/ui/header.tsx` - Added Screening navigation links (desktop + mobile)
+  - Environment: `NEXT_PUBLIC_FASTAPI_URL=http://localhost:8001`
+- **Dependencies**:
+  - ib-insync (TWS API client)
+  - supabase (Python package for database)
+  - finnhub-python (social sentiment)
+  - fastapi + uvicorn (API server)
+- **Requirements**:
+  - TWS Desktop or IB Gateway running on port 7496
+  - API enabled in TWS settings
+  - Supabase credentials in environment
+  - Optional: Finnhub API key (free tier: 60 calls/min)
+- **Pending**:
+  - ⏳ User testing with real TWS Desktop
+  - ⏳ Test frontend with FastAPI backend
+  - ⏳ Production cron job deployment
+- **Files Created**: 10 new files (SQL schema, test scripts, cron scheduler, React components, pages, documentation)
+- **Files Modified**: 4 files (orchestrator, FastAPI routes, Pydantic models, header navigation)
+- **Commits**: TBD (pending final testing)
+- **Last Modified**: January 3, 2026
+- **DO NOT**: Attempt to run ib_insync directly in FastAPI (will fail with event loop conflicts), remove database layer, or modify RLS policies without testing

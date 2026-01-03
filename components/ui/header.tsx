@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Brain, User, LogOut, BarChart3, Users, Shield, Menu, X, Gem, TrendingUp, Trophy, Layers } from 'lucide-react'
+import { Brain, User, LogOut, BarChart3, Users, Shield, Menu, X, Gem, TrendingUp, Trophy, Layers, ScanLine } from 'lucide-react'
 import { Button } from './button'
 import { useAuth } from '@/contexts/auth-context'
 import { PROJECT_NAME } from '@/lib/config/branding'
@@ -60,6 +60,16 @@ export function Header() {
               <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
                 <TrendingUp className="h-4 w-4 mr-2" />
                 Trading
+              </Button>
+            </Link>
+          )}
+
+          {/* Pre-Market Screening - Development only */}
+          {process.env.NODE_ENV === 'development' && (
+            <Link href="/trading/screening">
+              <Button variant="ghost" size="sm" className="text-teal-600 hover:text-teal-700">
+                <ScanLine className="h-4 w-4 mr-2" />
+                Screening
               </Button>
             </Link>
           )}
@@ -184,6 +194,16 @@ export function Header() {
                 <Button variant="ghost" size="sm" className="w-full justify-start text-green-600 hover:text-green-700">
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Trading
+                </Button>
+              </Link>
+            )}
+
+            {/* Pre-Market Screening - Development only */}
+            {process.env.NODE_ENV === 'development' && (
+              <Link href="/trading/screening" onClick={() => setIsMobileMenuOpen(false)}>
+                <Button variant="ghost" size="sm" className="w-full justify-start text-teal-600 hover:text-teal-700">
+                  <ScanLine className="h-4 w-4 mr-2" />
+                  Screening
                 </Button>
               </Link>
             )}

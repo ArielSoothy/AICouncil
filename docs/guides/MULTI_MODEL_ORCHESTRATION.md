@@ -534,13 +534,57 @@ When adding protected features, note if multi-model was used:
 
 ---
 
-### Case Study 2: [Future Use]
+### Case Study 2: MLMX Project Setup ✅ COMPLETE
+
+**Date**: January 3, 2026
+**Task**: Apply multi-model orchestration methodology to separate MLMX project
+**Models Used**: Claude Code (for implementation)
+**Approach**: Copy workflow documentation, not tight code coupling
+
+**Execution**:
+1. **Infrastructure**: Copied AI provider code (`lib/ai-providers/`, `lib/models/`) from AI Council to MLMX
+2. **Environment**: Copied API keys to `MLMX/.env.local`, removed AI Council specific vars
+3. **Documentation**: Created `MLMX/docs/DEVELOPMENT_WORKFLOW.md` - full multi-model workflow guide
+4. **Quick Reference**: Created `MLMX/CLAUDE.md` - CLI command cheatsheet
+5. **Total Time**: ~1 hour setup
+
+**Key Decisions**:
+1. **Independent projects**: Each has own copy of provider infrastructure (no shared library)
+2. **Shared workflow**: Both use Gemini + Codex + Claude for high-stakes decisions
+3. **Reuse CLI subscriptions**: Global CLI tools work for both projects
+4. **Separate Supabase**: MLMX creates new Supabase project (not shared with AI Council)
+
+**Benefits**:
+- ✅ MLMX gets production-ready AI provider infrastructure
+- ✅ MLMX gets proven decision-making workflow
+- ✅ No code coupling between projects (easy to maintain separately)
+- ✅ Workflow scales to future projects
+- ✅ CLI subscriptions reused across all projects
+
+**Lessons Learned**:
+1. **Workflow is portable** - Multi-model method works across different projects
+2. **Copy infrastructure, not coupling** - Independent copies > shared libraries for 2 projects
+3. **Documentation is key** - `DEVELOPMENT_WORKFLOW.md` makes workflow reusable
+4. **1 hour investment** - Setup pays for itself on first architecture decision
+
+**Files Created**:
+- `MLMX/lib/ai-providers/` - 8 provider implementations + CLI support
+- `MLMX/lib/models/model-registry.ts` - 46+ models, single source of truth
+- `MLMX/docs/DEVELOPMENT_WORKFLOW.md` - Full workflow guide (400+ lines)
+- `MLMX/CLAUDE.md` - Quick reference (200+ lines)
+- `MLMX/.env.local` - API keys + Supabase placeholders
+
+**Next**: MLMX will use multi-model workflow for all architecture decisions and security reviews
+
+---
+
+### Case Study 3: [Future Use]
 [To be added as we continue using this pattern]
 
 ---
 
 **Meta Note**: This document itself should be improved through multi-model review! Let's practice what we preach.
 
-**Version**: 1.0 (Initial Draft - December 22, 2024)
-**Status**: 🚧 Experimental - Needs real-world validation
+**Version**: 1.1 (Updated January 3, 2026 - Added MLMX case study)
+**Status**: ✅ Validated - Proven across 2 projects
 **Maintainer**: AI Council Development Team

@@ -1,0 +1,71 @@
+name: Pre-Market Stock Screening
+
+# Schedule: Run every 15 minutes during pre-market hours (4:00 AM - 9:30 AM ET)
+# UTC conversion: 4am ET = 9am UTC (winter) or 8am UTC (summer)
+# Runs Mon-Fri only (US market days)
+on:
+  schedule:
+    # Winter schedule (EST): 4am-9:30am ET = 9am-2:30pm UTC
+    - cron: '*/15 9-14 * * 1-5'  # Every 15 min, 9am-2pm UTC, Mon-Fri
+
+  workflow_dispatch:  # Allow manual trigger for testing
+
+jobs:
+  screen-stocks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Kill if screening takes >10 minutes
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Verify TWS connection (skip - not available in GitHub Actions)
+        run: |
+          echo "⚠️ TWS Desktop not available in GitHub Actions"
+          echo "This workflow is for reference only - use local cron job instead"
+          echo "See scripts/run-screening-cron.sh for production deployment"
+
+      - name: Run screening orchestrator
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: |
+          echo "Running pre-market screening..."
+          python -m lib.trading.screening.screening_orchestrator
+        continue-on-error: true  # Don't fail workflow on screening errors
+
+      - name: Upload logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screening-logs-${{ github.run_number }}
+          path: logs/
+          retention-days: 7
+
+# ⚠️ IMPORTANT LIMITATIONS:
+#
+# GitHub Actions CANNOT connect to TWS Desktop because:
+# 1. TWS Desktop requires local installation (Windows/Mac/Linux desktop app)
+# 2. GitHub Actions runs in cloud (no desktop environment)
+# 3. IBKR does not provide a cloud-based TWS API
+#
+# RECOMMENDED DEPLOYMENT:
+# - Use local cron job (scripts/run-screening-cron.sh) on your development machine
+# - Or deploy to cloud VM with TWS Desktop installed (AWS EC2, DigitalOcean, etc.)
+# - This workflow is for reference/documentation purposes only
+#
+# ALTERNATIVE: Use IBKR Client Portal API (not implemented yet)
+# - Does not require TWS Desktop
+# - Can run in GitHub Actions
+# - Requires gateway server running somewhere accessible

@@ -1,0 +1,123 @@
+INFO:     Will watch for changes in these directories: ['/Users/user/AI-Counsil/AICouncil']
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [81772] using StatReload
+INFO:     Started server process [81776]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+
+======================================================================
+TWS SCREENING API - SERVER STARTING
+======================================================================
+Server: http://localhost:8000
+Docs: http://localhost:8000/docs
+Health: http://localhost:8000/api/health
+Screening: POST http://localhost:8000/api/screening/pre-market
+======================================================================
+
+Prerequisites:
+  ✓ TWS Desktop running on port 7496
+  ✓ API enabled in TWS settings
+  ✓ Market data subscriptions active ($14.50/mo)
+  ✓ (Optional) FINNHUB_API_KEY environment variable
+
+======================================================================
+
+INFO:     127.0.0.1:63300 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63332 - "POST /api/screening/run HTTP/1.1" 200 OK
+[INFO] Starting orchestrator in background...
+[ERROR] ❌ Orchestrator failed with code 1
+Error 326, reqId -1: Unable to connect as the client id is already in use. Retry with a unique client id.
+Peer closed connection. clientId 20 already in use?
+API connection failed: TimeoutError()
+Traceback (most recent call last):
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/tasks.py", line 507, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/futures.py", line 286, in __await__
+    yield self  # This tells Task to wait for completion.
+    ^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/tasks.py", line 375, in __wakeup
+    future.result()
+    ~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/futures.py", line 194, in result
+    raise self._make_cancelled_error()
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/user/AI-Counsil/AICouncil/lib/trading/screening/tws_scanner.py", line 79, in connect
+    await loop.run_in_executor(executor, _connect)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/futures.py", line 286, in __await__
+    yield self  # This tells Task to wait for completion.
+    ^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/tasks.py", line 375, in __wakeup
+    future.result()
+    ~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/futures.py", line 199, in result
+    raise self._exception.with_traceback(self._exception_tb)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/Users/user/AI-Counsil/AICouncil/lib/trading/screening/tws_scanner.py", line 75, in _connect
+    self.ib.connect(self.host, self.port, self.client_id)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/ib_insync/ib.py", line 279, in connect
+    return self._run(self.connectAsync(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+        host, port, clientId, timeout, readonly, account))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/ib_insync/ib.py", line 318, in _run
+    return util.run(*awaitables, timeout=self.RequestTimeout)
+           ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/ib_insync/util.py", line 341, in run
+    result = loop.run_until_complete(task)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/nest_asyncio.py", line 98, in run_until_complete
+    return f.result()
+           ~~~~~~~~^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/futures.py", line 199, in result
+    raise self._exception.with_traceback(self._exception_tb)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/tasks.py", line 306, in __step_run_and_handle_result
+    result = coro.throw(exc)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/ib_insync/ib.py", line 1748, in connectAsync
+    await self.client.connectAsync(host, port, clientId, timeout)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/ib_insync/client.py", line 217, in connectAsync
+    await asyncio.wait_for(self.apiStart, timeout)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/tasks.py", line 506, in wait_for
+    async with timeouts.timeout(timeout):
+               ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/timeouts.py", line 116, in __aexit__
+    raise TimeoutError from exc_val
+TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/user/AI-Counsil/AICouncil/lib/trading/screening/screening_orchestrator.py", line 460, in <module>
+    asyncio.run(main())
+    ~~~~~~~~~~~^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/nest_asyncio.py", line 30, in run
+    return loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/nest_asyncio.py", line 98, in run_until_complete
+    return f.result()
+           ~~~~~~~~^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/futures.py", line 199, in result
+    raise self._exception.with_traceback(self._exception_tb)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.13/asyncio/tasks.py", line 306, in __step_run_and_handle_result
+    result = coro.throw(exc)
+  File "/Users/user/AI-Counsil/AICouncil/lib/trading/screening/screening_orchestrator.py", line 424, in main
+    results = await orchestrator.screen_pre_market(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "/Users/user/AI-Counsil/AICouncil/lib/trading/screening/screening_orchestrator.py", line 185, in screen_pre_market
+    await self.scanner.connect()
+  File "/Users/user/AI-Counsil/AICouncil/lib/trading/screening/tws_scanner.py", line 92, in connect
+    raise ConnectionError(f"Failed to connect to TWS: {e}")
+ConnectionError: Failed to connect to TWS: 
+
+INFO:     127.0.0.1:63370 - "GET /api/screening/latest HTTP/1.1" 503 Service Unavailable
+INFO:     127.0.0.1:63370 - "GET /api/screening/latest HTTP/1.1" 503 Service Unavailable
