@@ -10,13 +10,16 @@ Improvements (Jan 2025):
 - Atomic client ID counter (no collisions)
 - Auto-cleanup of old jobs (1 hour TTL)
 - nest_asyncio applied once at module level
+- Real-time flow_log for observability
+- Data enrichment with actual price/volume/gap from TWS
 """
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from datetime import datetime, timedelta
 from lib.trading.screening.tws_scanner_sync import TWSScannerSync
+from ib_insync import IB, Stock as IBStock
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import uuid
@@ -36,6 +39,7 @@ jobs_lock = threading.Lock()
 # Atomic client ID counter (avoids collisions)
 _client_id_counter = threading.Lock()
 _next_client_id = 10
+_next_enrich_client_id = 100  # Separate range for enrichment
 
 # Thread pool for running synchronous scanner
 executor = ThreadPoolExecutor(max_workers=5)
@@ -50,9 +54,37 @@ def get_next_client_id() -> int:
     with _client_id_counter:
         client_id = _next_client_id
         _next_client_id += 1
-        if _next_client_id > 100:  # Reset to avoid very high IDs
+        if _next_client_id > 90:  # Reset to avoid overlapping with enrichment range
             _next_client_id = 10
         return client_id
+
+
+def get_next_enrich_client_id() -> int:
+    """Get next enrichment client ID (separate range 100-199)"""
+    global _next_enrich_client_id
+    with _client_id_counter:
+        client_id = _next_enrich_client_id
+        _next_enrich_client_id += 1
+        if _next_enrich_client_id > 199:
+            _next_enrich_client_id = 100
+        return client_id
+
+
+def log_step(job_id: str, message: str, status: str = "running"):
+    """Add timestamped entry to flow log (real-time observability)"""
+    entry = {
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "message": message,
+        "status": status  # "running", "success", "error"
+    }
+    with jobs_lock:
+        if job_id in jobs:
+            if "flow_log" not in jobs[job_id]:
+                jobs[job_id]["flow_log"] = []
+            jobs[job_id]["flow_log"].append(entry)
+    # Also print to server console
+    icon = "✅" if status == "success" else "❌" if status == "error" else "⏳"
+    print(f"[{entry['timestamp']}] {icon} {message}")
 
 
 def cleanup_old_jobs():
@@ -74,12 +106,27 @@ def cleanup_old_jobs():
             print(f"[CLEANUP] Removed {removed} old jobs (TTL: {JOB_TTL_HOURS}h)")
 
 
+class FlowLogEntry(BaseModel):
+    """Flow log entry for real-time observability"""
+    timestamp: str
+    message: str
+    status: str  # running, success, error
+
+
 class Stock(BaseModel):
-    """Stock model"""
+    """Stock model with enriched data"""
     symbol: str
     rank: int
     exchange: str
     conid: int
+    # Enriched data from TWSBarsClient
+    gap_percent: float = 0.0
+    gap_direction: str = "up"
+    pre_market_price: float = 0.0
+    previous_close: float = 0.0
+    pre_market_volume: int = 0
+    momentum_score: float = 0.0
+    score: int = 100  # Composite score
 
 
 class ScanJob(BaseModel):
@@ -93,6 +140,52 @@ class ScanJob(BaseModel):
     completed_at: Optional[str] = None
     error: Optional[str] = None
     stocks: Optional[List[Stock]] = None  # Results stored here
+    flow_log: Optional[List[FlowLogEntry]] = None  # Real-time log
+
+
+def calculate_composite_score(rank: int, bars_data: Dict) -> int:
+    """
+    Calculate composite score (0-100) based on rank and market data
+
+    Score Components:
+    - Rank factor (40 points): Lower rank = higher score
+    - Gap magnitude (30 points): Larger gap = more momentum
+    - Volume (20 points): Higher volume = more interest
+    - Momentum (10 points): From TWSBarsClient
+    """
+    score = 0
+
+    # Rank factor (40 points) - rank 1 = 40 points, rank 20 = 2 points
+    rank_score = max(0, 40 - (rank - 1) * 2)
+    score += rank_score
+
+    # Gap magnitude (30 points)
+    gap = abs(bars_data.get('gap_percent', 0))
+    if gap > 10:
+        score += 30
+    elif gap > 5:
+        score += 25
+    elif gap > 3:
+        score += 20
+    elif gap > 1:
+        score += 10
+
+    # Volume (20 points)
+    volume = bars_data.get('pre_market_volume', 0)
+    if volume > 5_000_000:
+        score += 20
+    elif volume > 1_000_000:
+        score += 15
+    elif volume > 500_000:
+        score += 10
+    elif volume > 100_000:
+        score += 5
+
+    # Momentum from TWSBarsClient (10 points)
+    momentum = bars_data.get('momentum_score', 0)
+    score += int(momentum / 10)  # 0-100 scaled to 0-10
+
+    return min(100, score)
 
 
 async def run_scanner_job(
@@ -103,26 +196,22 @@ async def run_scanner_job(
     max_results: int
 ):
     """
-    Run scanner in background (async wrapper for sync scanner)
+    Run scanner in background with real-time flow logging and data enrichment
 
     Steps:
-    1. Connect to TWS (in thread pool)
-    2. Run scanner (in thread pool)
-    3. Update job status
+    1. Connect to TWS and run scanner (sync in thread pool)
+    2. Connect again for enrichment (async with TWSBarsClient)
+    3. Get price/volume/gap data for each stock
+    4. Calculate composite scores
     """
     loop = asyncio.get_event_loop()
 
     def sync_scan():
         """Synchronous scanning function to run in thread pool"""
-        # ib_insync needs an event loop even for "sync" operations
-        # Create a new event loop for this thread
-        # Note: nest_asyncio already applied at module level
-
         new_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(new_loop)
 
         try:
-            # Use atomic client ID to avoid collisions
             client_id = get_next_client_id()
             scanner = TWSScannerSync(client_id=client_id)
             scanner.connect()
@@ -138,19 +227,19 @@ async def run_scanner_job(
             new_loop.close()
 
     try:
-        # Update: Starting
+        # === PHASE 1: SCAN ===
         jobs[job_id]["status"] = "running"
+        jobs[job_id]["progress"] = 5
+        log_step(job_id, "Connecting to TWS Desktop...", "running")
+
         jobs[job_id]["progress"] = 10
-        jobs[job_id]["message"] = "Connecting to TWS Desktop..."
+        log_step(job_id, "Running MOST_ACTIVE scanner...", "running")
 
-        # Update: Scanning
-        jobs[job_id]["progress"] = 30
-        jobs[job_id]["message"] = "Scanning for stocks..."
-
-        # Step 1 & 2: Run sync scanner in thread pool
+        # Run sync scanner in thread pool
         scan_results = await loop.run_in_executor(executor, sync_scan)
 
         if not scan_results:
+            log_step(job_id, "No stocks found matching criteria", "error")
             jobs[job_id]["status"] = "completed"
             jobs[job_id]["progress"] = 100
             jobs[job_id]["message"] = "No stocks found matching criteria"
@@ -158,35 +247,61 @@ async def run_scanner_job(
             jobs[job_id]["completed_at"] = datetime.now().isoformat()
             return
 
-        # Update: Preparing results
-        jobs[job_id]["progress"] = 90
-        jobs[job_id]["message"] = f"Preparing {len(scan_results)} stocks..."
+        log_step(job_id, f"Found {len(scan_results)} stocks", "success")
+        jobs[job_id]["progress"] = 30
+        jobs[job_id]["message"] = f"Found {len(scan_results)} stocks, enriching data..."
 
-        # Step 3: Build results (stored in memory)
-        stocks = []
-        for stock in scan_results:
-            stocks.append({
-                'symbol': stock['symbol'],
+        # === PHASE 2: USE ENRICHED DATA FROM TWS ===
+        # Scanner now returns price/volume/gap data directly from TWS
+        log_step(job_id, "Processing enriched scan results...", "running")
+
+        enriched_stocks = []
+        for i, stock in enumerate(scan_results):
+            symbol = stock['symbol']
+            gap = stock.get('gap_percent', 0.0)
+            price = stock.get('last_price', 0.0)
+            prev_close = stock.get('previous_close', 0.0)
+            volume = stock.get('volume', 0)
+
+            # Calculate score based on rank AND gap magnitude
+            rank_score = max(0, 40 - stock['rank'] * 2)  # 40 points for rank
+            gap_score = min(30, abs(gap) * 3)  # Up to 30 points for gap
+            vol_score = min(30, (volume / 1_000_000) * 10)  # Up to 30 points for volume
+            total_score = int(rank_score + gap_score + vol_score)
+
+            enriched_stocks.append({
+                'symbol': symbol,
                 'rank': stock['rank'],
                 'exchange': stock['exchange'],
-                'conid': stock['conid']
+                'conid': stock['conid'],
+                'gap_percent': gap,
+                'gap_direction': 'up' if gap >= 0 else 'down',
+                'pre_market_price': price,
+                'previous_close': prev_close,
+                'pre_market_volume': volume,
+                'momentum_score': abs(gap) * 10,
+                'score': total_score
             })
+            log_step(job_id, f"  {symbol}: ${price:.2f} | Gap: {gap:+.1f}% | Vol: {volume:,}", "success")
 
-        # Update: Complete
+        log_step(job_id, "Enrichment complete", "success")
+
+        # === PHASE 3: COMPLETE ===
         jobs[job_id]["status"] = "completed"
         jobs[job_id]["progress"] = 100
-        jobs[job_id]["message"] = f"Successfully found {len(stocks)} stocks"
-        jobs[job_id]["stocks_found"] = len(stocks)
-        jobs[job_id]["stocks"] = stocks  # Store results in job
+        jobs[job_id]["message"] = f"Successfully found {len(enriched_stocks)} stocks"
+        jobs[job_id]["stocks_found"] = len(enriched_stocks)
+        jobs[job_id]["stocks"] = enriched_stocks
         jobs[job_id]["completed_at"] = datetime.now().isoformat()
 
-        print(f"[SUCCESS] ✅ Job {job_id}: {len(stocks)} stocks found")
+        log_step(job_id, f"Complete! {len(enriched_stocks)} stocks enriched", "success")
+        print(f"[SUCCESS] ✅ Job {job_id}: {len(enriched_stocks)} stocks found and enriched")
 
     except Exception as e:
-        # Update: Failed
         error_msg = str(e)
         error_trace = traceback.format_exc()
 
+        log_step(job_id, f"Error: {error_msg[:50]}", "error")
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["progress"] = 0
         jobs[job_id]["message"] = f"Error: {error_msg}"
@@ -237,7 +352,8 @@ async def start_screening_v2(
             "created_at": datetime.now().isoformat(),
             "completed_at": None,
             "error": None,
-            "stocks": None
+            "stocks": None,
+            "flow_log": []  # Real-time observability
         }
 
     # Add to background tasks

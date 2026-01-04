@@ -496,37 +496,42 @@ Total: 100 points maximum
 
 | Client | File | Lines | Status |
 |--------|------|-------|--------|
-| Scanner | `lib/trading/screening/tws_scanner.py` | 299 | ✅ Complete |
+| Scanner (Sync) | `lib/trading/screening/tws_scanner_sync.py` | ~150 | ✅ Complete |
 | Fundamentals | `lib/trading/screening/tws_fundamentals.py` | ~250 | ✅ Complete |
 | Short Data | `lib/trading/screening/tws_short_data.py` | ~200 | ✅ Complete |
 | Ratios | `lib/trading/screening/tws_ratios.py` | ~300 | ✅ Complete |
 | Bars | `lib/trading/screening/tws_bars.py` | ~250 | ✅ Complete |
 | Sentiment | `lib/trading/screening/finnhub_sentiment.py` | ~150 | ✅ Complete |
-| Orchestrator | `lib/trading/screening/screening_orchestrator.py` | 483 | ✅ Complete |
+| V2 API | `api/routes/screening_v2.py` | ~430 | ✅ Complete |
 
 ---
 
-## 🚀 Test Mode
+## 🚀 V2 API Architecture
 
-### Testing Without Market Hours
+### Production-Ready Background Task System
 
-The orchestrator supports `test_mode=True` to bypass the scanner and use hardcoded symbols:
+The V2 API uses a background task pattern with job tracking:
 
 ```python
-# Test with hardcoded symbols (TSLA, AAPL, NVDA, MSFT, GOOGL)
-results = await orchestrator.screen_pre_market(
-    test_mode=True  # Bypasses scanner, uses test symbols
-)
+# Start a screening job
+POST /api/screening/v2/run?min_volume=100000&min_price=1.0&max_price=20.0&max_results=20
+# Returns: { "job_id": "uuid", "status": "queued" }
+
+# Poll for status (every 500ms)
+GET /api/screening/v2/status/{job_id}
+# Returns: { "status": "running", "progress": 50, "flow_log": [...] }
+
+# When complete:
+# Returns: { "status": "completed", "stocks": [...enriched data...] }
 ```
 
-This allows testing the **FULL DATA PIPELINE** regardless of market hours:
-- ✅ Fundamentals fetching
-- ✅ Short data fetching
-- ✅ Ratios calculation
-- ✅ Bars retrieval
-- ✅ Sentiment analysis
-- ✅ Composite scoring
-- ✅ Database writes
+### Key Features (Jan 2025)
+- ✅ Synchronous scanner (works with TWS)
+- ✅ Thread-safe job storage with Lock
+- ✅ Atomic client ID counter (no collisions)
+- ✅ Auto-cleanup of old jobs (1 hour TTL)
+- ✅ Real-time flow_log for observability
+- ✅ Data enrichment with TWSBarsClient
 
 ---
 

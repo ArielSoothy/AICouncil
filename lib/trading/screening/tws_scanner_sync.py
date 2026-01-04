@@ -98,10 +98,13 @@ class TWSScannerSync:
 
         print(f"[SUCCESS] ✅ Found {len(scan_data)} stocks")
 
-        # Convert to dict format
+        # Convert to dict format and get price data
         results = []
+        contracts = []
+
         for i, data in enumerate(scan_data, 1):
             contract = data.contractDetails.contract
+            contracts.append(contract)
 
             result = {
                 'rank': data.rank,
@@ -110,11 +113,67 @@ class TWSScannerSync:
                 'currency': contract.currency,
                 'conid': contract.conId,
                 'contract': contract,
-                'contract_details': data.contractDetails
+                'contract_details': data.contractDetails,
+                # Price data - will be filled below
+                'last_price': 0.0,
+                'previous_close': 0.0,
+                'volume': 0,
+                'gap_percent': 0.0
             }
 
             results.append(result)
             print(f"  {i}. {contract.symbol} (rank: {data.rank})")
+
+        # === GET LAST DAY'S PRICE CHANGE FROM HISTORICAL BARS ===
+        if contracts:
+            print(f"\n[ENRICHING] Getting last day change for {len(contracts)} stocks...")
+            try:
+                for i, contract in enumerate(contracts):
+                    if i >= len(results):
+                        break
+
+                    symbol = results[i]['symbol']
+                    try:
+                        # Get 3 days of daily bars to ensure we have 2 trading days
+                        bars = self.ib.reqHistoricalData(
+                            contract,
+                            endDateTime='',
+                            durationStr='3 D',
+                            barSizeSetting='1 day',
+                            whatToShow='TRADES',
+                            useRTH=True,
+                            formatDate=1
+                        )
+
+                        if bars and len(bars) >= 2:
+                            last_bar = bars[-1]  # Most recent trading day
+                            prev_bar = bars[-2]  # Day before
+
+                            last_close = last_bar.close
+                            prev_close = prev_bar.close
+                            volume = int(last_bar.volume)
+
+                            # Calculate % change from previous day
+                            if prev_close > 0:
+                                gap = ((last_close - prev_close) / prev_close) * 100
+                            else:
+                                gap = 0.0
+
+                            results[i]['last_price'] = last_close
+                            results[i]['previous_close'] = prev_close
+                            results[i]['volume'] = volume
+                            results[i]['gap_percent'] = round(gap, 2)
+
+                            print(f"  {symbol}: ${last_close:.2f} | Prev: ${prev_close:.2f} | Chg: {gap:+.1f}% | Vol: {volume:,}")
+                        else:
+                            print(f"  {symbol}: No historical data available")
+
+                    except Exception as e:
+                        print(f"  {symbol}: Error - {str(e)[:50]}")
+
+                print(f"[SUCCESS] ✅ Historical data enriched for {len(contracts)} stocks")
+            except Exception as e:
+                print(f"[WARN] ⚠️ Enrichment failed: {e}")
 
         return results
 

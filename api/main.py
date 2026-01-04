@@ -29,7 +29,7 @@ Prerequisites:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import screening, screening_simple, screening_v2
+from api.routes import screening_simple, screening_v2
 from datetime import datetime
 from dotenv import load_dotenv
 import os
@@ -62,7 +62,6 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(screening.router, prefix="/api")
 app.include_router(screening_simple.router, prefix="/api")  # Simple synchronous scanner
 app.include_router(screening_v2.router, prefix="/api")  # V2: Production-ready background jobs
 

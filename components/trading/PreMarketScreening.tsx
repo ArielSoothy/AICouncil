@@ -1,7 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play, Terminal } from 'lucide-react'
+
+interface FlowLogEntry {
+  timestamp: string
+  message: string
+  status: 'running' | 'success' | 'error'
+}
 
 interface StockResult {
   symbol: string
@@ -63,6 +69,10 @@ export default function PreMarketScreening() {
   const [autoRefresh, setAutoRefresh] = useState(false)
   const [progressStep, setProgressStep] = useState<string>('')
   const [progressPercent, setProgressPercent] = useState<number>(0)
+  const [flowLog, setFlowLog] = useState<FlowLogEntry[]>([])
+  const [showFlowLog, setShowFlowLog] = useState<boolean>(false)
+  const flowLogRef = useRef<HTMLDivElement>(null)
+  const flowLogTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // ✅ Filter state - V2 API uses: minVolume, minPrice, maxPrice, maxResults
   // Note: Gap, Float, and RelVol sliders are UI-only for now (V2 scanner uses TWS filters)
@@ -108,6 +118,13 @@ export default function PreMarketScreening() {
     setRunning(true)
     setError(null)
     setProgressStep('Starting TWS scanner...')
+    setFlowLog([]) // Clear previous flow log
+    setShowFlowLog(true) // Show flow log when scan starts
+    // Clear any existing timer
+    if (flowLogTimerRef.current) {
+      clearTimeout(flowLogTimerRef.current)
+      flowLogTimerRef.current = null
+    }
 
     // Use custom params if provided, otherwise use state
     // Note: V2 API only uses minVolume, minPrice, maxPrice, maxResults
@@ -154,22 +171,44 @@ export default function PreMarketScreening() {
             setProgressStep(status.message || 'Scanning...')
             setProgressPercent(status.progress || 0)
 
+            // Update flow log for real-time observability
+            if (status.flow_log && status.flow_log.length > 0) {
+              setFlowLog(status.flow_log)
+              // Auto-scroll to bottom
+              if (flowLogRef.current) {
+                flowLogRef.current.scrollTop = flowLogRef.current.scrollHeight
+              }
+            }
+
             if (status.status === 'completed') {
               // SUCCESS - got results!
               clearInterval(pollInterval)
               setProgressPercent(100)
 
-              // Convert V2 results to ScreeningResponse format
+              // Convert V2 results to ScreeningResponse format (now with enriched data!)
               if (status.stocks && status.stocks.length > 0) {
-                const formattedStocks: StockResult[] = status.stocks.map((stock: { symbol: string; rank: number; exchange: string; conid: number }) => ({
+                interface EnrichedStock {
+                  symbol: string
+                  rank: number
+                  exchange: string
+                  conid: number
+                  gap_percent: number
+                  gap_direction: string
+                  pre_market_price: number
+                  previous_close: number
+                  pre_market_volume: number
+                  momentum_score: number
+                  score: number
+                }
+                const formattedStocks: StockResult[] = status.stocks.map((stock: EnrichedStock) => ({
                   symbol: stock.symbol,
                   rank: stock.rank,
-                  gap_percent: 0, // V2 scanner doesn't have this
-                  gap_direction: 'up' as const,
-                  pre_market_volume: 0,
-                  pre_market_price: 0,
-                  previous_close: 0,
-                  score: 100 - stock.rank // Higher rank = higher score
+                  gap_percent: stock.gap_percent || 0,
+                  gap_direction: (stock.gap_direction || 'up') as 'up' | 'down',
+                  pre_market_volume: stock.pre_market_volume || 0,
+                  pre_market_price: stock.pre_market_price || 0,
+                  previous_close: stock.previous_close || 0,
+                  score: stock.score || (100 - stock.rank)
                 }))
 
                 const response: ScreeningResponse = {
@@ -192,6 +231,11 @@ export default function PreMarketScreening() {
                 setProgressPercent(0)
                 setRunning(false)
               }, 2000)
+
+              // Keep flow log visible for 8 seconds after completion
+              flowLogTimerRef.current = setTimeout(() => {
+                setShowFlowLog(false)
+              }, 8000)
 
             } else if (status.status === 'failed') {
               // Error occurred
@@ -582,6 +626,37 @@ export default function PreMarketScreening() {
                 ></div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Real-Time Flow Log - persists 8 seconds after completion */}
+      {showFlowLog && flowLog.length > 0 && (
+        <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+          <div className="bg-gray-800 px-4 py-2 flex items-center gap-2 border-b border-gray-700">
+            <Terminal className="w-4 h-4 text-green-400" />
+            <span className="text-sm font-medium text-green-400">Screening Log</span>
+            <span className="text-xs text-gray-500">({flowLog.length} entries)</span>
+          </div>
+          <div
+            ref={flowLogRef}
+            className="p-4 font-mono text-sm max-h-64 overflow-y-auto"
+          >
+            {flowLog.map((entry, i) => (
+              <div key={i} className="flex gap-3 py-0.5">
+                <span className="text-gray-500 flex-shrink-0">{entry.timestamp}</span>
+                <span className="flex-shrink-0">
+                  {entry.status === 'success' ? '✅' : entry.status === 'error' ? '❌' : '⏳'}
+                </span>
+                <span className={
+                  entry.status === 'success' ? 'text-green-400' :
+                  entry.status === 'error' ? 'text-red-400' :
+                  'text-yellow-400'
+                }>
+                  {entry.message}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
