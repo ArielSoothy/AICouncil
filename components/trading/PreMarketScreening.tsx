@@ -34,12 +34,25 @@ interface StockResult {
   score: number
 }
 
+interface ScanParameters {
+  min_gap_percent: number
+  min_volume: number
+  min_price: number
+  max_price: number
+  max_market_cap: number
+  max_results: number
+  scan_code: string
+  include_sentiment: boolean
+  test_mode: boolean
+}
+
 interface ScreeningResponse {
   stocks: StockResult[]
   total_scanned: number
   total_returned: number
   execution_time_seconds: number
   timestamp: string
+  scan_parameters?: ScanParameters
 }
 
 export default function PreMarketScreening() {
@@ -50,8 +63,19 @@ export default function PreMarketScreening() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(false)
   const [progressStep, setProgressStep] = useState<string>('')
+  const [progressPercent, setProgressPercent] = useState<number>(0)
+  const [testMode, setTestMode] = useState(false) // OFF by default - requires TWS Desktop
 
-  const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL || 'http://localhost:8001'
+  // ✅ Filter state - all adjustable by user
+  const [minGapPercent, setMinGapPercent] = useState<number>(10) // Gap slider (5-50%, default 10%)
+  const [minVolume, setMinVolume] = useState<number>(500000) // Volume slider (100K-5M, default 500K)
+  const [maxFloatShares, setMaxFloatShares] = useState<number>(30000000) // Float slider (5M-50M, default 30M)
+  const [minRelativeVolume, setMinRelativeVolume] = useState<number>(5.0) // Rel vol slider (1x-20x, default 5x)
+  const [minPrice, setMinPrice] = useState<number>(1.0) // Min price input (default $1)
+  const [maxPrice, setMaxPrice] = useState<number>(20.0) // Max price input (default $20)
+  const [maxResults, setMaxResults] = useState<number>(20) // Results slider (5-50, default 20)
+
+  const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL || 'http://localhost:8000'
 
   const fetchScreening = async () => {
     setLoading(true)
@@ -76,14 +100,45 @@ export default function PreMarketScreening() {
     }
   }
 
-  const runScreening = async () => {
+  const runScreening = async (customParams?: {
+    testMode?: boolean
+    minGapPercent?: number
+    minVolume?: number
+    maxFloatShares?: number
+    minRelativeVolume?: number
+    minPrice?: number
+    maxPrice?: number
+    maxResults?: number
+  }) => {
     setRunning(true)
     setError(null)
     setProgressStep('Starting orchestrator...')
 
+    // Use custom params if provided, otherwise use state
+    const effectiveParams = {
+      testMode: customParams?.testMode ?? testMode,
+      minGapPercent: customParams?.minGapPercent ?? minGapPercent,
+      minVolume: customParams?.minVolume ?? minVolume,
+      maxFloatShares: customParams?.maxFloatShares ?? maxFloatShares,
+      minRelativeVolume: customParams?.minRelativeVolume ?? minRelativeVolume,
+      minPrice: customParams?.minPrice ?? minPrice,
+      maxPrice: customParams?.maxPrice ?? maxPrice,
+      maxResults: customParams?.maxResults ?? maxResults
+    }
+
     try {
-      // Start the screening
-      const response = await fetch(`${FASTAPI_URL}/api/screening/run`, {
+      // === USE V2 API (SYNCHRONOUS SCANNER - WORKS!) ===
+      const params = new URLSearchParams({
+        min_volume: String(effectiveParams.minVolume),
+        min_price: String(effectiveParams.minPrice),
+        max_price: String(effectiveParams.maxPrice),
+        max_results: String(effectiveParams.maxResults)
+      })
+
+      setProgressStep('Connecting to TWS...')
+      setProgressPercent(10)
+
+      const response = await fetch(`${FASTAPI_URL}/api/screening/v2/run?${params}`, {
         method: 'POST'
       })
 
@@ -93,30 +148,85 @@ export default function PreMarketScreening() {
       }
 
       const result = await response.json()
-      console.log('[INFO] Screening started:', result)
+      const jobId = result.job_id
+      console.log('[INFO] V2 Screening started, job_id:', jobId)
 
-      // Show progress steps
-      setProgressStep('Connecting to TWS Desktop...')
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Poll V2 status endpoint for progress
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResponse = await fetch(`${FASTAPI_URL}/api/screening/v2/status/${jobId}`)
+          if (statusResponse.ok) {
+            const status = await statusResponse.json()
 
-      setProgressStep('Scanning pre-market stocks...')
-      await new Promise(resolve => setTimeout(resolve, 3000))
+            // Update UI with real progress
+            setProgressStep(status.message || 'Scanning...')
+            setProgressPercent(status.progress || 0)
 
-      setProgressStep('Fetching fundamentals & data...')
-      await new Promise(resolve => setTimeout(resolve, 5000))
+            if (status.status === 'completed') {
+              // SUCCESS - got results!
+              clearInterval(pollInterval)
+              setProgressPercent(100)
 
-      setProgressStep('Calculating scores...')
-      await new Promise(resolve => setTimeout(resolve, 3000))
+              // Convert V2 results to ScreeningResponse format
+              if (status.stocks && status.stocks.length > 0) {
+                const formattedStocks: StockResult[] = status.stocks.map((stock: { symbol: string; rank: number; exchange: string; conid: number }) => ({
+                  symbol: stock.symbol,
+                  rank: stock.rank,
+                  gap_percent: 0, // V2 scanner doesn't have this
+                  gap_direction: 'up' as const,
+                  pre_market_volume: 0,
+                  pre_market_price: 0,
+                  previous_close: 0,
+                  score: 100 - stock.rank // Higher rank = higher score
+                }))
 
-      setProgressStep('Saving to database...')
-      await new Promise(resolve => setTimeout(resolve, 2000))
+                const response: ScreeningResponse = {
+                  stocks: formattedStocks,
+                  total_scanned: status.stocks_found,
+                  total_returned: status.stocks_found,
+                  execution_time_seconds: 1,
+                  timestamp: new Date().toISOString()
+                }
+                setData(response)
+                setLastUpdate(new Date())
+                setProgressStep(`✅ Found ${status.stocks_found} stocks!`)
+              } else {
+                setData({ stocks: [], total_scanned: 0, total_returned: 0, execution_time_seconds: 0, timestamp: new Date().toISOString() })
+                setProgressStep('No stocks found matching criteria')
+              }
 
-      // Fetch new results
-      setProgressStep('Loading results...')
-      await fetchScreening()
+              setTimeout(() => {
+                setProgressStep('')
+                setProgressPercent(0)
+                setRunning(false)
+              }, 2000)
 
-      setProgressStep('')
-      setRunning(false)
+            } else if (status.status === 'failed') {
+              // Error occurred
+              clearInterval(pollInterval)
+              setError(status.error || status.message || 'Screening failed')
+              setProgressStep('')
+              setProgressPercent(0)
+              setRunning(false)
+            }
+            // 'queued' or 'running' - keep polling
+          }
+        } catch (pollErr) {
+          console.error('Status poll error:', pollErr)
+          // Don't stop on poll errors, keep trying
+        }
+      }, 500) // Poll every 500ms (V2 is fast!)
+
+      // Safety timeout - stop polling after 30 seconds (V2 is fast, shouldn't take long)
+      setTimeout(() => {
+        clearInterval(pollInterval)
+        if (running) {
+          setError('Screening timeout (>30 seconds)')
+          setProgressStep('')
+          setRunning(false)
+        }
+      }, 30 * 1000)
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to start screening'
 
@@ -195,9 +305,25 @@ export default function PreMarketScreening() {
             Auto-refresh (5min)
           </label>
 
+          {/* Test mode toggle */}
+          <label
+            className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5"
+            title={testMode
+              ? "Using test symbols (TSLA, AAPL, NVDA, MSFT, GOOGL) - No TWS Desktop required"
+              : "Real scanner mode - Requires TWS Desktop running on port 7496"}
+          >
+            <input
+              type="checkbox"
+              checked={testMode}
+              onChange={(e) => setTestMode(e.target.checked)}
+              className="rounded border-gray-300 dark:border-gray-600"
+            />
+            🧪 Test Mode {testMode && <span className="text-xs text-blue-600 dark:text-blue-400">(TSLA, AAPL, etc.)</span>}
+          </label>
+
           {/* Run screening button */}
           <button
-            onClick={runScreening}
+            onClick={() => runScreening()}
             disabled={running || loading}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg transition-colors"
             title="Connect to TWS Desktop and run screening now"
@@ -231,16 +357,283 @@ export default function PreMarketScreening() {
         </div>
       )}
 
+      {/* ✅ Advanced Filters Panel */}
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+        <h3 className="font-bold text-blue-900 dark:text-blue-100 mb-4 flex items-center gap-2 text-lg">
+          <Database className="w-5 h-5" />
+          Advanced Filters (Low-Float Runner Optimization)
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Gap Percentage Slider */}
+          <div className="space-y-2">
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Min Gap %</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">{minGapPercent}%</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600 dark:text-gray-400">5%</span>
+              <input
+                type="range"
+                min="5"
+                max="50"
+                step="1"
+                value={minGapPercent}
+                onChange={(e) => setMinGapPercent(Number(e.target.value))}
+                className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400">50%</span>
+            </div>
+            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+              Higher gaps = stronger momentum
+            </p>
+          </div>
+
+          {/* Min Volume Slider */}
+          <div className="space-y-2">
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Min Volume</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">{(minVolume / 1000).toFixed(0)}K</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600 dark:text-gray-400">100K</span>
+              <input
+                type="range"
+                min="100000"
+                max="5000000"
+                step="100000"
+                value={minVolume}
+                onChange={(e) => setMinVolume(Number(e.target.value))}
+                className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400">5M</span>
+            </div>
+            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+              Absolute volume threshold
+            </p>
+          </div>
+
+          {/* Max Float Shares Slider */}
+          <div className="space-y-2">
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Max Float (Shares)</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">{(maxFloatShares / 1000000).toFixed(0)}M</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600 dark:text-gray-400">5M</span>
+              <input
+                type="range"
+                min="5000000"
+                max="50000000"
+                step="5000000"
+                value={maxFloatShares}
+                onChange={(e) => setMaxFloatShares(Number(e.target.value))}
+                className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400">50M</span>
+            </div>
+            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+              Lower float = easier to move price
+            </p>
+          </div>
+
+          {/* Min Relative Volume Slider */}
+          <div className="space-y-2">
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Min Relative Volume</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">{minRelativeVolume.toFixed(1)}x</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600 dark:text-gray-400">1x</span>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                step="0.5"
+                value={minRelativeVolume}
+                onChange={(e) => setMinRelativeVolume(Number(e.target.value))}
+                className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400">20x</span>
+            </div>
+            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+              Volume vs 20-day average
+            </p>
+          </div>
+
+          {/* Price Range Inputs */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              Price Range
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-gray-600 dark:text-gray-400">Min</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  max="100"
+                  step="0.1"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(Number(e.target.value))}
+                  className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+              <span className="text-gray-500 mt-5">-</span>
+              <div className="flex-1">
+                <label className="text-xs text-gray-600 dark:text-gray-400">Max</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  max="1000"
+                  step="1"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(Number(e.target.value))}
+                  className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+              $1-$20 = penny stock sweet spot
+            </p>
+          </div>
+
+          {/* Max Results Slider */}
+          <div className="space-y-2">
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Max Results</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">{maxResults}</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600 dark:text-gray-400">5</span>
+              <input
+                type="range"
+                min="5"
+                max="50"
+                step="5"
+                value={maxResults}
+                onChange={(e) => setMaxResults(Number(e.target.value))}
+                className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400">50</span>
+            </div>
+            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+              Number of stocks to return
+            </p>
+          </div>
+        </div>
+
+        {/* Quick Presets */}
+        <div className="mt-6 pt-4 border-t border-blue-300 dark:border-blue-700">
+          <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">Quick Presets (click to update sliders):</h4>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                // Update UI state
+                setMinGapPercent(10)
+                setMinVolume(500000)
+                setMaxFloatShares(30000000)
+                setMinRelativeVolume(5.0)
+                setMinPrice(1.0)
+                setMaxPrice(20.0)
+                setMaxResults(20)
+
+                // IMMEDIATELY run screening with these params (respecting testMode checkbox!)
+                runScreening({
+                  testMode: testMode,  // Use current checkbox state
+                  minGapPercent: 10,
+                  minVolume: 500000,
+                  maxFloatShares: 30000000,
+                  minRelativeVolume: 5.0,
+                  minPrice: 1.0,
+                  maxPrice: 20.0,
+                  maxResults: 20
+                })
+              }}
+              disabled={running || loading}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm rounded transition-colors"
+            >
+              🎯 Low-Float Runners (Default)
+            </button>
+            <button
+              onClick={() => {
+                // Update UI state
+                setMinGapPercent(20)
+                setMinVolume(1000000)
+                setMaxFloatShares(15000000)
+                setMinRelativeVolume(10.0)
+                setMinPrice(1.0)
+                setMaxPrice(10.0)
+                setMaxResults(10)
+
+                // IMMEDIATELY run screening with these params (respecting testMode checkbox!)
+                runScreening({
+                  testMode: testMode,  // Use current checkbox state
+                  minGapPercent: 20,
+                  minVolume: 1000000,
+                  maxFloatShares: 15000000,
+                  minRelativeVolume: 10.0,
+                  minPrice: 1.0,
+                  maxPrice: 10.0,
+                  maxResults: 10
+                })
+              }}
+              disabled={running || loading}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-sm rounded transition-colors"
+            >
+              🔥 Extreme Movers
+            </button>
+            <button
+              onClick={() => {
+                // Update UI state
+                setMinGapPercent(5)
+                setMinVolume(250000)
+                setMaxFloatShares(50000000)
+                setMinRelativeVolume(2.0)
+                setMinPrice(0.5)
+                setMaxPrice(50.0)
+                setMaxResults(50)
+
+                // IMMEDIATELY run screening with these params (respecting testMode checkbox!)
+                runScreening({
+                  testMode: testMode,  // Use current checkbox state
+                  minGapPercent: 5,
+                  minVolume: 250000,
+                  maxFloatShares: 50000000,
+                  minRelativeVolume: 2.0,
+                  minPrice: 0.5,
+                  maxPrice: 50.0,
+                  maxResults: 50
+                })
+              }}
+              disabled={running || loading}
+              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm rounded transition-colors"
+            >
+              📊 Wide Net (More Results)
+            </button>
+          </div>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 italic">
+            Clicking a preset will immediately run screening with those filters
+          </p>
+        </div>
+      </div>
+
       {/* Progress indicator */}
       {running && progressStep && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <RefreshCw className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5 animate-spin" />
             <div className="flex-1">
-              <h3 className="font-semibold text-blue-900 dark:text-blue-100">Running Screening...</h3>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100">Running Screening...</h3>
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{progressPercent}%</span>
+              </div>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">{progressStep}</p>
               <div className="mt-3 bg-blue-200 dark:bg-blue-800 rounded-full h-2 overflow-hidden">
-                <div className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                <div
+                  className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                ></div>
               </div>
             </div>
           </div>
@@ -299,6 +692,50 @@ export default function PreMarketScreening() {
             </div>
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {(data.stocks.reduce((sum, s) => sum + s.score, 0) / data.stocks.length).toFixed(1)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scan Parameters Display */}
+      {data && data.scan_parameters && (
+        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+            <Database className="w-4 h-4" />
+            Scan Filters Used
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">Gap:</span>
+              <span className="ml-2 text-blue-900 dark:text-blue-100">≥ {data.scan_parameters.min_gap_percent}%</span>
+            </div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">Volume:</span>
+              <span className="ml-2 text-blue-900 dark:text-blue-100">≥ {(data.scan_parameters.min_volume / 1000).toFixed(0)}K</span>
+            </div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">Price:</span>
+              <span className="ml-2 text-blue-900 dark:text-blue-100">${data.scan_parameters.min_price} - ${data.scan_parameters.max_price}</span>
+            </div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">Market Cap:</span>
+              <span className="ml-2 text-blue-900 dark:text-blue-100">&lt; ${(data.scan_parameters.max_market_cap / 1_000_000_000).toFixed(1)}B</span>
+            </div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">Scanner:</span>
+              <span className="ml-2 text-blue-900 dark:text-blue-100">{data.scan_parameters.scan_code}</span>
+            </div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">Max Results:</span>
+              <span className="ml-2 text-blue-900 dark:text-blue-100">{data.scan_parameters.max_results}</span>
+            </div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">Sentiment:</span>
+              <span className="ml-2 text-blue-900 dark:text-blue-100">{data.scan_parameters.include_sentiment ? 'Yes' : 'No'}</span>
+            </div>
+            <div>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">Mode:</span>
+              <span className="ml-2 text-blue-900 dark:text-blue-100">{data.scan_parameters.test_mode ? '🧪 Test' : '📡 Real'}</span>
             </div>
           </div>
         </div>
