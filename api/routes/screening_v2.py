@@ -4,25 +4,74 @@ Screening API V2 - Production-Ready Background Task Architecture
 
 Uses background tasks with proper job tracking, status updates, and error handling.
 Synchronous TWS scanner that actually works.
+
+Improvements (Jan 2025):
+- Thread-safe job storage with Lock
+- Atomic client ID counter (no collisions)
+- Auto-cleanup of old jobs (1 hour TTL)
+- nest_asyncio applied once at module level
 """
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict, List
-from datetime import datetime
+from datetime import datetime, timedelta
 from lib.trading.screening.tws_scanner_sync import TWSScannerSync
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import uuid
 import traceback
+import threading
+import nest_asyncio
+
+# Apply nest_asyncio once at module load (not per-request)
+nest_asyncio.apply()
 
 router = APIRouter()
 
-# In-memory job store (in production, use Redis or database)
+# Thread-safe job storage
 jobs: Dict[str, Dict] = {}
+jobs_lock = threading.Lock()
+
+# Atomic client ID counter (avoids collisions)
+_client_id_counter = threading.Lock()
+_next_client_id = 10
 
 # Thread pool for running synchronous scanner
 executor = ThreadPoolExecutor(max_workers=5)
+
+# Job TTL for auto-cleanup (1 hour)
+JOB_TTL_HOURS = 1
+
+
+def get_next_client_id() -> int:
+    """Get next client ID atomically to avoid TWS collisions"""
+    global _next_client_id
+    with _client_id_counter:
+        client_id = _next_client_id
+        _next_client_id += 1
+        if _next_client_id > 100:  # Reset to avoid very high IDs
+            _next_client_id = 10
+        return client_id
+
+
+def cleanup_old_jobs():
+    """Remove jobs older than TTL (called before creating new jobs)"""
+    global jobs
+    now = datetime.now()
+    cutoff = now - timedelta(hours=JOB_TTL_HOURS)
+
+    with jobs_lock:
+        old_count = len(jobs)
+        jobs = {
+            job_id: job
+            for job_id, job in jobs.items()
+            if datetime.fromisoformat(job["created_at"]) > cutoff
+            or job["status"] in ["queued", "running"]
+        }
+        removed = old_count - len(jobs)
+        if removed > 0:
+            print(f"[CLEANUP] Removed {removed} old jobs (TTL: {JOB_TTL_HOURS}h)")
 
 
 class Stock(BaseModel):
@@ -67,14 +116,15 @@ async def run_scanner_job(
         """Synchronous scanning function to run in thread pool"""
         # ib_insync needs an event loop even for "sync" operations
         # Create a new event loop for this thread
-        import nest_asyncio
-        nest_asyncio.apply()
+        # Note: nest_asyncio already applied at module level
 
         new_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(new_loop)
 
         try:
-            scanner = TWSScannerSync(client_id=10 + len(jobs))
+            # Use atomic client ID to avoid collisions
+            client_id = get_next_client_id()
+            scanner = TWSScannerSync(client_id=client_id)
             scanner.connect()
             scan_results = scanner.scan_most_active(
                 min_volume=min_volume,
@@ -171,20 +221,24 @@ async def start_screening_v2(
     - max_price: $0.01-$1000 (default: $20)
     - max_results: 5-50 (default: 20)
     """
-    # Create job
+    # Cleanup old jobs before creating new one
+    cleanup_old_jobs()
+
+    # Create job with thread-safe access
     job_id = str(uuid.uuid4())
 
-    jobs[job_id] = {
-        "job_id": job_id,
-        "status": "queued",
-        "progress": 0,
-        "message": "Job queued, waiting to start...",
-        "stocks_found": 0,
-        "created_at": datetime.now().isoformat(),
-        "completed_at": None,
-        "error": None,
-        "stocks": None
-    }
+    with jobs_lock:
+        jobs[job_id] = {
+            "job_id": job_id,
+            "status": "queued",
+            "progress": 0,
+            "message": "Job queued, waiting to start...",
+            "stocks_found": 0,
+            "created_at": datetime.now().isoformat(),
+            "completed_at": None,
+            "error": None,
+            "stocks": None
+        }
 
     # Add to background tasks
     background_tasks.add_task(
@@ -240,13 +294,14 @@ async def clear_jobs():
     """
     global jobs
 
-    before_count = len(jobs)
-    jobs = {
-        job_id: job
-        for job_id, job in jobs.items()
-        if job["status"] in ["queued", "running"]
-    }
-    after_count = len(jobs)
+    with jobs_lock:
+        before_count = len(jobs)
+        jobs = {
+            job_id: job
+            for job_id, job in jobs.items()
+            if job["status"] in ["queued", "running"]
+        }
+        after_count = len(jobs)
 
     return {
         "message": f"Cleared {before_count - after_count} completed/failed jobs",
