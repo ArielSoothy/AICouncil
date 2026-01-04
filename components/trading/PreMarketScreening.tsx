@@ -43,7 +43,6 @@ interface ScanParameters {
   max_results: number
   scan_code: string
   include_sentiment: boolean
-  test_mode: boolean
 }
 
 interface ScreeningResponse {
@@ -64,16 +63,16 @@ export default function PreMarketScreening() {
   const [autoRefresh, setAutoRefresh] = useState(false)
   const [progressStep, setProgressStep] = useState<string>('')
   const [progressPercent, setProgressPercent] = useState<number>(0)
-  const [testMode, setTestMode] = useState(false) // OFF by default - requires TWS Desktop
 
-  // ✅ Filter state - all adjustable by user
-  const [minGapPercent, setMinGapPercent] = useState<number>(10) // Gap slider (5-50%, default 10%)
-  const [minVolume, setMinVolume] = useState<number>(500000) // Volume slider (100K-5M, default 500K)
-  const [maxFloatShares, setMaxFloatShares] = useState<number>(30000000) // Float slider (5M-50M, default 30M)
-  const [minRelativeVolume, setMinRelativeVolume] = useState<number>(5.0) // Rel vol slider (1x-20x, default 5x)
-  const [minPrice, setMinPrice] = useState<number>(1.0) // Min price input (default $1)
-  const [maxPrice, setMaxPrice] = useState<number>(20.0) // Max price input (default $20)
-  const [maxResults, setMaxResults] = useState<number>(20) // Results slider (5-50, default 20)
+  // ✅ Filter state - V2 API uses: minVolume, minPrice, maxPrice, maxResults
+  // Note: Gap, Float, and RelVol sliders are UI-only for now (V2 scanner uses TWS filters)
+  const [minGapPercent, setMinGapPercent] = useState<number>(10) // UI-only (not sent to V2 API yet)
+  const [minVolume, setMinVolume] = useState<number>(500000) // ✅ Sent to V2 API
+  const [maxFloatShares, setMaxFloatShares] = useState<number>(30000000) // UI-only (not sent to V2 API yet)
+  const [minRelativeVolume, setMinRelativeVolume] = useState<number>(5.0) // UI-only (not sent to V2 API yet)
+  const [minPrice, setMinPrice] = useState<number>(1.0) // ✅ Sent to V2 API
+  const [maxPrice, setMaxPrice] = useState<number>(20.0) // ✅ Sent to V2 API
+  const [maxResults, setMaxResults] = useState<number>(20) // ✅ Sent to V2 API
 
   const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL || 'http://localhost:8000'
 
@@ -101,26 +100,19 @@ export default function PreMarketScreening() {
   }
 
   const runScreening = async (customParams?: {
-    testMode?: boolean
-    minGapPercent?: number
     minVolume?: number
-    maxFloatShares?: number
-    minRelativeVolume?: number
     minPrice?: number
     maxPrice?: number
     maxResults?: number
   }) => {
     setRunning(true)
     setError(null)
-    setProgressStep('Starting orchestrator...')
+    setProgressStep('Starting TWS scanner...')
 
     // Use custom params if provided, otherwise use state
+    // Note: V2 API only uses minVolume, minPrice, maxPrice, maxResults
     const effectiveParams = {
-      testMode: customParams?.testMode ?? testMode,
-      minGapPercent: customParams?.minGapPercent ?? minGapPercent,
       minVolume: customParams?.minVolume ?? minVolume,
-      maxFloatShares: customParams?.maxFloatShares ?? maxFloatShares,
-      minRelativeVolume: customParams?.minRelativeVolume ?? minRelativeVolume,
       minPrice: customParams?.minPrice ?? minPrice,
       maxPrice: customParams?.maxPrice ?? maxPrice,
       maxResults: customParams?.maxResults ?? maxResults
@@ -303,22 +295,6 @@ export default function PreMarketScreening() {
               className="rounded border-gray-300 dark:border-gray-600"
             />
             Auto-refresh (5min)
-          </label>
-
-          {/* Test mode toggle */}
-          <label
-            className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5"
-            title={testMode
-              ? "Using test symbols (TSLA, AAPL, NVDA, MSFT, GOOGL) - No TWS Desktop required"
-              : "Real scanner mode - Requires TWS Desktop running on port 7496"}
-          >
-            <input
-              type="checkbox"
-              checked={testMode}
-              onChange={(e) => setTestMode(e.target.checked)}
-              className="rounded border-gray-300 dark:border-gray-600"
-            />
-            🧪 Test Mode {testMode && <span className="text-xs text-blue-600 dark:text-blue-400">(TSLA, AAPL, etc.)</span>}
           </label>
 
           {/* Run screening button */}
@@ -537,18 +513,8 @@ export default function PreMarketScreening() {
                 setMinPrice(1.0)
                 setMaxPrice(20.0)
                 setMaxResults(20)
-
-                // IMMEDIATELY run screening with these params (respecting testMode checkbox!)
-                runScreening({
-                  testMode: testMode,  // Use current checkbox state
-                  minGapPercent: 10,
-                  minVolume: 500000,
-                  maxFloatShares: 30000000,
-                  minRelativeVolume: 5.0,
-                  minPrice: 1.0,
-                  maxPrice: 20.0,
-                  maxResults: 20
-                })
+                // Run with V2 API params
+                runScreening({ minVolume: 500000, minPrice: 1.0, maxPrice: 20.0, maxResults: 20 })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm rounded transition-colors"
@@ -565,18 +531,8 @@ export default function PreMarketScreening() {
                 setMinPrice(1.0)
                 setMaxPrice(10.0)
                 setMaxResults(10)
-
-                // IMMEDIATELY run screening with these params (respecting testMode checkbox!)
-                runScreening({
-                  testMode: testMode,  // Use current checkbox state
-                  minGapPercent: 20,
-                  minVolume: 1000000,
-                  maxFloatShares: 15000000,
-                  minRelativeVolume: 10.0,
-                  minPrice: 1.0,
-                  maxPrice: 10.0,
-                  maxResults: 10
-                })
+                // Run with V2 API params
+                runScreening({ minVolume: 1000000, minPrice: 1.0, maxPrice: 10.0, maxResults: 10 })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-sm rounded transition-colors"
@@ -593,18 +549,8 @@ export default function PreMarketScreening() {
                 setMinPrice(0.5)
                 setMaxPrice(50.0)
                 setMaxResults(50)
-
-                // IMMEDIATELY run screening with these params (respecting testMode checkbox!)
-                runScreening({
-                  testMode: testMode,  // Use current checkbox state
-                  minGapPercent: 5,
-                  minVolume: 250000,
-                  maxFloatShares: 50000000,
-                  minRelativeVolume: 2.0,
-                  minPrice: 0.5,
-                  maxPrice: 50.0,
-                  maxResults: 50
-                })
+                // Run with V2 API params
+                runScreening({ minVolume: 250000, minPrice: 0.5, maxPrice: 50.0, maxResults: 50 })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm rounded transition-colors"
@@ -732,10 +678,6 @@ export default function PreMarketScreening() {
             <div>
               <span className="text-blue-600 dark:text-blue-400 font-medium">Sentiment:</span>
               <span className="ml-2 text-blue-900 dark:text-blue-100">{data.scan_parameters.include_sentiment ? 'Yes' : 'No'}</span>
-            </div>
-            <div>
-              <span className="text-blue-600 dark:text-blue-400 font-medium">Mode:</span>
-              <span className="ml-2 text-blue-900 dark:text-blue-100">{data.scan_parameters.test_mode ? '🧪 Test' : '📡 Real'}</span>
             </div>
           </div>
         </div>
