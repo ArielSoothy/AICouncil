@@ -120,6 +120,7 @@ class ScreeningResponse(BaseModel):
     total_returned: int = Field(..., description="Number of stocks returned")
     execution_time_seconds: float = Field(..., description="Pipeline execution time in seconds")
     timestamp: str = Field(..., description="Screening timestamp (ISO format)")
+    scan_parameters: Optional[Dict[str, Any]] = Field(None, description="Scan filters that were used (for transparency)")
 
     class Config:
         json_schema_extra = {

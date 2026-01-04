@@ -1,3 +1,5 @@
+'use client'
+
 import PreMarketScreening from '@/components/trading/PreMarketScreening'
 
 export default function ScreeningPage() {
@@ -6,9 +8,4 @@ export default function ScreeningPage() {
       <PreMarketScreening />
     </div>
   )
-}
-
-export const metadata = {
-  title: 'Pre-Market Screening | Verdict AI Trading',
-  description: 'AI-powered pre-market stock screening with TWS API data and composite scoring',
 }

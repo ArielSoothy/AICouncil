@@ -84,6 +84,20 @@ Your own research (from `UNIFIED_DEBATE_ENGINE.md`):
 | **User has clear direction** | Decision already made | "Use this specific library" |
 | **Trivial changes** | Single model sufficient | "Update README" |
 
+## 🔧 CLI Status (Tested January 4, 2026)
+
+| CLI Tool | Status | Provider | Auth Type | Installation |
+|----------|--------|----------|-----------|--------------|
+| **Codex CLI** | ✅ Working | OpenAI (ChatGPT Plus/Pro) | Subscription | `/opt/homebrew/bin/codex` |
+| **Gemini CLI** | ✅ Working | Google (Gemini Advanced) | Subscription | `/opt/homebrew/bin/gemini` |
+| **Grok CLI** | ❌ No official CLI | xAI | N/A | Use xAI API provider instead |
+
+**Why no Grok CLI?**
+- xAI doesn't provide an official CLI tool like Google/OpenAI
+- Third-party options exist but use **API keys** (per-call billing), not subscriptions
+- **Recommendation**: Use existing xAI API provider in `lib/ai-providers/xai-provider.ts` if needed
+- **Current approach**: Codex + Gemini provides sufficient model diversity (OpenAI + Google perspectives)
+
 ## 🔧 Implementation Methods
 
 ### Method 1: Manual Orchestration (Current) ✅ WORKING
@@ -585,6 +599,6 @@ When adding protected features, note if multi-model was used:
 
 **Meta Note**: This document itself should be improved through multi-model review! Let's practice what we preach.
 
-**Version**: 1.1 (Updated January 3, 2026 - Added MLMX case study)
-**Status**: ✅ Validated - Proven across 2 projects
+**Version**: 1.2 (Updated January 4, 2026 - Validated CLI status: Codex ✅, Gemini ✅, Grok ❌)
+**Status**: ✅ Production Ready - CLIs tested and working
 **Maintainer**: AI Council Development Team

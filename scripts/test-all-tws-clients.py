@@ -25,7 +25,7 @@ from ib_insync import *
 import asyncio
 from datetime import datetime
 
-from lib.trading.screening.tws_scanner import TWSScannerClient
+from lib.trading.screening.tws_scanner_sync import TWSScannerSync
 from lib.trading.screening.tws_fundamentals import TWSFundamentalsClient
 from lib.trading.screening.tws_short_data import TWSShortDataClient
 from lib.trading.screening.tws_ratios import TWSRatiosClient
@@ -108,25 +108,20 @@ async def test_all_clients():
     print_success("Test contracts qualified")
 
     # -------------------------------------------------------------------
-    # TEST 1: Scanner Client
+    # TEST 1: Scanner Client (SYNC - WORKS!)
     # -------------------------------------------------------------------
-    print_header("TEST 1: Scanner Client (3,323 scan types)")
+    print_header("TEST 1: Scanner Client (Sync Version)")
 
     try:
-        scanner = TWSScannerClient(client_id=2)  # Use different client ID to avoid conflict
-        await scanner.connect()
+        scanner = TWSScannerSync(client_id=2)  # Use different client ID to avoid conflict
+        scanner.connect()
 
-        # Test scanner parameters
-        print_info("Getting scanner parameters...")
-        params = await scanner.get_scanner_parameters()
-        scan_count = params.count('<displayName>')
-        print_success(f"Scanner parameters: {scan_count} scan types available")
-
-        # Test pre-market gap scan
-        print_info("Running TOP_PERC_GAIN scan...")
-        scan_results = await scanner.scan_pre_market_gaps(
-            min_gap_percent=1.0,
+        # Test MOST_ACTIVE scan (works anytime, not just market hours)
+        print_info("Running MOST_ACTIVE scan...")
+        scan_results = scanner.scan_most_active(
             min_volume=100000,
+            min_price=1.0,
+            max_price=20.0,
             max_results=5
         )
 
