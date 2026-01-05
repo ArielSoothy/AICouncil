@@ -1543,7 +1543,7 @@ export default function PreMarketScreening() {
                                   Relative Volume
                                   <span className="text-xs text-blue-500" title="Volume vs 20-day avg. >5x = explosive">ℹ️</span>
                                 </span>
-                                {stock.relative_volume !== undefined ? (
+                                {stock.relative_volume != null ? (
                                   <div className="flex items-center">
                                     <span className={`font-semibold ${relVolScore?.color || 'text-gray-900'}`}>
                                       {stock.relative_volume.toFixed(1)}x
@@ -1622,7 +1622,7 @@ export default function PreMarketScreening() {
                             return (
                               <div className="flex justify-between items-center">
                                 <span className="text-gray-600 dark:text-gray-400">Borrow Fee %</span>
-                                {stock.short_data?.short_fee_rate !== undefined ? (
+                                {stock.short_data?.short_fee_rate != null ? (
                                   <div className="flex items-center">
                                     <span className={`font-semibold ${feeScore?.color || 'text-gray-900'}`}>
                                       {stock.short_data.short_fee_rate.toFixed(1)}%
