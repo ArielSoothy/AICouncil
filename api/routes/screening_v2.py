@@ -27,6 +27,62 @@ import traceback
 import threading
 import nest_asyncio
 
+# ============================================================================
+# POST-SCAN FILTERING
+# Apply Winners Strategy criteria after TWS scanner returns results
+# ============================================================================
+
+def apply_supernova_filters(
+    stocks: List[Dict],
+    min_gap_percent: float = 10.0,
+    gap_direction: str = 'up',  # 'up', 'down', or 'both'
+    exclude_etfs: bool = False
+) -> List[Dict]:
+    """
+    Apply Winners Strategy filters after TWS scan
+
+    Args:
+        stocks: Raw scanner results
+        min_gap_percent: Minimum absolute gap % (default 10% for supernovas)
+        gap_direction: 'up' for momentum, 'down' for shorts, 'both' for any
+        exclude_etfs: Whether to exclude known ETFs (default False - user wants profit)
+
+    Returns:
+        Filtered stocks matching criteria
+    """
+    filtered = []
+
+    # ETF symbols (optional exclusion)
+    ETF_SYMBOLS = {
+        'SOXS', 'SOXL', 'TQQQ', 'SQQQ', 'SPXU', 'SPXL', 'UPRO',
+        'TNA', 'TZA', 'LABU', 'LABD', 'NUGT', 'DUST', 'UVXY', 'SVXY',
+        'VXX', 'ZSL', 'AGQ', 'UCO', 'SCO', 'SPY', 'QQQ', 'IWM', 'DIA',
+        'GLD', 'SLV', 'ARKK', 'ARKG', 'TMF', 'TMV', 'TECL', 'TECS',
+    }
+
+    for stock in stocks:
+        symbol = stock.get('symbol', '')
+        gap = stock.get('gap_percent', 0.0)
+        gap_dir = stock.get('gap_direction', 'up')
+
+        # Skip ETFs if exclusion is enabled
+        if exclude_etfs and symbol.upper() in ETF_SYMBOLS:
+            continue
+
+        # Filter by gap direction
+        if gap_direction == 'up' and gap_dir != 'up':
+            continue
+        if gap_direction == 'down' and gap_dir != 'down':
+            continue
+
+        # Filter by minimum gap
+        if abs(gap) < min_gap_percent:
+            continue
+
+        filtered.append(stock)
+
+    return filtered
+
 # Apply nest_asyncio once at module load (not per-request)
 nest_asyncio.apply()
 
@@ -194,7 +250,10 @@ async def run_scanner_job(
     min_volume: int,
     min_price: float,
     max_price: float,
-    max_results: int
+    max_results: int,
+    min_gap_percent: float = 10.0,
+    gap_direction: str = 'up',
+    exclude_etfs: bool = False
 ):
     """
     Run scanner in background with real-time flow logging and data enrichment
@@ -294,18 +353,38 @@ async def run_scanner_job(
             tws_warning = "⚠️ All historical data requests failed. Try restarting TWS Desktop."
             log_step(job_id, "WARNING: TWS may need restart - no enrichment data", "error")
 
+        # === PHASE 2.5: APPLY SUPERNOVA FILTERS ===
+        pre_filter_count = len(enriched_stocks)
+        log_step(job_id, f"Applying filters: Gap >={min_gap_percent}%, Direction={gap_direction}", "running")
+
+        filtered_stocks = apply_supernova_filters(
+            enriched_stocks,
+            min_gap_percent=min_gap_percent,
+            gap_direction=gap_direction,
+            exclude_etfs=exclude_etfs
+        )
+
+        # Re-rank after filtering
+        for i, stock in enumerate(filtered_stocks, 1):
+            stock['rank'] = i
+
+        if pre_filter_count > len(filtered_stocks):
+            log_step(job_id, f"Filtered: {pre_filter_count} → {len(filtered_stocks)} stocks (gap/direction)", "success")
+        else:
+            log_step(job_id, f"All {len(filtered_stocks)} stocks passed filters", "success")
+
         # === PHASE 3: COMPLETE ===
         jobs[job_id]["status"] = "completed"
         jobs[job_id]["progress"] = 100
-        jobs[job_id]["message"] = f"Successfully found {len(enriched_stocks)} stocks"
-        jobs[job_id]["stocks_found"] = len(enriched_stocks)
-        jobs[job_id]["stocks"] = enriched_stocks
+        jobs[job_id]["message"] = f"Successfully found {len(filtered_stocks)} stocks"
+        jobs[job_id]["stocks_found"] = len(filtered_stocks)
+        jobs[job_id]["stocks"] = filtered_stocks
         jobs[job_id]["completed_at"] = datetime.now().isoformat()
         if tws_warning:
             jobs[job_id]["warning"] = tws_warning
 
-        log_step(job_id, f"Complete! {len(enriched_stocks)} stocks enriched", "success")
-        print(f"[SUCCESS] ✅ Job {job_id}: {len(enriched_stocks)} stocks found and enriched")
+        log_step(job_id, f"Complete! {len(filtered_stocks)} stocks match supernova criteria", "success")
+        print(f"[SUCCESS] ✅ Job {job_id}: {len(filtered_stocks)} stocks found (filtered from {pre_filter_count})")
 
     except Exception as e:
         error_msg = str(e)
@@ -328,7 +407,10 @@ async def start_screening_v2(
     min_volume: int = 100000,
     min_price: float = 1.0,
     max_price: float = 20.0,
-    max_results: int = 20
+    max_results: int = 20,
+    min_gap_percent: float = 10.0,
+    gap_direction: str = 'up',
+    exclude_etfs: bool = False
 ):
     """
     Start screening job (V2 - Production Architecture)
@@ -345,6 +427,9 @@ async def start_screening_v2(
     - min_price: $0.01-$100 (default: $1)
     - max_price: $0.01-$1000 (default: $20)
     - max_results: 5-50 (default: 20)
+    - min_gap_percent: Minimum gap % (default: 10% for supernovas)
+    - gap_direction: 'up' for momentum, 'down' for shorts, 'both' (default: 'up')
+    - exclude_etfs: Filter out leveraged ETFs (default: False)
     """
     # Cleanup old jobs before creating new one
     cleanup_old_jobs()
@@ -374,7 +459,10 @@ async def start_screening_v2(
         min_volume,
         min_price,
         max_price,
-        max_results
+        max_results,
+        min_gap_percent,
+        gap_direction,
+        exclude_etfs
     )
 
     return ScanJob(**jobs[job_id])

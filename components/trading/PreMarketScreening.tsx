@@ -144,12 +144,12 @@ export default function PreMarketScreening() {
     return score
   }
 
-  // ✅ Filter state - V2 API uses: minVolume, minPrice, maxPrice, maxResults
-  // Note: Gap, Float, and RelVol sliders are UI-only for now (V2 scanner uses TWS filters)
-  const [minGapPercent, setMinGapPercent] = useState<number>(10) // UI-only (not sent to V2 API yet)
+  // ✅ Filter state - V2 API uses all these now (Winners Strategy filters added)
+  const [minGapPercent, setMinGapPercent] = useState<number>(10) // ✅ Sent to V2 API
+  const [gapDirection, setGapDirection] = useState<'up' | 'down' | 'both'>('up') // ✅ Sent to V2 API
   const [minVolume, setMinVolume] = useState<number>(500000) // ✅ Sent to V2 API
-  const [maxFloatShares, setMaxFloatShares] = useState<number>(30000000) // UI-only (not sent to V2 API yet)
-  const [minRelativeVolume, setMinRelativeVolume] = useState<number>(5.0) // UI-only (not sent to V2 API yet)
+  const [maxFloatShares, setMaxFloatShares] = useState<number>(30000000) // UI-only (Phase 3: needs TWS float data)
+  const [minRelativeVolume, setMinRelativeVolume] = useState<number>(5.0) // UI-only (Phase 3: needs TWS rel vol)
   const [minPrice, setMinPrice] = useState<number>(1.0) // ✅ Sent to V2 API
   const [maxPrice, setMaxPrice] = useState<number>(20.0) // ✅ Sent to V2 API
   const [maxResults, setMaxResults] = useState<number>(20) // ✅ Sent to V2 API
@@ -248,6 +248,8 @@ export default function PreMarketScreening() {
     minPrice?: number
     maxPrice?: number
     maxResults?: number
+    minGapPercent?: number
+    gapDirection?: 'up' | 'down' | 'both'
   }) => {
     setRunning(true)
     setError(null)
@@ -262,12 +264,14 @@ export default function PreMarketScreening() {
     }
 
     // Use custom params if provided, otherwise use state
-    // Note: V2 API only uses minVolume, minPrice, maxPrice, maxResults
+    // V2 API now supports Winners Strategy filters
     const effectiveParams = {
       minVolume: customParams?.minVolume ?? minVolume,
       minPrice: customParams?.minPrice ?? minPrice,
       maxPrice: customParams?.maxPrice ?? maxPrice,
-      maxResults: customParams?.maxResults ?? maxResults
+      maxResults: customParams?.maxResults ?? maxResults,
+      minGapPercent: customParams?.minGapPercent ?? minGapPercent,
+      gapDirection: customParams?.gapDirection ?? gapDirection
     }
 
     try {
@@ -276,7 +280,9 @@ export default function PreMarketScreening() {
         min_volume: String(effectiveParams.minVolume),
         min_price: String(effectiveParams.minPrice),
         max_price: String(effectiveParams.maxPrice),
-        max_results: String(effectiveParams.maxResults)
+        max_results: String(effectiveParams.maxResults),
+        min_gap_percent: String(effectiveParams.minGapPercent),
+        gap_direction: effectiveParams.gapDirection
       })
 
       setProgressStep('Connecting to TWS...')
@@ -494,11 +500,20 @@ export default function PreMarketScreening() {
     setShowHistory(false)
   }
 
+  // Format share counts (volume, float, etc.) - NO $ prefix
   const formatNumber = (num: number): string => {
-    if (num >= 1_000_000_000) return `$${(num / 1_000_000_000).toFixed(2)}B`
-    if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(2)}M`
+    if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(2)}B`
+    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M`
     if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`
     return num.toLocaleString()
+  }
+
+  // Format dollar amounts (price, market cap) - WITH $ prefix
+  const formatCurrency = (num: number): string => {
+    if (num >= 1_000_000_000) return `$${(num / 1_000_000_000).toFixed(2)}B`
+    if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(2)}M`
+    if (num >= 1_000) return `$${(num / 1_000).toFixed(1)}K`
+    return `$${num.toLocaleString()}`
   }
 
   const getScoreColor = (score: number): string => {
@@ -677,6 +692,54 @@ export default function PreMarketScreening() {
             </p>
           </div>
 
+          {/* Gap Direction Selector */}
+          <div className="space-y-2">
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Gap Direction</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">
+                {gapDirection === 'up' ? '📈 UP' : gapDirection === 'down' ? '📉 DOWN' : '↕️ BOTH'}
+              </span>
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setGapDirection('up')}
+                className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  gapDirection === 'up'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-green-100 dark:hover:bg-green-900'
+                }`}
+              >
+                📈 UP
+              </button>
+              <button
+                type="button"
+                onClick={() => setGapDirection('down')}
+                className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  gapDirection === 'down'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900'
+                }`}
+              >
+                📉 DOWN
+              </button>
+              <button
+                type="button"
+                onClick={() => setGapDirection('both')}
+                className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  gapDirection === 'both'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900'
+                }`}
+              >
+                ↕️ BOTH
+              </button>
+            </div>
+            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+              UP = momentum runners, DOWN = shorts/reversals
+            </p>
+          </div>
+
           {/* Min Volume Slider */}
           <div className="space-y-2">
             <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
@@ -825,8 +888,9 @@ export default function PreMarketScreening() {
                 setMinPrice(1.0)
                 setMaxPrice(20.0)
                 setMaxResults(20)
-                // Run with V2 API params
-                runScreening({ minVolume: 500000, minPrice: 1.0, maxPrice: 20.0, maxResults: 20 })
+                setGapDirection('up')
+                // Run with V2 API params (Winners Strategy defaults)
+                runScreening({ minVolume: 500000, minPrice: 1.0, maxPrice: 20.0, maxResults: 20, minGapPercent: 10, gapDirection: 'up' })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm rounded transition-colors"
@@ -843,8 +907,9 @@ export default function PreMarketScreening() {
                 setMinPrice(1.0)
                 setMaxPrice(10.0)
                 setMaxResults(10)
-                // Run with V2 API params
-                runScreening({ minVolume: 1000000, minPrice: 1.0, maxPrice: 10.0, maxResults: 10 })
+                setGapDirection('up')
+                // Run with V2 API params (Extreme = 20%+ gap UP)
+                runScreening({ minVolume: 1000000, minPrice: 1.0, maxPrice: 10.0, maxResults: 10, minGapPercent: 20, gapDirection: 'up' })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-sm rounded transition-colors"
@@ -861,8 +926,9 @@ export default function PreMarketScreening() {
                 setMinPrice(0.5)
                 setMaxPrice(50.0)
                 setMaxResults(50)
-                // Run with V2 API params
-                runScreening({ minVolume: 250000, minPrice: 0.5, maxPrice: 50.0, maxResults: 50 })
+                setGapDirection('both')
+                // Run with V2 API params (Wide Net = 5%+ gap, both directions)
+                runScreening({ minVolume: 250000, minPrice: 0.5, maxPrice: 50.0, maxResults: 50, minGapPercent: 5, gapDirection: 'both' })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm rounded transition-colors"
@@ -1369,7 +1435,7 @@ export default function PreMarketScreening() {
                           {stock.fundamentals?.market_cap && (
                             <div className="flex justify-between">
                               <span className="text-gray-600 dark:text-gray-400">Market Cap</span>
-                              <span className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(stock.fundamentals.market_cap)}</span>
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(stock.fundamentals.market_cap)}</span>
                             </div>
                           )}
                         </div>
