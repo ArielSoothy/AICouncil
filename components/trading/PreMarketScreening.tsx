@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play, Terminal, ArrowUpDown, ChevronDown, ChevronRight, History, X, Bot, Star, ExternalLink } from 'lucide-react'
+import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play, Terminal, ArrowUpDown, ChevronDown, ChevronRight, History, X, Bot, Star, ExternalLink, Zap, Target } from 'lucide-react'
 import { saveToLocalStorage, loadFromLocalStorage, saveScan, loadHistory, type ScreeningScanResult } from '@/lib/trading/screening-cache'
+import { calculateWinnersScore, generateScoreSummaryForPrompt, type WinnersScore, type StockData } from '@/lib/trading/screening/winners-scoring'
 
 interface FlowLogEntry {
   timestamp: string
@@ -111,6 +112,37 @@ export default function PreMarketScreening() {
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', badge: '⚡ Fast' },
     { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', badge: '💨 Fastest' },
   ]
+
+  // Winners Strategy scoring cache
+  const [winnersScores, setWinnersScores] = useState<Record<string, WinnersScore>>({})
+
+  // Convert StockResult to StockData for scoring
+  const toStockData = (stock: StockResult): StockData => ({
+    symbol: stock.symbol,
+    gap_percent: stock.gap_percent,
+    gap_direction: stock.gap_direction,
+    pre_market_price: stock.pre_market_price,
+    previous_close: stock.previous_close,
+    pre_market_volume: stock.pre_market_volume,
+    // Squeeze data (from short_data if available)
+    shortable_shares: stock.short_data?.shortable_shares,
+    borrow_difficulty: stock.short_data?.borrow_difficulty as 'EASY' | 'MEDIUM' | 'HARD' | 'VERY_HARD' | undefined,
+    // Additional context
+    market_cap: stock.fundamentals?.market_cap,
+    vwap: stock.bars?.vwap,
+    // These are typically missing from scanner - will be added in Phase 3
+    // float_shares, borrow_fee_rate, short_ratio, relative_volume, average_volume
+  })
+
+  // Get or calculate Winners Score for a stock
+  const getWinnersScore = (stock: StockResult): WinnersScore => {
+    if (winnersScores[stock.symbol]) {
+      return winnersScores[stock.symbol]
+    }
+    const score = calculateWinnersScore(toStockData(stock))
+    setWinnersScores(prev => ({ ...prev, [stock.symbol]: score }))
+    return score
+  }
 
   // ✅ Filter state - V2 API uses: minVolume, minPrice, maxPrice, maxResults
   // Note: Gap, Float, and RelVol sliders are UI-only for now (V2 scanner uses TWS filters)
@@ -1138,6 +1170,115 @@ export default function PreMarketScreening() {
                         />
                       </div>
                     </div>
+
+                    {/* Winners Strategy Score */}
+                    {(() => {
+                      const wscore = getWinnersScore(stock)
+                      return (
+                        <div className={`p-4 border-b ${
+                          wscore.conviction === 'HIGH' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' :
+                          wscore.conviction === 'MEDIUM' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' :
+                          'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700'
+                        }`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                              <Target className="w-5 h-5 text-blue-600" />
+                              Winners Strategy Score
+                            </h4>
+                            <div className="flex items-center gap-3">
+                              <span className={`text-2xl font-bold ${
+                                wscore.conviction === 'HIGH' ? 'text-green-600' :
+                                wscore.conviction === 'MEDIUM' ? 'text-amber-600' :
+                                'text-gray-500'
+                              }`}>
+                                {wscore.emoji} {wscore.total}/{wscore.maxPossible}
+                              </span>
+                              <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                wscore.conviction === 'HIGH' ? 'bg-green-500 text-white' :
+                                wscore.conviction === 'MEDIUM' ? 'bg-amber-500 text-white' :
+                                wscore.conviction === 'LOW' ? 'bg-gray-400 text-white' :
+                                'bg-gray-300 text-gray-700'
+                              }`}>
+                                {wscore.conviction}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Momentum vs Squeeze Signals */}
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className={`p-3 rounded-lg ${
+                              wscore.momentum.signal === 'STRONG' ? 'bg-green-100 dark:bg-green-900/30' :
+                              wscore.momentum.signal === 'MODERATE' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                              'bg-gray-100 dark:bg-gray-800'
+                            }`}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <Zap className="w-4 h-4 text-blue-500" />
+                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Momentum</span>
+                              </div>
+                              <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                                {wscore.momentum.signal}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {wscore.momentum.total}/{wscore.momentum.maxPossible} pts
+                              </div>
+                            </div>
+                            <div className={`p-3 rounded-lg ${
+                              wscore.squeeze.signal === 'HIGH' ? 'bg-red-100 dark:bg-red-900/30' :
+                              wscore.squeeze.signal === 'MEDIUM' ? 'bg-orange-100 dark:bg-orange-900/30' :
+                              'bg-gray-100 dark:bg-gray-800'
+                            }`}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm">💥</span>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Squeeze</span>
+                              </div>
+                              <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                                {wscore.squeeze.signal}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {wscore.squeeze.total}/{wscore.squeeze.maxPossible} pts
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Score Breakdown */}
+                          <div className="space-y-2">
+                            {wscore.breakdown.map((item, i) => (
+                              <div key={i} className="flex items-center justify-between text-sm">
+                                <span className="flex items-center gap-2">
+                                  <span className={item.met ? 'text-green-500' : 'text-gray-400'}>
+                                    {item.met ? '✓' : '○'}
+                                  </span>
+                                  <span className="text-gray-700 dark:text-gray-300">{item.category}</span>
+                                </span>
+                                <span className="flex items-center gap-2">
+                                  <span className="text-gray-500">{item.value || '--'}</span>
+                                  <span className={`font-semibold ${item.met ? 'text-green-600' : 'text-gray-400'}`}>
+                                    +{item.points}
+                                  </span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Missing Data Warning */}
+                          {wscore.missingData.length > 0 && (
+                            <div className="mt-3 p-2 bg-amber-100 dark:bg-amber-900/20 rounded text-xs text-amber-700 dark:text-amber-400">
+                              ⚠️ Missing: {wscore.missingData.join(', ')} (Phase 3: TWS data)
+                            </div>
+                          )}
+
+                          {/* Recommendation */}
+                          <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                              {wscore.recommendation}
+                            </div>
+                            <div className="text-xs text-blue-600 dark:text-blue-400">
+                              📍 {wscore.entryTrigger}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
 
                     {/* Metrics Grid - Two Columns */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">

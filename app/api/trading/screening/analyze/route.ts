@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getProviderForTier, isSubscriptionTier } from '@/lib/ai-providers/provider-factory';
 import { GoogleCLIProvider } from '@/lib/ai-providers/cli';
 import type { PresetTier } from '@/lib/config/model-presets';
+import { calculateWinnersScore, generateScoreSummaryForPrompt, type StockData } from '@/lib/trading/screening/winners-scoring';
 
 // CLI Provider for subscription mode (Gemini Advanced subscription)
 // Using Gemini CLI because it properly supports subscription in non-interactive mode
@@ -25,6 +26,12 @@ interface ScreeningStock {
   previous_close: number;
   pre_market_volume: number;
   score: number;
+  // Optional squeeze data (for future TWS integration)
+  float_shares?: number;
+  borrow_fee_rate?: number;
+  short_ratio?: number;
+  shortable_shares?: number;
+  relative_volume?: number;
 }
 
 interface AnalyzeRequest {
@@ -44,22 +51,50 @@ interface AnalysisResult {
 }
 
 /**
- * Generate quick analysis prompt for screening stock
+ * Convert ScreeningStock to StockData for scoring
  */
-function generateQuickPrompt(stock: ScreeningStock): string {
+function toStockData(stock: ScreeningStock): StockData {
+  return {
+    symbol: stock.symbol,
+    gap_percent: stock.gap_percent,
+    gap_direction: stock.gap_direction,
+    pre_market_price: stock.pre_market_price,
+    previous_close: stock.previous_close,
+    pre_market_volume: stock.pre_market_volume,
+    float_shares: stock.float_shares,
+    borrow_fee_rate: stock.borrow_fee_rate,
+    short_ratio: stock.short_ratio,
+    shortable_shares: stock.shortable_shares,
+    relative_volume: stock.relative_volume,
+  };
+}
+
+/**
+ * Generate quick analysis prompt for screening stock
+ * Includes Winners Strategy scoring from research synthesis
+ */
+function generateQuickPrompt(stock: ScreeningStock, scoreSummary: string): string {
   const direction = stock.gap_direction === 'up' ? '📈 GAPPING UP' : '📉 GAPPING DOWN';
 
-  return `You are a pre-market stock analyst for day trading. Provide a QUICK assessment.
+  return `You are a pre-market stock analyst specializing in gap momentum and short squeeze plays.
+Your analysis is based on the "Winners Strategy" criteria synthesized from multiple AI research sources.
 
 STOCK: ${stock.symbol}
 ${direction}: ${stock.gap_percent > 0 ? '+' : ''}${stock.gap_percent.toFixed(2)}%
 
-DATA:
+MARKET DATA:
 - Pre-Market Price: $${stock.pre_market_price.toFixed(2)}
 - Previous Close: $${stock.previous_close.toFixed(2)}
 - Pre-Market Volume: ${formatVolume(stock.pre_market_volume)}
 - Scanner Rank: #${stock.rank}
 - Composite Score: ${stock.score}/100
+
+${scoreSummary}
+
+WINNERS STRATEGY CONTEXT:
+- MOMENTUM PLAY: Gap >10%, PM Vol >500K, watch for VWAP hold after open
+- SQUEEZE PLAY: Low float (<20M), High borrow fee (>20%), Short ratio >3 days
+- Best setups combine BOTH momentum + squeeze signals
 
 RESPOND IN EXACT JSON FORMAT:
 {
@@ -70,12 +105,13 @@ RESPOND IN EXACT JSON FORMAT:
   "riskFlag": "main risk to consider" | null
 }
 
-DECISION CRITERIA:
-- BUY: Strong momentum, high volume, good risk/reward setup
-- WATCH: Interesting but needs confirmation (breakout, volume surge)
-- SKIP: Poor setup, low volume, or high risk
+DECISION CRITERIA (based on Winners Strategy):
+- BUY: HIGH conviction score, strong momentum + squeeze signals, clear entry trigger
+- WATCH: MEDIUM conviction, one strong signal (momentum OR squeeze), needs confirmation
+- SKIP: LOW/SKIP conviction, weak signals, or missing critical data
 
-Be concise. Max 3 reasons. Focus on actionable insights.`;
+Your verdict MUST align with the Winners Strategy score. If conviction is HIGH → lean BUY.
+Be concise. Max 3 reasons. Focus on actionable day trading insights.`;
 }
 
 /**
@@ -138,10 +174,17 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 Analyzing ${stock.symbol} (${mode} mode, ${model}, tier: ${tier})`);
 
+    // Calculate Winners Strategy score
+    const stockData = toStockData(stock);
+    const winnersScore = calculateWinnersScore(stockData);
+    const scoreSummary = generateScoreSummaryForPrompt(winnersScore);
+
+    console.log(`📊 Winners Score: ${winnersScore.total}/${winnersScore.maxPossible} → ${winnersScore.conviction}`);
+
     // Generate prompt based on mode
     const prompt = mode === 'quick'
-      ? generateQuickPrompt(stock)
-      : generateQuickPrompt(stock); // TODO: Deep mode with research
+      ? generateQuickPrompt(stock, scoreSummary)
+      : generateQuickPrompt(stock, scoreSummary); // TODO: Deep mode with research
 
     // Use CLI provider for sub tiers (subscription mode) - Uses Gemini Advanced subscription!
     // Gemini CLI properly supports subscription in non-interactive mode (unlike Claude CLI)
@@ -223,6 +266,15 @@ export async function POST(request: NextRequest) {
       mode,
       model,
       analysis,
+      winnersScore: {
+        total: winnersScore.total,
+        maxPossible: winnersScore.maxPossible,
+        conviction: winnersScore.conviction,
+        emoji: winnersScore.emoji,
+        momentum: winnersScore.momentum.signal,
+        squeeze: winnersScore.squeeze.signal,
+        recommendation: winnersScore.recommendation,
+      },
     });
 
   } catch (error) {
