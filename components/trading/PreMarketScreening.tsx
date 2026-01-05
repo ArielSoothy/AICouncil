@@ -676,34 +676,39 @@ export default function PreMarketScreening() {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Gap % Range */}
+          {/* Min Gap % */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-900 dark:text-blue-100">
-              Gap % Range
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Min Gap %</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">{minGapPercent}%</span>
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="1"
-                max="99"
-                value={minGapPercent}
-                onChange={(e) => setMinGapPercent(Number(e.target.value))}
-                className="w-20 px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              />
-              <span className="text-gray-500">-</span>
-              <input
-                type="number"
-                min="10"
-                max="100"
-                value={maxGapPercent}
-                onChange={(e) => setMaxGapPercent(Number(e.target.value))}
-                className="w-20 px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              />
-              <span className="text-xs text-gray-500">%</span>
-            </div>
-            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
-              100% = no max limit
-            </p>
+            <input
+              type="range"
+              min="5"
+              max="50"
+              step="1"
+              value={minGapPercent}
+              onChange={(e) => setMinGapPercent(Number(e.target.value))}
+              className="w-full h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+          </div>
+
+          {/* Max Gap % */}
+          <div className="space-y-2">
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Max Gap %</span>
+              <span className="font-bold text-purple-600 dark:text-purple-400">{maxGapPercent === 100 ? '∞' : `${maxGapPercent}%`}</span>
+            </label>
+            <input
+              type="range"
+              min="20"
+              max="100"
+              step="5"
+              value={maxGapPercent}
+              onChange={(e) => setMaxGapPercent(Number(e.target.value))}
+              className="w-full h-2 bg-purple-200 dark:bg-purple-800 rounded-lg appearance-none cursor-pointer accent-purple-600"
+            />
+            <p className="text-xs text-purple-600 dark:text-purple-400 italic">100 = no limit</p>
           </div>
 
           {/* Gap Direction Selector */}
@@ -754,37 +759,39 @@ export default function PreMarketScreening() {
             </p>
           </div>
 
-          {/* Volume Range */}
+          {/* Min Volume */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-900 dark:text-blue-100">
-              Volume Range (millions)
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Min Volume</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">{(minVolume / 1_000_000).toFixed(1)}M</span>
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="0.1"
-                max="100"
-                step="0.1"
-                value={(minVolume / 1_000_000).toFixed(1)}
-                onChange={(e) => setMinVolume(Number(e.target.value) * 1_000_000)}
-                className="w-20 px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              />
-              <span className="text-gray-500">-</span>
-              <input
-                type="number"
-                min="0"
-                max="1000"
-                step="10"
-                value={maxVolume === 0 ? '' : (maxVolume / 1_000_000).toFixed(0)}
-                placeholder="∞"
-                onChange={(e) => setMaxVolume(e.target.value === '' ? 0 : Number(e.target.value) * 1_000_000)}
-                className="w-20 px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
-              />
-              <span className="text-xs text-gray-500">M</span>
-            </div>
-            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
-              Empty max = no limit
-            </p>
+            <input
+              type="range"
+              min="100000"
+              max="5000000"
+              step="100000"
+              value={minVolume}
+              onChange={(e) => setMinVolume(Number(e.target.value))}
+              className="w-full h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+          </div>
+
+          {/* Max Volume */}
+          <div className="space-y-2">
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Max Volume</span>
+              <span className="font-bold text-purple-600 dark:text-purple-400">{maxVolume === 0 ? '∞' : `${(maxVolume / 1_000_000).toFixed(0)}M`}</span>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="500000000"
+              step="10000000"
+              value={maxVolume}
+              onChange={(e) => setMaxVolume(Number(e.target.value))}
+              className="w-full h-2 bg-purple-200 dark:bg-purple-800 rounded-lg appearance-none cursor-pointer accent-purple-600"
+            />
+            <p className="text-xs text-purple-600 dark:text-purple-400 italic">0 = no limit</p>
           </div>
 
           {/* Max Float Shares Slider */}
