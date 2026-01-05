@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play, Terminal } from 'lucide-react'
+import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play, Terminal, ArrowUpDown, ChevronDown } from 'lucide-react'
 
 interface FlowLogEntry {
   timestamp: string
@@ -74,6 +74,12 @@ export default function PreMarketScreening() {
   const [twsWarning, setTwsWarning] = useState<string | null>(null)
   const flowLogRef = useRef<HTMLDivElement>(null)
   const flowLogTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Sorting state
+  type SortField = 'rank' | 'gap_percent' | 'score' | 'pre_market_volume' | 'pre_market_price'
+  type SortDirection = 'asc' | 'desc'
+  const [sortField, setSortField] = useState<SortField>('gap_percent')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   // ✅ Filter state - V2 API uses: minVolume, minPrice, maxPrice, maxResults
   // Note: Gap, Float, and RelVol sliders are UI-only for now (V2 scanner uses TWS filters)
@@ -322,6 +328,66 @@ export default function PreMarketScreening() {
     if (difficulty.toLowerCase().includes('hard')) return 'text-red-600 dark:text-red-400'
     return 'text-yellow-600 dark:text-yellow-400'
   }
+
+  // Sort stocks based on current sort field and direction
+  const getSortedStocks = (): StockResult[] => {
+    if (!data?.stocks) return []
+
+    return [...data.stocks].sort((a, b) => {
+      let aVal: number, bVal: number
+
+      switch (sortField) {
+        case 'rank':
+          aVal = a.rank
+          bVal = b.rank
+          break
+        case 'gap_percent':
+          aVal = Math.abs(a.gap_percent)
+          bVal = Math.abs(b.gap_percent)
+          break
+        case 'score':
+          aVal = a.score
+          bVal = b.score
+          break
+        case 'pre_market_volume':
+          aVal = a.pre_market_volume
+          bVal = b.pre_market_volume
+          break
+        case 'pre_market_price':
+          aVal = a.pre_market_price
+          bVal = b.pre_market_price
+          break
+        default:
+          aVal = a.rank
+          bVal = b.rank
+      }
+
+      if (sortDirection === 'asc') {
+        return aVal - bVal
+      } else {
+        return bVal - aVal
+      }
+    })
+  }
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      // New field, default to descending (highest first)
+      setSortField(field)
+      setSortDirection('desc')
+    }
+  }
+
+  const sortOptions: { value: SortField; label: string; icon: string }[] = [
+    { value: 'gap_percent', label: 'Top Gainers', icon: '📈' },
+    { value: 'score', label: 'Highest Score', icon: '⭐' },
+    { value: 'pre_market_volume', label: 'Most Volume', icon: '📊' },
+    { value: 'pre_market_price', label: 'Price', icon: '💰' },
+    { value: 'rank', label: 'Scanner Rank', icon: '🏆' },
+  ]
 
   return (
     <div className="space-y-6">
@@ -781,10 +847,43 @@ export default function PreMarketScreening() {
         </div>
       )}
 
+      {/* Sorting Controls */}
+      {data && !error && data.stocks.length > 0 && (
+        <div className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <ArrowUpDown className="w-4 h-4" />
+            <span>Sort by:</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {sortOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleSort(option.value)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  sortField === option.value
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                <span>{option.icon}</span>
+                <span>{option.label}</span>
+                {sortField === option.value && (
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform ${
+                      sortDirection === 'asc' ? 'rotate-180' : ''
+                    }`}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Stocks list */}
       {data && !error && (
         <div className="space-y-4">
-          {data.stocks.map((stock) => (
+          {getSortedStocks().map((stock) => (
             <div
               key={stock.symbol}
               className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow"
