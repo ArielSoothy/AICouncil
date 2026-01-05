@@ -9,8 +9,9 @@ Modules:
     tws_short_data: Short selling data (shortable shares, fee rates)
     tws_ratios: 60+ fundamental ratios
     tws_bars: Pre-market bars and gap calculation
-    finnhub_sentiment: Social sentiment from Finnhub
     simple_orchestrator: Combines all data sources
+
+Note: Finnhub sentiment REMOVED (Jan 2026) - requires $50/mo premium subscription
 
 Usage:
     from lib.trading.screening.tws_scanner_sync import TWSScannerSync

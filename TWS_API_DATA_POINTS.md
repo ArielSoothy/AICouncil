@@ -15,7 +15,7 @@
 | **Short Data** | Short selling availability | 5 | `tws_short_data.py` |
 | **Ratios** | 60+ fundamental financial ratios | 60+ | `tws_ratios.py` |
 | **Bars** | Price & volume data (pre-market gaps) | 15 | `tws_bars.py` |
-| **Sentiment** | Social media & news sentiment (Finnhub) | 6 | `finnhub_sentiment.py` |
+| ~~**Sentiment**~~ | ~~Social media sentiment~~ | ~~6~~ | ❌ REMOVED - $50/mo premium required |
 
 ---
 
@@ -309,44 +309,30 @@ Get historical and real-time price/volume data, including pre-market gap detecti
 
 ---
 
-## 6. Sentiment Data (from Finnhub API)
+## 6. Sentiment Data - REMOVED (January 2026)
 
-### Purpose
-Get social media buzz, news sentiment, and retail investor interest
+### Status: ❌ REMOVED - Not Worth the Cost
 
-### Available Fields
-```typescript
-{
-  // Sentiment Scores
-  score: number;                    // Overall sentiment (-1 to 1, where 1 = very bullish)
-  bullish_percent: number;          // % of bullish mentions (0-100)
-  bearish_percent: number;          // % of bearish mentions (0-100)
+### Why Removed
+- **Finnhub social sentiment requires $50/month premium subscription**
+- Free tier only provides quotes and news (we already have from TWS)
+- TWS data is comprehensive enough for pre-market screening
+- Cost-benefit analysis: Not worth $600/year for sentiment scores
 
-  // Volume Metrics
-  mentions: number;                 // Total mentions across platforms
-  mention_change: number;           // Change in mentions vs previous period (%)
+### What We Tested
+- Finnhub API key configured and tested
+- Social sentiment endpoint returned 403 (premium only)
+- Free tier only gave us data we already have from TWS
 
-  // Source Data
-  timestamp: string;                // When sentiment was calculated
-}
-```
+### Alternatives (if needed later)
+- **Reddit API** - Direct r/wallstreetbets access (free, rate limited)
+- **StockTwits API** - Free tier available
+- **Manual check** - Just look at Twitter/Reddit for stocks that screen well
 
-### Sentiment Score Interpretation
-```
- 0.8 to  1.0  → VERY BULLISH (strong buy signal)
- 0.5 to  0.8  → BULLISH (buy signal)
- 0.2 to  0.5  → SLIGHTLY BULLISH (weak buy)
--0.2 to  0.2  → NEUTRAL (no clear signal)
--0.5 to -0.2  → SLIGHTLY BEARISH (weak sell)
--0.8 to -0.5  → BEARISH (sell signal)
--1.0 to -0.8  → VERY BEARISH (strong sell signal)
-```
-
-### Notes
-- Retrieved from Finnhub API (separate from TWS)
-- Requires `FINNHUB_API_KEY` environment variable
-- Free tier: 60 requests/minute
-- Data includes Reddit (r/wallstreetbets), Twitter, StockTwits, news sites
+### Conclusion
+TWS provides everything needed for screening:
+- Scanner, prices, gap%, volume, fundamentals, short data, 60+ ratios
+- No external API needed for a solid pre-market screener
 
 ---
 
@@ -424,15 +410,8 @@ Get social media buzz, news sentiment, and retail investor interest
     average_volume: number;
   };
 
-  // Sentiment (from Finnhub)
-  sentiment: {
-    score: number;                  // -1 to 1
-    bullish_percent: number;        // 0-100
-    bearish_percent: number;        // 0-100
-    mentions: number;
-    mention_change: number;
-    timestamp: string;
-  };
+  // Sentiment - REMOVED (Finnhub requires $50/mo premium)
+  // sentiment: null;
 
   // Composite Score (calculated)
   score: number;                    // 0-100 composite screening score
@@ -450,12 +429,13 @@ The orchestrator combines all data sources to calculate a single screening score
 ```typescript
 Score Components:
 ├── Gap Magnitude (30 points)      - Larger gap = more momentum
-├── Volume (20 points)              - Higher volume = more interest
+├── Volume (30 points)              - Higher volume = more interest
 ├── Short Squeeze Potential (20)    - Low shares = squeeze risk
-├── Fundamentals (15 points)        - Reasonable P/E = quality
-└── Sentiment (15 points)           - Bullish sentiment = retail interest
+└── Fundamentals (20 points)        - Reasonable P/E = quality
 
 Total: 100 points maximum
+
+Note: Sentiment removed (was 15 points) - points redistributed to Volume & Fundamentals
 ```
 
 ### Score Interpretation
