@@ -402,50 +402,96 @@ async def run_scanner_job(
             log_step(job_id, f"All {len(filtered_stocks)} stocks passed filters", "success")
 
         # === PHASE 3: SHORT DATA & FLOAT ENRICHMENT ===
+        # Run synchronously in thread pool to avoid event loop conflicts
         if len(filtered_stocks) > 0:
             log_step(job_id, f"Phase 3: Getting short data for {len(filtered_stocks)} stocks...", "running")
             jobs[job_id]["progress"] = 70
             jobs[job_id]["message"] = f"Getting short data for {len(filtered_stocks)} stocks..."
 
-            try:
-                # Connect to TWS for short data
-                ib_short = IB()
-                short_client_id = get_next_enrich_client_id()
-                await ib_short.connectAsync('127.0.0.1', 7496, clientId=short_client_id)
+            def fetch_short_data_sync():
+                """Synchronous short data fetch with dedicated event loop"""
+                import time
+                import asyncio
 
-                short_client = TWSShortDataClient(ib_short)
-                ratios_client = TWSRatiosClient(ib_short)
+                # Create a new event loop for this thread (ib_insync needs one)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
 
-                for stock in filtered_stocks:
+                try:
+                    ib_short = IB()
+                    short_client_id = get_next_enrich_client_id()
+                    ib_short.connect('127.0.0.1', 7496, clientId=short_client_id)
+
+                    for stock in filtered_stocks:
+                        try:
+                            contract = IBStock(stock['symbol'], 'SMART', 'USD')
+                            ib_short.qualifyContracts(contract)
+
+                            # Request market data with tick 236 (shortable shares)
+                            # Also request tick 293 for fundamental data
+                            ticker = ib_short.reqMktData(contract, '236,258,293', False, False)
+                            time.sleep(2.5)  # Wait longer for data to stream in
+                            ib_short.sleep(0.5)  # Allow IB to process
+
+                            # Debug: Log what data is available
+                            log_step(job_id, f"  {stock['symbol']} ticker data: shortableShares={getattr(ticker, 'shortableShares', 'N/A')}, "
+                                           f"fundamentalRatios={type(getattr(ticker, 'fundamentalRatios', None))}", "info")
+
+                            # Extract short data
+                            shortable = getattr(ticker, 'shortableShares', None)
+                            if shortable and shortable > 0:
+                                stock['shortable_shares'] = int(shortable)
+                                # Determine borrow difficulty
+                                if shortable < 100_000:
+                                    stock['borrow_difficulty'] = 'Very Hard'
+                                elif shortable < 1_000_000:
+                                    stock['borrow_difficulty'] = 'Hard'
+                                elif shortable < 10_000_000:
+                                    stock['borrow_difficulty'] = 'Moderate'
+                                else:
+                                    stock['borrow_difficulty'] = 'Easy'
+
+                            # Extract fundamental ratios (tick 258)
+                            ratios_str = getattr(ticker, 'fundamentalRatios', None)
+                            if ratios_str:
+                                # Parse NPRICE (shares outstanding proxy)
+                                # fundamentalRatios is a FundamentalRatios object
+                                shares_out = getattr(ratios_str, 'MKTCAP', None)
+                                if shares_out:
+                                    # Market cap / price ≈ shares outstanding
+                                    price = stock.get('pre_market_price', 1)
+                                    if price > 0:
+                                        est_shares = int((shares_out * 1_000_000) / price)
+                                        stock['shares_outstanding'] = est_shares
+                                        stock['float_shares'] = int(est_shares * 0.75)
+
+                            ib_short.cancelMktData(contract)
+
+                            borrow = stock.get('borrow_difficulty', 'N/A')
+                            shortable_m = (stock.get('shortable_shares', 0) / 1_000_000)
+                            log_step(job_id, f"  {stock['symbol']}: Borrow={borrow}, Shortable={shortable_m:.2f}M", "success")
+
+                        except Exception as e:
+                            log_step(job_id, f"  {stock['symbol']}: {str(e)[:40]}", "error")
+
+                    ib_short.disconnect()
+                    log_step(job_id, "Phase 3 enrichment complete", "success")
+
+                except Exception as e:
+                    log_step(job_id, f"Phase 3 connection error: {str(e)[:50]}", "error")
+                finally:
+                    # Clean up the event loop
                     try:
-                        contract = IBStock(stock['symbol'], 'SMART', 'USD')
-                        await ib_short.qualifyContractsAsync(contract)
+                        loop.close()
+                    except:
+                        pass
 
-                        # Get short data
-                        short_data = await short_client.get_short_data(contract, wait_seconds=1.0)
-                        stock['shortable_shares'] = short_data.get('shortable_shares')
-                        stock['borrow_difficulty'] = short_data.get('borrow_difficulty')
-                        stock['short_fee_rate'] = short_data.get('short_fee_rate')
-
-                        # Get ratios (for shares outstanding → float estimate)
-                        ratios = await ratios_client.get_ratios(contract, wait_seconds=1.0)
-                        shares_out = ratios.get('shares_outstanding')
-                        if shares_out:
-                            stock['shares_outstanding'] = int(shares_out)
-                            stock['float_shares'] = int(shares_out * 0.75)  # Estimate: 75% is float
-
-                        borrow = stock.get('borrow_difficulty', 'N/A')
-                        float_m = (stock.get('float_shares', 0) / 1_000_000) if stock.get('float_shares') else 0
-                        log_step(job_id, f"  {stock['symbol']}: Borrow={borrow}, Float={float_m:.1f}M", "success")
-
-                    except Exception as e:
-                        log_step(job_id, f"  {stock['symbol']}: Short data error: {str(e)[:50]}", "error")
-
-                ib_short.disconnect()
-                log_step(job_id, "Phase 3 enrichment complete", "success")
-
+            # Run in thread pool
+            try:
+                future = executor.submit(fetch_short_data_sync)
+                future.result(timeout=60)  # Wait up to 60s for short data
             except Exception as e:
-                log_step(job_id, f"Phase 3 connection error: {str(e)[:50]}", "error")
+                log_step(job_id, f"Phase 3 thread error: {str(e)[:50]}", "error")
 
         # === COMPLETE ===
         jobs[job_id]["status"] = "completed"
