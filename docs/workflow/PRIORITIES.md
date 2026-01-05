@@ -17,7 +17,30 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ **DATABASE-BACKED SCREENING ARCHITECTURE COMPLETE** (January 3, 2026)
+**Current Session:** ✅ **SCREENING ENHANCEMENTS COMPLETE** (January 5, 2026)
+**Goal:** Add TWS restart detection, sorting mechanism, and data caching to Pre-Market Screening
+
+**✅ COMPLETED - Session Enhancements:**
+- ✅ **TWS Restart Detection:** 10-second timeout per stock (was 60s), warning banner when all requests fail
+- ✅ **Sorting Mechanism:** 5 sort options (Top Gainers, Highest Score, Most Volume, Price, Scanner Rank)
+- ✅ **Data Caching - Hybrid Architecture:**
+  - localStorage: Instant page refresh persistence
+  - Supabase: Historical scan storage (`screening_scans` table)
+- ✅ **History Panel:** Modal showing past scans from Supabase
+- ✅ **Browser Tested:** Playwright verified localStorage persistence across refreshes
+
+**📁 FILES CREATED:**
+- `lib/trading/screening-cache.ts` - Cache service (localStorage + Supabase)
+- `scripts/create-screening-scans-table.sql` - Supabase table schema
+
+**📁 FILES MODIFIED:**
+- `lib/trading/screening/tws_scanner_sync.py` - Added 10s timeout, TWS restart detection
+- `api/routes/screening_v2.py` - Added warning field to ScanJob model
+- `components/trading/PreMarketScreening.tsx` - Sorting, caching, history panel
+
+---
+
+**Previous Session:** ✅ **DATABASE-BACKED SCREENING ARCHITECTURE COMPLETE** (January 3, 2026)
 **Goal:** Implement Gemini AI's recommended database-backed architecture for TWS API pre-market screening
 
 **✅ COMPLETED - Phases 1-8 (TWS API Integration):**

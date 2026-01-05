@@ -1572,7 +1572,7 @@
   - `TESTING_SUMMARY.md` - User testing guide
   - `TEST_RESULTS.md` - Comprehensive test results
 - **Frontend Integration** (Phase 9 - ✅ COMPLETE):
-  - `components/trading/PreMarketScreening.tsx` - React component (375 lines)
+  - `components/trading/PreMarketScreening.tsx` - React component (500+ lines)
     - Auto-refresh every 5 minutes
     - Stats dashboard (total scanned, opportunities, execution time, avg score)
     - Detailed stock cards with all data fields
@@ -1581,6 +1581,16 @@
   - `app/trading/screening/page.tsx` - Next.js page wrapper
   - `components/ui/header.tsx` - Added Screening navigation links (desktop + mobile)
   - Environment: `NEXT_PUBLIC_FASTAPI_URL=http://localhost:8001`
+- **Session Enhancements** (January 5, 2026 - ✅ COMPLETE):
+  - **TWS Restart Detection**: 10-second timeout per stock (was 60s default), amber warning banner when all requests fail suggesting TWS restart
+  - **Sorting Mechanism**: 5 sort options - Top Gainers (gap%), Highest Score, Most Volume, Price, Scanner Rank
+  - **Data Caching (Hybrid Architecture)**:
+    - `lib/trading/screening-cache.ts` - Cache service for localStorage + Supabase
+    - `scripts/create-screening-scans-table.sql` - Supabase table for historical scans
+    - localStorage: Instant page refresh persistence (single key, last scan only)
+    - Supabase: Historical scan storage with all filters and stocks
+  - **History Panel**: Modal showing past scans from Supabase database
+  - **Browser Tested**: Playwright verified localStorage persistence across refreshes
 - **Dependencies**:
   - ib-insync (TWS API client)
   - supabase (Python package for database)
