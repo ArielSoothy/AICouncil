@@ -205,6 +205,9 @@ class Stock(BaseModel):
     # Phase 3: Float approximation from TWSRatiosClient
     shares_outstanding: Optional[int] = None
     float_shares: Optional[int] = None  # Estimated: shares_outstanding * 0.8 (typical)
+    # Phase 3: Relative Volume (20-day average comparison)
+    avg_volume_20d: Optional[int] = None
+    relative_volume: Optional[float] = None  # PM Volume / Avg Daily Volume
 
 
 class ScanJob(BaseModel):
@@ -427,15 +430,17 @@ async def run_scanner_job(
                             contract = IBStock(stock['symbol'], 'SMART', 'USD')
                             ib_short.qualifyContracts(contract)
 
-                            # Request market data with tick 236 (shortable shares)
-                            # Also request tick 293 for fundamental data
-                            ticker = ib_short.reqMktData(contract, '236,258,293', False, False)
+                            # Request market data with tick 236 (shortable shares), 258 (fundamentals), 586 (fee rate)
+                            # Tick 586 = Shortable fee rate (borrow cost as percentage)
+                            ticker = ib_short.reqMktData(contract, '236,258,586', False, False)
                             time.sleep(2.5)  # Wait longer for data to stream in
                             ib_short.sleep(0.5)  # Allow IB to process
 
                             # Debug: Log what data is available
-                            log_step(job_id, f"  {stock['symbol']} ticker data: shortableShares={getattr(ticker, 'shortableShares', 'N/A')}, "
-                                           f"fundamentalRatios={type(getattr(ticker, 'fundamentalRatios', None))}", "info")
+                            shortable_val = getattr(ticker, 'shortableShares', 'N/A')
+                            fee_val = getattr(ticker, 'shortFee', None) or getattr(ticker, 'feeRate', None)
+                            log_step(job_id, f"  {stock['symbol']} ticker data: shortableShares={shortable_val}, "
+                                           f"shortFee={fee_val}", "info")
 
                             # Extract short data
                             shortable = getattr(ticker, 'shortableShares', None)
@@ -450,6 +455,11 @@ async def run_scanner_job(
                                     stock['borrow_difficulty'] = 'Moderate'
                                 else:
                                     stock['borrow_difficulty'] = 'Easy'
+
+                            # Extract borrow fee rate (tick 586)
+                            short_fee = getattr(ticker, 'shortFee', None)
+                            if short_fee is not None and short_fee > 0:
+                                stock['short_fee_rate'] = float(short_fee)
 
                             # Extract fundamental ratios (tick 258)
                             ratios_str = getattr(ticker, 'fundamentalRatios', None)
@@ -467,9 +477,36 @@ async def run_scanner_job(
 
                             ib_short.cancelMktData(contract)
 
+                            # Calculate Relative Volume (20-day average)
+                            try:
+                                bars = ib_short.reqHistoricalData(
+                                    contract,
+                                    endDateTime='',
+                                    durationStr='20 D',
+                                    barSizeSetting='1 day',
+                                    whatToShow='TRADES',
+                                    useRTH=True,
+                                    formatDate=1
+                                )
+                                if bars and len(bars) > 0:
+                                    volumes = [bar.volume for bar in bars if bar.volume > 0]
+                                    if len(volumes) >= 5:  # Need at least 5 days of data
+                                        avg_vol = sum(volumes) / len(volumes)
+                                        stock['avg_volume_20d'] = int(avg_vol)
+                                        pm_vol = stock.get('pre_market_volume', 0)
+                                        if avg_vol > 0:
+                                            stock['relative_volume'] = round(pm_vol / avg_vol, 2)
+                            except Exception as hist_err:
+                                # Historical data not available - that's OK, continue
+                                pass
+
                             borrow = stock.get('borrow_difficulty', 'N/A')
                             shortable_m = (stock.get('shortable_shares', 0) / 1_000_000)
-                            log_step(job_id, f"  {stock['symbol']}: Borrow={borrow}, Shortable={shortable_m:.2f}M", "success")
+                            fee_rate = stock.get('short_fee_rate', 0)
+                            rel_vol = stock.get('relative_volume', 0)
+                            fee_str = f", Fee={fee_rate:.1f}%" if fee_rate > 0 else ""
+                            rel_str = f", RV={rel_vol:.1f}x" if rel_vol > 0 else ""
+                            log_step(job_id, f"  {stock['symbol']}: Borrow={borrow}, Shortable={shortable_m:.2f}M{fee_str}{rel_str}", "success")
 
                         except Exception as e:
                             log_step(job_id, f"  {stock['symbol']}: {str(e)[:40]}", "error")

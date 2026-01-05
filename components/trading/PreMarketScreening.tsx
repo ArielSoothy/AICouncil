@@ -5,6 +5,87 @@ import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play
 import { saveToLocalStorage, loadFromLocalStorage, saveScan, loadHistory, type ScreeningScanResult } from '@/lib/trading/screening-cache'
 import { calculateWinnersScore, generateScoreSummaryForPrompt, type WinnersScore, type StockData } from '@/lib/trading/screening/winners-scoring'
 
+// ============================================
+// SCORING DISPLAY HELPERS - Winners Strategy
+// ============================================
+
+interface ScoreDisplay {
+  points: number
+  maxPoints: number
+  color: string
+  bgColor: string
+  threshold: string
+}
+
+// Gap % scoring thresholds
+function getGapScore(gapPercent: number): ScoreDisplay {
+  const absGap = Math.abs(gapPercent)
+  if (absGap > 20) return { points: 2, maxPoints: 2, color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/40', threshold: '>20% EXPLOSIVE' }
+  if (absGap > 10) return { points: 1, maxPoints: 2, color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-900/40', threshold: '>10% STRONG' }
+  return { points: 0, maxPoints: 2, color: 'text-gray-400', bgColor: 'bg-gray-100 dark:bg-gray-700', threshold: '<10%' }
+}
+
+// PM Volume scoring thresholds
+function getVolumeScore(volume: number): ScoreDisplay {
+  if (volume > 1_000_000) return { points: 1, maxPoints: 1, color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/40', threshold: '>1M HEAVY' }
+  if (volume > 500_000) return { points: 0, maxPoints: 1, color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-900/40', threshold: '>500K OK' }
+  return { points: 0, maxPoints: 1, color: 'text-red-500', bgColor: 'bg-red-100 dark:bg-red-900/40', threshold: '<500K LOW' }
+}
+
+// Float scoring thresholds (lower = better for squeeze)
+function getFloatScore(floatShares: number | undefined): ScoreDisplay | null {
+  if (!floatShares) return null
+  if (floatShares < 5_000_000) return { points: 3, maxPoints: 3, color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/40', threshold: '<5M SUPERNOVA' }
+  if (floatShares < 10_000_000) return { points: 2, maxPoints: 3, color: 'text-green-500', bgColor: 'bg-green-100 dark:bg-green-900/40', threshold: '<10M ULTRA LOW' }
+  if (floatShares < 20_000_000) return { points: 1, maxPoints: 3, color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-900/40', threshold: '<20M LOW' }
+  if (floatShares < 30_000_000) return { points: 0, maxPoints: 3, color: 'text-orange-500', bgColor: 'bg-orange-100 dark:bg-orange-900/40', threshold: '<30M MOD' }
+  return { points: 0, maxPoints: 3, color: 'text-gray-400', bgColor: 'bg-gray-100 dark:bg-gray-700', threshold: '>30M HIGH' }
+}
+
+// Borrow Fee scoring (higher = better for squeeze)
+function getBorrowFeeScore(feeRate: number | undefined): ScoreDisplay | null {
+  if (feeRate === undefined) return null
+  if (feeRate > 50) return { points: 2, maxPoints: 2, color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/40', threshold: '>50% EXTREME' }
+  if (feeRate > 20) return { points: 1, maxPoints: 2, color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-900/40', threshold: '>20% HIGH' }
+  if (feeRate > 10) return { points: 0, maxPoints: 2, color: 'text-orange-500', bgColor: 'bg-orange-100 dark:bg-orange-900/40', threshold: '>10% ELEVATED' }
+  return { points: 0, maxPoints: 2, color: 'text-gray-400', bgColor: 'bg-gray-100 dark:bg-gray-700', threshold: '<10% NORMAL' }
+}
+
+// Shortable Shares scoring (lower = better for squeeze)
+function getShortableScore(shares: number | undefined): ScoreDisplay | null {
+  if (shares === undefined) return null
+  if (shares < 50_000) return { points: 1, maxPoints: 1, color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/40', threshold: '<50K VERY HARD' }
+  if (shares < 100_000) return { points: 0, maxPoints: 1, color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-900/40', threshold: '<100K HARD' }
+  if (shares < 1_000_000) return { points: 0, maxPoints: 1, color: 'text-orange-500', bgColor: 'bg-orange-100 dark:bg-orange-900/40', threshold: '<1M MODERATE' }
+  return { points: 0, maxPoints: 1, color: 'text-gray-400', bgColor: 'bg-gray-100 dark:bg-gray-700', threshold: '>1M EASY' }
+}
+
+// Borrow Difficulty scoring
+function getBorrowDifficultyScore(difficulty: string | undefined): ScoreDisplay | null {
+  if (!difficulty) return null
+  if (difficulty === 'Very Hard') return { points: 1, maxPoints: 1, color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/40', threshold: 'SQUEEZE FUEL' }
+  if (difficulty === 'Hard') return { points: 1, maxPoints: 1, color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-900/40', threshold: 'SQUEEZE POTENTIAL' }
+  if (difficulty === 'Moderate') return { points: 0, maxPoints: 1, color: 'text-orange-500', bgColor: 'bg-orange-100 dark:bg-orange-900/40', threshold: 'WATCHABLE' }
+  return { points: 0, maxPoints: 1, color: 'text-gray-400', bgColor: 'bg-gray-100 dark:bg-gray-700', threshold: 'EASY TO SHORT' }
+}
+
+// Relative Volume scoring
+function getRelativeVolumeScore(relVol: number | undefined): ScoreDisplay | null {
+  if (relVol === undefined || relVol <= 0) return null
+  if (relVol > 5) return { points: 1, maxPoints: 1, color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/40', threshold: '>5x UNUSUAL' }
+  if (relVol > 2) return { points: 0, maxPoints: 1, color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-900/40', threshold: '>2x IN PLAY' }
+  return { points: 0, maxPoints: 1, color: 'text-gray-400', bgColor: 'bg-gray-100 dark:bg-gray-700', threshold: '<2x NORMAL' }
+}
+
+// Score badge component
+function ScoreBadge({ score }: { score: ScoreDisplay }) {
+  return (
+    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded font-medium ${score.bgColor} ${score.color}`}>
+      +{score.points}/{score.maxPoints} {score.threshold}
+    </span>
+  )
+}
+
 interface FlowLogEntry {
   timestamp: string
   message: string
@@ -42,6 +123,9 @@ interface StockResult {
     score?: number
     mentions?: number
   }
+  // Relative Volume data
+  avg_volume_20d?: number
+  relative_volume?: number
   score: number
 }
 
@@ -1414,12 +1498,21 @@ export default function PreMarketScreening() {
                           </span>
                         </h4>
                         <div className="space-y-3">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600 dark:text-gray-400">Gap %</span>
-                            <span className={`font-semibold ${stock.gap_direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                              {stock.gap_percent > 0 ? '+' : ''}{stock.gap_percent.toFixed(2)}%
-                            </span>
-                          </div>
+                          {/* Gap % with score */}
+                          {(() => {
+                            const gapScore = getGapScore(stock.gap_percent)
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600 dark:text-gray-400">Gap %</span>
+                                <div className="flex items-center">
+                                  <span className={`font-semibold ${gapScore.color}`}>
+                                    {stock.gap_percent > 0 ? '+' : ''}{stock.gap_percent.toFixed(2)}%
+                                  </span>
+                                  <ScoreBadge score={gapScore} />
+                                </div>
+                              </div>
+                            )
+                          })()}
                           <div className="flex justify-between">
                             <span className="text-gray-600 dark:text-gray-400">Pre-Market Price</span>
                             <span className="font-semibold text-gray-900 dark:text-gray-100">${stock.pre_market_price.toFixed(2)}</span>
@@ -1428,29 +1521,54 @@ export default function PreMarketScreening() {
                             <span className="text-gray-600 dark:text-gray-400">Previous Close</span>
                             <span className="font-semibold text-gray-900 dark:text-gray-100">${stock.previous_close.toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600 dark:text-gray-400">Pre-Market Volume</span>
-                            <span className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(stock.pre_market_volume)}</span>
-                          </div>
+                          {/* PM Volume with score */}
+                          {(() => {
+                            const volScore = getVolumeScore(stock.pre_market_volume)
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600 dark:text-gray-400">Pre-Market Volume</span>
+                                <div className="flex items-center">
+                                  <span className={`font-semibold ${volScore.color}`}>{formatNumber(stock.pre_market_volume)}</span>
+                                  <ScoreBadge score={volScore} />
+                                </div>
+                              </div>
+                            )
+                          })()}
                           {/* Relative Volume - Key Winners Strategy metric */}
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                              Relative Volume
-                              <span className="text-xs text-blue-500" title="Volume vs 20-day avg. >5x = explosive">ℹ️</span>
-                            </span>
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
-                              📡 Phase 3
-                            </span>
-                          </div>
-                          {/* Average Volume - Needed for relative calc */}
+                          {(() => {
+                            const relVolScore = getRelativeVolumeScore(stock.relative_volume)
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                  Relative Volume
+                                  <span className="text-xs text-blue-500" title="Volume vs 20-day avg. >5x = explosive">ℹ️</span>
+                                </span>
+                                {stock.relative_volume !== undefined ? (
+                                  <div className="flex items-center">
+                                    <span className={`font-semibold ${relVolScore?.color || 'text-gray-900'}`}>
+                                      {stock.relative_volume.toFixed(1)}x
+                                    </span>
+                                    {relVolScore && <ScoreBadge score={relVolScore} />}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 italic text-sm">--</span>
+                                )}
+                              </div>
+                            )
+                          })()}
+                          {/* Average Volume (20d) */}
                           <div className="flex justify-between items-center">
                             <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
                               Avg Volume (20d)
                               <span className="text-xs text-blue-500" title="20-day average daily volume">ℹ️</span>
                             </span>
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
-                              📡 Phase 3
-                            </span>
+                            {stock.avg_volume_20d ? (
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                {formatNumber(stock.avg_volume_20d)}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic text-sm">--</span>
+                            )}
                           </div>
                           {stock.bars?.vwap && (
                             <div className="flex justify-between">
@@ -1479,67 +1597,84 @@ export default function PreMarketScreening() {
                         </h4>
                         <div className="space-y-3">
                           {/* Float Shares - Critical for squeeze */}
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                              Float
-                              <span className="text-xs text-blue-500" title="Low float (<20M) = easier squeeze">ℹ️</span>
-                            </span>
-                            {stock.fundamentals?.float_shares ? (
-                              <span className={`font-semibold ${stock.fundamentals.float_shares < 20_000_000 ? 'text-green-600' : 'text-gray-900 dark:text-gray-100'}`}>
-                                {formatNumber(stock.fundamentals.float_shares)}
-                                {stock.fundamentals.float_shares < 20_000_000 && <span className="ml-1 text-xs">🔥</span>}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 italic text-sm">--</span>
-                            )}
-                          </div>
+                          {(() => {
+                            const floatScore = getFloatScore(stock.fundamentals?.float_shares)
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600 dark:text-gray-400">Float</span>
+                                {stock.fundamentals?.float_shares ? (
+                                  <div className="flex items-center">
+                                    <span className={`font-semibold ${floatScore?.color || 'text-gray-900'}`}>
+                                      {formatNumber(stock.fundamentals.float_shares)}
+                                    </span>
+                                    {floatScore && <ScoreBadge score={floatScore} />}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 italic text-sm">--</span>
+                                )}
+                              </div>
+                            )
+                          })()}
 
                           {/* Borrow Fee Rate - High = squeeze setup */}
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                              Borrow Fee %
-                              <span className="text-xs text-blue-500" title="High fee (>20%) = hard to short = squeeze">ℹ️</span>
-                            </span>
-                            {stock.short_data?.short_fee_rate ? (
-                              <span className={`font-semibold ${stock.short_data.short_fee_rate > 20 ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'}`}>
-                                {stock.short_data.short_fee_rate.toFixed(1)}%
-                                {stock.short_data.short_fee_rate > 20 && <span className="ml-1 text-xs">🔥</span>}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 italic text-sm">--</span>
-                            )}
-                          </div>
+                          {(() => {
+                            const feeScore = getBorrowFeeScore(stock.short_data?.short_fee_rate)
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600 dark:text-gray-400">Borrow Fee %</span>
+                                {stock.short_data?.short_fee_rate !== undefined ? (
+                                  <div className="flex items-center">
+                                    <span className={`font-semibold ${feeScore?.color || 'text-gray-900'}`}>
+                                      {stock.short_data.short_fee_rate.toFixed(1)}%
+                                    </span>
+                                    {feeScore && <ScoreBadge score={feeScore} />}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 italic text-sm">--</span>
+                                )}
+                              </div>
+                            )
+                          })()}
 
                           {/* Borrow Difficulty */}
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400">Borrow Difficulty</span>
-                            {stock.short_data?.borrow_difficulty ? (
-                              <span className={`font-semibold ${
-                                stock.short_data.borrow_difficulty === 'Very Hard' ? 'text-red-600' :
-                                stock.short_data.borrow_difficulty === 'Hard' ? 'text-orange-500' :
-                                stock.short_data.borrow_difficulty === 'Moderate' ? 'text-yellow-600' :
-                                'text-green-600'
-                              }`}>
-                                {stock.short_data.borrow_difficulty}
-                                {(stock.short_data.borrow_difficulty === 'Hard' || stock.short_data.borrow_difficulty === 'Very Hard') && <span className="ml-1 text-xs">🔥</span>}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 italic text-sm">--</span>
-                            )}
-                          </div>
+                          {(() => {
+                            const diffScore = getBorrowDifficultyScore(stock.short_data?.borrow_difficulty)
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600 dark:text-gray-400">Borrow Difficulty</span>
+                                {stock.short_data?.borrow_difficulty ? (
+                                  <div className="flex items-center">
+                                    <span className={`font-semibold ${diffScore?.color || 'text-gray-900'}`}>
+                                      {stock.short_data.borrow_difficulty}
+                                    </span>
+                                    {diffScore && <ScoreBadge score={diffScore} />}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 italic text-sm">--</span>
+                                )}
+                              </div>
+                            )
+                          })()}
 
                           {/* Shortable Shares - Available to short */}
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400">Shortable Shares</span>
-                            {stock.short_data?.shortable_shares ? (
-                              <span className={`font-semibold ${stock.short_data.shortable_shares < 1_000_000 ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'}`}>
-                                {formatNumber(stock.short_data.shortable_shares)}
-                                {stock.short_data.shortable_shares < 1_000_000 && <span className="ml-1 text-xs">🔥</span>}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 italic text-sm">--</span>
-                            )}
-                          </div>
+                          {(() => {
+                            const shortScore = getShortableScore(stock.short_data?.shortable_shares)
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600 dark:text-gray-400">Shortable Shares</span>
+                                {stock.short_data?.shortable_shares ? (
+                                  <div className="flex items-center">
+                                    <span className={`font-semibold ${shortScore?.color || 'text-gray-900'}`}>
+                                      {formatNumber(stock.short_data.shortable_shares)}
+                                    </span>
+                                    {shortScore && <ScoreBadge score={shortScore} />}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 italic text-sm">--</span>
+                                )}
+                              </div>
+                            )
+                          })()}
 
                           {/* Shares Outstanding */}
                           <div className="flex justify-between items-center">
