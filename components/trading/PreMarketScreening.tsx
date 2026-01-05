@@ -1348,11 +1348,14 @@ export default function PreMarketScreening() {
 
                     {/* Metrics Grid - Two Columns */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-                      {/* MOMENTUM Section */}
+                      {/* MOMENTUM Section - Winners Strategy Criteria */}
                       <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                         <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                           <TrendingUp className="w-4 h-4 text-green-600" />
                           Momentum Data
+                          <span className="text-xs px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded ml-auto">
+                            Winners Strategy
+                          </span>
                         </h4>
                         <div className="space-y-3">
                           <div className="flex justify-between">
@@ -1373,6 +1376,26 @@ export default function PreMarketScreening() {
                             <span className="text-gray-600 dark:text-gray-400">Pre-Market Volume</span>
                             <span className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(stock.pre_market_volume)}</span>
                           </div>
+                          {/* Relative Volume - Key Winners Strategy metric */}
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                              Relative Volume
+                              <span className="text-xs text-blue-500" title="Volume vs 20-day avg. >5x = explosive">ℹ️</span>
+                            </span>
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
+                              📡 Phase 3
+                            </span>
+                          </div>
+                          {/* Average Volume - Needed for relative calc */}
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                              Avg Volume (20d)
+                              <span className="text-xs text-blue-500" title="20-day average daily volume">ℹ️</span>
+                            </span>
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
+                              📡 Phase 3
+                            </span>
+                          </div>
                           {stock.bars?.vwap && (
                             <div className="flex justify-between">
                               <span className="text-gray-600 dark:text-gray-400">VWAP</span>
@@ -1390,23 +1413,64 @@ export default function PreMarketScreening() {
                         </div>
                       </div>
 
-                      {/* SQUEEZE POTENTIAL Section */}
+                      {/* SQUEEZE POTENTIAL Section - Winners Strategy Criteria */}
                       <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                         <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                           🔥 Squeeze Potential
+                          <span className="text-xs px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded ml-auto">
+                            Winners Strategy
+                          </span>
                         </h4>
                         <div className="space-y-3">
+                          {/* Float Shares - Critical for squeeze */}
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                              Float
+                              <span className="text-xs text-blue-500" title="Low float (<20M) = easier squeeze">ℹ️</span>
+                            </span>
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
+                              📡 Phase 3
+                            </span>
+                          </div>
+
+                          {/* Borrow Fee Rate - High = squeeze setup */}
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                              Borrow Fee %
+                              <span className="text-xs text-blue-500" title="High fee (>20%) = hard to short = squeeze">ℹ️</span>
+                            </span>
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
+                              📡 Phase 3
+                            </span>
+                          </div>
+
+                          {/* Short Ratio (Days to Cover) */}
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                              Days to Cover
+                              <span className="text-xs text-blue-500" title="Short Ratio >3 days = squeeze potential">ℹ️</span>
+                            </span>
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
+                              📡 Phase 3
+                            </span>
+                          </div>
+
+                          {/* Shortable Shares - Available to short */}
                           {stock.short_data?.shortable_shares ? (
                             <div className="flex justify-between">
                               <span className="text-gray-600 dark:text-gray-400">Shortable Shares</span>
                               <span className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(stock.short_data.shortable_shares)}</span>
                             </div>
                           ) : (
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                               <span className="text-gray-600 dark:text-gray-400">Shortable Shares</span>
-                              <span className="text-gray-400 italic">--</span>
+                              <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
+                                📡 Phase 3
+                              </span>
                             </div>
                           )}
+
+                          {/* Borrow Difficulty - From TWS */}
                           {stock.short_data?.borrow_difficulty ? (
                             <div className="flex justify-between">
                               <span className="text-gray-600 dark:text-gray-400">Borrow Difficulty</span>
@@ -1415,29 +1479,37 @@ export default function PreMarketScreening() {
                               </span>
                             </div>
                           ) : (
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                               <span className="text-gray-600 dark:text-gray-400">Borrow Difficulty</span>
-                              <span className="text-gray-400 italic">--</span>
+                              <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
+                                📡 Phase 3
+                              </span>
                             </div>
                           )}
-                          <div className="flex justify-between">
-                            <span className="text-gray-600 dark:text-gray-400">Float</span>
-                            <span className="text-gray-400 italic">Coming soon</span>
+
+                          {/* Short Interest % */}
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                              Short Interest %
+                              <span className="text-xs text-blue-500" title="% of float sold short">ℹ️</span>
+                            </span>
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
+                              📡 Phase 3
+                            </span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600 dark:text-gray-400">Short Interest</span>
-                            <span className="text-gray-400 italic">Coming soon</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600 dark:text-gray-400">Days to Cover</span>
-                            <span className="text-gray-400 italic">Coming soon</span>
-                          </div>
+
+                          {/* Market Cap - if available */}
                           {stock.fundamentals?.market_cap && (
                             <div className="flex justify-between">
                               <span className="text-gray-600 dark:text-gray-400">Market Cap</span>
                               <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(stock.fundamentals.market_cap)}</span>
                             </div>
                           )}
+
+                          {/* Phase 3 Info Banner */}
+                          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                            📡 <strong>Phase 3:</strong> Float, borrow fee, and short data will come from TWS API integration
+                          </div>
                         </div>
                       </div>
                     </div>
