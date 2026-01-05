@@ -44,10 +44,18 @@
 - ✅ **Volume Display Fix:** Removed $ prefix (was showing "$443M" instead of "443M")
 - ✅ **Updated Presets:** Low-Float Runners, Extreme Movers, Wide Net
 
-**🔜 PHASE 3 (Pending):**
-- Add float, short interest, borrow fee to TWS scanner
-- Phase 3 data will populate Winners Strategy squeeze scores
-- Track analysis history in Supabase
+**✅ COMPLETED - Phase 2.6 (UI Placeholders for Phase 3 Data):**
+- ✅ **Momentum Section Placeholders:** Relative Volume, Avg Volume (20d) with info tooltips
+- ✅ **Squeeze Section Placeholders:** Float, Borrow Fee %, Days to Cover, Short Interest % with info tooltips
+- ✅ **Winners Strategy Badges:** Added to both Momentum and Squeeze sections
+- ✅ **Phase 3 Info Banner:** Explains TWS API integration roadmap
+- ✅ **All placeholders show:** 📡 Phase 3 indicator for clear data source tracking
+
+**🔜 PHASE 3 (Pending - TWS Data Integration):**
+- 🔴 Add float, short interest, borrow fee to TWS scanner API
+- 🔴 Phase 3 data will populate Winners Strategy squeeze scores
+- 🔴 Track analysis history in Supabase
+- 🔴 Data needed: Float shares, Borrow fee rate, Short ratio, Average volume (20d)
 
 **📁 FILES TO MODIFY:**
 - `components/trading/PreMarketScreening.tsx` - Main changes (expandable rows, chart, metrics)
