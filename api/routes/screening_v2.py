@@ -19,6 +19,8 @@ from pydantic import BaseModel
 from typing import Optional, Dict, List, Any
 from datetime import datetime, timedelta
 from lib.trading.screening.tws_scanner_sync import TWSScannerSync
+from lib.trading.screening.tws_short_data import TWSShortDataClient
+from lib.trading.screening.tws_ratios import TWSRatiosClient
 from ib_insync import IB, Stock as IBStock
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
@@ -196,6 +198,13 @@ class Stock(BaseModel):
     pre_market_volume: int = 0
     momentum_score: float = 0.0
     score: int = 100  # Composite score
+    # Phase 3: Short data from TWSShortDataClient
+    shortable_shares: Optional[int] = None
+    borrow_difficulty: Optional[str] = None  # Easy/Moderate/Hard/Very Hard
+    short_fee_rate: Optional[float] = None
+    # Phase 3: Float approximation from TWSRatiosClient
+    shares_outstanding: Optional[int] = None
+    float_shares: Optional[int] = None  # Estimated: shares_outstanding * 0.8 (typical)
 
 
 class ScanJob(BaseModel):
@@ -392,7 +401,53 @@ async def run_scanner_job(
         else:
             log_step(job_id, f"All {len(filtered_stocks)} stocks passed filters", "success")
 
-        # === PHASE 3: COMPLETE ===
+        # === PHASE 3: SHORT DATA & FLOAT ENRICHMENT ===
+        if len(filtered_stocks) > 0:
+            log_step(job_id, f"Phase 3: Getting short data for {len(filtered_stocks)} stocks...", "running")
+            jobs[job_id]["progress"] = 70
+            jobs[job_id]["message"] = f"Getting short data for {len(filtered_stocks)} stocks..."
+
+            try:
+                # Connect to TWS for short data
+                ib_short = IB()
+                short_client_id = get_next_enrich_client_id()
+                await ib_short.connectAsync('127.0.0.1', 7496, clientId=short_client_id)
+
+                short_client = TWSShortDataClient(ib_short)
+                ratios_client = TWSRatiosClient(ib_short)
+
+                for stock in filtered_stocks:
+                    try:
+                        contract = IBStock(stock['symbol'], 'SMART', 'USD')
+                        await ib_short.qualifyContractsAsync(contract)
+
+                        # Get short data
+                        short_data = await short_client.get_short_data(contract, wait_seconds=1.0)
+                        stock['shortable_shares'] = short_data.get('shortable_shares')
+                        stock['borrow_difficulty'] = short_data.get('borrow_difficulty')
+                        stock['short_fee_rate'] = short_data.get('short_fee_rate')
+
+                        # Get ratios (for shares outstanding → float estimate)
+                        ratios = await ratios_client.get_ratios(contract, wait_seconds=1.0)
+                        shares_out = ratios.get('shares_outstanding')
+                        if shares_out:
+                            stock['shares_outstanding'] = int(shares_out)
+                            stock['float_shares'] = int(shares_out * 0.75)  # Estimate: 75% is float
+
+                        borrow = stock.get('borrow_difficulty', 'N/A')
+                        float_m = (stock.get('float_shares', 0) / 1_000_000) if stock.get('float_shares') else 0
+                        log_step(job_id, f"  {stock['symbol']}: Borrow={borrow}, Float={float_m:.1f}M", "success")
+
+                    except Exception as e:
+                        log_step(job_id, f"  {stock['symbol']}: Short data error: {str(e)[:50]}", "error")
+
+                ib_short.disconnect()
+                log_step(job_id, "Phase 3 enrichment complete", "success")
+
+            except Exception as e:
+                log_step(job_id, f"Phase 3 connection error: {str(e)[:50]}", "error")
+
+        # === COMPLETE ===
         jobs[job_id]["status"] = "completed"
         jobs[job_id]["progress"] = 100
         jobs[job_id]["message"] = f"Successfully found {len(filtered_stocks)} stocks"

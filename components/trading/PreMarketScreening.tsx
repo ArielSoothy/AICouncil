@@ -22,10 +22,13 @@ interface StockResult {
   fundamentals?: {
     pe_ratio?: number
     market_cap?: number
+    float_shares?: number
+    shares_outstanding?: number
   }
   short_data?: {
     shortable_shares?: number
     borrow_difficulty?: string
+    short_fee_rate?: number
   }
   ratios?: {
     roe?: number
@@ -353,6 +356,12 @@ export default function PreMarketScreening() {
                   pre_market_volume: number
                   momentum_score: number
                   score: number
+                  // Phase 3 data
+                  shortable_shares?: number
+                  borrow_difficulty?: string
+                  short_fee_rate?: number
+                  shares_outstanding?: number
+                  float_shares?: number
                 }
                 const formattedStocks: StockResult[] = status.stocks.map((stock: EnrichedStock) => ({
                   symbol: stock.symbol,
@@ -362,6 +371,17 @@ export default function PreMarketScreening() {
                   pre_market_volume: stock.pre_market_volume || 0,
                   pre_market_price: stock.pre_market_price || 0,
                   previous_close: stock.previous_close || 0,
+                  // Phase 3: Short data
+                  short_data: stock.shortable_shares ? {
+                    shortable_shares: stock.shortable_shares,
+                    borrow_difficulty: stock.borrow_difficulty,
+                    short_fee_rate: stock.short_fee_rate,
+                  } : undefined,
+                  // Phase 3: Float estimate
+                  fundamentals: stock.float_shares ? {
+                    float_shares: stock.float_shares,
+                    shares_outstanding: stock.shares_outstanding,
+                  } : undefined,
                   score: stock.score || (100 - stock.rank)
                 }))
 
@@ -1464,9 +1484,14 @@ export default function PreMarketScreening() {
                               Float
                               <span className="text-xs text-blue-500" title="Low float (<20M) = easier squeeze">ℹ️</span>
                             </span>
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
-                              📡 Phase 3
-                            </span>
+                            {stock.fundamentals?.float_shares ? (
+                              <span className={`font-semibold ${stock.fundamentals.float_shares < 20_000_000 ? 'text-green-600' : 'text-gray-900 dark:text-gray-100'}`}>
+                                {formatNumber(stock.fundamentals.float_shares)}
+                                {stock.fundamentals.float_shares < 20_000_000 && <span className="ml-1 text-xs">🔥</span>}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic text-sm">--</span>
+                            )}
                           </div>
 
                           {/* Borrow Fee Rate - High = squeeze setup */}
@@ -1475,63 +1500,57 @@ export default function PreMarketScreening() {
                               Borrow Fee %
                               <span className="text-xs text-blue-500" title="High fee (>20%) = hard to short = squeeze">ℹ️</span>
                             </span>
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
-                              📡 Phase 3
-                            </span>
+                            {stock.short_data?.short_fee_rate ? (
+                              <span className={`font-semibold ${stock.short_data.short_fee_rate > 20 ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'}`}>
+                                {stock.short_data.short_fee_rate.toFixed(1)}%
+                                {stock.short_data.short_fee_rate > 20 && <span className="ml-1 text-xs">🔥</span>}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic text-sm">--</span>
+                            )}
                           </div>
 
-                          {/* Short Ratio (Days to Cover) */}
+                          {/* Borrow Difficulty */}
                           <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                              Days to Cover
-                              <span className="text-xs text-blue-500" title="Short Ratio >3 days = squeeze potential">ℹ️</span>
-                            </span>
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
-                              📡 Phase 3
-                            </span>
+                            <span className="text-gray-600 dark:text-gray-400">Borrow Difficulty</span>
+                            {stock.short_data?.borrow_difficulty ? (
+                              <span className={`font-semibold ${
+                                stock.short_data.borrow_difficulty === 'Very Hard' ? 'text-red-600' :
+                                stock.short_data.borrow_difficulty === 'Hard' ? 'text-orange-500' :
+                                stock.short_data.borrow_difficulty === 'Moderate' ? 'text-yellow-600' :
+                                'text-green-600'
+                              }`}>
+                                {stock.short_data.borrow_difficulty}
+                                {(stock.short_data.borrow_difficulty === 'Hard' || stock.short_data.borrow_difficulty === 'Very Hard') && <span className="ml-1 text-xs">🔥</span>}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic text-sm">--</span>
+                            )}
                           </div>
 
                           {/* Shortable Shares - Available to short */}
-                          {stock.short_data?.shortable_shares ? (
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">Shortable Shares</span>
-                              <span className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(stock.short_data.shortable_shares)}</span>
-                            </div>
-                          ) : (
-                            <div className="flex justify-between items-center">
-                              <span className="text-gray-600 dark:text-gray-400">Shortable Shares</span>
-                              <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
-                                📡 Phase 3
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Borrow Difficulty - From TWS */}
-                          {stock.short_data?.borrow_difficulty ? (
-                            <div className="flex justify-between">
-                              <span className="text-gray-600 dark:text-gray-400">Borrow Difficulty</span>
-                              <span className={`font-semibold ${getDifficultyColor(stock.short_data.borrow_difficulty)}`}>
-                                {stock.short_data.borrow_difficulty}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex justify-between items-center">
-                              <span className="text-gray-600 dark:text-gray-400">Borrow Difficulty</span>
-                              <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
-                                📡 Phase 3
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Short Interest % */}
                           <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                              Short Interest %
-                              <span className="text-xs text-blue-500" title="% of float sold short">ℹ️</span>
-                            </span>
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded">
-                              📡 Phase 3
-                            </span>
+                            <span className="text-gray-600 dark:text-gray-400">Shortable Shares</span>
+                            {stock.short_data?.shortable_shares ? (
+                              <span className={`font-semibold ${stock.short_data.shortable_shares < 1_000_000 ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'}`}>
+                                {formatNumber(stock.short_data.shortable_shares)}
+                                {stock.short_data.shortable_shares < 1_000_000 && <span className="ml-1 text-xs">🔥</span>}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic text-sm">--</span>
+                            )}
+                          </div>
+
+                          {/* Shares Outstanding */}
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 dark:text-gray-400">Shares Outstanding</span>
+                            {stock.fundamentals?.shares_outstanding ? (
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                {formatNumber(stock.fundamentals.shares_outstanding)}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic text-sm">--</span>
+                            )}
                           </div>
 
                           {/* Market Cap - if available */}
@@ -1541,11 +1560,6 @@ export default function PreMarketScreening() {
                               <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(stock.fundamentals.market_cap)}</span>
                             </div>
                           )}
-
-                          {/* Phase 3 Info Banner */}
-                          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-                            📡 <strong>Phase 3:</strong> Float, borrow fee, and short data will come from TWS API integration
-                          </div>
                         </div>
                       </div>
                     </div>
