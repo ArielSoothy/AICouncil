@@ -197,6 +197,28 @@ const child = spawn('npx', args, {
 
 **IMPORTANT**: Even after removing `ANTHROPIC_API_KEY` from env, Claude Code CLI has its **OWN internal credential storage**. If you see "Credit balance too low" in Sub mode, the user needs to run `setup-token` to switch from API credits to subscription auth.
 
+### ⚠️ CRITICAL: Claude CLI Non-Interactive Mode Bug (January 2026)
+
+**KNOWN BUG**: Claude CLI `-p` (non-interactive) flag does NOT properly use subscription auth!
+
+| Mode | Subscription Works? | Source |
+|------|---------------------|--------|
+| Interactive (`claude`) | ✅ Yes | Normal CLI usage |
+| Non-interactive (`claude -p "..."`) | ❌ **NO** - falls back to API | [GitHub Issue #2051](https://github.com/anthropics/claude-code/issues/2051) |
+
+**Impact**: Any programmatic usage of Claude CLI (from Next.js routes, scripts, etc.) will charge API credits even if you have Claude Max subscription.
+
+**Solution**: Use **Gemini CLI** for programmatic/non-interactive calls instead:
+- Gemini CLI properly supports subscription mode in non-interactive mode
+- Google AI Pro/Ultra subscription works with `-p` flag
+- No known bugs with programmatic usage
+
+**Code Change Made** (January 5, 2026):
+- `app/api/trading/screening/analyze/route.ts` - Switched from `ClaudeCLIProvider` to `GoogleCLIProvider`
+- Using `gemini-2.5-flash` model (supports "thinking mode" required by CLI)
+
+**Note**: `gemini-2.0-*` models do NOT support thinking mode and will error with Gemini CLI. Use `gemini-2.5-*` models instead.
+
 ### Key Files
 - `lib/ai-providers/cli/claude-cli.ts` - Claude subscription provider
 - `lib/ai-providers/cli/codex-cli.ts` - OpenAI subscription provider

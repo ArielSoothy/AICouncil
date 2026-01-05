@@ -90,6 +90,28 @@ export default function PreMarketScreening() {
   // Stock deep-dive state
   const [expandedStock, setExpandedStock] = useState<string | null>(null)
 
+  // AI Analysis state
+  interface AnalysisResult {
+    verdict: 'BUY' | 'WATCH' | 'SKIP'
+    confidence: number
+    reasons: string[]
+    entryTrigger?: string
+    riskFlag?: string
+    analysisTime: number
+    model?: string
+  }
+  const [analysisResults, setAnalysisResults] = useState<Record<string, AnalysisResult>>({})
+  const [analyzingStock, setAnalyzingStock] = useState<string | null>(null)
+  const [analysisMode, setAnalysisMode] = useState<'quick' | 'deep'>('quick')
+  const [analysisModel, setAnalysisModel] = useState<string>('gemini-2.5-pro')
+
+  // Available models for screening analysis (Gemini 2.5+ supports thinking mode required by CLI)
+  const analysisModels = [
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', badge: '🏆 Best' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', badge: '⚡ Fast' },
+    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', badge: '💨 Fastest' },
+  ]
+
   // ✅ Filter state - V2 API uses: minVolume, minPrice, maxPrice, maxResults
   // Note: Gap, Float, and RelVol sliders are UI-only for now (V2 scanner uses TWS filters)
   const [minGapPercent, setMinGapPercent] = useState<number>(10) // UI-only (not sent to V2 API yet)
@@ -129,6 +151,63 @@ export default function PreMarketScreening() {
       console.error('Screening fetch error:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Run AI Analysis on a stock
+  const analyzeStock = async (stock: StockResult) => {
+    setAnalyzingStock(stock.symbol)
+
+    try {
+      const response = await fetch('/api/trading/screening/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stock: {
+            symbol: stock.symbol,
+            rank: stock.rank,
+            gap_percent: stock.gap_percent,
+            gap_direction: stock.gap_direction,
+            pre_market_price: stock.pre_market_price,
+            previous_close: stock.previous_close,
+            pre_market_volume: stock.pre_market_volume,
+            score: stock.score,
+          },
+          mode: analysisMode,
+          model: analysisModel,
+          tier: 'sub-pro',
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Analysis failed: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.analysis) {
+        setAnalysisResults(prev => ({
+          ...prev,
+          [stock.symbol]: {
+            ...result.analysis,
+            model: analysisModel, // Store which model was used
+          },
+        }))
+      }
+    } catch (err) {
+      console.error('Analysis error:', err)
+      // Set a failed state
+      setAnalysisResults(prev => ({
+        ...prev,
+        [stock.symbol]: {
+          verdict: 'WATCH' as const,
+          confidence: 0,
+          reasons: ['Analysis failed - try again'],
+          analysisTime: 0,
+        },
+      }))
+    } finally {
+      setAnalyzingStock(null)
     }
   }
 
@@ -1156,16 +1235,133 @@ export default function PreMarketScreening() {
                       </div>
                     </div>
 
+                    {/* AI Analysis Result */}
+                    {analysisResults[stock.symbol] && (
+                      <div className={`p-4 border-t ${
+                        analysisResults[stock.symbol].verdict === 'BUY'
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                          : analysisResults[stock.symbol].verdict === 'SKIP'
+                          ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                          : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                      }`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                              analysisResults[stock.symbol].verdict === 'BUY'
+                                ? 'bg-green-500 text-white'
+                                : analysisResults[stock.symbol].verdict === 'SKIP'
+                                ? 'bg-red-500 text-white'
+                                : 'bg-amber-500 text-white'
+                            }`}>
+                              {analysisResults[stock.symbol].verdict === 'BUY' ? '🚀 BUY' :
+                               analysisResults[stock.symbol].verdict === 'SKIP' ? '❌ SKIP' : '👀 WATCH'}
+                            </span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              Confidence: {analysisResults[stock.symbol].confidence}%
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            {analysisResults[stock.symbol].model && (
+                              <span className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">
+                                {analysisModels.find(m => m.id === analysisResults[stock.symbol].model)?.badge || '🤖'} {analysisResults[stock.symbol].model}
+                              </span>
+                            )}
+                            <span>{analysisResults[stock.symbol].analysisTime}ms</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Reasons:</span>
+                            <ul className="mt-1 space-y-1">
+                              {analysisResults[stock.symbol].reasons.map((reason, i) => (
+                                <li key={i} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                                  <span className="text-gray-400">•</span>
+                                  {reason}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          {analysisResults[stock.symbol].entryTrigger && (
+                            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Entry Trigger:</span>
+                              <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                                📍 {analysisResults[stock.symbol].entryTrigger}
+                              </p>
+                            </div>
+                          )}
+                          {analysisResults[stock.symbol].riskFlag && (
+                            <div className="pt-2">
+                              <span className="text-xs font-semibold text-red-500 uppercase">⚠️ Risk:</span>
+                              <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                                {analysisResults[stock.symbol].riskFlag}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Action Buttons */}
                     <div className="flex items-center justify-between p-4 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center gap-2">
-                        <button
-                          disabled
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors text-sm font-medium"
-                          title="Coming in Phase 2"
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Mode Toggle */}
+                        <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
+                          <button
+                            onClick={() => setAnalysisMode('quick')}
+                            className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                              analysisMode === 'quick'
+                                ? 'bg-white dark:bg-gray-600 shadow-sm font-medium'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                            }`}
+                          >
+                            ⚡ Quick
+                          </button>
+                          <button
+                            onClick={() => setAnalysisMode('deep')}
+                            className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                              analysisMode === 'deep'
+                                ? 'bg-white dark:bg-gray-600 shadow-sm font-medium'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                            }`}
+                          >
+                            🔬 Deep
+                          </button>
+                        </div>
+
+                        {/* Model Selector */}
+                        <select
+                          value={analysisModel}
+                          onChange={(e) => setAnalysisModel(e.target.value)}
+                          className="px-2 py-1.5 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
                         >
-                          <Bot className="w-4 h-4" />
-                          🤖 Run AI Analysis
+                          {analysisModels.map((model) => (
+                            <option key={model.id} value={model.id}>
+                              {model.badge} {model.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          onClick={() => analyzeStock(stock)}
+                          disabled={analyzingStock === stock.symbol}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors text-sm font-medium"
+                        >
+                          {analyzingStock === stock.symbol ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              Analyzing...
+                            </>
+                          ) : analysisResults[stock.symbol] ? (
+                            <>
+                              <Bot className="w-4 h-4" />
+                              Re-analyze
+                            </>
+                          ) : (
+                            <>
+                              <Bot className="w-4 h-4" />
+                              Run AI Analysis
+                            </>
+                          )}
                         </button>
                         <button
                           disabled

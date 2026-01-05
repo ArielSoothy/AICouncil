@@ -20,9 +20,13 @@ import { ModelResponse, ModelConfig } from '@/types/consensus';
 import { AIProvider } from '../types';
 
 // Models available via Gemini CLI (subscription)
+// Note: gemini-2.5-* models support "thinking mode" which is enabled by default in CLI
+// gemini-2.0-* models do NOT support thinking mode and will error
 const GEMINI_CLI_MODELS = [
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
+  'gemini-2.5-pro',         // Best quality, supports thinking
+  'gemini-2.5-flash',       // Fast + good quality, supports thinking
+  'gemini-2.5-flash-lite',  // Fastest, supports thinking
+  'gemini-2.0-flash',       // AVOID: No thinking mode support (will error)
   'gemini-1.5-pro',
   'gemini-1.5-flash',
 ];
