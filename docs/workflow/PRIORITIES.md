@@ -17,7 +17,34 @@
 
 ## 📝 CURRENT SESSION CONTEXT:
 
-**Current Session:** ✅ **SCREENING ENHANCEMENTS COMPLETE** (January 5, 2026)
+**Current Session:** 🔨 **STOCK DEEP-DIVE & LLM ANALYSIS** (January 5, 2026 - Afternoon)
+**Goal:** Add click-to-expand stock detail with charts + LLM analysis for screening results
+
+**📋 PLAN FILE:** `~/.claude/plans/async-baking-barto.md`
+**RESEARCH SOURCE:** `docs/trading/Winners_Strategy/` (4 research docs from Claude/Gemini/GPT/Grok)
+
+**⏳ IN PROGRESS - Phase 1 (Before Trading):**
+- ⏳ **Expandable Stock Rows:** Click any stock to expand with detail view
+- ⏳ **TradingView Chart:** Embed professional charts in expanded view
+- ⏳ **Better Metrics Display:** Momentum + Squeeze sections
+- ⏳ **Action Buttons:** "🤖 AI Analysis" and "⭐ Watchlist" placeholders
+
+**🔜 PHASE 2 (After Trading):**
+- Create `/api/trading/screening/analyze` route
+- Add Quick/Deep toggle for analysis depth
+- Display AI verdict inline in expanded view
+
+**🔜 PHASE 3 (This Week):**
+- Add float, short interest, borrow fee to TWS scanner
+- Implement Winners Strategy scoring (10-point system)
+- Track analysis history in Supabase
+
+**📁 FILES TO MODIFY:**
+- `components/trading/PreMarketScreening.tsx` - Main changes (expandable rows, chart, metrics)
+
+---
+
+**Previous Session:** ✅ **SCREENING ENHANCEMENTS COMPLETE** (January 5, 2026 - Morning)
 **Goal:** Add TWS restart detection, sorting mechanism, and data caching to Pre-Market Screening
 
 **✅ COMPLETED - Session Enhancements:**

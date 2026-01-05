@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play, Terminal, ArrowUpDown, ChevronDown, History, X } from 'lucide-react'
+import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play, Terminal, ArrowUpDown, ChevronDown, ChevronRight, History, X, Bot, Star, ExternalLink } from 'lucide-react'
 import { saveToLocalStorage, loadFromLocalStorage, saveScan, loadHistory, type ScreeningScanResult } from '@/lib/trading/screening-cache'
 
 interface FlowLogEntry {
@@ -87,6 +87,9 @@ export default function PreMarketScreening() {
   const [scanHistory, setScanHistory] = useState<ScreeningScanResult[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
 
+  // Stock deep-dive state
+  const [expandedStock, setExpandedStock] = useState<string | null>(null)
+
   // ✅ Filter state - V2 API uses: minVolume, minPrice, maxPrice, maxResults
   // Note: Gap, Float, and RelVol sliders are UI-only for now (V2 scanner uses TWS filters)
   const [minGapPercent, setMinGapPercent] = useState<number>(10) // UI-only (not sent to V2 API yet)
@@ -101,7 +104,10 @@ export default function PreMarketScreening() {
 
   const fetchScreening = async () => {
     setLoading(true)
-    setError(null)
+    // Only clear error if we don't have cached data - preserve cached data display
+    if (!data) {
+      setError(null)
+    }
 
     try {
       const response = await fetch(`${FASTAPI_URL}/api/screening/latest`)
@@ -114,8 +120,12 @@ export default function PreMarketScreening() {
       const screeningData: ScreeningResponse = await response.json()
       setData(screeningData)
       setLastUpdate(new Date())
+      setError(null) // Clear error on success
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch screening data')
+      // Only show error if we don't have any data to display
+      if (!data) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch screening data')
+      }
       console.error('Screening fetch error:', err)
     } finally {
       setLoading(false)
@@ -338,9 +348,11 @@ export default function PreMarketScreening() {
         timestamp: cached.scanned_at
       })
       setLastUpdate(new Date(cached.scanned_at))
+      // Don't fetch from API if we have cached data - avoids error overriding cache
+      return
     }
 
-    // Also try fetching from FastAPI (in case there's a running job)
+    // Only try fetching from FastAPI if no cached data
     fetchScreening()
   }, [])
 
@@ -954,146 +966,225 @@ export default function PreMarketScreening() {
 
       {/* Stocks list */}
       {data && !error && (
-        <div className="space-y-4">
-          {getSortedStocks().map((stock) => (
-            <div
-              key={stock.symbol}
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-lg transition-shadow"
-            >
-              {/* Header row */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                      {stock.symbol}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Rank #{stock.rank + 1}
-                      </span>
-                      {stock.gap_direction === 'up' ? (
-                        <TrendingUp className="w-4 h-4 text-green-600" />
+        <div className="space-y-3">
+          {getSortedStocks().map((stock) => {
+            const isExpanded = expandedStock === stock.symbol
+
+            return (
+              <div key={stock.symbol} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden transition-all duration-200">
+                {/* Clickable Header Row */}
+                <div
+                  onClick={() => setExpandedStock(isExpanded ? null : stock.symbol)}
+                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Expand/Collapse Icon */}
+                    <div className="flex-shrink-0">
+                      {isExpanded ? (
+                        <ChevronDown className="w-5 h-5 text-blue-500" />
                       ) : (
-                        <TrendingDown className="w-4 h-4 text-red-600" />
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
                       )}
-                      <span className={`text-lg font-semibold ${stock.gap_direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                        {stock.gap_percent > 0 ? '+' : ''}{stock.gap_percent.toFixed(2)}%
-                      </span>
+                    </div>
+
+                    {/* Symbol & Gap */}
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                          {stock.symbol}
+                        </h3>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                          #{stock.rank + 1}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {stock.gap_direction === 'up' ? (
+                          <TrendingUp className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <TrendingDown className="w-4 h-4 text-red-600" />
+                        )}
+                        <span className={`font-semibold ${stock.gap_direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                          {stock.gap_percent > 0 ? '+' : ''}{stock.gap_percent.toFixed(2)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Stats */}
+                  <div className="flex items-center gap-6">
+                    <div className="text-right hidden sm:block">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Price</div>
+                      <div className="font-semibold text-gray-900 dark:text-gray-100">
+                        ${stock.pre_market_price.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="text-right hidden md:block">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Volume</div>
+                      <div className="font-semibold text-gray-900 dark:text-gray-100">
+                        {formatNumber(stock.pre_market_volume)}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-2xl font-bold ${getScoreColor(stock.score)}`}>
+                        {stock.score}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Score</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <div className={`text-3xl font-bold ${getScoreColor(stock.score)}`}>
-                    {stock.score}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Score</div>
-                </div>
-              </div>
+                {/* Expanded Detail View */}
+                {isExpanded && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                    {/* TradingView Chart */}
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                          📊 Chart - {stock.symbol}
+                        </h4>
+                        <a
+                          href={`https://www.tradingview.com/chart/?symbol=${stock.symbol}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+                        >
+                          Open in TradingView <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <div className="bg-gray-900 rounded-lg overflow-hidden">
+                        <iframe
+                          src={`https://www.tradingview.com/widgetembed/?symbol=${stock.symbol}&interval=5&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=1e222d&studies=[]&theme=dark&timezone=America%2FNew_York&withdateranges=0&hideideas=1&width=100%25&height=350`}
+                          style={{ width: '100%', height: 350, border: 'none' }}
+                          title={`${stock.symbol} Chart`}
+                        />
+                      </div>
+                    </div>
 
-              {/* Price info */}
-              <div className="grid grid-cols-3 gap-4 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Pre-Market Price</div>
-                  <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    ${stock.pre_market_price.toFixed(2)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Previous Close</div>
-                  <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    ${stock.previous_close.toFixed(2)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Volume</div>
-                  <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {formatNumber(stock.pre_market_volume)}
-                  </div>
-                </div>
-              </div>
+                    {/* Metrics Grid - Two Columns */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                      {/* MOMENTUM Section */}
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-green-600" />
+                          Momentum Data
+                        </h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Gap %</span>
+                            <span className={`font-semibold ${stock.gap_direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                              {stock.gap_percent > 0 ? '+' : ''}{stock.gap_percent.toFixed(2)}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Pre-Market Price</span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">${stock.pre_market_price.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Previous Close</span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">${stock.previous_close.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Pre-Market Volume</span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(stock.pre_market_volume)}</span>
+                          </div>
+                          {stock.bars?.vwap && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">VWAP</span>
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">${stock.bars.vwap.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {stock.sentiment?.score && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Sentiment</span>
+                              <span className={`font-semibold ${stock.sentiment.score > 0.5 ? 'text-green-600' : 'text-red-600'}`}>
+                                {(stock.sentiment.score * 100).toFixed(0)}% bullish
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-              {/* Additional data grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                {/* Fundamentals */}
-                {stock.fundamentals && (
-                  <>
-                    {stock.fundamentals.pe_ratio && (
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">P/E Ratio</div>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">
-                          {stock.fundamentals.pe_ratio.toFixed(2)}
+                      {/* SQUEEZE POTENTIAL Section */}
+                      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                          🔥 Squeeze Potential
+                        </h4>
+                        <div className="space-y-3">
+                          {stock.short_data?.shortable_shares ? (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Shortable Shares</span>
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(stock.short_data.shortable_shares)}</span>
+                            </div>
+                          ) : (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Shortable Shares</span>
+                              <span className="text-gray-400 italic">--</span>
+                            </div>
+                          )}
+                          {stock.short_data?.borrow_difficulty ? (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Borrow Difficulty</span>
+                              <span className={`font-semibold ${getDifficultyColor(stock.short_data.borrow_difficulty)}`}>
+                                {stock.short_data.borrow_difficulty}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Borrow Difficulty</span>
+                              <span className="text-gray-400 italic">--</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Float</span>
+                            <span className="text-gray-400 italic">Coming soon</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Short Interest</span>
+                            <span className="text-gray-400 italic">Coming soon</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Days to Cover</span>
+                            <span className="text-gray-400 italic">Coming soon</span>
+                          </div>
+                          {stock.fundamentals?.market_cap && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">Market Cap</span>
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">{formatNumber(stock.fundamentals.market_cap)}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    )}
-                    {stock.fundamentals.market_cap && (
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">Market Cap</div>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">
-                          {formatNumber(stock.fundamentals.market_cap)}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                    </div>
 
-                {/* Short data */}
-                {stock.short_data && (
-                  <>
-                    {stock.short_data.shortable_shares && (
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">Shortable Shares</div>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">
-                          {formatNumber(stock.short_data.shortable_shares)}
-                        </div>
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-between p-4 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <button
+                          disabled
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors text-sm font-medium"
+                          title="Coming in Phase 2"
+                        >
+                          <Bot className="w-4 h-4" />
+                          🤖 Run AI Analysis
+                        </button>
+                        <button
+                          disabled
+                          className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white rounded-lg transition-colors text-sm font-medium"
+                          title="Coming in Phase 3"
+                        >
+                          <Star className="w-4 h-4" />
+                          Add to Watchlist
+                        </button>
                       </div>
-                    )}
-                    {stock.short_data.borrow_difficulty && (
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">Borrow Difficulty</div>
-                        <div className={`font-semibold ${getDifficultyColor(stock.short_data.borrow_difficulty)}`}>
-                          {stock.short_data.borrow_difficulty}
-                        </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Score breakdown: Rank {40 - stock.rank * 2}/40 + Gap {Math.min(30, Math.abs(stock.gap_percent) * 3).toFixed(0)}/30 + Vol {Math.min(30, stock.pre_market_volume / 1_000_000 * 10).toFixed(0)}/30
                       </div>
-                    )}
-                  </>
-                )}
-
-                {/* Ratios */}
-                {stock.ratios && (
-                  <>
-                    {stock.ratios.roe && (
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">ROE</div>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">
-                          {stock.ratios.roe.toFixed(1)}%
-                        </div>
-                      </div>
-                    )}
-                    {stock.ratios.debt_to_equity && (
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">Debt/Equity</div>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">
-                          {stock.ratios.debt_to_equity.toFixed(2)}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Sentiment */}
-                {stock.sentiment && stock.sentiment.score && (
-                  <div>
-                    <div className="text-gray-500 dark:text-gray-400">Sentiment</div>
-                    <div className={`font-semibold ${stock.sentiment.score > 0.5 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {(stock.sentiment.score * 100).toFixed(0)}%
-                      {stock.sentiment.mentions && ` (${stock.sentiment.mentions})`}
                     </div>
                   </div>
                 )}
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {data.stocks.length === 0 && (
             <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center">
