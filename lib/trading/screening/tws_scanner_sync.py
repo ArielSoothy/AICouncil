@@ -4,10 +4,15 @@ TWS Scanner Client - SYNCHRONOUS VERSION (WORKS!)
 
 Uses synchronous ib_insync API because async version has timeout issues.
 Simple, fast, reliable - exactly what we need.
+
+TROUBLESHOOTING:
+- If ALL historical data requests timeout → Restart TWS Desktop
+- This is a known TWS issue where the connection becomes stale
+- Scanner will still find stocks, but enrichment (price/gap/volume) will fail
 """
 
 from ib_insync import *
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 class TWSScannerSync:
     """
@@ -127,6 +132,8 @@ class TWSScannerSync:
         # === GET LAST DAY'S PRICE CHANGE FROM HISTORICAL BARS ===
         if contracts:
             print(f"\n[ENRICHING] Getting last day change for {len(contracts)} stocks...")
+            timeout_count = 0
+            success_count = 0
             try:
                 for i, contract in enumerate(contracts):
                     if i >= len(results):
@@ -135,6 +142,7 @@ class TWSScannerSync:
                     symbol = results[i]['symbol']
                     try:
                         # Get 3 days of daily bars to ensure we have 2 trading days
+                        # Use shorter timeout (10s) to fail fast if TWS is stale
                         bars = self.ib.reqHistoricalData(
                             contract,
                             endDateTime='',
@@ -142,7 +150,8 @@ class TWSScannerSync:
                             barSizeSetting='1 day',
                             whatToShow='TRADES',
                             useRTH=True,
-                            formatDate=1
+                            formatDate=1,
+                            timeout=10  # 10 second timeout per stock
                         )
 
                         if bars and len(bars) >= 2:
@@ -163,15 +172,32 @@ class TWSScannerSync:
                             results[i]['previous_close'] = prev_close
                             results[i]['volume'] = volume
                             results[i]['gap_percent'] = round(gap, 2)
+                            success_count += 1
 
                             print(f"  {symbol}: ${last_close:.2f} | Prev: ${prev_close:.2f} | Chg: {gap:+.1f}% | Vol: {volume:,}")
                         else:
+                            timeout_count += 1
                             print(f"  {symbol}: No historical data available")
 
                     except Exception as e:
-                        print(f"  {symbol}: Error - {str(e)[:50]}")
+                        error_str = str(e).lower()
+                        if 'timeout' in error_str or 'cancelled' in error_str:
+                            timeout_count += 1
+                            print(f"  {symbol}: ⏱️ TIMEOUT - TWS not responding")
+                        else:
+                            print(f"  {symbol}: Error - {str(e)[:50]}")
 
-                print(f"[SUCCESS] ✅ Historical data enriched for {len(contracts)} stocks")
+                # Check if ALL requests timed out - suggest TWS restart
+                if timeout_count > 0 and success_count == 0:
+                    print(f"\n[WARN] ⚠️ ALL {timeout_count} historical data requests failed!")
+                    print(f"[WARN] 🔄 Try restarting TWS Desktop - connection may be stale")
+                    # Add warning to results so frontend can display it
+                    for r in results:
+                        r['_tws_warning'] = 'TWS_RESTART_NEEDED'
+                elif timeout_count > 0:
+                    print(f"[WARN] ⚠️ {timeout_count}/{len(contracts)} requests timed out")
+
+                print(f"[SUCCESS] ✅ Historical data enriched for {success_count}/{len(contracts)} stocks")
             except Exception as e:
                 print(f"[WARN] ⚠️ Enrichment failed: {e}")
 

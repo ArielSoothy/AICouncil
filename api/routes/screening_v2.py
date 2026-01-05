@@ -141,6 +141,7 @@ class ScanJob(BaseModel):
     error: Optional[str] = None
     stocks: Optional[List[Stock]] = None  # Results stored here
     flow_log: Optional[List[FlowLogEntry]] = None  # Real-time log
+    warning: Optional[str] = None  # TWS warnings (e.g., restart needed)
 
 
 def calculate_composite_score(rank: int, bars_data: Dict) -> int:
@@ -286,6 +287,13 @@ async def run_scanner_job(
 
         log_step(job_id, "Enrichment complete", "success")
 
+        # Check for TWS warnings (e.g., all timeouts = need restart)
+        tws_warning = None
+        stocks_with_no_data = sum(1 for s in enriched_stocks if s.get('pre_market_price', 0) == 0)
+        if stocks_with_no_data == len(enriched_stocks) and len(enriched_stocks) > 0:
+            tws_warning = "⚠️ All historical data requests failed. Try restarting TWS Desktop."
+            log_step(job_id, "WARNING: TWS may need restart - no enrichment data", "error")
+
         # === PHASE 3: COMPLETE ===
         jobs[job_id]["status"] = "completed"
         jobs[job_id]["progress"] = 100
@@ -293,6 +301,8 @@ async def run_scanner_job(
         jobs[job_id]["stocks_found"] = len(enriched_stocks)
         jobs[job_id]["stocks"] = enriched_stocks
         jobs[job_id]["completed_at"] = datetime.now().isoformat()
+        if tws_warning:
+            jobs[job_id]["warning"] = tws_warning
 
         log_step(job_id, f"Complete! {len(enriched_stocks)} stocks enriched", "success")
         print(f"[SUCCESS] ✅ Job {job_id}: {len(enriched_stocks)} stocks found and enriched")
@@ -353,7 +363,8 @@ async def start_screening_v2(
             "completed_at": None,
             "error": None,
             "stocks": None,
-            "flow_log": []  # Real-time observability
+            "flow_log": [],  # Real-time observability
+            "warning": None  # TWS warnings (e.g., restart needed)
         }
 
     # Add to background tasks

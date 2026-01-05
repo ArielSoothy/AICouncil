@@ -71,6 +71,7 @@ export default function PreMarketScreening() {
   const [progressPercent, setProgressPercent] = useState<number>(0)
   const [flowLog, setFlowLog] = useState<FlowLogEntry[]>([])
   const [showFlowLog, setShowFlowLog] = useState<boolean>(false)
+  const [twsWarning, setTwsWarning] = useState<string | null>(null)
   const flowLogRef = useRef<HTMLDivElement>(null)
   const flowLogTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -117,6 +118,7 @@ export default function PreMarketScreening() {
   }) => {
     setRunning(true)
     setError(null)
+    setTwsWarning(null) // Clear previous warning
     setProgressStep('Starting TWS scanner...')
     setFlowLog([]) // Clear previous flow log
     setShowFlowLog(true) // Show flow log when scan starts
@@ -184,6 +186,11 @@ export default function PreMarketScreening() {
               // SUCCESS - got results!
               clearInterval(pollInterval)
               setProgressPercent(100)
+
+              // Check for TWS warnings (e.g., need restart)
+              if (status.warning) {
+                setTwsWarning(status.warning)
+              }
 
               // Convert V2 results to ScreeningResponse format (now with enriched data!)
               if (status.stocks && status.stocks.length > 0) {
@@ -657,6 +664,22 @@ export default function PreMarketScreening() {
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* TWS Warning (e.g., need restart) */}
+      {twsWarning && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-amber-900 dark:text-amber-100">TWS Connection Issue</h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">{twsWarning}</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                Stocks were found but price/volume data couldn&apos;t be retrieved. Restart TWS Desktop and run again.
+              </p>
+            </div>
           </div>
         </div>
       )}
