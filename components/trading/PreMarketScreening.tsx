@@ -146,8 +146,10 @@ export default function PreMarketScreening() {
 
   // ✅ Filter state - V2 API uses all these now (Winners Strategy filters added)
   const [minGapPercent, setMinGapPercent] = useState<number>(10) // ✅ Sent to V2 API
+  const [maxGapPercent, setMaxGapPercent] = useState<number>(100) // ✅ Sent to V2 API (100 = no limit)
   const [gapDirection, setGapDirection] = useState<'up' | 'down' | 'both'>('up') // ✅ Sent to V2 API
   const [minVolume, setMinVolume] = useState<number>(500000) // ✅ Sent to V2 API
+  const [maxVolume, setMaxVolume] = useState<number>(0) // ✅ Sent to V2 API (0 = no limit)
   const [maxFloatShares, setMaxFloatShares] = useState<number>(30000000) // UI-only (Phase 3: needs TWS float data)
   const [minRelativeVolume, setMinRelativeVolume] = useState<number>(5.0) // UI-only (Phase 3: needs TWS rel vol)
   const [minPrice, setMinPrice] = useState<number>(1.0) // ✅ Sent to V2 API
@@ -245,10 +247,12 @@ export default function PreMarketScreening() {
 
   const runScreening = async (customParams?: {
     minVolume?: number
+    maxVolume?: number
     minPrice?: number
     maxPrice?: number
     maxResults?: number
     minGapPercent?: number
+    maxGapPercent?: number
     gapDirection?: 'up' | 'down' | 'both'
   }) => {
     setRunning(true)
@@ -267,10 +271,12 @@ export default function PreMarketScreening() {
     // V2 API now supports Winners Strategy filters
     const effectiveParams = {
       minVolume: customParams?.minVolume ?? minVolume,
+      maxVolume: customParams?.maxVolume ?? maxVolume,
       minPrice: customParams?.minPrice ?? minPrice,
       maxPrice: customParams?.maxPrice ?? maxPrice,
       maxResults: customParams?.maxResults ?? maxResults,
       minGapPercent: customParams?.minGapPercent ?? minGapPercent,
+      maxGapPercent: customParams?.maxGapPercent ?? maxGapPercent,
       gapDirection: customParams?.gapDirection ?? gapDirection
     }
 
@@ -278,10 +284,12 @@ export default function PreMarketScreening() {
       // === USE V2 API (SYNCHRONOUS SCANNER - WORKS!) ===
       const params = new URLSearchParams({
         min_volume: String(effectiveParams.minVolume),
+        max_volume: String(effectiveParams.maxVolume),
         min_price: String(effectiveParams.minPrice),
         max_price: String(effectiveParams.maxPrice),
         max_results: String(effectiveParams.maxResults),
         min_gap_percent: String(effectiveParams.minGapPercent),
+        max_gap_percent: String(effectiveParams.maxGapPercent),
         gap_direction: effectiveParams.gapDirection
       })
 
@@ -668,27 +676,46 @@ export default function PreMarketScreening() {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Gap Percentage Slider */}
+          {/* Gap Percentage Range (Min & Max) */}
           <div className="space-y-2">
             <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
-              <span>Min Gap %</span>
-              <span className="font-bold text-blue-600 dark:text-blue-400">{minGapPercent}%</span>
+              <span>Gap % Range</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">
+                {minGapPercent}% - {maxGapPercent === 100 ? '∞' : `${maxGapPercent}%`}
+              </span>
             </label>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-600 dark:text-gray-400">5%</span>
-              <input
-                type="range"
-                min="5"
-                max="50"
-                step="1"
-                value={minGapPercent}
-                onChange={(e) => setMinGapPercent(Number(e.target.value))}
-                className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
-              />
-              <span className="text-xs text-gray-600 dark:text-gray-400">50%</span>
+            <div className="space-y-2">
+              {/* Min Gap */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600 dark:text-gray-400 w-8">Min</span>
+                <input
+                  type="range"
+                  min="5"
+                  max="50"
+                  step="1"
+                  value={minGapPercent}
+                  onChange={(e) => setMinGapPercent(Number(e.target.value))}
+                  className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                />
+                <span className="text-xs text-gray-600 dark:text-gray-400 w-8">{minGapPercent}%</span>
+              </div>
+              {/* Max Gap */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600 dark:text-gray-400 w-8">Max</span>
+                <input
+                  type="range"
+                  min="20"
+                  max="100"
+                  step="5"
+                  value={maxGapPercent}
+                  onChange={(e) => setMaxGapPercent(Number(e.target.value))}
+                  className="flex-1 h-2 bg-purple-200 dark:bg-purple-800 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                />
+                <span className="text-xs text-gray-600 dark:text-gray-400 w-8">{maxGapPercent === 100 ? '∞' : `${maxGapPercent}%`}</span>
+              </div>
             </div>
             <p className="text-xs text-blue-700 dark:text-blue-300 italic">
-              Higher gaps = stronger momentum
+              Filter by gap range (100% = no max limit)
             </p>
           </div>
 
@@ -740,27 +767,46 @@ export default function PreMarketScreening() {
             </p>
           </div>
 
-          {/* Min Volume Slider */}
+          {/* Volume Range (Min & Max) */}
           <div className="space-y-2">
             <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
-              <span>Min Volume</span>
-              <span className="font-bold text-blue-600 dark:text-blue-400">{(minVolume / 1000).toFixed(0)}K</span>
+              <span>Volume Range</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">
+                {(minVolume / 1_000_000).toFixed(1)}M - {maxVolume === 0 ? '∞' : `${(maxVolume / 1_000_000).toFixed(0)}M`}
+              </span>
             </label>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-600 dark:text-gray-400">100K</span>
-              <input
-                type="range"
-                min="100000"
-                max="5000000"
-                step="100000"
-                value={minVolume}
-                onChange={(e) => setMinVolume(Number(e.target.value))}
-                className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
-              />
-              <span className="text-xs text-gray-600 dark:text-gray-400">5M</span>
+            <div className="space-y-2">
+              {/* Min Volume */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600 dark:text-gray-400 w-8">Min</span>
+                <input
+                  type="range"
+                  min="100000"
+                  max="5000000"
+                  step="100000"
+                  value={minVolume}
+                  onChange={(e) => setMinVolume(Number(e.target.value))}
+                  className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                />
+                <span className="text-xs text-gray-600 dark:text-gray-400 w-12">{(minVolume / 1_000_000).toFixed(1)}M</span>
+              </div>
+              {/* Max Volume */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600 dark:text-gray-400 w-8">Max</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="500000000"
+                  step="10000000"
+                  value={maxVolume}
+                  onChange={(e) => setMaxVolume(Number(e.target.value))}
+                  className="flex-1 h-2 bg-purple-200 dark:bg-purple-800 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                />
+                <span className="text-xs text-gray-600 dark:text-gray-400 w-12">{maxVolume === 0 ? '∞' : `${(maxVolume / 1_000_000).toFixed(0)}M`}</span>
+              </div>
             </div>
             <p className="text-xs text-blue-700 dark:text-blue-300 italic">
-              Absolute volume threshold
+              Filter by volume range (0 = no max limit)
             </p>
           </div>
 
@@ -882,7 +928,9 @@ export default function PreMarketScreening() {
               onClick={() => {
                 // Update UI state
                 setMinGapPercent(10)
+                setMaxGapPercent(100) // No max limit
                 setMinVolume(500000)
+                setMaxVolume(50000000) // Max 50M volume
                 setMaxFloatShares(30000000)
                 setMinRelativeVolume(5.0)
                 setMinPrice(1.0)
@@ -890,7 +938,7 @@ export default function PreMarketScreening() {
                 setMaxResults(20)
                 setGapDirection('up')
                 // Run with V2 API params (Winners Strategy defaults)
-                runScreening({ minVolume: 500000, minPrice: 1.0, maxPrice: 20.0, maxResults: 20, minGapPercent: 10, gapDirection: 'up' })
+                runScreening({ minVolume: 500000, maxVolume: 50000000, minPrice: 1.0, maxPrice: 20.0, maxResults: 20, minGapPercent: 10, maxGapPercent: 100, gapDirection: 'up' })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm rounded transition-colors"
@@ -901,15 +949,17 @@ export default function PreMarketScreening() {
               onClick={() => {
                 // Update UI state
                 setMinGapPercent(20)
+                setMaxGapPercent(60) // Cap at 60% (avoid crazy pumps)
                 setMinVolume(1000000)
+                setMaxVolume(100000000) // Max 100M volume
                 setMaxFloatShares(15000000)
                 setMinRelativeVolume(10.0)
                 setMinPrice(1.0)
                 setMaxPrice(10.0)
                 setMaxResults(10)
                 setGapDirection('up')
-                // Run with V2 API params (Extreme = 20%+ gap UP)
-                runScreening({ minVolume: 1000000, minPrice: 1.0, maxPrice: 10.0, maxResults: 10, minGapPercent: 20, gapDirection: 'up' })
+                // Run with V2 API params (Extreme = 20-60% gap UP)
+                runScreening({ minVolume: 1000000, maxVolume: 100000000, minPrice: 1.0, maxPrice: 10.0, maxResults: 10, minGapPercent: 20, maxGapPercent: 60, gapDirection: 'up' })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-sm rounded transition-colors"
@@ -920,15 +970,17 @@ export default function PreMarketScreening() {
               onClick={() => {
                 // Update UI state
                 setMinGapPercent(5)
+                setMaxGapPercent(100) // No max limit
                 setMinVolume(250000)
+                setMaxVolume(0) // No max limit
                 setMaxFloatShares(50000000)
                 setMinRelativeVolume(2.0)
                 setMinPrice(0.5)
                 setMaxPrice(50.0)
                 setMaxResults(50)
                 setGapDirection('both')
-                // Run with V2 API params (Wide Net = 5%+ gap, both directions)
-                runScreening({ minVolume: 250000, minPrice: 0.5, maxPrice: 50.0, maxResults: 50, minGapPercent: 5, gapDirection: 'both' })
+                // Run with V2 API params (Wide Net = 5%+ gap, both directions, no volume cap)
+                runScreening({ minVolume: 250000, maxVolume: 0, minPrice: 0.5, maxPrice: 50.0, maxResults: 50, minGapPercent: 5, maxGapPercent: 100, gapDirection: 'both' })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm rounded transition-colors"

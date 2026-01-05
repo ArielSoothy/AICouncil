@@ -35,7 +35,9 @@ import nest_asyncio
 def apply_supernova_filters(
     stocks: List[Dict],
     min_gap_percent: float = 10.0,
+    max_gap_percent: float = 100.0,  # NEW: Max gap filter
     gap_direction: str = 'up',  # 'up', 'down', or 'both'
+    max_volume: int = 0,  # NEW: Max volume filter (0 = no limit)
     exclude_etfs: bool = False
 ) -> List[Dict]:
     """
@@ -44,7 +46,9 @@ def apply_supernova_filters(
     Args:
         stocks: Raw scanner results
         min_gap_percent: Minimum absolute gap % (default 10% for supernovas)
+        max_gap_percent: Maximum absolute gap % (default 100% = no limit)
         gap_direction: 'up' for momentum, 'down' for shorts, 'both' for any
+        max_volume: Maximum pre-market volume (0 = no limit)
         exclude_etfs: Whether to exclude known ETFs (default False - user wants profit)
 
     Returns:
@@ -64,6 +68,7 @@ def apply_supernova_filters(
         symbol = stock.get('symbol', '')
         gap = stock.get('gap_percent', 0.0)
         gap_dir = stock.get('gap_direction', 'up')
+        volume = stock.get('pre_market_volume', 0)
 
         # Skip ETFs if exclusion is enabled
         if exclude_etfs and symbol.upper() in ETF_SYMBOLS:
@@ -77,6 +82,14 @@ def apply_supernova_filters(
 
         # Filter by minimum gap
         if abs(gap) < min_gap_percent:
+            continue
+
+        # Filter by maximum gap (NEW)
+        if max_gap_percent > 0 and abs(gap) > max_gap_percent:
+            continue
+
+        # Filter by maximum volume (NEW)
+        if max_volume > 0 and volume > max_volume:
             continue
 
         filtered.append(stock)
@@ -248,10 +261,12 @@ def calculate_composite_score(rank: int, bars_data: Dict) -> int:
 async def run_scanner_job(
     job_id: str,
     min_volume: int,
+    max_volume: int,  # NEW
     min_price: float,
     max_price: float,
     max_results: int,
     min_gap_percent: float = 10.0,
+    max_gap_percent: float = 100.0,  # NEW
     gap_direction: str = 'up',
     exclude_etfs: bool = False
 ):
@@ -355,12 +370,16 @@ async def run_scanner_job(
 
         # === PHASE 2.5: APPLY SUPERNOVA FILTERS ===
         pre_filter_count = len(enriched_stocks)
-        log_step(job_id, f"Applying filters: Gap >={min_gap_percent}%, Direction={gap_direction}", "running")
+        max_vol_str = f", MaxVol={max_volume/1_000_000:.1f}M" if max_volume > 0 else ""
+        max_gap_str = f", MaxGap={max_gap_percent}%" if max_gap_percent < 100 else ""
+        log_step(job_id, f"Applying filters: Gap >={min_gap_percent}%{max_gap_str}, Direction={gap_direction}{max_vol_str}", "running")
 
         filtered_stocks = apply_supernova_filters(
             enriched_stocks,
             min_gap_percent=min_gap_percent,
+            max_gap_percent=max_gap_percent,
             gap_direction=gap_direction,
+            max_volume=max_volume,
             exclude_etfs=exclude_etfs
         )
 
@@ -405,10 +424,12 @@ async def run_scanner_job(
 async def start_screening_v2(
     background_tasks: BackgroundTasks,
     min_volume: int = 100000,
+    max_volume: int = 0,  # NEW: 0 = no limit
     min_price: float = 1.0,
     max_price: float = 20.0,
     max_results: int = 20,
     min_gap_percent: float = 10.0,
+    max_gap_percent: float = 100.0,  # NEW: 100 = no limit
     gap_direction: str = 'up',
     exclude_etfs: bool = False
 ):
@@ -457,10 +478,12 @@ async def start_screening_v2(
         run_scanner_job,
         job_id,
         min_volume,
+        max_volume,  # NEW
         min_price,
         max_price,
         max_results,
         min_gap_percent,
+        max_gap_percent,  # NEW
         gap_direction,
         exclude_etfs
     )
