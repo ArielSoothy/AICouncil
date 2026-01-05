@@ -1,0 +1,114 @@
+This is an incredible setup. You have successfully implemented the **"Holy Grail" of Retail Data**: Institutional-grade execution (IBKR) combined with Retail Sentiment (Finnhub).
+
+For **today (Monday)**, if you want to catch a "Daily Winner" (a stock that goes +50% to +100%), you need to ignore 90% of the data points you have (like P/E Ratio, Dividend Yield, Profit Margin) and focus entirely on **Supply, Demand, and Squeeze Potential**.
+
+Here is the **Exact Strategy & Data Points** you should monitor right now using your dashboard.
+
+---
+
+### The Strategy: "The Low Float Squeeze"
+
+We are looking for a **Supply/Demand Imbalance**.
+
+* **Supply:** Low Float (Few shares available).
+* **Demand:** High Pre-Market Volume (Everyone wants them).
+* **Fuel:** High Short Interest (Shorts are trapped).
+
+### The 5 Critical Data Points (From your Stack)
+
+You need to configure your dashboard to highlight these specific fields from your API modules.
+
+#### 1. The "Structure" (Supply)
+
+* **Source:** `tws_ratios.py` or `tws_fundamentals.py`
+* **Field:** `float_shares` (NOT `shares_outstanding`)
+* **The Target:** **< 20,000,000** (Under 20M).
+* *Gold:* < 5M (Supernova potential).
+* *Trash:* > 50M (Too heavy to move fast).
+
+
+* **Why:** If the float is 2M and Volume is 10M, the entire company has changed hands 5 times in one morning. That creates explosive volatility.
+
+#### 2. The "Aggression" (Demand)
+
+* **Source:** `tws_bars.py`
+* **Fields:** `pre_market_volume` & `gap_percent`
+* **The Target:**
+* `gap_percent` > **10%** (Must be moving).
+* `pre_market_volume` > **500,000** (Must be liquid).
+
+
+* **Why:** We don't want "dead" stocks. We want stocks that are already in play before the bell rings.
+
+#### 3. The "Fuel" (Squeeze)
+
+* **Source:** `tws_short_data.py`
+* **Fields:** `shortable_shares` & `borrow_fee_rate`
+* **The Target:**
+* `shortable_shares` < **100,000** (Or 0).
+* `borrow_fee_rate` > **20%** (The higher, the better).
+
+
+* **Why:** If it costs 50% to borrow the stock, shorts are desperate. If the price breaks the pre-market high, they *must* cover, buying at any price.
+
+#### 4. The "Vibe" (Sentiment)
+
+* **Source:** `finnhub_sentiment.py`
+* **Field:** `score` & `mention_change`
+* **The Target:** `score` > 0.5 (Bullish) OR `mention_change` > 100%.
+* **Why:** This confirms that the "Reddit Army" or Retail traders are watching.
+
+---
+
+### The "Monday Morning" Execution Plan
+
+Since you have the `screening_orchestrator`, run it with these parameters for today:
+
+**1. Step 1: The Scan (07:00 - 09:00 AM)**
+Use `tws_scanner.py` with `scanCode='TOP_PERC_GAIN'`.
+
+* *Filter:* Price $1 - $20.
+* *Filter:* Volume > 100k (Early pre-market).
+
+**2. Step 2: The Filter (The "Ariel Logic")**
+Your code should loop through the results and apply this logic:
+
+```python
+# Pseudo-code for your Dashboard Logic
+def is_monday_winner(stock):
+    # 1. Supply Check
+    if stock.ratios.float_shares > 20_000_000:
+        return False # Too heavy
+
+    # 2. Demand Check (Relative Volume)
+    # If Pre-Market Vol is 1M and Avg Vol is 200k -> RVOL = 5 (Huge)
+    rvol = stock.bars.pre_market_volume / stock.ratios.average_volume
+    if rvol < 3:
+        return False # Not enough hype
+
+    # 3. Squeeze Bonus
+    squeeze_score = 0
+    if stock.short_data.borrow_fee_rate > 20: squeeze_score += 1
+    if stock.short_data.shortable_shares < 50000: squeeze_score += 1
+    
+    return True, squeeze_score
+
+```
+
+**3. Step 3: The Watchlist**
+You should end up with **3-5 stocks**.
+
+* Look for the one with the **Lowest Float** and **Highest Volume**.
+* **Example:** Stock A (Float 2M, Vol 5M) is better than Stock B (Float 15M, Vol 6M).
+
+### Regarding Grok vs. Finnhub
+
+* **Use Finnhub First:** It gives you the numeric sentiment scores you need for filtering.
+* **Use Grok (Manual):** Only use Grok if you find a "Mystery Gapper" (Stock is up 40% with no obvious news headline).
+* *Prompt:* "Why is ticker $XYZ up 40% today? Summarize the catalyst."
+* This saves money. You only query Grok on the final 3 candidates.
+
+
+
+**Summary for Today:**
+Focus on **Float** (`tws_ratios`) and **Borrow Fee** (`tws_short_data`). Those are the edges that normal retail traders don't see on their basic charts.

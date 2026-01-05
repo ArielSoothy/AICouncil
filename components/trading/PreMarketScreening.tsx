@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play, Terminal, ArrowUpDown, ChevronDown } from 'lucide-react'
+import { RefreshCw, TrendingUp, TrendingDown, Clock, Database, AlertCircle, Play, Terminal, ArrowUpDown, ChevronDown, History, X } from 'lucide-react'
+import { saveToLocalStorage, loadFromLocalStorage, saveScan, loadHistory, type ScreeningScanResult } from '@/lib/trading/screening-cache'
 
 interface FlowLogEntry {
   timestamp: string
@@ -80,6 +81,11 @@ export default function PreMarketScreening() {
   type SortDirection = 'asc' | 'desc'
   const [sortField, setSortField] = useState<SortField>('gap_percent')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+
+  // History panel state
+  const [showHistory, setShowHistory] = useState(false)
+  const [scanHistory, setScanHistory] = useState<ScreeningScanResult[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   // ✅ Filter state - V2 API uses: minVolume, minPrice, maxPrice, maxResults
   // Note: Gap, Float, and RelVol sliders are UI-only for now (V2 scanner uses TWS filters)
@@ -234,6 +240,21 @@ export default function PreMarketScreening() {
                 setData(response)
                 setLastUpdate(new Date())
                 setProgressStep(`✅ Found ${status.stocks_found} stocks!`)
+
+                // Save to cache (localStorage + Supabase)
+                saveScan({
+                  scanned_at: response.timestamp,
+                  scanner_type: 'most_active',
+                  filters: {
+                    min_volume: effectiveParams.minVolume,
+                    min_price: effectiveParams.minPrice,
+                    max_price: effectiveParams.maxPrice,
+                    max_results: effectiveParams.maxResults
+                  },
+                  stocks: formattedStocks,
+                  stocks_count: formattedStocks.length,
+                  execution_time_seconds: 1
+                })
               } else {
                 setData({ stocks: [], total_scanned: 0, total_returned: 0, execution_time_seconds: 0, timestamp: new Date().toISOString() })
                 setProgressStep('No stocks found matching criteria')
@@ -304,10 +325,51 @@ export default function PreMarketScreening() {
     }
   }, [autoRefresh])
 
-  // Initial load
+  // Initial load - try localStorage first for instant display
   useEffect(() => {
+    // Load cached data from localStorage (instant)
+    const cached = loadFromLocalStorage()
+    if (cached) {
+      setData({
+        stocks: cached.stocks,
+        total_scanned: cached.stocks_count,
+        total_returned: cached.stocks_count,
+        execution_time_seconds: cached.execution_time_seconds,
+        timestamp: cached.scanned_at
+      })
+      setLastUpdate(new Date(cached.scanned_at))
+    }
+
+    // Also try fetching from FastAPI (in case there's a running job)
     fetchScreening()
   }, [])
+
+  // Load history from Supabase when panel opens
+  const handleOpenHistory = async () => {
+    setShowHistory(true)
+    setLoadingHistory(true)
+    try {
+      const history = await loadHistory(20)
+      setScanHistory(history)
+    } catch (e) {
+      console.error('Failed to load history:', e)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  // Load a historical scan into the main view
+  const loadHistoricalScan = (scan: ScreeningScanResult) => {
+    setData({
+      stocks: scan.stocks,
+      total_scanned: scan.stocks_count,
+      total_returned: scan.stocks_count,
+      execution_time_seconds: scan.execution_time_seconds,
+      timestamp: scan.scanned_at
+    })
+    setLastUpdate(new Date(scan.scanned_at))
+    setShowHistory(false)
+  }
 
   const formatNumber = (num: number): string => {
     if (num >= 1_000_000_000) return `$${(num / 1_000_000_000).toFixed(2)}B`
@@ -423,6 +485,16 @@ export default function PreMarketScreening() {
           >
             <Play className={`w-4 h-4 ${running ? 'animate-pulse' : ''}`} />
             {running ? 'Running...' : 'Run Screening Now'}
+          </button>
+
+          {/* History button */}
+          <button
+            onClick={handleOpenHistory}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+            title="View scan history"
+          >
+            <History className="w-4 h-4" />
+            History
           </button>
 
           {/* Manual refresh button */}
@@ -1030,6 +1102,88 @@ export default function PreMarketScreening() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* History Panel Modal */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <History className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Scan History</h3>
+                <span className="text-sm text-gray-500">({scanHistory.length} scans)</span>
+              </div>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="overflow-y-auto max-h-[calc(80vh-80px)] p-6">
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="w-6 h-6 animate-spin text-purple-600" />
+                  <span className="ml-3 text-gray-600 dark:text-gray-400">Loading history...</span>
+                </div>
+              ) : scanHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <History className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400">No scan history yet.</p>
+                  <p className="text-sm text-gray-500 mt-1">Run a scan to start building your history.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {scanHistory.map((scan) => (
+                    <div
+                      key={scan.id}
+                      onClick={() => loadHistoricalScan(scan)}
+                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors border border-gray-200 dark:border-gray-600"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                          <span className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                            {scan.stocks_count}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">
+                            {new Date(scan.scanned_at).toLocaleDateString()} at {new Date(scan.scanned_at).toLocaleTimeString()}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {scan.stocks_count} stocks • Vol &gt;{(scan.filters.min_volume / 1000).toFixed(0)}K • ${scan.filters.min_price}-${scan.filters.max_price}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {/* Top 3 symbols preview */}
+                        <div className="hidden sm:flex gap-1">
+                          {scan.stocks.slice(0, 3).map((stock) => (
+                            <span
+                              key={stock.symbol}
+                              className={`px-2 py-1 text-xs font-medium rounded ${
+                                stock.gap_percent >= 0
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                              }`}
+                            >
+                              {stock.symbol}
+                            </span>
+                          ))}
+                        </div>
+                        <ChevronDown className="w-4 h-4 text-gray-400 -rotate-90" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

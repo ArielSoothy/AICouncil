@@ -1,0 +1,592 @@
+Yep — **this pivot is the right one**. For *daily top gainers*, the winners are usually driven by **(1) attention/catalyst + (2) liquidity/flow + (3) squeeze mechanics**. Fundamentals/ratios are mostly *filters*, not predictors.
+
+## The only data points that really matter for “top gainer today”
+
+Use **~10 fields** (not 150). Everything else is noise early.
+
+| Bucket                      | Best predictors (from your fields)                                                          | How to use                                                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Attention / catalyst**    | `news_count_24h` (+ premarket news), Finnhub `mentions`, `mention_change`, `score`          | You want **abnormal** attention: z-score vs last 20 days or “top decile among today’s candidates”.                            |
+| **Premarket demand**        | `gap_percent`, `pre_market_volume`, `pre_market_price`, `previous_close`                    | Gap + strong premarket volume is the #1 “this could trend today” flag. Compute **premarket RVOL** vs avg premarket vol.       |
+| **Liquidity / tradability** | `average_volume`, `volume`, (add your spread if you have it)                                | Filter out garbage: require **dollar volume** (price×volume). Big moves that are untradable don’t count.                      |
+| **Squeeze fuel**            | `borrow_fee_rate`, `borrow_difficulty`, `shortable_shares`, `short_interest`, `short_ratio` | This is your “can it go stupid?” engine. **Hard-to-borrow + low shortable + high fee** = higher chance of violent extensions. |
+| **Float mechanics**         | `float_shares`, `shares_outstanding`                                                        | Compute **float rotation** = (premkt vol + first 30m vol) / float. Higher rotation = higher “supernova” probability.          |
+| **Open confirmation**       | `vwap`, first-5/30m bars you already pull                                                   | Only trade candidates that **hold/reclaim VWAP** and don’t instantly fade.                                                    |
+
+### What to mostly ignore for this use-case
+
+* 60+ financial ratios (ROE, margins, etc.) → slow-moving, not “top gainer today”
+* P/E / “quality” → not predictive for daily supernovas (use only as a filter if you want)
+
+---
+
+## The “Winner Finder” strategy (today, Monday) using your dashboard
+
+### Step 0 — Market regime filter (1 minute)
+
+Before scanning, check **QQQ/SPY** opening mood:
+
+* If indices are dumping hard, gappers fail more.
+* If market is stable/green, momentum follow-through is higher.
+
+*(You can do this manually; no need to model it yet.)*
+
+---
+
+## Step 1 — Build the candidate list (09:25 ET / 16:25 Israel)
+
+From IBKR Scanner:
+
+* `TOP_PERC_GAIN` + `HOT_BY_VOLUME` (top 30–50 tickers combined)
+* Filters:
+
+  * Price > $1
+  * Avg volume > 1M (or dollar volume > $20M/day)
+  * Exclude ETFs
+
+---
+
+## Step 2 — Compute 2 scores (Momentum vs Squeeze)
+
+Create **two playbooks**. Don’t mix them.
+
+### A) Momentum-Catalyst score (trend day candidate)
+
+Use:
+
+* `gap_percent` (sweet spot often **+5% to +25%**; too big can mean late)
+* `premkt_rvol` (premkt vol / avg premkt vol)
+* `news_count_24h` (or binary premarket news)
+* Finnhub: `mention_change`, `mentions`, `score`
+
+**Rule of thumb:** pick names that are **top 10% on both** (gap+premkt volume) **and** (news/sentiment).
+
+### B) Squeeze score (explosive extension candidate)
+
+Use:
+
+* `borrow_difficulty` (HARD/VERY_HARD/EXTREMELY_HARD)
+* `borrow_fee_rate` (higher is better)
+* `shortable_shares` (lower is better)
+* `short_ratio` / `short_interest` (higher helps)
+* `float_shares` (lower float = more explosive)
+* Plus at least *some* premarket demand (gap/volume not zero)
+
+**Rule of thumb:** squeeze-only without demand = “interesting” but often dead.
+
+---
+
+## Step 3 — Open confirmation (16:30–17:00 Israel)
+
+This is where you prevent most losses.
+
+Only trade if BOTH:
+
+1. **Holds/reclaims VWAP** after the first 5–10 minutes
+2. First pullback **doesn’t break** the opening range low (or VWAP)
+
+**Entry style (simple):**
+
+* Wait 5–10 min (no trades)
+* Buy the **first pullback** that holds VWAP
+* Stop: below VWAP or opening range low (whichever is closer + logical)
+* Take profit: partial at **1R**, trail remainder using VWAP
+
+---
+
+## Minimal composite scoring (copy this logic)
+
+Don’t overthink weights; standardize within today’s candidate list:
+
+**MomentumScore**
+
+* 35% `gap_percent_z`
+* 25% `premkt_rvol_z`
+* 20% `mention_change_z`
+* 10% `news_count_24h_z`
+* 10% `sentiment_score_z`
+
+**SqueezeScore**
+
+* 30% `borrow_fee_rate_z`
+* 25% `shortable_shares_inverted_z`
+* 20% `borrow_difficulty_numeric`
+* 15% `short_ratio_z`
+* 10% `float_shares_inverted_z`
+
+Then:
+
+* Take **top 3 by MomentumScore** and **top 2 by SqueezeScore** → your “Top 5 for today”
+* Trade only those that pass VWAP/open confirmation.
+
+---
+
+## Finnhub vs Grok for social
+
+* **Start with Finnhub** for volume/sentiment (cheap, structured).
+* Use **Grok only for the final top 5–10 tickers** to answer:
+
+  * “What’s the catalyst people are repeating?”
+  * “Which accounts are pushing it?”
+  * “Is this an offering/dilution rumor day?”
+
+That keeps cost low and adds *explanation*, not just numbers.
+
+---
+
+## Your “today” checklist (super short)
+
+1. Scanner → top 30–50
+2. Filter out illiquid / huge spread names
+3. Rank into **Momentum top 3** + **Squeeze top 2**
+4. At open: only trade **VWAP hold/reclaim + first pullback**
+5. Risk: **0.5–1% of account** per trade, max **1–2 trades/day**
+
+---
+
+If you paste a screenshot of your dashboard (just the columns + 10 rows), I’ll tell you **exactly which 10 columns to keep** and what thresholds to set so it outputs the top 5 automatically.
+
+
+Deep Research Results:
+Winner-Finder Strategy for Daily Top Gainers (US Stocks)
+1. Top Signals Shortlist (Pre-Run Indicators)
+
+Below is a curated list of ~15 key signals (grouped by category) that tend to appear before a stock becomes a big intraday gainer (≥ +10% from prior close). Each signal is defined with its formula/threshold, when it’s observable, why it’s predictive, and common failure modes. These signals are drawn from available IBKR data (scans, premarket/extended hours data, fundamentals, short metrics) and sentiment feeds (Finnhub mentions/sentiment, etc.), and are chosen to be leakage-safe (using only information available up to the specified cutoff time).
+
+A. Attention & Catalyst Signals
+Signal Name	Definition (Formula)	Available by	Rationale (Why it works)	Pitfalls (Failure Modes)
+Fresh News Catalyst	Binary indicator if a major positive news item or catalyst (e.g. strong earnings, FDA approval, big contract, M&A rumor) is present for the stock. Determined via news feeds or scanner.	Pre-market (09:25 ET)	A genuine news-driven catalyst often sparks increased buying interest and a sentiment shift, leading to price gaps
+highstrike.com
+highstrike.com
+. Stocks with solid news (not just hype) attract momentum traders at the open, fueling outsized moves
+highstrike.com
+.	“Sell-the-news” risk if news was expected or priced in. One-off gaps (e.g. buyout at a fixed price) may gap up but then stall. Weak or irrelevant news (sympathy PRs, vague headlines) can fail to sustain momentum
+highstrike.com
+.
+Social Buzz Surge	Unusual social media mentions and sentiment spike. E.g. Finnhub “mention_count” way above normal or mentions up >X% vs yesterday; high positive sentiment %.	Pre-market (09:25 ET)	Retail hype can drive explosive moves. A surge in StockTwits/Reddit/Twitter chatter before the open indicates elevated attention. Such pre-open social activity predicts higher liquidity demand and volatility during the day
+rpc.cfainstitute.org
+. Strategies that focus on high message-volume stocks have outperformed those ignoring social sentiment
+rpc.cfainstitute.org
+.	False buzz: not all hype is informed (could be spam or bots). High sentiment can mark short-term peaks as well (e.g. euphoric sentiment sometimes precedes a reversal
+rpc.cfainstitute.org
+). Noise: large caps always trend on Twitter without a big move.
+Premarket Gap %	Overnight price gap from prior close to pre-market high/last price, in %. (E.g. +8% gap up)	Pre-market (09:25 ET)	A significant up gap reflects a powerful sentiment change and likely catalyst
+highstrike.com
+highstrike.com
+. Gaps >~4% on news are ideal: they show traders repositioning bullishly at the open
+highstrike.com
+highstrike.com
+. A large gap triggers “panic buying” at the open (including short covers), often yielding a quick momentum continuation
+highstrike.com
+.	Gap-and-crap: some stocks gap up on light volume or fluff news and then sell off immediately at open. If the gap is due to an arbitrage event (e.g. merger at fixed price), there’s no further upside. Gaps <4% may not indicate real momentum
+highstrike.com
+.
+B. Premarket Demand & Liquidity Shock Signals
+Signal Name	Definition (Formula)	Available by	Rationale (Why it works)	Pitfalls (Failure Modes)
+Premarket Volume Surge (Relative Volume)	Premarket volume traded (e.g. 7am-9:25am) relative to the stock’s normal volume. For example: Premarket RVOL = premarket volume / 10-day average full-day volume
+ig.com
+. High if ≫1.0.	Pre-market (09:25 ET)	Unusual early volume = unusual interest. High relative volume indicates many participants are active before open, often signaling a coming volatility shock
+ig.com
+. Liquidity spike + news = strong conviction that often leads to outsized moves once regular trading begins
+highstrike.com
+. In essence, high RVOL = more fuel for a larger move.	Low-quality volume: sometimes premarket volume is high due to one or two block trades or churn by market makers – not broad interest. Also, premarket volume in an ETF-driven move (macro news) may not lead to individual follow-through. If volume is high but mostly sell orders (net price down), not bullish.
+Float Turnover (Early)	Float rotation % by open = premarket volume / float shares * 100%. E.g. 50% means half the float traded pre-open. (1× float rotation = 100%.)	Pre-market (09:25 ET)	Float rotation is a hallmark of “in-play” stocks. If a stock’s float (supply of tradable shares) is traded 1× or more in a few hours, it indicates frenzied demand. Even before 9:30, float rotation signals a complete refresh of shareholders and heavy churn
+app.tradingsim.com
+app.tradingsim.com
+. This often precedes parabolic intraday moves as new buyers eagerly replace old, and shorts get squeezed out repeatedly (the Ferris wheel effect
+app.tradingsim.com
+app.tradingsim.com
+). High float turnover amplifies momentum
+lightspeed.com
+.	Extremes: a float rotating premarket (especially low-float stocks) can also mean the move is already extended or near exhaustive blow-off. If news is overhyped or momentum crowd is all-in early, the stock might peak shortly after open. Also, float data lag or inaccuracies (float size changes) can mislead the ratio.
+Low Float / Small Cap	Float size (e.g. < 20M shares) or Market Cap (e.g. < $300M) classification. Not a dynamic signal, but a risk factor.	T-1 Close (previous day)	Low-float stocks have inherently higher volatility – with limited supply, any demand spike can cause outsized price jumps
+lightspeed.com
+. Many top gainers are small-cap stocks where a bit of news + volume can move the needle fast. Low float is especially potent when combined with high relative volume: a low-float stock trading multiples of its float can run hundreds of percent intraday
+app.tradingsim.com
+app.tradingsim.com
+.	Low float alone doesn’t guarantee a move – many low floats stay dormant. Also, low float cuts both ways: they can tank just as fast. It increases risk (volatility) as much as reward. Without a catalyst or interest, a low float stock won’t move. Companies can also dilute (increase float) unexpectedly via offerings.
+C. Short Squeeze & Constraint Signals
+Signal Name	Definition (Formula)	Available by	Rationale (Why it works)	Pitfalls (Failure Modes)
+High Short Interest %	Short interest as % of float (from latest report). E.g. SI% > 20% is elevated; > 30% very high
+reddit.com
+. Short Interest Ratio (Days-to-Cover) = short interest / avg daily volume (e.g. >5 days is high risk
+reddit.com
+).	T-1 Close (uses prior data)	A crowded short can be rocket fuel. Heavily shorted stocks are paradoxically prone to rise – any upward price pressure forces shorts to buy-to-cover, driving a self-reinforcing squeeze
+investopedia.com
+investopedia.com
+. A high Days-to-Cover means shorts would need days of normal volume to exit – if volume spikes (and price rises), many shorts panic-buy simultaneously, causing rapid gains. This was the recipe behind meme stock squeezes
+reddit.com
+.	Data lag: short interest is reported biweekly (FINRA), so it may be outdated. A stock might have squeezed yesterday (shorts already covered) but you’re viewing old SI%. Also, not every high SI stock squeezes – some stay flat or drop if no bullish catalyst emerges (shorts might be correct about poor fundamentals). A general market downtrend can override a squeeze setup (shorts stay in control).
+Hard-to-Borrow & Fee	Short borrow fee rate (annualized %) and/or shortable shares availability from broker (IBKR). E.g. fee > 20% or “HTB” (hard-to-borrow) status = significant shorting constraints.	T-1 Close (fee from prior day; updates daily)	A skyrocketing borrow fee or scarcity of shares to short indicates high shorting demand and limited supply to short. When fees are high, short sellers are literally paying a premium to stay short – a sign of potential squeeze pressure. Often, just before major squeezes, borrow rates jump and availability dwindles, reflecting increased risk for shorts
+reddit.com
+. In a rally, shorts may hit risk limits faster if borrow cost is huge, leading to forced covering.	Sometimes borrow fees spike due to technical reasons (share recall, etc.) unrelated to an imminent squeeze. Also, a stock can have high short interest but still be easy to borrow (if float is large), meaning this signal is less useful for liquid large-caps. If fee data is stale or intraday changes occur, one might miss rapid shifts.
+Prior Squeeze Setup	Prior-day momentum + high short: e.g. stock was up significantly on prior day on high volume, and still had high short interest remaining. (This indicates a possible Day 2+ squeeze continuation as not all shorts exited).	T-1 Close	Squeezes often extend over multiple days if shorts haven’t fully covered. A stock that jumped yesterday (say +15%) on volume, with high short interest, may see a “second leg” as shorts who survived Day 1 feel the pain on Day 2 (especially if the price breaks yesterday’s high). This signal combines momentum + short distress. It’s essentially setting up a squeeze extension play: today’s top gainer might be yesterday’s runner with shorts still trapped.	Overnight offerings/news can spoil a second-day rally (e.g. company uses the high price to announce a dilution – killing the momentum). Also, some Day2 moves fizzle if the catalyst was one-time (traders move on). If the stock gapped down in the morning (profit-taking or bad news), the squeeze may have already climaxed.
+D. Open-Session Confirmation Signals
+Signal Name	Definition (Formula)	Available by	Rationale (Why it works)	Pitfalls (Failure Modes)
+Opening Surge RVOL	Opening relative volume: Volume in first 5 or 10 minutes after 9:30 as a fraction of the stock’s average full-day volume. E.g. “Opening 5-min volume = 20% of yesterday’s total volume” = extremely high.	09:35–09:40 ET (first minutes)	A strong confirmation at the open is huge volume flow right out of the gate. If a stock that usually trades 1M/day transacts 0.5M in the first 5 minutes, it’s clearly “in play” with many eager buyers. High early RVOL confirms that premarket interest is translating into real regular-hour demand (rather than fading). This often aligns with a “gap-and-go” scenario where the stock continues upward as trading begins
+highstrike.com
+highstrike.com
+.	Sudden volume can also mean bag holders selling at the open (especially if a stock gapped up big – initial volume might be profit-takers). So it’s important to confirm price is holding or rising during that volume surge. Also, a huge opening volume bar that immediately reverses price (a blow-off top in first minutes) can mark the end of the move.
+VWAP Hold/Reclaim	VWAP (Volume-Weighted Avg Price) intraday trend: e.g. the stock stays above VWAP after the open, or if it dips below VWAP, it reclaims it (price rises back above VWAP) within e.g. first 30 minutes, with increasing volume.	09:45–10:00 ET (first 15–30m)	Holding VWAP = buyers are willing to pay the day’s average price or higher, indicating strong conviction. If an early dip is quickly bought and the stock breaks back above VWAP with high volume, that’s a classic bullish signal that momentum is sustainable
+humbledtrader.com
+humbledtrader.com
+. A VWAP reclaim accompanied by higher highs/lows signals trend resumption
+humbledtrader.com
+. Essentially, persistent strength after the open (versus fading) differentiates true runners from head fakes. Traders often pile in when they see the stock can’t stay below VWAP, expecting a rally continuation.	In very choppy opens, a stock can whipsaw around VWAP and trigger false signals (e.g. reclaim briefly then fail again). Algo-driven spikes might lift price above VWAP temporarily without true buyer support. Also, some legitimately strong moves do dip below VWAP for a long period before rallying later (so a early VWAP fail isn’t always game over). Conversely, a stock can hold VWAP but just move sideways, not actually breaking out – so use in conjunction with price action (higher highs, etc.).
+Premkt High Breakout	Break of premarket high price after open, ideally in first 1-2 hours. (Often measured as stock trading above the highest price it hit in premarket trading.)	After Open (e.g. by 10:00 ET)	The premarket high often acts as resistance. When a strong stock crosses above that level after the open, it’s a sign that initial supply has been absorbed. This triggers a classic “gap-and-go” breakout signal – often drawing in a second wave of momentum buyers. Breaking the premarket high confirms the stock’s strength wasn’t just an early fluke; it’s making new highs on the day, which often leads to a sharp secondary rally as shorts cover and late buyers join. Many day-trading playbooks specifically watch for this as an entry trigger once early volatility settles.
+highstrike.com
+highstrike.com
+	Sometimes the premarket high break can be a bull trap if done on declining volume or just due to a quick stop run. If the stock breaks out but cannot hold above the premarket high for long, it could reverse hard (double-top scenario). Also, stocks with huge gap up might already open above the premarket high – in which case the “breakout” happened in the gap and might not provide a further trigger. In that case, one must watch new HOD (high of day) breaks instead.
+
+Note: Each signal above is designed to be measured before or during the move (no hindsight). “Available by” denotes the latest time that signal can be known without looking into the future. For example, short interest is known from prior reports (no intraday lookahead), and VWAP reclaim can be observed intraday by 10:00. Combining these signals provides a multifaceted view of why a stock might run (catalyst/attention, demand/volume shock, short squeeze fuel, and confirmation of follow-through).
+
+2. Rigorous Case–Control Study Design (Matched Pairs)
+
+To validate the signals, use a matched case-control study comparing top gainers vs flat stocks on the same days. This ensures we test what differentiates big gainers from similar stocks that did NOT move, controlling for market conditions:
+
+Cases (Positive examples): For each trading day, identify ~10 “top gainers” – e.g. the 10 stocks (on NYSE/Nasdaq, not OTC) that gained the most from prior close to that day’s close (minimum +10% gain). Apply basic filters to avoid ultra penny stocks or illiquid outliers (e.g. price ≥ $1, average daily volume > 100k shares). These are our big winner cases.
+
+Controls (Negative examples): For each case stock on the same day, select one or more matched stocks that remained relatively flat (e.g. –2% to +2% change on the day). Matching is done within the same day to control for overall market sentiment. Key matching criteria (what to match on):
+
+Price Bucket: Pick a control with a similar price range (e.g. if case was a $3 stock, match with another low-priced stock; if case $50, match another mid-priced stock). This controls for volatility differences by price level.
+
+Market Cap / Float: Match approximate size – e.g. small-cap case with small-cap control (float within, say, 50% range of the case’s float). This ensures both case and control had similar potential for movement (small companies vs large companies behave differently).
+
+Baseline Liquidity: Match on typical trading volume or dollar volume. For example, use 10-day average volume or previous day’s volume. A case that is usually low-volume should be paired with another stock that was usually low-volume (so that a huge volume surge in the case will stand out). We avoid pairing a microcap with a mega-cap, etc.
+
+Recent Volatility: Optionally match on recent volatility (e.g. past 5-day ATR or beta). A stock that’s normally stagnant shouldn’t be compared to one that’s a known mover. Matching volatility ensures the control had a similar “baseline” noise level as the case.
+
+What not to match on: Do not match on the very signals we want to test. For instance, don’t force controls to have similar premarket volume or news – that would eliminate the differences we’re trying to observe. The idea is that aside from the predictive signals, the case and control look similar before the move.
+
+Procedure: For each case stock (top gainer) on a given day:
+
+Same-day universe: Consider all stocks trading that day in the same broad universe (e.g. U.S. equities meeting basic liquidity criteria).
+
+Apply matching filters: From that universe, filter for stocks in the same price bucket (e.g. within ±30% of case’s price) and same market cap or float category (e.g. micro (<$300M), small (<$2B), mid, etc., matching case’s category). Also filter for those that did not have a big move (close-to-close change roughly between –2% and +2%).
+
+Select control(s): From those candidates, choose one (or multiple) that best matches the case’s baseline volume and volatility profile. This could be done by minimizing a distance metric (normalized difference in price, market cap, avg volume, etc.). In practice, you might pick 3 controls per case to increase sample size (ensuring each control meets the criteria and wasn’t a top gainer).
+
+Exclude obvious signal contamination: If possible, avoid controls that actually had the same kind of catalyst. (E.g. if your case had no news, try not to pick a control that did have major news, because that control might have moved if not for other factors. Conversely, if case had earnings news, maybe choose a control that also had earnings that day but didn’t move – to see why one reacted and the other didn’t.)
+
+Datasets at Three Cutoff Times: To check the predictive power at different stages, construct three separate datasets:
+
+T-1 close dataset: Uses only signals available by prior day’s close (e.g. short interest, float, prior momentum, etc.). Cases = next day’s top gainers, Controls = matched stocks that next day were flat. This tests if we could predict winners the day before.
+
+09:25 ET pre-market dataset: Uses signals up to just before open (including any overnight news, gap, premarket volume, sentiment). This tests if premarket data significantly improves prediction.
+
+10:00 ET dataset: Uses signals up to 10:00 (first 30 min of trading: opening price action signals like VWAP reclaim, initial volume, etc.). This simulates a “late confirmation” model – could we tell by 10:00 which stocks will end up +10% by close?
+
+Using these separate timelines prevents lookahead bias and lets us measure the incremental value of premarket and early-trade signals.
+
+Sample Size Window: Aim for a 6–12 month sample of trading days for robust statistics. For example, 6 months ~ 120 trading days gives ~1200 cases (10 per day) and an equal or greater number of controls. This balances having enough examples with staying in a consistent market regime. A shorter window (e.g. 60 trading days) might be too narrow (risking that results are skewed by a short-term trend or seasonality), whereas much longer (2+ years) might span very different market conditions (meme stock era vs quiet market), complicating the analysis. Recommendation: start with ~6 months for initial model development, then use another recent month or two for out-of-sample testing. This ensures the signals and thresholds are tuned to current dynamics but still generalize beyond the training period.
+
+Throughout the study, use proper statistical testing (e.g. compare distribution of each signal in cases vs controls with t-tests or U-tests) to confirm that each chosen feature indeed shows a significant difference. The matched design will help isolate signal effects by controlling confounders.
+
+3. Daily “Top 5 Candidates” Workflow (Checklist)
+
+Using the insights from the research, here’s a practical day-by-day workflow to generate ~5 high-potential trade candidates each morning and manage them through the open. This checklist ensures a disciplined, repeatable process:
+
+Before Market Open (Preparation):
+
+T-1 Evening:
+
+Run an IBKR scanner after market close to identify any stocks that had notable moves or news in after-hours. Record any top movers (even if just to monitor next day – sometimes runners continue).
+
+Update short interest and float data for your watchlist (or all candidates). Note any stocks with very high short interest or borrow fee that might become relevant if they move.
+
+If using Finnhub sentiment, check if any tickers showed unusual sentiment/mentions after hours (e.g. a stock blowing up on social media overnight).
+
+Pre-Market (e.g. 8:00–9:20 ET): Use scanners to short-list candidates:
+
+Pull Top % Gainers in premarket (IBKR scanner for TOP_PERC_GAIN pre-market) – focus on those with at least e.g. +5% premarket and some volume.
+
+Pull Hot by Volume (highest premarket volume) – often overlaps, but catches things like high volume without big price change (e.g. news pending).
+
+Note each candidate’s Premarket stats: premarket % change, premarket volume, last price, high price.
+
+Cross-reference for Catalysts: For each candidate, quickly check news (news feed or Finnhub news). Is there a clear reason (earnings beat, PR, etc.)? Mark if “solid catalyst” or just rumor/none. Also check Finnhub sentiment: any with unusually high mentions or very bullish sentiment scores?
+
+Filter: eliminate any that are untradeable for you (e.g. if it’s an OTC stock or below $1, since we decided to focus on listed equities). Also consider skipping those with <50k shares traded premarket unless you suspect volume will rush in at open – low volume premarket gappers can be false alarms.
+
+After this, you should have a preliminary list of perhaps 8–15 tickers of interest from premarket.
+
+Pre-Open Final Checks (~9:20–9:30):
+
+Calculate relative measures for those candidates: e.g. Premarket RVOL (premkt vol vs avg vol), Float turnover % premarket (vol/float), short % of float. Highlight extremes (e.g. “premkt vol already = 30% of float” or “RVOL 10× normal”).
+
+Categorize each candidate into a playbook type:
+
+Momentum/Catalyst: Has a known positive catalyst (news or hype) and high volume. Likely being driven by a fundamental or sentiment event.
+
+Squeeze/Extension: Little obvious news but technical momentum (big gap) + factors like high short interest or prior runner. Could be a squeeze or continuation play.
+
+Remove any with red flags: e.g. news of an offering or dilution (skip those), or if the premarket price action looks suspect (spiking but then fading completely by 9:20 – means no one sustained interest). Also if the spread in premarket is extremely wide (indicating poor liquidity), be cautious or drop it.
+
+Now, score/rank the remaining candidates (see Scoring Model below). This will produce a ranked list and also identify top few in each category.
+
+Using the scores and your category analysis, choose the Top ~5 names to focus on at the open. Example: maybe the top 3 momentum plays and top 2 squeeze plays (so you diversify the type).
+
+Set up your trading screens for those 5: prepare their charts (daily and intraday), level 2, and news feed for quick reference.
+
+After Market Open (Execution & Monitoring):
+
+Opening Observation (9:30–9:35): At the open, do not immediately market-buy. Watch how each of the 5 behaves in the first few minutes:
+
+Note opening price vs premarket: Does it open at or above the premarket high? (If yes, strength; but beware initial pullback.)
+
+Track volume on the 1-min/2-min candles: Is it trading massive volume relative to average? A strong candidate will often show abnormally high first-minute volume (confirming widespread interest).
+
+Watch for any halt if volatility is extreme (a stock ripping >10% in a minute may get circuit-breaker halted – note if any of your picks are halted out of the gate).
+
+Pay attention to the bid/ask spread now – has it narrowed from premarket? If it’s still very wide ( >1-2% of price), that stock might be dangerous to trade with market orders; consider skipping or using a limit.
+
+Entry Triggers (9:35–10:00): For each candidate, look for specific bullish triggers before entering:
+
+Premarket High Break: If the stock moves up and breaks above its premarket high after opening shake-out, that’s a go-signal (classic gap-and-go)
+highstrike.com
+. Ideally on rising volume. You might enter as it breaks the level or on a quick retest of that level as support.
+
+VWAP Reclaim: If the stock dipped at open, watch the VWAP line. When it reclaims VWAP from below (price crosses back above VWAP) with strong volume and momentum, enter long as this often marks the end of profit-taking and return of buyers
+humbledtrader.com
+. Ensure you see higher lows forming and volume increasing at the turn.
+
+VWAP Hold: If the stock never dipped much and is holding above VWAP and the opening price range, that’s a sign of strength. You can consider a starter entry on a shallow pullback that stays above VWAP or the opening price. The idea is to join the trend as it’s proving it can sustain.
+
+Other pattern confirmations: e.g. a clear bull flag or consolidation on the 1-5 min chart that breaks upward, or an opening range breakout (the stock takes out the high of its first 5-min candle). These patterns, when combined with the earlier signals (volume, catalyst), can be high-probability entry points.
+
+Risk Management (stops & size):
+
+Position Sizing: Given a ~$2,200 account, limit each position size such that a logical stop loss (support level) risks no more than ~1–2% of capital (≈ $20–$44). For example, if your stop will be $0.20 away, risking $40 means ~200 shares (which would be a $1000 position for a $5 stock).
+
+Stop Placement: Identify a clear technical level that would invalidate the trade if broken. Common stops: just below VWAP (if your thesis is VWAP hold), or below the breakout level you bought (e.g. if you bought the premarket high break, a stop just below that level), or below the last significant intraday swing low. Avoid overly tight stops that might get nicked by normal noise; give it a bit of room under the level (but within your risk limit).
+
+Max Concurrent Trades: Since you have limited day trades and to focus, you might only actively trade 1 or 2 stocks at a time. It’s usually better to pick the one or two best setups rather than try to jump between 5 at once, especially with a small account.
+
+Trade Management (after entry):
+
+If the trade works in your favor, consider using a trailing stop or scaling out partial profits as the stock moves up 10%, 20%, etc. For example, sell half at +10% gain and trail the rest with a stop under a new support level or moving average.
+
+Monitor VWAP continually: many intraday runners will ride above VWAP all day; a break back below VWAP later could signal the end of the run (or at least a warning sign to tighten stops).
+
+Keep an eye on news updates: sometimes mid-day news (CEO on TV, an SEC filing, etc.) can drastically alter momentum. Also watch if the company announces an offering into the spike (it has happened mid-day – if you see a headline like “Company XYZ to sell shares…” get out immediately, as momentum can die in an instant).
+
+Skip/Abort Rules: Be ready to skip or abort a trade if certain warning signs appear:
+
+No follow-through by ~10am: If a stock was on your list but by 10:00 it’s not breaking out or volume is fading, likely it’s a dud – skip it (or if you entered and it’s not performing, cut it). The best movers tend to reveal themselves in the first hour.
+
+Breaking news opposite your trade: If, for instance, you’re in a stock and suddenly a negative news or offering hits, exit immediately. Don’t wait.
+
+Halt risk too high: If a stock is so volatile it’s halting repeatedly, it can be very risky for a small account (gaps during halts can blow past stops). It’s okay to take a profit and step aside if a stock has already halted multiple times up (could reverse on next halt).
+
+Spreads/spikes that are untradeable: If you see level 2 flashes where price spikes dollars in seconds or spread opens hugely, it’s easy to get slipped. If you’re not already in, avoid chasing these crazy moves. There will be other opportunities that are smoother.
+
+By following this checklist, you ensure that you’re selecting candidates systematically (based on evidence-backed signals) and executing with defined rules rather than emotion. This daily routine also helps limit false positives by double-checking for catalysts, confirming strength at the open, and skipping plays that don’t meet the criteria.
+
+4. Scoring Model & Signal Weights (Interpretable Ranking)
+
+Instead of a black-box ML model, use a transparent point-based scoring to rank candidates each day. We propose two parallel scoring formulas (“Momentum-Catalyst” and “Squeeze-Extension”) to account for the two distinct playbook types, then pick top candidates from each. All scores are standardized within the day’s pool (e.g. convert raw values to z-scores or percentiles among the day’s scanned stocks) so that you’re comparing relative strength.
+
+Momentum-Catalyst Score – for stocks driven by news or hype momentum:
+
+Premarket Volume (RVOL) – weight ~30%. (Higher = better.) We give a strong weight to relative volume because it signifies unusual interest
+ig.com
+. For scoring, you might use z-score of log(premarket volume) vs others.
+
+Premarket Gap % – weight ~20%. A big gap indicates excitement. Moderate weight because a gap must be confirmed by volume to matter.
+
+News/Catalyst Presence – weight ~30%. This can be binary: +1 if a solid catalyst is identified (earnings beat, FDA, etc.) vs 0 if none/unclear. Or you can incorporate sentiment: e.g. use Finnhub sentiment score or a scaled value of social sentiment (number of mentions, etc.). A strong positive sentiment or confirmed news gets a high score.
+
+Float/Size factor – weight ~10%. For momentum plays, extremely low float can supercharge a move, so if float < X million, give a slight boost. Otherwise neutral. (We keep this weight small here because pure momentum can happen in larger floats too if news is big.)
+
+Early-day confirmation (if scoring at 10:00 cutoff) – weight ~10%. E.g. a dummy if it broke the premarket high by 10:00 or if it’s holding above VWAP. (This wouldn’t be used in the pre-market ranking, only in the 10:00 version of the model.)
+
+Example: Score_momo = 0.3*z(RVOL) + 0.2*z(Gap%) + 0.3*(CatalystFlag or Sentiment z) + 0.1*z(FloatInv) + 0.1*(VWAP_hold_flag) (where FloatInv could be e.g. inverse of float to give higher score to lower floats).
+
+Squeeze-Extension Score – for stocks potentially running on short squeeze or continuation:
+
+Short Interest % – weight ~25%. (Higher SI = higher score.) Use latest short% of float in z-score. If data is old, you might also flag if it’s exceptionally high (e.g. >30% gets max points).
+
+Days to Cover – weight ~15%. Overlaps with SI% but emphasizes volume relative to shorts. If Days-to-cover is high (lots of shorts relative to typical volume), score up. If no direct data, this can be rolled into SI or borrow metrics.
+
+Borrow Fee / HTB Status – weight ~20%. If IBKR shows high fee or “Difficult to borrow”, give a higher score (it’s a proxy for how painful shorting is, thus squeeze potential).
+
+Float size – weight ~20%. Smaller float = bigger potential squeeze pop (limited supply)
+highstrike.com
+. Score inversely to float (within the pool of candidates).
+
+Previous Day’s Move – weight ~10%. If the stock was already up big yesterday (and still has high short interest), add some points – it’s a candidate for a rolling squeeze (shorts that didn’t cover yesterday are under more pressure if price continues up).
+
+Early strength – weight ~10%. Similar to momentum, if by 10:00 it’s showing confirmation (heavy volume, maybe already up another >5% from open), then it’s likely a real squeeze ongoing – but this factor only comes into play for the intra-day re-scoring.
+
+Example: Score_sqz = 0.25*z(SI%) + 0.15*z(DaysCover) + 0.20*z(BorrowFee) + 0.20*z(FloatInv) + 0.10*z(PriorDay%Change) + 0.10*(PremktHighBreak_flag).
+
+After calculating these, standardize each component daily. For instance, if among all premarket gappers the highest volume had 5 million and another had 100k, their RVOL z-scores will reflect that difference.
+
+Selection: Rather than merging into one list (where pure momentum plays might always outrank or vice versa), maintain two lists:
+
+Rank all candidates by Momentum score, take the top 2–3.
+
+Rank all by Squeeze score, take the top 2–3.
+This ensures you capture both types. (Some stocks might score high in both categories – e.g. a stock with news AND high short interest – those are prime and would naturally appear at top of both lists.)
+
+If there’s overlap (same stock top in both), you can adjust to pick next in line to have ~5 unique tickers. Typically, aim for Top 5 total: e.g. 3 momentum + 2 squeeze. If one category has a very strong day (say all top gainers have news catalysts), you might do 4 and 1. Use a bit of discretion, but keep it roughly balanced.
+
+Using Finnhub vs Grok X: The Finnhub sentiment data (mentions, sentiment %) is baked into the scoring (Catalyst/Sentiment component). Grok should be used as an enhancement on a small subset: for example, after scoring, for the top ~5-10 names only, do a quick Grok X search on each to see if there are any qualitative insights:
+
+Maybe Grok finds a Reddit post or insider purchase rumor that wasn’t obvious – confirming a hidden catalyst.
+
+Or it might reveal a red flag (e.g. you discover the company filed an S-3 shelf offering yesterday that wasn’t widely noted – a dilution risk).
+This information can prompt you to adjust a score or even drop a candidate manually. Only use Grok for final verification, due to cost and time. Finnhub’s structured sentiment covers the broad strokes; Grok provides depth for top picks.
+
+Tuning: Start with the suggested weights, then adjust over time:
+
+If you notice you’re picking too many failing trades that had high sentiment but no volume, maybe reduce weight of sentiment and increase weight of volume.
+
+If a lot of squeeze plays are fizzling, perhaps require a minimum momentum confirmation in them (e.g. don’t pick a squeeze candidate that isn’t also up at least a few % premarket – sometimes heavily shorted stocks only move when there’s a catalyst).
+
+You can backtest different weight combinations on past data (e.g. maximize Precision@5 as defined below) and see which yields best identification of winners, but keep weights interpretable (don’t over-optimize to where weights lose intuitive meaning).
+
+The scoring approach is simple enough to implement in a spreadsheet or script each morning and fosters an understanding of why each stock is chosen. It’s essentially a point system that can be justified to yourself (e.g. “Stock A scored high because it has news, huge volume, etc.”). As market conditions evolve (say, if social media becomes less predictive one month, or short squeezes become rare), you can re-calibrate weights or add/remove signals while maintaining transparency.
+
+5. Execution Playbook: Entry, Exit & Avoiding Traps
+
+Even the best picks can turn into losses without proper execution. These intraday trading rules help maximize chances that a good candidate turns into a profitable trade, while cutting false positives quickly and avoiding known pitfalls:
+
+Opening Entry Rules:
+
+Wait ~3-5 minutes after open before taking an entry, unless you see an extremely bullish setup that meets criteria (e.g. stock opens, barely pulls back, and blasts through premarket high with volume). The first few minutes are volatile; waiting can prevent chasing an initial spike that reverses. Often the first pullback after the open (around 9:35–9:40) is a safer entry if the stock is truly strong.
+
+Ensure volume confirmation: Don’t enter a play if volume dies off at the open. The stock should be trading significantly above its normal volume rate. For example, if by 9:40 it’s traded 20% of its float or a large chunk of avg daily volume, that’s good confirmation. If it’s oddly quiet (no one trading it) despite a premarket gap, be cautious – the crowd might not have followed through.
+
+VWAP test: A great entry scenario is a VWAP hold or reclaim after the opening dip. Concretely: let the stock pull back in the first 5-10 minutes; if it stays above VWAP and then pushes to a new high, that’s a strong entry signal. Alternatively, if it dipped below VWAP but then comes back above it (reclaim) on increasing volume, you enter as it crosses VWAP or on the next small dip, expecting a reversal to new highs
+humbledtrader.com
+humbledtrader.com
+.
+
+Premarket high breakout: If instead the stock just keeps strong from the bell and takes out the premarket high within the first ~15 minutes, you can buy that breakout (or even anticipate it slightly). Often, a break of the premarket high price at, say, 9:40–9:45, accompanied by a surge in volume, leads to a fast upside run as more traders jump in. Make sure to buy as close to the breakout point as possible and not after it’s already up an extra 5-10% beyond that level (to avoid being the last in).
+
+Avoid chasing huge gap opens: If a stock opened way above its premarket high (e.g. gapped further due to some 9:30 news or just mania) and is immediately up 30%+ without a pullback, do not market buy at 9:30. High probability it’ll pull back or even halt. Better to wait for a setup like a consolidation or a clear trend to form. It’s okay if you miss a bit of move – safety first.
+
+Trade Management & Exit Rules:
+
+Initial stop placement: As soon as you enter, set a stop order (mental or hard stop). Typical stops:
+
+Just below VWAP if that was your entry basis (e.g. 5-10 cents below VWAP on a $5 stock, or a few percent).
+
+Below the breakout level you bought (if buying the premarket high break, you might stop out if it falls back below that level by a certain margin – indicating a false breakout).
+
+Or below the low of the day if that’s closer and logical (for instance, if it did a morning dip and you bought the reclaim, the low of that dip is an obvious support – if broken, the setup failed).
+
+Adjusting stops (trailing): Once the stock moves say +5-10% in your favor, raise your stop to break-even or just above your entry (to lock out a loss). As it continues higher, you can trail a stop under successive support levels or use a percentage trail (e.g. 5% below the peak). The goal is to protect profits in these fast movers – they can turn quickly. For example, if a stock rips from $5 to $6 ( +20%), you might move your stop from $4.80 to around $5.40 (just under a minor support) to secure at least half the gains.
+
+Taking partial profits: It’s often wise with a small account to scale out on big spikes. Perhaps sell 1/2 of the position when you get +10-15% gain, and let the rest ride with a trailed stop. This banks some profit and reduces emotional pressure.
+
+Hard exit time: If you’re in a runner that’s holding strong, you can let it run into afternoon – but many of these plays peak before or around lunchtime. A common pattern: surge in morning, maybe secondary push by 11am, then profit-taking. If your stock hasn’t made a new high in a long while and starts drifting under VWAP in early afternoon, consider exiting. Do not hold the position overnight thinking the momentum will continue – these are meant as day trades; offerings or gap-downs overnight can be brutal if you bag-hold.
+
+Max loss per trade/day: Enforce discipline – for instance, decide that you won’t lose more than $50 on any single trade (≈2% account). If hit, honor the stop. Similarly, if you have a streak of 3 bad trades in a day, maybe stop trading for that day to avoid revenge trading. Capital preservation is key.
+
+Skip/No-Trade Conditions: (Protect yourself from false positives or dangerous setups)
+
+If spread > ~2% of price: At the open, if you see the bid-ask spread is very wide (common in low floats), it might be impossible to get a good fill or set a tight stop. For example, a $4 stock with a $0.20 spread is already 5% gap between buy/sell. Unless that spread starts to tighten with volume, skip it – you could lose a chunk immediately on entry. Only trade such names if volume picks up and spread narrows to a few cents.
+
+Dilution news or ATM: Always quickly check news/filings for anything like “ATM offering”, “Registering common shares”, etc. If the company is selling shares into the spike (a frequent tactic for small caps to raise cash), the upward move likely won’t last. The Tradingsim example of COCP shows how an offering announcement instantly killed a 180% run. Thus, if a stock’s “news” is actually a share offering or similar, avoid trading it. If you’re already in when such news hits, get out immediately.
+
+Regulatory halts or T12: If you hear a stock is halted pending news (T1 halt) or SEC inquiry (T12), stay away – that’s beyond technicals or signals.
+
+Multiple volatility halts: One halt up can be fine (often resumes even higher), but if a stock has been halted 2-3 times in rapid succession, it becomes very unpredictable (could reopen much lower on a profit-taking wave). With a small account, you may not want to ride that rollercoaster. It’s okay to take profit after one halt if you’re up big, rather than holding into a second halt.
+
+No clear catalyst or thesis: If one of your picks isn’t doing what you expected – e.g. supposed high short interest play but it’s not moving at all, or a news play but it’s fading – then the thesis might be wrong. Skip it or cut it quickly. We only want to stick around when the market confirms our thesis (via price action).
+
+Personal rule – stick to plan: If a stock wasn’t in your top list but suddenly pops up midday on a scanner, be extra cautious. It might be a new runner (sometimes you can trade those), but often it’s something you didn’t research (could be a pump or already up too high). Ideally, focus on your prepared names unless a truly A+ opportunity appears out of nowhere with obvious volume and news.
+
+By following these execution rules, you filter out a lot of “noise” trades and reduce the chance of large losses:
+
+You enter only after confirming strength, not on hope.
+
+You place stops to cap downside.
+
+You avoid structural pitfalls (like offerings and halts) that have burned many traders.
+
+You also adapt position size to your account, so no single trade can blow you up.
+
+Remember, even with the best signals, win rate might be, say, 60%. The execution strategy ensures that the 40% that are wrong don’t hurt much (small controlled losses), while the winners can run with the trend. It’s this combination of good selection + sound execution that yields a robust overall strategy.
+
+6. Evaluation Plan: Backtesting & Performance Metrics
+
+Finally, to verify and continually improve the strategy, use a disciplined evaluation approach. This includes backtesting on historical data with proper safeguards against lookahead, and tracking specific metrics that reflect the goal (finding top gainers efficiently):
+
+Backtest Protocol:
+
+Historical Simulation: Using the case-control dataset approach, simulate each trading day in the past sample (e.g. past 3–6 months) as if it’s “today.” At each of the three cutoff times (T-1, 09:25, 10:00), compute the scores for all candidates and select the top 5 picks as per the strategy. Record whether those picks were actually big gainers by day’s end and their intraday behavior.
+
+Avoid lookahead: Ensure that when simulating 09:25 picks, you only use info available up to 09:25 (no using the knowledge of the day’s close-to-close until evaluating). Similarly for T-1, pretend you don’t know the next day until you “score” and then reveal outcome.
+
+Transaction modeling: For a more realistic test, incorporate a simple execution model: assume if you “picked” a stock, you buy at open (or at a reasonable price after your entry trigger around 9:35 – one might approximate this by, say, the price 5 minutes after open or the breakout price) and sell at the close (or when stopped if that’s programmable – but for simplicity you could check end-of-day result as if held through). This gives an idea of raw profitability of picks.
+
+Key Metrics:
+
+Precision @ K: Since the goal is to find 3–5 candidates likely to be big gainers, measure Precision@5 (if we pick 5 each day). For example, if out of 5 picks, 2 ended up achieving ≥+10%, that day’s precision@5 = 40%. Calculate average precision@5 over all days. A higher number means our picks frequently include true winners. We can also look at precision@3 if we only consider the top 3 ranked.
+
+Hit Rate (Day-level): The percentage of days where at least one of our picks was a big gainer (≥10%). For instance, if in 80 out of 100 days, one of the top-5 was a winner, hit rate = 80%. This is important for trader psychology too – you’d like to know most days you caught something, even if not all picks work.
+
+Recall (Sensitivity): Of all the actual top gainers in the universe, how many did we catch in our picks? (This is trickier since we only pick 5 and there are 10 top gainers, so max recall is 50% if we always picked 5 of the top 10. But it’s good to see if we’re consistently catching, say, half of the top movers or just 10%.) This helps to see if our signals miss certain types of gainers systematically.
+
+Precision-Recall Curve / PR AUC: Vary the number of picks or score threshold to plot a precision-recall curve. For example, if we picked top 1 each day vs top 3 vs top 5 vs top 10, how does precision drop and recall increase? The area under this curve (PR AUC) is a good summary of the model’s effectiveness in ranking true gainers above others. A high PR AUC indicates the scoring does well separating winners from non-winners. This is more informative than ROC in this context because the class (top gainer) is very rare among all stocks.
+
+Average Gain vs Loss: If simulating actual trades, track the average % gain of picks that were winners and average % loss of those that weren’t. This, combined with hit rate, will indicate if the strategy is net profitable. Even if precision is modest, if winners run +15% and losers cut at –5%, you’ll net out well.
+
+Profit Factor / Expectancy: Calculate the total profit of all winning trades divided by total loss of all losing trades (profit factor). Also average expectancy per trade (% win * avg win – % loss * avg loss). This tells if, on average, a pick yields positive return. It incorporates both selection and execution assumptions.
+
+Cost and Slippage Assumptions: Because we focus on small caps, we must account for trading frictions:
+
+Assume when buying a pick at market, you might get slipped a bit above the intended price (especially if volatility is high). For modeling, you could subtract say 0.2% or 0.05 absolute (whichever is higher) per trade for slippage on entry, and similar on exit. Alternatively, assume you buy at the open price +1% and sell at close price –1% (this might be a bit pessimistic but covers spread/impact).
+
+Include $ commissions if any (IBKR might be ~$0.005/share). On a $2,200 account, these are minor, but still factor it in if doing share-level simulation.
+
+If a stock is extremely illiquid and would move the price when you buy even a small amount, probably it wouldn’t be on your list (since we choose ones with high volume).
+
+Adjust performance for these costs. For instance, if your raw strategy picks gained +12% on average but slippage and spreads take 2%, your real gain is 10%. Ensure the net outcome is still positive.
+
+Stability & Regime Testing:
+
+By-month / quarter: Check performance metrics in different sub-periods (e.g. Jan–Mar vs Apr–Jun). The market can cycle – maybe one month had many biotech FDA runners, another was quiet. Ensure the signals still worked. If you find, say, in a meme-stock-like period the social sentiment signals were super strong (high precision) but in other times not as much, you might incorporate regime filters (like adjust weights when overall market is risk-on vs risk-off).
+
+Rolling backtest: Do a walk-forward simulation: e.g. train/tune on 3 months, test on next 1 month, then roll forward. This better simulates how you’d continuously adjust in real life and avoids one-time overfitting to a fixed period.
+
+Stress tests: Try the strategy on a period of a market correction or crash – even though relative gainers exist in bear markets, they might be fewer or different in nature (more defensive stocks). See if the signals need adjustment (maybe in a bear regime, technical short squeeze plays could dominate since fundamental news might be faded – just an example).
+
+Persistence of signals: Using the case-control data, periodically re-check if the signal differences remain significant. For example, maybe initially you found premarket volume was a big separator. Is it still, three months later? If not, market dynamics may have shifted (perhaps everyone started scanning premarket volume, making it crowded). The strategy might then need re-calibration (or adding a new signal that emerged).
+
+Validation against randomness: To confirm that your pipeline truly adds value, you can do a random pick simulation: randomly pick 5 stocks (from the same pool of candidates) each day and see what the precision@5 is. Likely it will be very low (maybe 5-10% precision, since only 10 out of hundreds of candidates actually become big gainers by chance). If your strategy yields, say, 40% precision@5, that’s a huge uplift over random. Also compare against simpler baselines (like “pick the top 5 % gaps every day without other filters”) – this helps show that the combination of signals and scoring indeed improves outcomes vs a naive approach.
+
+Example Expected Metrics: After tuning, you might achieve something like: Precision@5 ~30% (meaning on average ~1.5 of your 5 picks is a winner), with a hit rate of 80% of days (only 1 in 5 days you miss completely). With an average winner gain of +15% vs loser drop of -5%, the expectancy per pick is positive. The PR AUC could be, say, 0.30–0.40 which is decent given the rarity of the event (random guess would be extremely low).
+
+Finally, regularly monitor live performance once deployed. Keep a log of daily picks and outcomes. This real-world feedback is crucial – if you see any degradation (maybe due to market regime change or the strategy becoming too popular), you can refine signals or rules accordingly. The aim is a strategy that’s evidence-based and adaptive, giving you a repeatable edge in finding those exciting +10% (or bigger) intraday movers.
+
+Sources:
+
+High relative volume & premarket momentum
+ig.com
+highstrike.com
+
+Gap-and-go catalyst criteria (news, volume, float)
+highstrike.com
+highstrike.com
+
+Float rotation significance and example
+app.tradingsim.com
+app.tradingsim.com
+
+Short interest theory and squeeze risk
+investopedia.com
+reddit.com
+
+VWAP reclaim as bullish intraday signal
+humbledtrader.com
+humbledtrader.com
+
+Offering/dilution killing momentum example
+
+Social media volume effect on liquidity
+rpc.cfainstitute.org
+rpc.cfainstitute.org
