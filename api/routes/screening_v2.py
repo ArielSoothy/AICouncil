@@ -324,7 +324,7 @@ async def run_scanner_job(
         log_step(job_id, "Connecting to TWS Desktop...", "running")
 
         jobs[job_id]["progress"] = 10
-        log_step(job_id, "Running MOST_ACTIVE scanner...", "running")
+        log_step(job_id, "Running TOP_PERC_GAIN scanner (gappers)...", "running")
 
         # Run sync scanner in thread pool
         scan_results = await loop.run_in_executor(executor, sync_scan)

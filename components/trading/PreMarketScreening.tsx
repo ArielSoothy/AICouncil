@@ -247,6 +247,8 @@ export default function PreMarketScreening() {
   const [maxVolume, setMaxVolume] = useState<number>(0) // ✅ Sent to V2 API (0 = no limit)
   const [maxFloatShares, setMaxFloatShares] = useState<number>(30000000) // UI-only (Phase 3: needs TWS float data)
   const [minRelativeVolume, setMinRelativeVolume] = useState<number>(5.0) // UI-only (Phase 3: needs TWS rel vol)
+  const [minWinnersScore, setMinWinnersScore] = useState<number>(0) // UI-only: filter by calculated Winners Score (0 = no filter)
+  const [minBorrowFee, setMinBorrowFee] = useState<number>(0) // UI-only: filter by borrow fee % for squeeze plays (0 = no filter)
   const [minPrice, setMinPrice] = useState<number>(1.0) // ✅ Sent to V2 API
   const [maxPrice, setMaxPrice] = useState<number>(20.0) // ✅ Sent to V2 API
   const [maxResults, setMaxResults] = useState<number>(20) // ✅ Sent to V2 API
@@ -732,11 +734,30 @@ export default function PreMarketScreening() {
     return 'text-yellow-600 dark:text-yellow-400'
   }
 
-  // Sort stocks based on current sort field and direction
+  // Sort and filter stocks based on current settings
   const getSortedStocks = (): StockResult[] => {
     if (!data?.stocks) return []
 
-    return [...data.stocks].sort((a, b) => {
+    // Apply client-side filters (Score and Borrow Fee)
+    let filteredStocks = [...data.stocks]
+
+    // Filter by Min Winners Score (calculated dynamically)
+    if (minWinnersScore > 0) {
+      filteredStocks = filteredStocks.filter(stock => {
+        const scoreResult = calculateWinnersScore(toStockData(stock))
+        return scoreResult.total >= minWinnersScore
+      })
+    }
+
+    // Filter by Min Borrow Fee
+    if (minBorrowFee > 0) {
+      filteredStocks = filteredStocks.filter(stock => {
+        const feeRate = stock.short_data?.short_fee_rate
+        return feeRate != null && feeRate >= minBorrowFee
+      })
+    }
+
+    return filteredStocks.sort((a, b) => {
       let aVal: number, bVal: number
 
       switch (sortField) {
@@ -871,39 +892,41 @@ export default function PreMarketScreening() {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Min Gap % */}
+          {/* Gap % Range (Combined) */}
           <div className="space-y-2">
-            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
-              <span>Min Gap %</span>
-              <span className="font-bold text-blue-600 dark:text-blue-400">{minGapPercent}%</span>
+            <label className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              Gap % Range
             </label>
-            <input
-              type="range"
-              min="5"
-              max="50"
-              step="1"
-              value={minGapPercent}
-              onChange={(e) => setMinGapPercent(Number(e.target.value))}
-              className="w-full h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
-            />
-          </div>
-
-          {/* Max Gap % */}
-          <div className="space-y-2">
-            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
-              <span>Max Gap %</span>
-              <span className="font-bold text-purple-600 dark:text-purple-400">{maxGapPercent === 100 ? '∞' : `${maxGapPercent}%`}</span>
-            </label>
-            <input
-              type="range"
-              min="20"
-              max="100"
-              step="5"
-              value={maxGapPercent}
-              onChange={(e) => setMaxGapPercent(Number(e.target.value))}
-              className="w-full h-2 bg-purple-200 dark:bg-purple-800 rounded-lg appearance-none cursor-pointer accent-purple-600"
-            />
-            <p className="text-xs text-purple-600 dark:text-purple-400 italic">100 = no limit</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-gray-600 dark:text-gray-400">Min</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  step="1"
+                  value={minGapPercent}
+                  onChange={(e) => setMinGapPercent(Math.min(Number(e.target.value), maxGapPercent - 1))}
+                  className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+              <span className="text-gray-500 mt-5">-</span>
+              <div className="flex-1">
+                <label className="text-xs text-gray-600 dark:text-gray-400">Max</label>
+                <input
+                  type="number"
+                  min="10"
+                  max="100"
+                  step="5"
+                  value={maxGapPercent}
+                  onChange={(e) => setMaxGapPercent(Math.max(Number(e.target.value), minGapPercent + 1))}
+                  className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+              100 = no limit
+            </p>
           </div>
 
           {/* Gap Direction Selector */}
@@ -954,39 +977,48 @@ export default function PreMarketScreening() {
             </p>
           </div>
 
-          {/* Min Volume */}
+          {/* Volume Range (Combined) */}
           <div className="space-y-2">
-            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
-              <span>Min Volume</span>
-              <span className="font-bold text-blue-600 dark:text-blue-400">{(minVolume / 1_000_000).toFixed(1)}M</span>
+            <label className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              Pre-Market Volume
             </label>
-            <input
-              type="range"
-              min="100000"
-              max="5000000"
-              step="100000"
-              value={minVolume}
-              onChange={(e) => setMinVolume(Number(e.target.value))}
-              className="w-full h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
-            />
-          </div>
-
-          {/* Max Volume */}
-          <div className="space-y-2">
-            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
-              <span>Max Volume</span>
-              <span className="font-bold text-purple-600 dark:text-purple-400">{maxVolume === 0 ? '∞' : `${(maxVolume / 1_000_000).toFixed(0)}M`}</span>
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="500000000"
-              step="10000000"
-              value={maxVolume}
-              onChange={(e) => setMaxVolume(Number(e.target.value))}
-              className="w-full h-2 bg-purple-200 dark:bg-purple-800 rounded-lg appearance-none cursor-pointer accent-purple-600"
-            />
-            <p className="text-xs text-purple-600 dark:text-purple-400 italic">0 = no limit</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-gray-600 dark:text-gray-400">Min</label>
+                <div className="flex items-center">
+                  <input
+                    type="number"
+                    min="0.1"
+                    max="10"
+                    step="0.1"
+                    value={(minVolume / 1_000_000).toFixed(1)}
+                    onChange={(e) => setMinVolume(Number(e.target.value) * 1_000_000)}
+                    className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded-l bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  />
+                  <span className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 border border-l-0 border-blue-300 dark:border-blue-700 rounded-r text-gray-600 dark:text-gray-400">M</span>
+                </div>
+              </div>
+              <span className="text-gray-500 mt-5">-</span>
+              <div className="flex-1">
+                <label className="text-xs text-gray-600 dark:text-gray-400">Max</label>
+                <div className="flex items-center">
+                  <input
+                    type="number"
+                    min="0"
+                    max="500"
+                    step="10"
+                    value={maxVolume === 0 ? '' : (maxVolume / 1_000_000).toFixed(0)}
+                    placeholder="∞"
+                    onChange={(e) => setMaxVolume(e.target.value === '' ? 0 : Number(e.target.value) * 1_000_000)}
+                    className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded-l bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  />
+                  <span className="px-2 py-1 text-sm bg-gray-100 dark:bg-gray-700 border border-l-0 border-blue-300 dark:border-blue-700 rounded-r text-gray-600 dark:text-gray-400">M</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+              Empty max = no limit
+            </p>
           </div>
 
           {/* Max Float Shares Slider */}
@@ -1097,6 +1129,54 @@ export default function PreMarketScreening() {
               Number of stocks to return
             </p>
           </div>
+
+          {/* Min Winners Score (NEW - Squeeze Filter) */}
+          <div className="space-y-2">
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Min Winners Score</span>
+              <span className="font-bold text-green-600 dark:text-green-400">{minWinnersScore === 0 ? 'OFF' : `${minWinnersScore}/10`}</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600 dark:text-gray-400">0</span>
+              <input
+                type="range"
+                min="0"
+                max="8"
+                step="1"
+                value={minWinnersScore}
+                onChange={(e) => setMinWinnersScore(Number(e.target.value))}
+                className="flex-1 h-2 bg-green-200 dark:bg-green-800 rounded-lg appearance-none cursor-pointer accent-green-600"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400">8</span>
+            </div>
+            <p className="text-xs text-green-700 dark:text-green-300 italic">
+              0 = show all, higher = only top setups
+            </p>
+          </div>
+
+          {/* Min Borrow Fee (NEW - Squeeze Filter) */}
+          <div className="space-y-2">
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Min Borrow Fee %</span>
+              <span className="font-bold text-orange-600 dark:text-orange-400">{minBorrowFee === 0 ? 'OFF' : `${minBorrowFee}%+`}</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600 dark:text-gray-400">0</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={minBorrowFee}
+                onChange={(e) => setMinBorrowFee(Number(e.target.value))}
+                className="flex-1 h-2 bg-orange-200 dark:bg-orange-800 rounded-lg appearance-none cursor-pointer accent-orange-600"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400">100</span>
+            </div>
+            <p className="text-xs text-orange-700 dark:text-orange-300 italic">
+              🔥 High fee = squeeze potential
+            </p>
+          </div>
         </div>
 
         {/* Quick Presets */}
@@ -1107,68 +1187,93 @@ export default function PreMarketScreening() {
               onClick={() => {
                 // Update UI state
                 setMinGapPercent(10)
-                setMaxGapPercent(100) // No max limit
+                setMaxGapPercent(100)
                 setMinVolume(500000)
-                setMaxVolume(50000000) // Max 50M volume
+                setMaxVolume(50000000)
                 setMaxFloatShares(30000000)
                 setMinRelativeVolume(5.0)
+                setMinWinnersScore(0)
+                setMinBorrowFee(0)
                 setMinPrice(1.0)
                 setMaxPrice(20.0)
                 setMaxResults(20)
                 setGapDirection('up')
-                // Run with V2 API params (Winners Strategy defaults)
                 runScreening({ minVolume: 500000, maxVolume: 50000000, minPrice: 1.0, maxPrice: 20.0, maxResults: 20, minGapPercent: 10, maxGapPercent: 100, gapDirection: 'up' })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm rounded transition-colors"
             >
-              🎯 Low-Float Runners (Default)
+              🎯 Low-Float Runners
             </button>
             <button
               onClick={() => {
-                // Update UI state
+                // Squeeze Plays: High borrow fee + small float + good score
+                setMinGapPercent(10)
+                setMaxGapPercent(100)
+                setMinVolume(300000)
+                setMaxVolume(0)
+                setMaxFloatShares(15000000)
+                setMinRelativeVolume(3.0)
+                setMinWinnersScore(5)
+                setMinBorrowFee(20)
+                setMinPrice(1.0)
+                setMaxPrice(30.0)
+                setMaxResults(20)
+                setGapDirection('up')
+                runScreening({ minVolume: 300000, maxVolume: 0, minPrice: 1.0, maxPrice: 30.0, maxResults: 20, minGapPercent: 10, maxGapPercent: 100, gapDirection: 'up' })
+              }}
+              disabled={running || loading}
+              className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white text-sm rounded transition-colors"
+            >
+              🔥 Squeeze Plays
+            </button>
+            <button
+              onClick={() => {
+                // Extreme Movers: 20%+ gap
                 setMinGapPercent(20)
-                setMaxGapPercent(60) // Cap at 60% (avoid crazy pumps)
+                setMaxGapPercent(60)
                 setMinVolume(1000000)
-                setMaxVolume(100000000) // Max 100M volume
+                setMaxVolume(100000000)
                 setMaxFloatShares(15000000)
                 setMinRelativeVolume(10.0)
+                setMinWinnersScore(0)
+                setMinBorrowFee(0)
                 setMinPrice(1.0)
                 setMaxPrice(10.0)
                 setMaxResults(10)
                 setGapDirection('up')
-                // Run with V2 API params (Extreme = 20-60% gap UP)
                 runScreening({ minVolume: 1000000, maxVolume: 100000000, minPrice: 1.0, maxPrice: 10.0, maxResults: 10, minGapPercent: 20, maxGapPercent: 60, gapDirection: 'up' })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-sm rounded transition-colors"
             >
-              🔥 Extreme Movers
+              🚀 Extreme Movers
             </button>
             <button
               onClick={() => {
-                // Update UI state
+                // Wide Net: Lower filters, more results
                 setMinGapPercent(5)
-                setMaxGapPercent(100) // No max limit
+                setMaxGapPercent(100)
                 setMinVolume(250000)
-                setMaxVolume(0) // No max limit
+                setMaxVolume(0)
                 setMaxFloatShares(50000000)
                 setMinRelativeVolume(2.0)
+                setMinWinnersScore(0)
+                setMinBorrowFee(0)
                 setMinPrice(0.5)
                 setMaxPrice(50.0)
                 setMaxResults(50)
                 setGapDirection('both')
-                // Run with V2 API params (Wide Net = 5%+ gap, both directions, no volume cap)
                 runScreening({ minVolume: 250000, maxVolume: 0, minPrice: 0.5, maxPrice: 50.0, maxResults: 50, minGapPercent: 5, maxGapPercent: 100, gapDirection: 'both' })
               }}
               disabled={running || loading}
               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm rounded transition-colors"
             >
-              📊 Wide Net (More Results)
+              📊 Wide Net
             </button>
           </div>
           <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 italic">
-            Clicking a preset will immediately run screening with those filters
+            Presets update filters + run scan. Score & Borrow Fee filters apply client-side after scan.
           </p>
         </div>
       </div>
