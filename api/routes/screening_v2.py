@@ -212,6 +212,9 @@ class Stock(BaseModel):
     reddit_mentions: Optional[int] = None      # Mentions in last 24h
     reddit_sentiment: Optional[float] = None   # -1 to +1
     reddit_sentiment_label: Optional[str] = None  # VERY_BULLISH, BULLISH, NEUTRAL, BEARISH, VERY_BEARISH
+    # Phase 5: News/Catalyst (FREE via Alpaca)
+    news: Optional[List[dict]] = None  # Top 3 news articles [{headline, source, timestamp, url}]
+    catalyst: Optional[str] = None     # Auto-detected catalyst type (earnings, FDA, etc.)
 
 
 class ScanJob(BaseModel):
@@ -586,6 +589,88 @@ async def run_scanner_job(
 
             except Exception as e:
                 log_step(job_id, f"Phase 4 Reddit error: {str(e)[:50]}", "error")
+
+        # === PHASE 5: NEWS/CATALYST (FREE via Alpaca) ===
+        if len(filtered_stocks) > 0:
+            log_step(job_id, f"Phase 5: Getting news for {min(5, len(filtered_stocks))} stocks...", "running")
+            jobs[job_id]["progress"] = 95
+            jobs[job_id]["message"] = f"Fetching news catalysts..."
+
+            try:
+                import os
+                import requests
+
+                alpaca_key = os.environ.get('ALPACA_API_KEY')
+                alpaca_secret = os.environ.get('ALPACA_SECRET_KEY')
+
+                if alpaca_key and alpaca_secret:
+                    headers = {
+                        'APCA-API-KEY-ID': alpaca_key,
+                        'APCA-API-SECRET-KEY': alpaca_secret
+                    }
+
+                    # Catalyst keywords for detection
+                    CATALYST_KEYWORDS = {
+                        'earnings': ['earnings', 'eps', 'revenue', 'quarterly', 'q1', 'q2', 'q3', 'q4', 'guidance', 'beat', 'miss'],
+                        'fda': ['fda', 'approval', 'drug', 'trial', 'phase', 'clinical'],
+                        'merger': ['merger', 'acquisition', 'acquire', 'buyout', 'deal', 'takeover'],
+                        'contract': ['contract', 'awarded', 'deal', 'partnership', 'agreement'],
+                        'offering': ['offering', 'dilution', 'shares', 'secondary', 'shelf'],
+                        'analyst': ['upgrade', 'downgrade', 'price target', 'rating', 'analyst'],
+                        'short_squeeze': ['short', 'squeeze', 'gamma', 'wsb', 'reddit', 'meme'],
+                    }
+
+                    def detect_catalyst(headlines: list) -> str:
+                        """Detect catalyst type from news headlines"""
+                        text = ' '.join(headlines).lower()
+                        for catalyst_type, keywords in CATALYST_KEYWORDS.items():
+                            if any(kw in text for kw in keywords):
+                                return catalyst_type.upper()
+                        return 'UNKNOWN'
+
+                    for stock in filtered_stocks[:5]:
+                        try:
+                            # Alpaca News API
+                            url = f"https://data.alpaca.markets/v1beta1/news?symbols={stock['symbol']}&limit=3&sort=desc"
+                            resp = requests.get(url, headers=headers, timeout=10)
+
+                            if resp.status_code == 200:
+                                news_data = resp.json()
+                                articles = news_data.get('news', [])
+
+                                if articles:
+                                    # Format news for storage
+                                    formatted_news = []
+                                    headlines = []
+                                    for article in articles[:3]:
+                                        formatted_news.append({
+                                            'headline': article.get('headline', '')[:100],
+                                            'source': article.get('source', 'Unknown'),
+                                            'timestamp': article.get('created_at', ''),
+                                            'url': article.get('url', '')
+                                        })
+                                        headlines.append(article.get('headline', ''))
+
+                                    stock['news'] = formatted_news
+                                    stock['catalyst'] = detect_catalyst(headlines)
+
+                                    log_step(job_id, f"  {stock['symbol']}: {len(articles)} articles, catalyst={stock['catalyst']}", "success")
+                                else:
+                                    stock['news'] = []
+                                    stock['catalyst'] = 'NO_NEWS'
+                                    log_step(job_id, f"  {stock['symbol']}: No recent news", "info")
+                            else:
+                                log_step(job_id, f"  {stock['symbol']}: News API error {resp.status_code}", "error")
+
+                        except Exception as e:
+                            log_step(job_id, f"  {stock['symbol']}: News error - {str(e)[:30]}", "error")
+
+                    log_step(job_id, "Phase 5 News complete", "success")
+                else:
+                    log_step(job_id, "Phase 5 skipped: No Alpaca API keys", "info")
+
+            except Exception as e:
+                log_step(job_id, f"Phase 5 News error: {str(e)[:50]}", "error")
 
         # === COMPLETE ===
         jobs[job_id]["status"] = "completed"

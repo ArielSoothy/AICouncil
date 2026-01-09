@@ -67,7 +67,7 @@ class RedditSentimentClient:
     def __init__(self):
         self.session: Optional[aiohttp.ClientSession] = None
         self.last_request_time = datetime.min
-        self.min_request_interval = 6  # seconds between requests
+        self.min_request_interval = 2  # seconds between requests (was 6 - too slow!)
 
     async def _ensure_session(self):
         """Create aiohttp session if needed"""
@@ -194,8 +194,8 @@ class RedditSentimentClient:
         all_posts = []
         subreddit_counts = defaultdict(int)
 
-        # Search each subreddit
-        for subreddit in TRADING_SUBREDDITS[:3]:  # Top 3 to avoid rate limits
+        # Search each subreddit (reduced to 2 for speed - WSB + stocks are most relevant)
+        for subreddit in TRADING_SUBREDDITS[:2]:  # Top 2 for speed
             posts = await self.search_symbol(symbol, subreddit, limit=25)
             all_posts.extend(posts)
             subreddit_counts[subreddit] = len(posts)

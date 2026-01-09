@@ -100,10 +100,13 @@ interface StockResult {
   pre_market_volume: number
   pre_market_price: number
   previous_close: number
+  // Root level data from API
+  float_shares?: number  // API returns at root level
+  shares_outstanding?: number  // API returns at root level
   fundamentals?: {
     pe_ratio?: number
     market_cap?: number
-    float_shares?: number
+    float_shares?: number  // Also check nested for backwards compatibility
     shares_outstanding?: number
   }
   short_data?: {
@@ -130,6 +133,14 @@ interface StockResult {
   reddit_mentions?: number
   reddit_sentiment?: number
   reddit_sentiment_label?: string
+  // News/Catalyst (Phase 5)
+  news?: Array<{
+    headline: string
+    source: string
+    timestamp: string
+    url: string
+  }>
+  catalyst?: string
   score: number
 }
 
@@ -208,6 +219,7 @@ export default function PreMarketScreening() {
   const [winnersScores, setWinnersScores] = useState<Record<string, WinnersScore>>({})
 
   // Convert StockResult to StockData for scoring
+  // API returns some fields at root level, some nested - check both
   const toStockData = (stock: StockResult): StockData => ({
     symbol: stock.symbol,
     gap_percent: stock.gap_percent,
@@ -218,8 +230,8 @@ export default function PreMarketScreening() {
     // Squeeze data (from short_data if available)
     shortable_shares: stock.short_data?.shortable_shares,
     borrow_difficulty: stock.short_data?.borrow_difficulty as 'EASY' | 'MEDIUM' | 'HARD' | 'VERY_HARD' | undefined,
-    // Phase 3: Float and short data
-    float_shares: stock.fundamentals?.float_shares,
+    // Phase 3: Float - check both root level and nested (API returns at root)
+    float_shares: stock.float_shares ?? stock.fundamentals?.float_shares,
     borrow_fee_rate: stock.short_data?.short_fee_rate,
     // Phase 3: Relative Volume
     relative_volume: stock.relative_volume,
@@ -301,6 +313,9 @@ export default function PreMarketScreening() {
         reddit_mentions?: number
         reddit_sentiment?: number
         reddit_sentiment_label?: string
+        // Phase 5: News
+        news?: Array<{ headline: string; source: string; timestamp: string; url: string }>
+        catalyst?: string
       }
 
       const formattedStocks: StockResult[] = (latestJob.stocks || []).map((stock: EnrichedStock) => ({
@@ -329,6 +344,9 @@ export default function PreMarketScreening() {
         reddit_mentions: stock.reddit_mentions,
         reddit_sentiment: stock.reddit_sentiment,
         reddit_sentiment_label: stock.reddit_sentiment_label,
+        // Phase 5: News/Catalyst
+        news: stock.news,
+        catalyst: stock.catalyst,
         score: stock.score || (100 - stock.rank)
       }))
 
@@ -532,6 +550,9 @@ export default function PreMarketScreening() {
                   reddit_mentions?: number
                   reddit_sentiment?: number
                   reddit_sentiment_label?: string
+                  // Phase 5: News
+                  news?: Array<{ headline: string; source: string; timestamp: string; url: string }>
+                  catalyst?: string
                 }
                 const formattedStocks: StockResult[] = status.stocks.map((stock: EnrichedStock) => ({
                   symbol: stock.symbol,
@@ -559,6 +580,9 @@ export default function PreMarketScreening() {
                   reddit_mentions: stock.reddit_mentions,
                   reddit_sentiment: stock.reddit_sentiment,
                   reddit_sentiment_label: stock.reddit_sentiment_label,
+                  // Phase 5: News/Catalyst
+                  news: stock.news,
+                  catalyst: stock.catalyst,
                   score: stock.score || (100 - stock.rank)
                 }))
 
@@ -619,15 +643,15 @@ export default function PreMarketScreening() {
         }
       }, 500) // Poll every 500ms (V2 is fast!)
 
-      // Safety timeout - stop polling after 30 seconds (V2 is fast, shouldn't take long)
+      // Safety timeout - stop polling after 90 seconds (Phase 4 Reddit sentiment can take 40-50s)
       setTimeout(() => {
         clearInterval(pollInterval)
         if (running) {
-          setError('Screening timeout (>30 seconds)')
+          setError('Screening timeout (>90 seconds)')
           setProgressStep('')
           setRunning(false)
         }
-      }, 30 * 1000)
+      }, 90 * 1000)
 
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to start screening'
@@ -1781,14 +1805,16 @@ export default function PreMarketScreening() {
                         <div className="space-y-3">
                           {/* Float Shares - Critical for squeeze */}
                           {(() => {
-                            const floatScore = getFloatScore(stock.fundamentals?.float_shares)
+                            // Check root level first, then fallback to nested (API returns at root)
+                            const floatValue = stock.float_shares ?? stock.fundamentals?.float_shares
+                            const floatScore = getFloatScore(floatValue)
                             return (
                               <div className="flex justify-between items-center">
                                 <span className="text-gray-600 dark:text-gray-400">Float</span>
-                                {stock.fundamentals?.float_shares ? (
+                                {floatValue ? (
                                   <div className="flex items-center">
                                     <span className={`font-semibold ${floatScore?.color || 'text-gray-900'}`}>
-                                      {formatNumber(stock.fundamentals.float_shares)}
+                                      {formatNumber(floatValue)}
                                     </span>
                                     {floatScore && <ScoreBadge score={floatScore} />}
                                   </div>
@@ -1860,16 +1886,22 @@ export default function PreMarketScreening() {
                           })()}
 
                           {/* Shares Outstanding */}
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400">Shares Outstanding</span>
-                            {stock.fundamentals?.shares_outstanding ? (
-                              <span className="font-semibold text-gray-900 dark:text-gray-100">
-                                {formatNumber(stock.fundamentals.shares_outstanding)}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 italic text-sm">--</span>
-                            )}
-                          </div>
+                          {(() => {
+                            // Check root level first, then fallback to nested (API returns at root)
+                            const sharesValue = stock.shares_outstanding ?? stock.fundamentals?.shares_outstanding
+                            return (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600 dark:text-gray-400">Shares Outstanding</span>
+                                {sharesValue ? (
+                                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                    {formatNumber(sharesValue)}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 italic text-sm">--</span>
+                                )}
+                              </div>
+                            )
+                          })()}
 
                           {/* Market Cap - if available */}
                           {stock.fundamentals?.market_cap && (
@@ -1937,6 +1969,57 @@ export default function PreMarketScreening() {
                             </div>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* News & Catalyst Section (Phase 5) */}
+                    {(stock.news && stock.news.length > 0) && (
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                          📰 News & Catalyst
+                          {stock.catalyst && stock.catalyst !== 'UNKNOWN' && stock.catalyst !== 'NO_NEWS' && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                              stock.catalyst === 'EARNINGS' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' :
+                              stock.catalyst === 'FDA' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' :
+                              stock.catalyst === 'MERGER' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' :
+                              stock.catalyst === 'SHORT_SQUEEZE' ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' :
+                              stock.catalyst === 'OFFERING' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' :
+                              'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                            }`}>
+                              {stock.catalyst === 'EARNINGS' ? '💰 Earnings' :
+                               stock.catalyst === 'FDA' ? '💊 FDA' :
+                               stock.catalyst === 'MERGER' ? '🤝 M&A' :
+                               stock.catalyst === 'SHORT_SQUEEZE' ? '🔥 Squeeze' :
+                               stock.catalyst === 'OFFERING' ? '📉 Offering' :
+                               stock.catalyst === 'CONTRACT' ? '📝 Contract' :
+                               stock.catalyst === 'ANALYST' ? '📊 Analyst' :
+                               stock.catalyst}
+                            </span>
+                          )}
+                          <span className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded ml-auto">
+                            Alpaca News
+                          </span>
+                        </h4>
+                        <div className="space-y-2">
+                          {stock.news.map((article, idx) => (
+                            <a
+                              key={idx}
+                              href={article.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block p-2 rounded bg-white/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 transition-colors border border-blue-100 dark:border-blue-900"
+                            >
+                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2">
+                                {article.headline}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                <span className="font-medium">{article.source}</span>
+                                <span>•</span>
+                                <span>{article.timestamp ? new Date(article.timestamp).toLocaleString() : 'Recent'}</span>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
                       </div>
                     )}
 
