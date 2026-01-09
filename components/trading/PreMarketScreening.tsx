@@ -126,6 +126,10 @@ interface StockResult {
   // Relative Volume data
   avg_volume_20d?: number
   relative_volume?: number
+  // Reddit Sentiment (Phase 4)
+  reddit_mentions?: number
+  reddit_sentiment?: number
+  reddit_sentiment_label?: string
   score: number
 }
 
@@ -260,7 +264,76 @@ export default function PreMarketScreening() {
         throw new Error(errorData.detail || `HTTP ${response.status}`)
       }
 
-      const screeningData: ScreeningResponse = await response.json()
+      const latestJob = await response.json()
+
+      // Handle "no_data" response (empty state)
+      if (latestJob.status === 'no_data') {
+        setData(null)
+        setLastUpdate(new Date())
+        setError(null)
+        return
+      }
+
+      // Transform ScanJob stocks to StockResult format (same as polling code)
+      interface EnrichedStock {
+        symbol: string
+        rank: number
+        gap_percent: number
+        gap_direction: string
+        pre_market_price: number
+        previous_close: number
+        pre_market_volume: number
+        momentum_score: number
+        score: number
+        shortable_shares?: number
+        borrow_difficulty?: string
+        short_fee_rate?: number
+        shares_outstanding?: number
+        float_shares?: number
+        avg_volume_20d?: number
+        relative_volume?: number
+        reddit_mentions?: number
+        reddit_sentiment?: number
+        reddit_sentiment_label?: string
+      }
+
+      const formattedStocks: StockResult[] = (latestJob.stocks || []).map((stock: EnrichedStock) => ({
+        symbol: stock.symbol,
+        rank: stock.rank,
+        gap_percent: stock.gap_percent || 0,
+        gap_direction: (stock.gap_direction || 'up') as 'up' | 'down',
+        pre_market_volume: stock.pre_market_volume || 0,
+        pre_market_price: stock.pre_market_price || 0,
+        previous_close: stock.previous_close || 0,
+        // Phase 3: Short data
+        short_data: stock.shortable_shares ? {
+          shortable_shares: stock.shortable_shares,
+          borrow_difficulty: stock.borrow_difficulty,
+          short_fee_rate: stock.short_fee_rate,
+        } : undefined,
+        // Phase 3: Float estimate
+        fundamentals: stock.float_shares ? {
+          float_shares: stock.float_shares,
+          shares_outstanding: stock.shares_outstanding,
+        } : undefined,
+        // Phase 3: Relative Volume
+        avg_volume_20d: stock.avg_volume_20d,
+        relative_volume: stock.relative_volume,
+        // Phase 4: Reddit Sentiment
+        reddit_mentions: stock.reddit_mentions,
+        reddit_sentiment: stock.reddit_sentiment,
+        reddit_sentiment_label: stock.reddit_sentiment_label,
+        score: stock.score || (100 - stock.rank)
+      }))
+
+      const screeningData: ScreeningResponse = {
+        stocks: formattedStocks,
+        total_scanned: latestJob.stocks_found || formattedStocks.length,
+        total_returned: formattedStocks.length,
+        execution_time_seconds: 1,
+        timestamp: latestJob.completed_at || new Date().toISOString()
+      }
+
       setData(screeningData)
       setLastUpdate(new Date())
       setError(null) // Clear error on success
@@ -446,6 +519,13 @@ export default function PreMarketScreening() {
                   short_fee_rate?: number
                   shares_outstanding?: number
                   float_shares?: number
+                  // Relative Volume data
+                  avg_volume_20d?: number
+                  relative_volume?: number
+                  // Reddit Sentiment (Phase 4)
+                  reddit_mentions?: number
+                  reddit_sentiment?: number
+                  reddit_sentiment_label?: string
                 }
                 const formattedStocks: StockResult[] = status.stocks.map((stock: EnrichedStock) => ({
                   symbol: stock.symbol,
@@ -466,6 +546,13 @@ export default function PreMarketScreening() {
                     float_shares: stock.float_shares,
                     shares_outstanding: stock.shares_outstanding,
                   } : undefined,
+                  // Phase 3: Relative Volume (PM volume vs 20-day avg)
+                  avg_volume_20d: stock.avg_volume_20d,
+                  relative_volume: stock.relative_volume,
+                  // Phase 4: Reddit Sentiment
+                  reddit_mentions: stock.reddit_mentions,
+                  reddit_sentiment: stock.reddit_sentiment,
+                  reddit_sentiment_label: stock.reddit_sentiment_label,
                   score: stock.score || (100 - stock.rank)
                 }))
 
@@ -483,7 +570,7 @@ export default function PreMarketScreening() {
                 // Save to cache (localStorage + Supabase)
                 saveScan({
                   scanned_at: response.timestamp,
-                  scanner_type: 'most_active',
+                  scanner_type: 'top_perc_gain',  // Changed from most_active to find gappers
                   filters: {
                     min_volume: effectiveParams.minVolume,
                     min_price: effectiveParams.minPrice,
@@ -1698,6 +1785,64 @@ export default function PreMarketScreening() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Reddit Sentiment Section (Phase 4) */}
+                    {(stock.reddit_mentions !== undefined || stock.reddit_sentiment !== undefined) && (
+                      <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                          🔥 Reddit Sentiment
+                          <span className="text-xs px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded ml-auto">
+                            r/wallstreetbets + r/stocks
+                          </span>
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">24h Mentions</span>
+                            <span className={`text-lg font-bold ${
+                              (stock.reddit_mentions || 0) > 10 ? 'text-green-600' :
+                              (stock.reddit_mentions || 0) > 5 ? 'text-yellow-600' : 'text-gray-600'
+                            }`}>
+                              {stock.reddit_mentions || 0}
+                              {(stock.reddit_mentions || 0) > 10 && ' 🔥'}
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Sentiment</span>
+                            <span className={`text-lg font-bold ${
+                              stock.reddit_sentiment_label === 'VERY_BULLISH' ? 'text-green-600' :
+                              stock.reddit_sentiment_label === 'BULLISH' ? 'text-green-500' :
+                              stock.reddit_sentiment_label === 'BEARISH' ? 'text-red-500' :
+                              stock.reddit_sentiment_label === 'VERY_BEARISH' ? 'text-red-600' : 'text-gray-600'
+                            }`}>
+                              {stock.reddit_sentiment_label === 'VERY_BULLISH' && '🚀 '}
+                              {stock.reddit_sentiment_label === 'BULLISH' && '📈 '}
+                              {stock.reddit_sentiment_label === 'BEARISH' && '📉 '}
+                              {stock.reddit_sentiment_label === 'VERY_BEARISH' && '💀 '}
+                              {stock.reddit_sentiment_label?.replace('_', ' ') || 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                        {stock.reddit_sentiment !== undefined && (
+                          <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-700">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">Score:</span>
+                              <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full transition-all ${
+                                    stock.reddit_sentiment > 0.2 ? 'bg-green-500' :
+                                    stock.reddit_sentiment < -0.2 ? 'bg-red-500' : 'bg-gray-400'
+                                  }`}
+                                  style={{ width: `${Math.min(100, Math.max(0, (stock.reddit_sentiment + 1) * 50))}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-mono">
+                                {(stock.reddit_sentiment > 0 ? '+' : '')}{stock.reddit_sentiment.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* AI Analysis Result */}
                     {analysisResults[stock.symbol] && (

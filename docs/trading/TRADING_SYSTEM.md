@@ -1540,7 +1540,7 @@
   3. **TWS Short Data**: Shortable shares, borrow fee rate (critical for squeeze potential)
   4. **TWS Ratios**: 60+ fundamental ratios (ROE, debt-to-equity, etc.)
   5. **TWS Bars**: Pre-market gap %, volume, price action
-  6. **Finnhub Sentiment**: Social sentiment from Reddit/Twitter (optional, free tier)
+  6. **Social Sentiment**: ❌ NOT AVAILABLE FREE - Finnhub requires Premium (~$50/mo)
 - **Composite Scoring Algorithm** (0-100):
   - Gap magnitude: 30 points (larger gaps = more momentum)
   - Volume: 20 points (higher volume = more interest)

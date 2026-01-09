@@ -27,10 +27,10 @@
 - Composite scoring algorithm (0-100)
 - Writes results to Supabase database
 
-**Phase 8: Finnhub Sentiment Integration** ✅
-- Social sentiment from Reddit/Twitter
-- Free tier: 60 calls/minute
-- Optional integration (system works without it)
+**Phase 8: Social Sentiment** ❌ NOT IMPLEMENTED
+- Finnhub social sentiment requires PAID Premium subscription (~$50/mo)
+- Free tier does NOT include social sentiment endpoint
+- System works without it (using news + keyword sentiment instead)
 
 **Phase 9: Next.js Frontend Integration** ✅
 - React component with auto-refresh (5 min)

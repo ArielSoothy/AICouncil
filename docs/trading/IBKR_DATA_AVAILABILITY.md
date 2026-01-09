@@ -259,7 +259,8 @@ news = await ib.reqHistoricalNewsAsync(conId=contract.conId, ...)
 - **Status**: ❌ **NOT IN API** (Web UI only feature)
 - **Web UI Shows**: "Social Sentiment" tab with sentiment scores
 
-- **Fallback**: Use Finnhub API (free tier) or Reddit API
+- **Fallback**: ❌ Finnhub Social Sentiment is PAID (Premium required)
+- **Free Alternative**: Build own sentiment from Reddit API (free) or news keyword analysis
 
 ---
 
@@ -280,7 +281,8 @@ The following features are visible in IBKR Web UI but **NOT accessible via API**
 ### 3. Social Sentiment Tab
 - **Shows**: Social media sentiment scores, buzz metrics
 - **API Access**: ❌ None
-- **Fallback**: Finnhub Social Sentiment API, Reddit API
+- **Fallback**: ❌ Finnhub Social Sentiment is PAID (Premium required)
+- **Free Alternative**: Reddit API (free) + keyword sentiment analysis
 
 ### 4. Short Selling Tab
 - **Shows**: Shortable shares, fee rates, short interest
@@ -321,8 +323,8 @@ After comprehensive testing of BOTH APIs, the architecture recommendation has ch
 2. **Backup Scanner** (563 types vs 3,323 in TWS)
 
 ### ❌ STILL NEED EXTERNAL APIs For:
-1. **Social Sentiment** (Finnhub free tier - TWS doesn't have this)
-2. **News Feed** (Yahoo Finance free - TWS requires Dow Jones subscription)
+1. **Social Sentiment** (❌ Finnhub is PAID - need Reddit API or keyword analysis)
+2. **News Feed** (Yahoo Finance + Alpaca - both FREE)
 3. **Analyst Ratings** (External APIs - not in TWS)
 4. **Ownership Data** (SEC EDGAR - not programmatically available)
 
@@ -385,8 +387,10 @@ async def screenPreMarketStocks():
             gapPercent = ((preMarketPrice - previousClose) / previousClose) * 100
             preMarketVolume = sum(b.volume for b in preMarketBars)
 
-        # STEP 6: Get sentiment from Finnhub (only thing TWS doesn't have)
-        sentiment = await finnhub.getSentiment(contract.symbol)
+        # STEP 6: Sentiment - NO FREE API OPTION
+        # Finnhub social sentiment is PAID (Premium required)
+        # Options: 1) Skip sentiment, 2) Build from Reddit API (free), 3) Keyword analysis on news
+        sentiment = None  # Or implement Reddit scraping
 
         results.append({
             'symbol': contract.symbol,
@@ -408,11 +412,12 @@ async def screenPreMarketStocks():
 - ❌ Removed Yahoo Finance for quotes → Use TWS reqMktData
 - ✅ Added TWS tick 236 for short selling data
 - ✅ Added TWS tick 258 for 60+ fundamental ratios
-- ✅ Kept Finnhub for sentiment (TWS doesn't have this)
+- ❌ Finnhub social sentiment is PAID (not using)
 
 **Data Sources**:
-- **TWS API**: Scanning, fundamentals, short data, ratios, pre-market bars (90% of data)
-- **Finnhub**: Social sentiment only (10% of data)
+- **TWS API**: Scanning, fundamentals, short data, ratios, pre-market bars (95% of data)
+- **Yahoo/Alpaca**: News (FREE)
+- **Social Sentiment**: NO FREE API - skip or build from Reddit
 
 ---
 
@@ -430,8 +435,8 @@ async def screenPreMarketStocks():
 | Short Selling Data | ✅ Tick 236 | ❌ Field 7636 = 0 | ❌ None | ⚠️ Paid | **TWS API** |
 | Historical Volatility | ✅ Tick 104 | ❌ None | ⚠️ Limited | ⚠️ Paid | **TWS API** |
 | Dividends | ✅ Tick 456 | ❌ None | ✅ Free | ⚠️ Paid | **TWS API** |
-| News | ⚠️ Requires sub | ❌ Empty | ✅ Free | ✅ Free | **Yahoo/Finnhub** |
-| Social Sentiment | ❌ None | ❌ None | ❌ None | ✅ Free tier | **Finnhub** |
+| News | ⚠️ Requires sub | ❌ Empty | ✅ Free | ✅ Free | **Yahoo/Alpaca** |
+| Social Sentiment | ❌ None | ❌ None | ❌ None | ❌ PAID | **Reddit API (free)** |
 | Ownership Data | ❌ None | ❌ None | ⚠️ Limited | ❌ None | **SEC EDGAR** |
 | Analyst Ratings | ❌ None | ❌ None | ❌ None | ⚠️ Paid | **External APIs** |
 
@@ -440,7 +445,7 @@ async def screenPreMarketStocks():
 - ⚠️ = Available but Limited/Paid
 - ❌ = Not Available
 
-**Key Insight**: TWS API provides 80-90% of needed data. Only need external APIs for sentiment/news.
+**Key Insight**: TWS API provides 80-90% of needed data. News is FREE (Yahoo/Alpaca). Social sentiment has NO free API option (Finnhub is PAID).
 
 ---
 
@@ -458,13 +463,15 @@ async def screenPreMarketStocks():
 3. **Subscriptions Work**: $14.50/mo subscriptions unlock real-time data in TWS API
 4. **Short Data Available**: Tick 236 returns shortable shares (Client Portal field 7636 = 0)
 5. **Fundamental Ratios**: Tick 258 returns 60+ ratios (P/E, ROE, Debt/Equity, etc.)
-6. **Only Missing**: Social sentiment and news (news requires additional Dow Jones subscription)
+6. **News**: FREE from Yahoo Finance + Alpaca (no IBKR subscription needed)
+7. **Social Sentiment**: NO FREE API available (Finnhub is PAID, ~$50/mo minimum)
 
 ### Architecture Impact
-1. **Yahoo Finance**: Now OPTIONAL (TWS has fundamentals) - only needed as backup
-2. **Finnhub**: Still REQUIRED for social sentiment (TWS doesn't have)
-3. **SEC EDGAR**: OPTIONAL (TWS has fundamentals)
-4. **Migration Needed**: Switch from Client Portal REST API to TWS socket API (ib_insync)
+1. **Yahoo Finance**: Used for NEWS only (TWS has fundamentals)
+2. **Alpaca**: Used for NEWS (free with paper trading account)
+3. **Finnhub**: ❌ NOT USING - Social sentiment is PAID (~$50/mo)
+4. **SEC EDGAR**: OPTIONAL (TWS has fundamentals)
+5. **Social Sentiment**: Skip or build from Reddit API (free)
 
 ---
 
@@ -530,11 +537,12 @@ async def screenPreMarketStocks():
 ### Final Recommendation: TWS API Primary
 
 **Benefits**:
-- ✅ 90% of data from single source (IBKR)
-- ✅ No need for Yahoo Finance
+- ✅ 95% of data from single source (IBKR TWS API)
+- ✅ Yahoo Finance for news (FREE)
+- ✅ Alpaca for news (FREE with paper account)
 - ✅ No need for SEC EDGAR
-- ✅ Only 1 external API needed (Finnhub for sentiment)
-- ✅ Current $14.50/mo subscription unlocks all data
+- ❌ Social sentiment has NO free API (Finnhub is PAID)
+- ✅ Current $14.50/mo subscription unlocks all TWS data
 - ✅ Short selling data available (critical for screening)
 - ✅ 60+ fundamental ratios (more comprehensive than Yahoo)
 

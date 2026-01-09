@@ -75,15 +75,17 @@ class TWSScannerSync:
         if not self.is_connected:
             self.connect()
 
-        print(f"\n[SCANNING] Looking for MOST_ACTIVE stocks...")
+        print(f"\n[SCANNING] Looking for TOP_PERC_GAIN stocks (gappers)...")
         print(f"  Filters: Volume > {min_volume:,}, Price ${min_price}-${max_price}")
         print(f"  Max results: {max_results}")
 
         # Create scanner subscription
+        # Use TOP_PERC_GAIN to find stocks by % change (not just volume)
+        # This finds stocks like KTOS +20% that MOST_ACTIVE might miss
         scan = ScannerSubscription(
             instrument='STK',
             locationCode='STK.US.MAJOR',
-            scanCode='MOST_ACTIVE',
+            scanCode='TOP_PERC_GAIN',  # Changed from MOST_ACTIVE to find gappers
             aboveVolume=min_volume,
             abovePrice=min_price,
             belowPrice=max_price,

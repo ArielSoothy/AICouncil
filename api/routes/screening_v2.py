@@ -208,6 +208,10 @@ class Stock(BaseModel):
     # Phase 3: Relative Volume (20-day average comparison)
     avg_volume_20d: Optional[int] = None
     relative_volume: Optional[float] = None  # PM Volume / Avg Daily Volume
+    # Phase 4: Reddit Sentiment (FREE)
+    reddit_mentions: Optional[int] = None      # Mentions in last 24h
+    reddit_sentiment: Optional[float] = None   # -1 to +1
+    reddit_sentiment_label: Optional[str] = None  # VERY_BULLISH, BULLISH, NEUTRAL, BEARISH, VERY_BEARISH
 
 
 class ScanJob(BaseModel):
@@ -456,24 +460,36 @@ async def run_scanner_job(
                                 else:
                                     stock['borrow_difficulty'] = 'Easy'
 
-                            # Extract borrow fee rate (tick 586)
-                            short_fee = getattr(ticker, 'shortFee', None)
-                            if short_fee is not None and short_fee > 0:
-                                stock['short_fee_rate'] = float(short_fee)
+                            # Extract borrow fee rate from ticks list (tick type 46 = shortable)
+                            # Note: TWS doesn't populate 'shortFee' attribute directly
+                            # Fee rate may come through different channels depending on subscription
+                            if ticker.ticks:
+                                for tick in ticker.ticks:
+                                    # Tick type 46 can contain shortable info
+                                    if tick.tickType == 46 and tick.price > 0:
+                                        # This is rebate rate, fee = -rebate when negative
+                                        stock['short_fee_rate'] = abs(tick.price)
+                                        break
 
-                            # Extract fundamental ratios (tick 258)
-                            ratios_str = getattr(ticker, 'fundamentalRatios', None)
-                            if ratios_str:
-                                # Parse NPRICE (shares outstanding proxy)
-                                # fundamentalRatios is a FundamentalRatios object
-                                shares_out = getattr(ratios_str, 'MKTCAP', None)
-                                if shares_out:
-                                    # Market cap / price ≈ shares outstanding
-                                    price = stock.get('pre_market_price', 1)
+                            # Extract fundamental ratios (tick 258) - FLOAT & SHARES
+                            ratios = getattr(ticker, 'fundamentalRatios', None)
+                            if ratios:
+                                mktcap = getattr(ratios, 'MKTCAP', None)  # In millions
+                                nprice = getattr(ratios, 'NPRICE', None)  # Current price
+
+                                if mktcap and mktcap > 0:
+                                    # Use NPRICE from ratios if available (more accurate)
+                                    price = nprice if nprice and nprice > 0 else stock.get('pre_market_price', 1)
                                     if price > 0:
-                                        est_shares = int((shares_out * 1_000_000) / price)
+                                        # MKTCAP is in millions, so multiply by 1M
+                                        est_shares = int((mktcap * 1_000_000) / price)
                                         stock['shares_outstanding'] = est_shares
-                                        stock['float_shares'] = int(est_shares * 0.75)
+                                        # Float is typically 70-90% of outstanding
+                                        # Use 80% as reasonable estimate
+                                        stock['float_shares'] = int(est_shares * 0.80)
+
+                                        float_m = stock['float_shares'] / 1_000_000
+                                        log_step(job_id, f"    Float: {float_m:.1f}M shares (est from MKTCAP)", "success")
 
                             ib_short.cancelMktData(contract)
 
@@ -486,7 +502,8 @@ async def run_scanner_job(
                                     barSizeSetting='1 day',
                                     whatToShow='TRADES',
                                     useRTH=True,
-                                    formatDate=1
+                                    formatDate=1,
+                                    timeout=10  # 10 second timeout
                                 )
                                 if bars and len(bars) > 0:
                                     volumes = [bar.volume for bar in bars if bar.volume > 0]
@@ -496,9 +513,11 @@ async def run_scanner_job(
                                         pm_vol = stock.get('pre_market_volume', 0)
                                         if avg_vol > 0:
                                             stock['relative_volume'] = round(pm_vol / avg_vol, 2)
+                                            log_step(job_id, f"    RelVol: {stock['relative_volume']:.1f}x (PM {pm_vol:,} / Avg {int(avg_vol):,})", "success")
+                                else:
+                                    log_step(job_id, f"    RelVol: No historical bars returned", "error")
                             except Exception as hist_err:
-                                # Historical data not available - that's OK, continue
-                                pass
+                                log_step(job_id, f"    RelVol: {str(hist_err)[:30]}", "error")
 
                             borrow = stock.get('borrow_difficulty', 'N/A')
                             shortable_m = (stock.get('shortable_shares', 0) / 1_000_000)
@@ -529,6 +548,44 @@ async def run_scanner_job(
                 future.result(timeout=60)  # Wait up to 60s for short data
             except Exception as e:
                 log_step(job_id, f"Phase 3 thread error: {str(e)[:50]}", "error")
+
+        # === PHASE 4: REDDIT SENTIMENT (FREE) ===
+        if len(filtered_stocks) > 0:
+            log_step(job_id, f"Phase 4: Getting Reddit sentiment for {min(5, len(filtered_stocks))} stocks...", "running")
+            jobs[job_id]["progress"] = 90
+            jobs[job_id]["message"] = f"Fetching Reddit sentiment..."
+
+            try:
+                from lib.trading.screening.reddit_sentiment import RedditSentimentClient
+
+                async def fetch_reddit_sentiment():
+                    client = RedditSentimentClient()
+                    try:
+                        # Only check top 5 stocks to avoid rate limits
+                        for stock in filtered_stocks[:5]:
+                            sentiment = await client.get_sentiment(stock['symbol'])
+                            stock['reddit_mentions'] = sentiment.get('mentions_24h', 0)
+                            stock['reddit_sentiment'] = sentiment.get('sentiment_score', 0)
+                            stock['reddit_sentiment_label'] = sentiment.get('sentiment_label', 'NEUTRAL')
+
+                            label = stock.get('reddit_sentiment_label', 'N/A')
+                            mentions = stock.get('reddit_mentions', 0)
+                            log_step(job_id, f"  {stock['symbol']}: {mentions} mentions, {label}", "success")
+                    finally:
+                        await client.close()
+
+                # Run async sentiment fetch (asyncio already imported at module level)
+                try:
+                    asyncio.run(fetch_reddit_sentiment())
+                except RuntimeError:
+                    # Event loop already running - use nest_asyncio
+                    loop = asyncio.get_event_loop()
+                    loop.run_until_complete(fetch_reddit_sentiment())
+
+                log_step(job_id, "Phase 4 Reddit sentiment complete", "success")
+
+            except Exception as e:
+                log_step(job_id, f"Phase 4 Reddit error: {str(e)[:50]}", "error")
 
         # === COMPLETE ===
         jobs[job_id]["status"] = "completed"
@@ -659,6 +716,33 @@ async def list_jobs():
         "total_jobs": len(jobs),
         "jobs": [ScanJob(**job) for job in jobs.values()]
     }
+
+
+@router.get("/screening/latest")
+async def get_latest_screening():
+    """
+    Get the most recent completed screening job.
+
+    Used by frontend for initial page load.
+    Returns the latest completed job or 404 if no completed jobs exist.
+    """
+    # Find the most recent completed job
+    completed_jobs = [
+        job for job in jobs.values()
+        if job["status"] == "completed" and job.get("stocks")
+    ]
+
+    if not completed_jobs:
+        # Return empty result instead of 404 so frontend can show "Run Screening"
+        return {
+            "status": "no_data",
+            "message": "No screening results yet. Click 'Run Screening Now' to start.",
+            "stocks": []
+        }
+
+    # Sort by completed_at and return most recent
+    latest = max(completed_jobs, key=lambda x: x.get("completed_at", ""))
+    return ScanJob(**latest)
 
 
 @router.delete("/screening/v2/jobs")
