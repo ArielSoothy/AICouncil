@@ -151,7 +151,7 @@ function calculateMomentumScore(stock: StockData): MomentumScore {
   }
 
   // === RELATIVE VOLUME (1 point) ===
-  if (stock.relative_volume !== undefined && stock.relative_volume > 0) {
+  if (stock.relative_volume != null && stock.relative_volume > 0) {
     maxPossible += 1
     let points = 0
     let threshold = ''
@@ -196,7 +196,7 @@ function calculateSqueezeScore(stock: StockData): SqueezeScore {
   let maxPossible = 0
 
   // === FLOAT (3 points) ===
-  if (stock.float_shares !== undefined && stock.float_shares > 0) {
+  if (stock.float_shares != null && stock.float_shares > 0) {
     maxPossible += 3
     let points = 0
     let threshold = ''
@@ -228,7 +228,7 @@ function calculateSqueezeScore(stock: StockData): SqueezeScore {
   }
 
   // === BORROW FEE (2 points) ===
-  if (stock.borrow_fee_rate !== undefined && stock.borrow_fee_rate >= 0) {
+  if (stock.borrow_fee_rate != null && stock.borrow_fee_rate >= 0) {
     maxPossible += 2
     let points = 0
     let threshold = ''
@@ -257,7 +257,7 @@ function calculateSqueezeScore(stock: StockData): SqueezeScore {
   }
 
   // === SHORT RATIO / DAYS TO COVER (2 points) ===
-  if (stock.short_ratio !== undefined && stock.short_ratio > 0) {
+  if (stock.short_ratio != null && stock.short_ratio > 0) {
     maxPossible += 2
     let points = 0
     let threshold = ''
@@ -284,7 +284,7 @@ function calculateSqueezeScore(stock: StockData): SqueezeScore {
   }
 
   // === SHORTABLE SHARES BONUS (1 point) ===
-  if (stock.shortable_shares !== undefined) {
+  if (stock.shortable_shares != null) {
     maxPossible += 1
     let points = 0
     let threshold = ''
@@ -352,13 +352,13 @@ export function calculateWinnersScore(stock: StockData): WinnersScore {
   // Combine all breakdown items
   const breakdown = [...momentum.breakdown, ...squeeze.breakdown]
 
-  // Track missing data
+  // Track missing data (use == null to check both null and undefined)
   const missingData: string[] = []
-  if (stock.float_shares === undefined) missingData.push('Float')
-  if (stock.borrow_fee_rate === undefined) missingData.push('Borrow Fee')
-  if (stock.short_ratio === undefined) missingData.push('Days to Cover')
-  if (stock.relative_volume === undefined) missingData.push('Relative Volume')
-  if (stock.shortable_shares === undefined) missingData.push('Shortable Shares')
+  if (stock.float_shares == null) missingData.push('Float')
+  if (stock.borrow_fee_rate == null) missingData.push('Borrow Fee')
+  if (stock.short_ratio == null) missingData.push('Days to Cover')
+  if (stock.relative_volume == null) missingData.push('Relative Volume')
+  if (stock.shortable_shares == null) missingData.push('Shortable Shares')
 
   // Combined score (max 10)
   const total = momentum.total + squeeze.total

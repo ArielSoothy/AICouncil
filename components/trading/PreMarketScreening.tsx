@@ -218,11 +218,15 @@ export default function PreMarketScreening() {
     // Squeeze data (from short_data if available)
     shortable_shares: stock.short_data?.shortable_shares,
     borrow_difficulty: stock.short_data?.borrow_difficulty as 'EASY' | 'MEDIUM' | 'HARD' | 'VERY_HARD' | undefined,
+    // Phase 3: Float and short data
+    float_shares: stock.fundamentals?.float_shares,
+    borrow_fee_rate: stock.short_data?.short_fee_rate,
+    // Phase 3: Relative Volume
+    relative_volume: stock.relative_volume,
+    average_volume: stock.avg_volume_20d,
     // Additional context
     market_cap: stock.fundamentals?.market_cap,
     vwap: stock.bars?.vwap,
-    // These are typically missing from scanner - will be added in Phase 3
-    // float_shares, borrow_fee_rate, short_ratio, relative_volume, average_volume
   })
 
   // Get or calculate Winners Score for a stock
