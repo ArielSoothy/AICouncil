@@ -892,40 +892,27 @@ export default function PreMarketScreening() {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Gap % Range (Combined) */}
+          {/* Min Gap % */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-blue-900 dark:text-blue-100">
-              Gap % Range
+            <label className="flex items-center justify-between text-sm font-medium text-blue-900 dark:text-blue-100">
+              <span>Min Gap %</span>
+              <span className="font-bold text-blue-600 dark:text-blue-400">{minGapPercent}%+</span>
             </label>
             <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <label className="text-xs text-gray-600 dark:text-gray-400">Min</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="50"
-                  step="1"
-                  value={minGapPercent}
-                  onChange={(e) => setMinGapPercent(Math.min(Number(e.target.value), maxGapPercent - 1))}
-                  className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                />
-              </div>
-              <span className="text-gray-500 mt-5">-</span>
-              <div className="flex-1">
-                <label className="text-xs text-gray-600 dark:text-gray-400">Max</label>
-                <input
-                  type="number"
-                  min="10"
-                  max="100"
-                  step="5"
-                  value={maxGapPercent}
-                  onChange={(e) => setMaxGapPercent(Math.max(Number(e.target.value), minGapPercent + 1))}
-                  className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                />
-              </div>
+              <span className="text-xs text-gray-600 dark:text-gray-400">5%</span>
+              <input
+                type="range"
+                min="5"
+                max="30"
+                step="1"
+                value={minGapPercent}
+                onChange={(e) => setMinGapPercent(Number(e.target.value))}
+                className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400">30%</span>
             </div>
             <p className="text-xs text-blue-700 dark:text-blue-300 italic">
-              100 = no limit
+              Stocks gapping at least this %
             </p>
           </div>
 
@@ -1028,12 +1015,12 @@ export default function PreMarketScreening() {
               <span className="font-bold text-blue-600 dark:text-blue-400">{(maxFloatShares / 1000000).toFixed(0)}M</span>
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-600 dark:text-gray-400">5M</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">1M</span>
               <input
                 type="range"
-                min="5000000"
+                min="1000000"
                 max="50000000"
-                step="5000000"
+                step="1000000"
                 value={maxFloatShares}
                 onChange={(e) => setMaxFloatShares(Number(e.target.value))}
                 className="flex-1 h-2 bg-blue-200 dark:bg-blue-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
