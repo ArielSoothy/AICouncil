@@ -14,7 +14,8 @@
  * @see /scripts/create-decisions-table.sql for database schema
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { SupabaseClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { DebateSession } from '@/lib/agents/types'
 import {
   Decision,
@@ -41,14 +42,7 @@ export class DecisionService {
   private supabase: SupabaseClient
 
   constructor() {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase environment variables')
-    }
-
-    this.supabase = createClient(supabaseUrl, supabaseKey)
+    this.supabase = getSupabaseAdmin()
   }
 
   // ==========================================================================

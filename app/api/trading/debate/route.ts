@@ -13,6 +13,7 @@ import { getModelDisplayName as getModelName, getProviderForModel as getProvider
 const researchCache = new ResearchCache();
 import { getModelInfo } from '@/lib/models/model-registry';
 import type { TradeDecision } from '@/lib/alpaca/types';
+import { extractJSON } from '@/lib/trading/json-extraction';
 // Model fallback system imports
 import {
   getFallbackModel,
@@ -22,54 +23,6 @@ import {
 } from '@/lib/trading/model-fallback';
 // Deterministic scoring engine imports
 import { calculateTradingScore, formatTradingScoreForPrompt, hashToSeed, type TradingScore } from '@/lib/trading/scoring-engine';
-
-/**
- * Robust JSON extraction from model responses
- * Handles multiple formats: markdown blocks, plain text, truncated responses
- */
-function extractJSON(text: string): string {
-  let cleaned = text.trim();
-
-  // Pattern 1: Remove markdown code blocks
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.slice(3);
-  }
-  if (cleaned.endsWith('```')) {
-    cleaned = cleaned.slice(0, -3);
-  }
-  cleaned = cleaned.trim();
-
-  // Pattern 2: Extract JSON object from surrounding text
-  // Find first { and last }
-  const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
-
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-  }
-
-  // Pattern 3: Try to fix common JSON issues
-  cleaned = cleaned
-    .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
-    .replace(/'/g, '"') // Replace single quotes with double quotes
-    .trim();
-
-  // Pattern 4: If still not valid, try to find complete JSON
-  try {
-    JSON.parse(cleaned);
-    return cleaned;
-  } catch (e) {
-    // Try to extract just the JSON object more aggressively
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) {
-      return match[0];
-    }
-    // If all else fails, return what we have
-    return cleaned;
-  }
-}
 
 // Helper function to get provider name from model ID
 function getProviderName(modelId: string): 'anthropic' | 'openai' | 'google' | 'groq' | 'mistral' | 'perplexity' | 'cohere' | 'xai' {

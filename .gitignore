@@ -38,6 +38,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
 # Python virtual environment (legacy)
 bin/
 lib/python3.9/

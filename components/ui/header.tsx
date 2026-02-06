@@ -64,15 +64,16 @@ export function Header() {
             </Link>
           )}
 
-          {/* Pre-Market Screening - Development only */}
-          {process.env.NODE_ENV === 'development' && (
-            <Link href="/trading/screening">
-              <Button variant="ghost" size="sm" className="text-teal-600 hover:text-teal-700">
-                <ScanLine className="h-4 w-4 mr-2" />
-                Screening
-              </Button>
-            </Link>
-          )}
+          {/* Pre-Market Screening */}
+          <Link href="/trading/screening">
+            <Button variant="ghost" size="sm" className="text-teal-600 hover:text-teal-700">
+              <ScanLine className="h-4 w-4 mr-2" />
+              Screening
+              {process.env.NODE_ENV !== 'development' && (
+                <span className="ml-1 text-[10px] text-teal-500 opacity-70">(FastAPI)</span>
+              )}
+            </Button>
+          </Link>
 
           {/* Arena Mode - Development only */}
           {process.env.NODE_ENV === 'development' && (
@@ -198,15 +199,16 @@ export function Header() {
               </Link>
             )}
 
-            {/* Pre-Market Screening - Development only */}
-            {process.env.NODE_ENV === 'development' && (
-              <Link href="/trading/screening" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button variant="ghost" size="sm" className="w-full justify-start text-teal-600 hover:text-teal-700">
-                  <ScanLine className="h-4 w-4 mr-2" />
-                  Screening
-                </Button>
-              </Link>
-            )}
+            {/* Pre-Market Screening */}
+            <Link href="/trading/screening" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="ghost" size="sm" className="w-full justify-start text-teal-600 hover:text-teal-700">
+                <ScanLine className="h-4 w-4 mr-2" />
+                Screening
+                {process.env.NODE_ENV !== 'development' && (
+                  <span className="ml-1 text-[10px] text-teal-500 opacity-70">(FastAPI)</span>
+                )}
+              </Button>
+            </Link>
 
             {/* Arena Mode - Development only */}
             {process.env.NODE_ENV === 'development' && (

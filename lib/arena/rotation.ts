@@ -12,15 +12,7 @@
  * Day 5: [Claude, GPT-4, Gemini, Llama] (cycle repeats)
  */
 
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client
-function getSupabaseClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export interface RotationRecord {
   id: string;
@@ -56,7 +48,7 @@ export async function getTodayRotation(enabledModels: string[]): Promise<string[
     throw new Error('No models enabled for arena');
   }
 
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
   const today = getTodayDate();
 
   // Check if we already have today's rotation
@@ -134,7 +126,7 @@ export async function getTodayRotation(enabledModels: string[]): Promise<string[
  * @returns Array of rotation records
  */
 export async function getRotationHistory(days: number = 7): Promise<RotationRecord[]> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
     .from('arena_rotation')
@@ -168,7 +160,7 @@ export async function previewNextRotation(enabledModels: string[]): Promise<stri
  * @param newOrder - New model order
  */
 export async function setRotation(date: string, newOrder: string[]): Promise<void> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   // Delete existing rotation for this date
   await supabase

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, Suspense } from 'react'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Header } from '@/components/ui/header'
 import { AgentDebateInterface } from '@/components/agents/debate-interface'
 import { useAuth } from '@/contexts/auth-context'
@@ -69,12 +71,10 @@ function AgentsPageContent() {
 
 export default function AgentsPage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    }>
-      <AgentsPageContent />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<PageSkeleton />}>
+        <AgentsPageContent />
+      </Suspense>
+    </ErrorBoundary>
   )
 }

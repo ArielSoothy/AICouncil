@@ -9,6 +9,7 @@ import { CohereProvider } from '@/lib/ai-providers/cohere';
 import { XAIProvider } from '@/lib/ai-providers/xai';
 import { getModelDisplayName, getProviderForModel as getProviderType } from '@/lib/trading/models-config';
 import type { TradeDecision } from '@/lib/alpaca/types';
+import { extractJSON } from '@/lib/trading/json-extraction';
 
 // Initialize all providers
 const PROVIDERS: Record<string, any> = {
@@ -47,42 +48,6 @@ You MUST call the get_quote tool first before responding. Start by calling get_q
 
 // Ultra-cheap ping test - just verify model exists and responds
 const PING_PROMPT = `Reply with exactly one word: OK`;
-
-/**
- * Extract JSON from model response (same as consensus route)
- */
-function extractJSON(text: string): string {
-  let cleaned = text.trim();
-
-  // Pattern 1: Remove markdown code blocks
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.slice(3);
-  }
-  if (cleaned.endsWith('```')) {
-    cleaned = cleaned.slice(0, -3);
-  }
-  cleaned = cleaned.trim();
-
-  // Pattern 2: Extract JSON object from surrounding text
-  const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
-
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-  }
-
-  // Pattern 3: Try to fix common JSON issues
-  cleaned = cleaned
-    .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
-    // NOTE: Do NOT replace all single quotes with double quotes!
-    // This breaks apostrophes in text like "AAPL's" → "AAPL"s"
-    // Only replace single quotes used as JSON string delimiters (rare)
-    .trim();
-
-  return cleaned;
-}
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();

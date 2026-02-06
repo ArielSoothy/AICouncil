@@ -17,9 +17,10 @@
  * Cache Key: symbol + timeframe (e.g., "TSLA-swing")
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { TradingTimeframe } from '@/components/trading/timeframe-selector';
 import { ResearchReport } from '@/lib/agents/research-agents';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 /**
  * TTL durations in milliseconds based on trading timeframe
@@ -73,21 +74,7 @@ export class ResearchCache {
   private supabase: SupabaseClient;
 
   constructor() {
-    // Use service role key for server-side operations
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error(
-        'Missing Supabase credentials: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY'
-      );
-    }
-
-    this.supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        persistSession: false, // Server-side, no session needed
-      },
-    });
+    this.supabase = getSupabaseAdmin();
   }
 
   /**

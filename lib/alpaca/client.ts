@@ -1,6 +1,6 @@
 import Alpaca from '@alpacahq/alpaca-trade-api';
 import type { AlpacaAccount, AlpacaOrder, OrderSide, BracketOrderResult } from './types';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 /**
  * Validate that required Alpaca environment variables are set
@@ -319,11 +319,7 @@ export async function saveTrade(
   userId?: string
 ) {
   try {
-    // Use direct Supabase client for script compatibility
-    const supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = getSupabaseAdmin();
 
     console.log('Attempting to save:', { mode, symbol, action, quantity, price, confidence, userId });
 

@@ -10,6 +10,7 @@ import type { PresetTier } from '@/lib/config/model-presets';
 import { getModelDisplayName, getProviderForModel as getProviderType } from '@/lib/trading/models-config';
 import { getModelInfo } from '@/lib/models/model-registry';
 import type { TradeDecision } from '@/lib/alpaca/types';
+import { extractJSON } from '@/lib/trading/json-extraction';
 import { generateTradingJudgePrompt, parseTradingJudgeResponse } from '@/lib/trading/judge-system';
 // Deterministic scoring engine imports
 import { fetchSharedTradingData } from '@/lib/alpaca/data-coordinator';
@@ -20,56 +21,6 @@ import { calculateTradingScore, formatTradingScoreForPrompt, hashToSeed, type Tr
 
 // Initialize research cache
 const researchCache = new ResearchCache();
-
-/**
- * Robust JSON extraction from model responses
- * Handles multiple formats: markdown blocks, plain text, truncated responses
- * SIMPLIFIED: Uses same working approach as Individual/Debate modes
- */
-function extractJSON(text: string): string {
-  let cleaned = text.trim();
-
-  // Pattern 1: Remove markdown code blocks
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.slice(3);
-  }
-  if (cleaned.endsWith('```')) {
-    cleaned = cleaned.slice(0, -3);
-  }
-  cleaned = cleaned.trim();
-
-  // Pattern 2: Extract JSON object from surrounding text
-  // SIMPLE: Find first { and last } (works for nested objects!)
-  const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
-
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-  }
-
-  // Pattern 3: Try to fix common JSON issues
-  cleaned = cleaned
-    .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
-    // NOTE: Do NOT replace all single quotes with double quotes!
-    // This breaks apostrophes in text like "AAPL's" → "AAPL"s"
-    .trim();
-
-  // Pattern 4: If still not valid, try to find complete JSON
-  try {
-    JSON.parse(cleaned);
-    return cleaned;
-  } catch (e) {
-    // Try to extract just the JSON object more aggressively
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) {
-      return match[0];
-    }
-    // If all else fails, return what we have
-    return cleaned;
-  }
-}
 
 /**
  * Format research report into comprehensive prompt section for decision models

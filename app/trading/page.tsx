@@ -1,6 +1,8 @@
 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Header } from '@/components/ui/header'
 import { useAuth } from '@/contexts/auth-context'
 import { useSearchParams } from 'next/navigation'
@@ -175,8 +177,10 @@ function TradingPageContent() {
 
 export default function TradingPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <TradingPageContent />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<PageSkeleton />}>
+        <TradingPageContent />
+      </Suspense>
+    </ErrorBoundary>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { Header } from '@/components/ui/header'
 import { Button } from '@/components/ui/button'
 import {
@@ -594,6 +595,7 @@ export default function ArenaModePage() {
   }
 
   return (
+    <ErrorBoundary>
     <div>
       <Header />
       <div className="container mx-auto px-4 py-8">
@@ -1415,5 +1417,6 @@ export default function ArenaModePage() {
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   )
 }

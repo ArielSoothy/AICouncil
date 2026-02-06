@@ -6,15 +6,7 @@
  * the position is closed.
  */
 
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client
-function getSupabaseClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export interface StockLock {
   id: string;
@@ -30,7 +22,7 @@ export interface StockLock {
  * @returns Array of locked stock symbols
  */
 export async function getLockedStocks(): Promise<string[]> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
     .from('arena_stock_locks')
@@ -52,7 +44,7 @@ export async function getLockedStocks(): Promise<string[]> {
  * @returns Array of StockLock objects
  */
 export async function getActiveLocks(): Promise<StockLock[]> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
     .from('arena_stock_locks')
@@ -79,7 +71,7 @@ export async function lockStock(
   symbol: string,
   tradeId: string
 ): Promise<void> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   // First check if stock is already locked
   const locked = await isStockLocked(symbol);
@@ -109,7 +101,7 @@ export async function lockStock(
  * @param symbol - Stock symbol to unlock
  */
 export async function unlockStock(symbol: string): Promise<void> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   const { error } = await supabase
     .from('arena_stock_locks')
@@ -131,7 +123,7 @@ export async function unlockStock(symbol: string): Promise<void> {
  * @returns True if stock is locked
  */
 export async function isStockLocked(symbol: string): Promise<boolean> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
     .from('arena_stock_locks')
@@ -155,7 +147,7 @@ export async function isStockLocked(symbol: string): Promise<boolean> {
  * @returns Stock symbol or null if model has no locked stock
  */
 export async function getModelStock(modelId: string): Promise<string | null> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
     .from('arena_stock_locks')
@@ -178,7 +170,7 @@ export async function getModelStock(modelId: string): Promise<string | null> {
  * @returns Model ID or null if stock is not locked
  */
 export async function getStockOwner(symbol: string): Promise<string | null> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
     .from('arena_stock_locks')
@@ -201,7 +193,7 @@ export async function getStockOwner(symbol: string): Promise<string | null> {
  * @param modelId - Model ID to unlock all stocks for
  */
 export async function unlockAllModelStocks(modelId: string): Promise<void> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   const { error } = await supabase
     .from('arena_stock_locks')
@@ -222,7 +214,7 @@ export async function unlockAllModelStocks(modelId: string): Promise<void> {
  * Used during system reset or end of day
  */
 export async function unlockAllStocks(): Promise<void> {
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdmin();
 
   const { error } = await supabase
     .from('arena_stock_locks')

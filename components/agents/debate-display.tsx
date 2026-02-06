@@ -28,37 +28,18 @@ import { ComparisonDisplay } from '@/components/consensus/comparison-display'
 import { ThreeWayComparison } from '@/components/consensus/three-way-comparison'
 import { AgentAvatar, CollapsibleMessageCard } from '@/components/shared'
 import { DebateHeader, CostBreakdown, InsightsTab, SynthesisTab, RoundTab } from '@/components/debate'
+import { estimateModelCallCost } from '@/lib/models/model-registry'
 // Removed DisagreementInsights - using simple indicators instead
 
-// Model cost calculation helper
+// Model cost calculation helper (uses centralized MODEL_COSTS_PER_1K from model-registry)
 const calculateMessageCost = (message: AgentMessage): number => {
-  const MODEL_COSTS: Record<string, { input: number, output: number }> = {
-    'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
-    'gpt-4': { input: 0.03, output: 0.06 },
-    'gpt-4o': { input: 0.01, output: 0.03 },
-    'claude-opus-4-1-20250514': { input: 0.015, output: 0.075 },
-    'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },
-    'gemini-2.5-flash': { input: 0, output: 0 }, // Free
-    'gemini-2.0-flash-exp': { input: 0, output: 0 }, // Free
-    'llama-3.3-70b-versatile': { input: 0, output: 0 }, // Free
-    'llama-3.1-8b-instant': { input: 0, output: 0 }, // Free
-  }
-  
-  const costs = MODEL_COSTS[message.model] || { input: 0.001, output: 0.003 }
-  // Rough estimate: 70% input, 30% output of total tokens
-  const inputTokens = message.tokensUsed * 0.7
-  const outputTokens = message.tokensUsed * 0.3
-  return (inputTokens / 1000 * costs.input) + (outputTokens / 1000 * costs.output)
+  return estimateModelCallCost(message.model, message.tokensUsed)
 }
 
 // Synthesis cost calculation (typically uses llama-3.3-70b-versatile which is free)
 const calculateSynthesisCost = (tokens: number): number => {
-  // Most synthesis uses free models like llama-3.3-70b-versatile or gemini
-  // But fallback might use paid models
-  const costs = { input: 0.001, output: 0.003 } // Conservative fallback estimate
-  const inputTokens = tokens * 0.7
-  const outputTokens = tokens * 0.3
-  return (inputTokens / 1000 * costs.input) + (outputTokens / 1000 * costs.output)
+  // Default to conservative fallback estimate for synthesis (model unknown at call site)
+  return estimateModelCallCost('llama-3.3-70b-versatile', tokens)
 }
 
 interface DebateDisplayProps {

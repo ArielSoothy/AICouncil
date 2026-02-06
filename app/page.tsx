@@ -4,6 +4,8 @@ import { QueryInterface } from '@/components/consensus/query-interface'
 import { Header } from '@/components/ui/header'
 import { BRANDING } from '@/lib/config/branding'
 import { Suspense } from 'react'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { MessageSquare, Users, CheckCircle2 } from 'lucide-react'
 
 function HomePageContent() {
@@ -50,12 +52,10 @@ function HomePageContent() {
 
 export default function HomePage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    }>
-      <HomePageContent />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<PageSkeleton />}>
+        <HomePageContent />
+      </Suspense>
+    </ErrorBoundary>
   )
 }

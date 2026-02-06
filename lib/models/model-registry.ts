@@ -641,6 +641,20 @@ export function isSubscriptionModel(modelId: string): boolean {
 }
 
 /**
+ * Estimate the cost of a model call given a token count.
+ * Splits tokens into ~70% input / 30% output (rough heuristic for debate messages).
+ * Falls back to a conservative default if the model is not in MODEL_COSTS_PER_1K.
+ */
+export function estimateModelCallCost(modelId: string, totalTokens: number): number {
+  const costs = MODEL_COSTS_PER_1K[modelId]
+  const input = costs?.input ?? 0.001
+  const output = costs?.output ?? 0.003
+  const inputTokens = totalTokens * 0.7
+  const outputTokens = totalTokens * 0.3
+  return (inputTokens / 1000 * input) + (outputTokens / 1000 * output)
+}
+
+/**
  * Get exact token costs for a model (per 1K tokens)
  * Returns { input, output, total } in USD
  */
