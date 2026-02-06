@@ -656,75 +656,145 @@ Cache expiration based on trading timeframe:
 ```
 Continue Verdict AI development work.
 
-Previous session: ✅ COMPLETED - Research Caching System (Phase 2C) - PRODUCTION READY & VALIDATED
-Next priority: 🎯 Monitor cache performance for 1 week, then decide Phase 2D or Phase 3
+Previous session (Feb 3, 2026): ✅ Stock Screening documentation added to CLAUDE.md + DOCUMENTATION_MAP.md
+Next priority: 🔴 Run RLS fix SQL on Supabase (paper_trades table)
 
 MANDATORY START: Read CLAUDE.md → DOCUMENTATION_MAP.md → docs/workflow/WORKFLOW.md → docs/workflow/PRIORITIES.md → docs/workflow/FEATURES.md
 
-RESEARCH CACHING SYSTEM - PHASE 2C COMPLETE (October 30, 2025):
-✅ Database schema deployed to Supabase (SHARED: local dev + production)
-✅ ResearchCache service class complete (380 lines)
-✅ Integrated with Consensus Mode API
-⚠️ DO NOT RUN SQL SCRIPT AGAIN - table already exists in Supabase
-✅ Browser validated: Cache hit working (AAPL-swing test)
-✅ Performance verified: 96% faster (52.8s → 2s), 100% cost savings on hit
-✅ TTL strategy working: 15min-24hr based on timeframe
-✅ Access tracking: Monitoring cache hits, age, expiration
-✅ Documentation complete: FEATURES.md + TRADING_ENHANCEMENTS.md + Testing guide
-✅ TypeScript: 0 errors
+PENDING ACTION - RLS FIX FOR paper_trades TABLE:
+⚠️ Supabase lint warning: RLS disabled on public.paper_trades
+📄 SQL fix ready at: scripts/enable-paper-trades-rls.sql
+🔗 Run in Supabase SQL Editor: https://supabase.com/dashboard/project/dslmwsdbkaciwljnxxjt/sql/new
+✅ Won't break anything - backend uses service_role_key (bypasses RLS)
 
-CACHE VALIDATION TEST RESULTS:
-- Cache hit: AAPL-swing (age: 4min, expires in: 56min, access: 2)
-- Saved: 17-40 API calls per cached query
-- Cost: $0 on cache hit vs $0.003 fresh research
-- Response time: <2s vs 52.8s original (96% improvement)
+STOCK SCREENING SYSTEM (Pre-Market Scanner):
+📍 URL: http://localhost:3000/trading/screening
+📍 Requires TWO servers running:
+   1. npm run dev (Next.js on port 3000)
+   2. uvicorn api.main:app --reload --port 8000 (FastAPI)
+📍 Also requires: TWS Desktop running on port 7496
+📍 Full docs: See "Stock Screening System" section in CLAUDE.md
+✅ All 10 phases complete - Production ready (January 2026)
 
-PAPER TRADING PHASE 2 - 100% COMPLETE & PRODUCTION READY (October 24, 2025):
-✅ All 12 Steps Validated: Browser tested + TypeScript clean (0 errors)
-✅ Individual Mode: 8 models queried, professional Bull/Bear/Technical/Fundamental analysis
-✅ Consensus Mode: Judge system working ("4/6 models recommend BUY NVDA"), Progress UI
-✅ Debate Mode: Badge-based role selector (Analyst/Critic/Synthesizer) with Free/Pro/Max presets
-✅ Portfolio Display: Real-time Alpaca account data ($100k+ portfolio, 2 positions, P&L tracking)
-✅ Trade History: Past trades with expandable reasoning
-✅ Progress Indicators: Real-time step-by-step visual feedback (Phase 2A.7)
-✅ Stock Symbol Input: Optional targeted analysis (TSLA, AAPL, etc.) - Phase 2A.5
-✅ Timeframe Selector: 4 professional timeframes (Day/Swing/Position/Long-term) - Phase 2A
-✅ Badge-Based Model Selector: Matching Ultra Mode UI across all modes - Phase 2A.6
-✅ Judge System: Heuristic model-weighted consensus with intelligent synthesis - Phase 2A.9
-✅ 46 Models: 1,050% increase from 4 models (8 providers: Anthropic, OpenAI, Google, Groq, xAI, Mistral, Perplexity, Cohere)
-✅ Start New Analysis Button: Reset functionality across all modes (October 24, 2025)
+TRADING SYSTEM STATUS:
+✅ Paper Trading Phase 2: 100% complete (Individual/Consensus/Debate modes)
+✅ Research Caching (Phase 2C): Production ready
+✅ Stock Screening (Phases 1-10): Production ready
+⚠️ paper_trades RLS: Disabled (security warning, fix ready)
 
-PHASE 2A ENHANCEMENTS ALSO COMPLETE:
-✅ Free/Pro/Max preset buttons for instant model tier selection
-✅ Cross-provider model selection in Debate Mode (any model for any role)
-✅ Trading history persistence with localStorage restoration
-✅ Enhanced prompts with Risk:Reward ratios, stop-loss, take-profit levels
-✅ Professional reasoning format (Bullish/Bearish cases, Technical, Fundamental, Sentiment, Timing)
-
-DOCUMENTATION UPDATES (This Session):
-✅ PRIORITIES.md: Updated Phase 2 from "⏳ pending" to "✅ 100% COMPLETE"
-✅ FEATURES.md: Already shows 100% complete (no changes needed)
-✅ TypeScript: 0 errors validation passed
-
-CURRENT BRANCH: feature/paper-trading-phase2 (ready for merge to main)
-
-PHASE 3 PRIORITIES (FROM PRIORITIES.md):
-1. ⏳ Timeframe Selector Component (create reusable component)
-2. ⏳ Arena Mode - Competitive AI Trading (leaderboard, autonomous scheduler)
-3. ⏳ Auto-Execution Controls & Safety Rails (position limits, daily loss limits, emergency stop)
-4. 🔴 URGENT: Investigate Sonnet 4.5 Internet Access Issue on Ultra Mode
-
-ALTERNATIVE OPTIONS:
-- Start Phase 3 enhancements (Arena Mode, Safety Rails)
-- Fix Sonnet 4.5 internet access issue (URGENT)
-- Launch to AI course colleagues for feedback
-- Merge Phase 2 to main and deploy
+WHAT'S WORKING:
+- /trading - AI trading analysis (3 modes)
+- /trading/screening - Pre-market stock scanner (requires FastAPI + TWS)
+- /ultra - Multi-model consensus
+- /arena - AI model competition
 
 Follow structured workflow: Work → Test → Document → Ask approval → Push → New prompt
-Key Focus: Phase 2 is PRODUCTION READY - User can decide: Phase 3 or Launch
-
-IMPORTANT: All 3 trading modes tested and working. System ready for real user testing or Phase 3 development.
 ```
+
+## 📈 STOCK SCREENING SYSTEM (Pre-Market Scanner)
+
+**Status**: ✅ PRODUCTION READY (January 2026, Phases 1-10 Complete)
+**URL**: http://localhost:3000/trading/screening
+**Purpose**: Pre-market stock screening (4:00 AM - 9:30 AM ET) to find gap-up opportunities, short squeeze candidates, and volatile stocks using IBKR TWS API + sentiment analysis.
+
+### Architecture: Dual-Server (Next.js + FastAPI + TWS)
+
+```
+Next.js Frontend (port 3000)
+    ↓ fetches from
+FastAPI Python Backend (port 8000)
+    ↓ reads from
+Supabase PostgreSQL (screening_results table, JSONB)
+    ↑ written by
+Screening Orchestrator (Python) → TWS Desktop (port 7496)
+```
+
+**Why dual-server**: FastAPI + ib_insync have conflicting asyncio event loops. Database-backed separation (Gemini AI recommended) gives <100ms API reads vs 20-30s direct calls.
+
+### How to Start (3 services needed)
+
+```bash
+# Terminal 1: Next.js Frontend
+npm run dev
+# → http://localhost:3000/trading/screening
+
+# Terminal 2: FastAPI Backend
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+# → http://localhost:8000/docs (Swagger UI)
+
+# Terminal 3 (if running fresh screening):
+source venv/bin/activate  # Python venv required
+python -m lib.trading.screening.screening_orchestrator
+# → Connects to TWS, scans stocks, writes to Supabase
+```
+
+### Prerequisites
+
+| Requirement | Details |
+|-------------|---------|
+| **TWS Desktop** | Running on port 7496 (paper) or 4001 (live), API enabled in Global Configuration |
+| **Python venv** | `source venv/bin/activate` + `pip install -r requirements.txt` |
+| **Supabase** | `screening_results` table with JSONB (already deployed) |
+| **Finnhub** (optional) | `FINNHUB_API_KEY` in `.env.local` for Reddit/Twitter sentiment |
+
+### Environment Variable
+
+`NEXT_PUBLIC_FASTAPI_URL` is NOT set in `.env.local` — component defaults to `http://localhost:8000` (matching `api/main.py`).
+
+### Key Files
+
+**Python Backend:**
+| File | Purpose |
+|------|---------|
+| `api/main.py` | FastAPI server entry (CORS for port 3000) |
+| `api/routes/screening_v2.py` | V2 endpoints: background job screening with status polling |
+| `lib/trading/screening/simple_orchestrator.py` | Main pipeline: TWS data + scoring |
+| `lib/trading/screening/tws_scanner_sync.py` | TWS scanner client |
+| `lib/trading/screening/tws_fundamentals.py` | P/E, EPS, Market Cap from TWS XML |
+| `lib/trading/screening/tws_short_data.py` | Shortable shares, fee rates |
+| `lib/trading/screening/tws_bars.py` | Pre-market gap calculation + volume |
+| `lib/trading/screening/reddit_sentiment.py` | Reddit sentiment scoring |
+
+**Frontend:**
+| File | Purpose |
+|------|---------|
+| `app/trading/screening/page.tsx` | Page route |
+| `components/trading/PreMarketScreening.tsx` | Main UI (stats dashboard, stock cards, auto-refresh) |
+
+**Database:**
+| Table | Purpose |
+|-------|---------|
+| `screening_results` | JSONB array of enriched stock objects (gap %, volume, short data, sentiment, score) |
+| `paper_trades` | Trade history (⚠️ RLS not yet enabled — run `scripts/enable-paper-trades-rls.sql`) |
+
+### API Endpoints (FastAPI on :8000)
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/health` | Health check + DB status |
+| GET | `/api/screening/v2/run?params` | Start background screening job |
+| GET | `/api/screening/v2/status/{jobId}` | Poll job status |
+| GET | `/api/screening/latest` | Latest results from DB |
+
+### Scoring System (Winners Strategy, 0-100)
+
+Gap magnitude (30pts) + Volume (20pts) + Short squeeze potential (20pts) + Fundamentals (15pts) + Sentiment (15pts)
+
+### Known Issues
+
+1. **TWS session expires ~24h** — requires re-login in TWS Desktop
+2. **Finnhub rate limit** — 60 calls/min on free tier (handled with delays)
+3. **No `NEXT_PUBLIC_FASTAPI_URL` in .env.local** — relies on hardcoded default `localhost:8000`
+4. **`paper_trades` RLS disabled** — Supabase lint warning, fix SQL ready at `scripts/enable-paper-trades-rls.sql`
+
+### Documentation
+
+- `docs/trading/SCREENING_INTEGRATION.md` — Full integration guide
+- `docs/trading/DATABASE_BACKED_ARCHITECTURE.md` — Architecture rationale
+- `docs/trading/TWS_API_MIGRATION_PLAN.md` — 10-phase migration plan
+- `docs/trading/PRE_MARKET_SCREENING_IMPLEMENTATION_STATUS.md` — Phase status
+
+---
 
 ## 🌐 CRITICAL: Playwright Browser Management
 **ALWAYS FOLLOW PROPER BROWSER WORKFLOW TO AVOID "browser already in use" ERRORS:**

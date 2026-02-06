@@ -192,6 +192,11 @@ System design, tech stack, and configuration:
 | **TRADING_DATA_TAXONOMY.md** | Data classification & categories | Data modeling work |
 | **TRADING_TOOL_USE_STRATEGY.md** | Tool calling patterns | Optimizing research agents |
 | **RESEARCH_CACHE_TESTING.md** | Cache system testing guide | Debugging cache issues |
+| **SCREENING_INTEGRATION.md** | Full screening integration guide (Phase 9) | Stock scanner work |
+| **DATABASE_BACKED_ARCHITECTURE.md** | Why dual-server (event loop fix) | Understanding scanner architecture |
+| **TWS_API_MIGRATION_PLAN.md** | 10-phase TWS migration (Phases 1-10 complete) | Scanner history/context |
+| **PRE_MARKET_SCREENING_IMPLEMENTATION_STATUS.md** | Phase status + timeline | Checking scanner progress |
+| **IBKR_DATA_AVAILABILITY.md** | What data IBKR TWS provides | Understanding data sources |
 
 **Path**: `/docs/trading/`
 
@@ -199,7 +204,14 @@ System design, tech stack, and configuration:
 - **Yahoo Finance**: Quotes, bars, news, fundamentals (FREE)
 - **SEC EDGAR**: 10-K, 10-Q, filings, ratios (FREE)
 - **Alpaca**: Broker data, positions, orders (FREE paper trading)
-- **IBKR**: Full real-time data (optional)
+- **IBKR TWS**: Full real-time data, scanner, fundamentals, short data, ratios (requires TWS Desktop on port 7496)
+
+### Stock Screening System (Pre-Market Scanner)
+- **Frontend**: `http://localhost:3000/trading/screening` (Next.js)
+- **Backend**: `http://localhost:8000` (FastAPI Python — separate server required)
+- **Data**: TWS Desktop (port 7496) → Python orchestrator → Supabase → FastAPI → Frontend
+- **Start**: `npm run dev` + `uvicorn api.main:app --reload --port 8000`
+- **See CLAUDE.md**: Full "Stock Screening System" section with all details
 
 ---
 
