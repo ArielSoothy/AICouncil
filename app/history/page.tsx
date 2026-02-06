@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { SavedConversation } from '@/lib/types/conversation'
+import { SavedConversation, TradingConversationResponses } from '@/lib/types/conversation'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -59,7 +59,7 @@ function formatRelativeTime(date: Date): string {
 // Detect conversation mode from query or responses
 function detectMode(conversation: SavedConversation): string {
   // Try to detect from URL or responses structure
-  const responses = conversation.responses as any
+  const responses = conversation.responses as TradingConversationResponses
 
   if (responses?.rounds) return 'Agent Debate'
   if (responses?.models && responses.models.length > 5) return 'Ultra Mode'
@@ -70,7 +70,7 @@ function detectMode(conversation: SavedConversation): string {
 
 // Get model count
 function getModelCount(conversation: SavedConversation): number {
-  const responses = conversation.responses as any
+  const responses = conversation.responses as TradingConversationResponses
 
   if (responses?.models && Array.isArray(responses.models)) {
     return responses.models.length
@@ -78,11 +78,11 @@ function getModelCount(conversation: SavedConversation): number {
 
   if (responses?.rounds && Array.isArray(responses.rounds)) {
     // For agent debate, count unique agents
-    const agents = new Set()
-    responses.rounds.forEach((round: any) => {
+    const agents = new Set<string>()
+    responses.rounds.forEach((round) => {
       if (round.messages) {
-        round.messages.forEach((msg: any) => {
-          if (msg.agent?.name) agents.add(msg.agent.name)
+        round.messages.forEach((msg) => {
+          if (msg.agentId) agents.add(msg.agentId)
         })
       }
     })

@@ -47,8 +47,10 @@ export interface ConsensusResult {
   estimatedCost?: number; // Cost estimation in USD
 }
 
+export type ModelProvider = '' | 'openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'perplexity' | 'mistral' | 'cohere';
+
 export interface ModelConfig {
-  provider: '' | 'openai' | 'anthropic' | 'google' | 'groq' | 'xai' | 'perplexity' | 'mistral' | 'cohere';
+  provider: ModelProvider;
   model: string;
   enabled: boolean;
   temperature?: number;

@@ -6,14 +6,53 @@
 import { EnhancedConsensusResponse } from '@/types/consensus'
 
 /**
+ * Evaluation data JSONB field from Supabase
+ */
+export interface ConversationEvaluationData {
+  metadata?: ConversationMetadata
+  target_symbol?: string
+  timeframe?: string
+  [key: string]: unknown
+}
+
+export interface ConversationMetadata {
+  timeframe?: string
+  targetSymbol?: string
+  selectedModels?: string[]
+  analystModel?: string
+  criticModel?: string
+  synthesizerModel?: string
+  [key: string]: unknown
+}
+
+/**
+ * Trading conversation responses shape (consensus/individual/debate modes).
+ * Uses loose typing since this comes from JSONB in Supabase.
+ * Callers should narrow types at the point of use.
+ */
+export interface TradingConversationResponses {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  consensus?: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  decisions?: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context?: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  debate?: any
+  models?: { model: string; [key: string]: unknown }[]
+  rounds?: { messages?: { agentId?: string }[] }[]
+  [key: string]: unknown
+}
+
+/**
  * Saved conversation structure from Supabase database
  */
 export interface SavedConversation {
   id: string
   user_id: string | null
   query: string
-  responses: EnhancedConsensusResponse | unknown // Can be consensus or debate response
-  evaluation_data?: any // JSONB field for metadata (mode, timeframe, etc.)
+  responses: EnhancedConsensusResponse | TradingConversationResponses | unknown
+  evaluation_data?: ConversationEvaluationData
   is_guest_mode: boolean
   created_at: string
   updated_at?: string

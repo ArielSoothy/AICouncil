@@ -1,459 +1,48 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Loader2, TrendingUp, TrendingDown, Minus, Users, CheckCircle, AlertCircle, XCircle, RotateCcw, ShoppingCart } from 'lucide-react'
-import { ReasoningStream, createReasoningStep, type ReasoningStep } from './reasoning-stream'
-import { getModelDisplayName, TRADING_MODELS } from '@/lib/trading/models-config'
+import { Loader2, Users } from 'lucide-react'
 import { TradingModelSelector } from './trading-model-selector'
-import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
+import { TimeframeSelector } from './timeframe-selector'
 import { TradingHistoryDropdown } from './trading-history-dropdown'
-import { ResearchActivityPanel } from './research-activity-panel' // Phase 4: Research transparency (static)
-import { ResearchProgressPanel, ResearchProgressPanelHandle } from './research-progress-panel' // Feature #51: Real-time streaming
-import { TradeCard, extractTradeRecommendation, type TradeRecommendation } from './trade-card'
-import { InputModeSelector, type InputMode } from './input-mode-selector'
-import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
-import { ModelConfig } from '@/types/consensus'
-import { useTradingPreset } from '@/contexts/trading-preset-context'
-import { getModelsForPreset } from '@/lib/config/model-presets'
-import { useCostTrackerOptional } from '@/contexts/cost-tracker-context'
-import { getProviderForModel } from '@/lib/trading/models-config'
-import { ProviderBadge } from '@/components/shared/model-badge'
-
-interface ReasoningDetails {
-  bullishCase?: string
-  bearishCase?: string
-  technicalAnalysis?: string
-  fundamentalAnalysis?: string
-  sentiment?: string
-  timing?: string
-}
-
-interface TradingDecision {
-  action: 'BUY' | 'SELL' | 'HOLD'
-  symbol?: string
-  quantity?: number
-  reasoning: string | ReasoningDetails
-  confidence: number
-  model?: string
-  // Tool usage tracking (Hybrid Research Mode)
-  toolsUsed?: boolean
-  toolCallCount?: number
-  toolNames?: string[]
-  // Provider billing proof (CLI = subscription, API = per-call)
-  providerType?: 'CLI' | 'API'
-}
-
-interface ConsensusResult {
-  action: 'BUY' | 'SELL' | 'HOLD'
-  symbol?: string
-  quantity?: number
-  reasoning: string | ReasoningDetails
-  confidence: number
-  agreement: number
-  agreementText: string
-  summary: string
-  disagreements: string[]
-  votes: {
-    BUY: number
-    SELL: number
-    HOLD: number
-  }
-  modelCount: number
-}
+import { ResearchActivityPanel } from './research-activity-panel'
+import { ResearchProgressPanel, type ResearchProgressPanelHandle } from './research-progress-panel'
+import { InputModeSelector } from './input-mode-selector'
+import { useConsensusAnalysis } from './consensus/use-consensus-analysis'
+import { ConsensusResults } from './consensus/consensus-results'
+import {
+  FallbackNotifications,
+  ResearchActivitySummary,
+  IndividualDecisions,
+  PortfolioAnalysisResults,
+} from './consensus/research-panel'
 
 export function ConsensusMode() {
-  const { globalTier, researchModel } = useTradingPreset()
-  const costTracker = useCostTrackerOptional()
-  const [selectedModels, setSelectedModels] = useState<ModelConfig[]>(() => getModelsForPreset('pro'))
-  const [timeframe, setTimeframe] = useState<TradingTimeframe>('swing')
-  const [targetSymbol, setTargetSymbol] = useState<string>('')
-  const [loading, setLoading] = useState(false)
-  const [consensus, setConsensus] = useState<ConsensusResult | null>(null)
-  const [decisions, setDecisions] = useState<TradingDecision[]>([])
-  const [progressSteps, setProgressSteps] = useState<ReasoningStep[]>([])
-  const [researchData, setResearchData] = useState<any | null>(null) // Phase 4: Research pipeline data
-  const [tradeRecommendation, setTradeRecommendation] = useState<TradeRecommendation | null>(null)
-  const [brokerEnv, setBrokerEnv] = useState<'live' | 'paper'>('paper')
-  const [showTradeCard, setShowTradeCard] = useState(true)
-  const [inputMode, setInputMode] = useState<InputMode>('research')
-  const [portfolioAnalysis, setPortfolioAnalysis] = useState<any | null>(null)
-
-  // Feature #51: Real-time research progress streaming
-  const progressPanelRef = useRef<ResearchProgressPanelHandle>(null)
-  const [isStreaming, setIsStreaming] = useState(false)
-
-  // Fallback tracking - shows when models fail and alternatives are used
-  const [fallbackMessages, setFallbackMessages] = useState<Array<{
-    from: string
-    to: string
-    reason: string
-    category: string
-  }>>([])
-
-  // Persistence for saving/restoring trading analyses
-  const { saveConversation, isRestoring } = useConversationPersistence({
-    storageKey: 'trading-consensus-mode',
-    onRestored: (conversation) => {
-      console.log('Restoring Consensus Mode analysis:', conversation)
-
-      // Check if this is a local (guest) ID
-      if (conversation.id.startsWith('local-')) {
-        // Restore from localStorage for guest users
-        const localData = localStorage.getItem(`trading-consensus-${conversation.id}`)
-        if (localData) {
-          const parsed = JSON.parse(localData)
-          if (parsed.consensus) {
-            setConsensus(parsed.consensus)
-          }
-          if (parsed.decisions) {
-            setDecisions(parsed.decisions)
-          }
-          if (parsed.metadata) {
-            const meta = parsed.metadata
-            if (meta.timeframe) setTimeframe(meta.timeframe)
-            if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
-            if (meta.selectedModels) {
-              const presetModels = getModelsForPreset(globalTier)
-              const restoredModels = presetModels.map(m => ({
-                ...m,
-                enabled: meta.selectedModels.includes(m.model)
-              }))
-              setSelectedModels(restoredModels)
-            }
-          }
-        }
-      } else {
-        // Restore from database for authenticated users
-        const responses = conversation.responses as any
-        const evalData = conversation.evaluation_data as any
-
-        if (responses.consensus) {
-          setConsensus(responses.consensus)
-        }
-        if (responses.decisions) {
-          setDecisions(responses.decisions)
-        }
-        if (evalData?.metadata) {
-          const meta = evalData.metadata
-          if (meta.timeframe) setTimeframe(meta.timeframe)
-          if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
-          if (meta.selectedModels) {
-            const presetModels = getModelsForPreset(globalTier)
-            const restoredModels = presetModels.map(m => ({
-              ...m,
-              enabled: meta.selectedModels.includes(m.model)
-            }))
-            setSelectedModels(restoredModels)
-          }
-        }
-      }
-    }
-  })
-
-  // Auto-apply global preset when it changes
-  useEffect(() => {
-    const presetModels = getModelsForPreset(globalTier)
-    setSelectedModels(presetModels)
-  }, [globalTier])
-
-  // Fetch broker environment on mount
-  useEffect(() => {
-    fetch('/api/trading/portfolio')
-      .then(res => res.json())
-      .then(data => {
-        setBrokerEnv(data.broker?.environment || 'paper')
-      })
-      .catch(() => setBrokerEnv('paper'))
-  }, [])
-
-  // Execute trade via API
-  const handleExecuteTrade = async (symbol: string, action: 'buy' | 'sell', quantity: number) => {
-    const response = await fetch('/api/trading/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ symbol, action, quantity })
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'Failed to execute trade')
-    }
-
-    return response.json()
-  }
-
-  // Reset/clear results and start new analysis
-  const handleStartNew = () => {
-    setConsensus(null)
-    setDecisions([])
-    setProgressSteps([])
-    setTradeRecommendation(null)
-    setShowTradeCard(true)
-    // Remove URL parameter
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      url.searchParams.delete('c')
-      window.history.replaceState({}, '', url.pathname + url.search)
-    }
-  }
-
-  // Portfolio Analysis - uses dedicated API
-  const getPortfolioAnalysis = async () => {
-    setLoading(true)
-    setConsensus(null)
-    setDecisions([])
-    setPortfolioAnalysis(null)
-    setProgressSteps([])
-
-    const enabledModels = selectedModels.filter(m => m.enabled)
-
-    setProgressSteps([
-      createReasoningStep('thinking', '📊 Starting portfolio analysis...'),
-      createReasoningStep('analysis', '💼 Fetching portfolio positions...'),
-    ])
-
-    try {
-      const response = await fetch('/api/trading/portfolio-analysis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          models: enabledModels,
-          timeframe
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to analyze portfolio')
-      }
-
-      const data = await response.json()
-
-      setProgressSteps(prev => [
-        ...prev,
-        createReasoningStep('decision', `✅ Portfolio analysis complete!`),
-      ])
-
-      setPortfolioAnalysis(data)
-    } catch (error) {
-      console.error('Portfolio analysis failed:', error)
-      alert(error instanceof Error ? error.message : 'Failed to analyze portfolio')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getConsensusDecision = async () => {
-    setLoading(true)
-    setIsStreaming(true)
-    setConsensus(null)
-    setDecisions([])
-    setProgressSteps([])
-    setResearchData(null)
-    setFallbackMessages([]) // Clear previous fallback notifications
-
-    // Start cost tracking for this analysis
-    costTracker?.startAnalysis('trading-consensus', `${targetSymbol || 'Market'} ${timeframe}`)
-
-    // Extract enabled model IDs for API
-    const modelIds = selectedModels.filter(m => m.enabled).map(m => m.model)
-
-    try {
-      // Feature #51: Use SSE streaming endpoint for real-time progress
-      const response = await fetch('/api/trading/consensus/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          selectedModels: modelIds,
-          timeframe,
-          targetSymbol: targetSymbol.trim() || undefined,
-          researchTier: globalTier,  // Pass global tier to control research model
-          researchModel,  // Explicit research model override from UI selector
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to start consensus analysis')
-      }
-
-      // Read SSE stream
-      const reader = response.body?.getReader()
-      if (!reader) {
-        throw new Error('No stream reader available')
-      }
-
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const eventData = line.slice(6)
-            try {
-              const event = JSON.parse(eventData)
-
-              // Send event to ResearchProgressPanel for real-time display
-              progressPanelRef.current?.processEvent(event)
-
-              // Track costs from SSE events
-              if (costTracker) {
-                // Track research agent completions (Phase 1)
-                if (event.type === 'agent_complete' && event.tokensUsed > 0) {
-                  costTracker.trackUsage({
-                    modelId: event.model || 'research-agent',
-                    provider: event.provider || 'anthropic',
-                    tokens: {
-                      prompt: Math.round(event.tokensUsed * 0.7), // Estimate: 70% input
-                      completion: Math.round(event.tokensUsed * 0.3), // 30% output
-                      total: event.tokensUsed
-                    },
-                    analysisType: 'trading-consensus',
-                    context: `Research: ${event.agent}`
-                  })
-                }
-
-                // Track decision model completions (Phase 2)
-                if (event.type === 'decision_complete' && event.tokensUsed) {
-                  const provider = getProviderForModel(event.modelId) || 'unknown'
-                  costTracker.trackUsage({
-                    modelId: event.modelId,
-                    provider,
-                    tokens: {
-                      prompt: event.inputTokens || 0,
-                      completion: event.outputTokens || 0,
-                      total: event.tokensUsed
-                    },
-                    analysisType: 'trading-consensus',
-                    context: `Decision: ${event.modelName}`
-                  })
-                }
-
-                // Track judge completion (Phase 3)
-                if (event.type === 'judge_complete' && event.tokensUsed) {
-                  costTracker.trackUsage({
-                    modelId: 'claude-sonnet-4-5-20250929',
-                    provider: 'anthropic',
-                    tokens: {
-                      prompt: event.inputTokens || 0,
-                      completion: event.outputTokens || 0,
-                      total: event.tokensUsed
-                    },
-                    analysisType: 'trading-consensus',
-                    context: 'Judge synthesis'
-                  })
-                }
-              }
-
-              // Handle final_result event to set state
-              if (event.type === 'final_result') {
-                const data = event
-
-                setConsensus(data.consensus)
-                setDecisions(data.decisions || [])
-                setResearchData(data.research || null)
-
-                // Create trade recommendation from consensus
-                const recommendation = extractTradeRecommendation(data.consensus, 'consensus')
-                setTradeRecommendation(recommendation)
-                setShowTradeCard(true)
-
-                // End cost tracking - analysis complete
-                costTracker?.endAnalysis('completed')
-
-                // Save conversation for history and persistence (non-blocking, silent fail)
-                fetch('/api/conversations', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    query: 'Consensus Trading Analysis',
-                    responses: {
-                      consensus: data.consensus,
-                      decisions: data.decisions
-                    },
-                    mode: 'trading-consensus',
-                    metadata: {
-                      timeframe,
-                      targetSymbol: targetSymbol.trim() || null,
-                      selectedModels: modelIds,
-                      modelCount: modelIds.length
-                    }
-                  })
-                }).then(res => {
-                  if (res.ok) {
-                    return res.json().then(saved => {
-                      saveConversation(saved.id)
-                      console.log('✅ Consensus analysis saved:', saved.id)
-                    })
-                  } else {
-                    // Guest mode: persist locally only
-                    const clientId = `local-${Date.now()}`
-                    console.log('👤 Guest mode: persisting locally with ID:', clientId)
-
-                    if (typeof window !== 'undefined') {
-                      localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
-                        consensus: data.consensus,
-                        decisions: data.decisions,
-                        metadata: {
-                          timeframe,
-                          targetSymbol: targetSymbol.trim() || null,
-                          selectedModels: modelIds,
-                          modelCount: modelIds.length
-                        },
-                        timestamp: new Date().toISOString()
-                      }))
-                    }
-                    saveConversation(clientId)
-                  }
-                }).catch(() => {
-                  console.log('💾 Local-only mode (save failed)')
-                })
-              }
-
-              // Handle error events
-              if (event.type === 'error') {
-                console.error('Streaming error:', event.message)
-              }
-
-              // Handle fallback events - model failed, using alternative
-              if (event.type === 'fallback') {
-                console.log(`🔄 [${event.errorCategory}] ${event.originalModelName} → ${event.fallbackModelName}: ${event.userMessage}`)
-                setFallbackMessages(prev => [...prev, {
-                  from: event.originalModelName,
-                  to: event.fallbackModelName,
-                  reason: event.userMessage,
-                  category: event.errorCategory
-                }])
-              }
-
-              // Handle warning events - unstable model being attempted
-              if (event.type === 'warning') {
-                console.warn(`⚠️ ${event.modelName}: ${event.message}`)
-              }
-            } catch (parseError) {
-              console.error('Failed to parse SSE event:', parseError)
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to get consensus decision:', error)
-      alert(error instanceof Error ? error.message : 'Failed to get consensus decision')
-      costTracker?.endAnalysis('error')
-    } finally {
-      setLoading(false)
-      setIsStreaming(false)
-    }
-  }
+  const {
+    selectedModels,
+    setSelectedModels,
+    timeframe,
+    setTimeframe,
+    targetSymbol,
+    setTargetSymbol,
+    loading,
+    consensus,
+    decisions,
+    researchData,
+    tradeRecommendation,
+    brokerEnv,
+    showTradeCard,
+    setShowTradeCard,
+    setInputMode,
+    portfolioAnalysis,
+    isStreaming,
+    fallbackMessages,
+    progressPanelRef,
+    getConsensusDecision,
+    getPortfolioAnalysis,
+    handleExecuteTrade,
+    handleStartNew,
+  } = useConsensusAnalysis()
 
   return (
     <div className="space-y-6">
@@ -462,7 +51,6 @@ export function ConsensusMode() {
         <TradingHistoryDropdown
           mode="trading-consensus"
           onSelect={(conversation) => {
-            // Trigger restoration
             window.location.href = `${window.location.pathname}?c=${conversation.id}`
           }}
         />
@@ -479,21 +67,18 @@ export function ConsensusMode() {
         {/* Input Mode Selector - Research/Portfolio/Position */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-muted-foreground">
-            📊 Analysis Target
+            Analysis Target
           </label>
           <InputModeSelector
             onSymbolSelect={(symbol) => {
               if (symbol === '__PORTFOLIO__') {
-                // Portfolio mode - use dedicated portfolio analysis API
                 setTargetSymbol('')
-                setPortfolioAnalysis(null)
                 setTimeout(() => getPortfolioAnalysis(), 100)
               } else {
                 setTargetSymbol(symbol)
-                setPortfolioAnalysis(null)
               }
             }}
-            onInputChange={(symbol) => setTargetSymbol(symbol)}  // Real-time sync
+            onInputChange={(symbol) => setTargetSymbol(symbol)}
             onModeChange={setInputMode}
             disabled={loading}
             initialSymbol={targetSymbol}
@@ -527,35 +112,16 @@ export function ConsensusMode() {
         </Button>
       </div>
 
-      {/* Feature #51: Real-time Research Progress Panel - Shows streaming tool calls, agents, phases */}
+      {/* Feature #51: Real-time Research Progress Panel */}
       {(isStreaming || loading) && (
         <ResearchProgressPanel
-          ref={progressPanelRef}
+          ref={progressPanelRef as React.Ref<ResearchProgressPanelHandle>}
           onError={(error) => console.error('Research progress error:', error)}
         />
       )}
 
-      {/* Fallback Notifications - Shows when models fail and alternatives are used */}
-      {fallbackMessages.length > 0 && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-2">
-          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-medium text-sm">
-            <AlertCircle className="h-4 w-4" />
-            Model Fallbacks ({fallbackMessages.length})
-          </div>
-          <div className="space-y-1">
-            {fallbackMessages.map((fb, i) => (
-              <div key={i} className="text-sm text-amber-600 dark:text-amber-500 flex items-center gap-2">
-                <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/50 rounded text-xs font-mono">
-                  {fb.category}
-                </span>
-                <span>
-                  {fb.from} failed ({fb.reason}) → using {fb.to}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Fallback Notifications */}
+      <FallbackNotifications fallbackMessages={fallbackMessages} />
 
       {/* Phase 4: Research Activity Panel - Shows final summary after completion */}
       {!isStreaming && !loading && researchData && (
@@ -563,476 +129,29 @@ export function ConsensusMode() {
       )}
 
       {/* Portfolio Analysis Results */}
-      {portfolioAnalysis && (
-        <div className="bg-card rounded-lg border p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-2xl font-bold">Portfolio Analysis</h3>
-              <p className="text-sm text-muted-foreground">
-                {portfolioAnalysis.portfolio?.positionCount || 0} positions • ${(portfolioAnalysis.portfolio?.totalValue || 0).toLocaleString()}
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleStartNew} className="gap-2">
-              <RotateCcw className="h-4 w-4" />
-              Start New
-            </Button>
-          </div>
-
-          {/* Portfolio Summary */}
-          {portfolioAnalysis.portfolio && (
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="text-sm text-muted-foreground">Total Value</div>
-                <div className="text-2xl font-bold">${portfolioAnalysis.portfolio.totalValue.toLocaleString()}</div>
-              </div>
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="text-sm text-muted-foreground">Cash Available</div>
-                <div className="text-2xl font-bold">${portfolioAnalysis.portfolio.cashBalance.toLocaleString()}</div>
-              </div>
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="text-sm text-muted-foreground">Positions</div>
-                <div className="text-2xl font-bold">{portfolioAnalysis.portfolio.positionCount}</div>
-              </div>
-            </div>
-          )}
-
-          {/* AI Analysis Results */}
-          {portfolioAnalysis.analyses && portfolioAnalysis.analyses.length > 0 && (
-            <div className="space-y-4">
-              <h4 className="font-semibold">AI Analysis</h4>
-              {portfolioAnalysis.analyses.map((analysis: any, idx: number) => (
-                <div key={idx} className="bg-muted/30 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{analysis.modelName}</span>
-                    {analysis.error ? (
-                      <span className="text-xs text-red-500">{analysis.error}</span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">{analysis.duration}ms</span>
-                    )}
-                  </div>
-                  {analysis.analysis && (
-                    <>
-                      {/* Health & Diversification Scores */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-xs text-muted-foreground mb-1">Portfolio Health</div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-lg font-bold">{analysis.analysis.portfolioHealth?.score || 'N/A'}/10</div>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">{analysis.analysis.portfolioHealth?.summary}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground mb-1">Diversification</div>
-                          <div className="text-lg font-bold">{analysis.analysis.diversification?.score || 'N/A'}/10</div>
-                          <div className="text-xs text-muted-foreground mt-1">{analysis.analysis.diversification?.recommendation}</div>
-                        </div>
-                      </div>
-                      {/* Recommendations */}
-                      {analysis.analysis.recommendations?.immediate && analysis.analysis.recommendations.immediate.length > 0 && (
-                        <div>
-                          <div className="text-xs font-semibold text-orange-600 mb-1">Immediate Actions</div>
-                          <ul className="text-xs space-y-1">
-                            {analysis.analysis.recommendations.immediate.map((rec: string, i: number) => (
-                              <li key={i} className="flex items-start gap-1">
-                                <span className="text-orange-500">•</span>
-                                {rec}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <PortfolioAnalysisResults
+        portfolioAnalysis={portfolioAnalysis}
+        onStartNew={handleStartNew}
+      />
 
       {/* Consensus Results */}
       {consensus && (
-        <div className="bg-card rounded-lg border p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-2xl font-bold">Consensus Decision</h3>
-              <p className="text-sm text-muted-foreground">
-                Based on {consensus.modelCount} AI model{consensus.modelCount !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleStartNew}
-                className="gap-2"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Start New Analysis
-              </Button>
-              <ActionBadge action={consensus.action} />
-            </div>
-          </div>
-
-          {/* Agreement Level */}
-          <div className="space-y-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AgreementIcon agreement={consensus.agreement} />
-                <span className="font-medium">{consensus.agreementText}</span>
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {Math.round(consensus.agreement * 100)}% agreement
-              </span>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Agreement Level</span>
-                <span>{Math.round(consensus.agreement * 100)}%</span>
-              </div>
-              <Progress value={consensus.agreement * 100} className="h-2" />
-            </div>
-          </div>
-
-          {/* Overall Confidence */}
-          <div className="space-y-2 mb-6">
-            <div className="flex justify-between text-sm">
-              <span>Overall Confidence</span>
-              <span>{Math.round(consensus.confidence)}%</span>
-            </div>
-            <Progress value={consensus.confidence} className="h-2" />
-          </div>
-
-          {/* Consensus Summary */}
-          {consensus.summary && (
-            <div className="mb-6">
-              <h4 className="font-medium mb-2">Consensus Summary</h4>
-              <p className="text-sm text-muted-foreground">{consensus.summary}</p>
-            </div>
-          )}
-
-          {/* Key Disagreements */}
-          {consensus.disagreements && consensus.disagreements.length > 0 && (
-            <div className="mb-6">
-              <h4 className="font-medium mb-2">Key Disagreements</h4>
-              <ul className="space-y-1">
-                {consensus.disagreements.map((disagreement, index) => (
-                  <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <span className="text-destructive">•</span>
-                    {disagreement}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Vote Breakdown */}
-          <div className="mb-6 p-4 bg-muted/50 rounded-lg">
-            <h4 className="text-sm font-semibold mb-3">Vote Breakdown:</h4>
-            <div className="grid grid-cols-3 gap-3">
-              <VoteCard label="BUY" count={consensus.votes.BUY} total={consensus.modelCount} />
-              <VoteCard label="SELL" count={consensus.votes.SELL} total={consensus.modelCount} />
-              <VoteCard label="HOLD" count={consensus.votes.HOLD} total={consensus.modelCount} />
-            </div>
-          </div>
-
-          {/* Trade Details */}
-          {consensus.action !== 'HOLD' && (
-            <div className="space-y-2 mb-6">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Symbol:</span>
-                <span className="font-mono font-medium text-lg">{consensus.symbol}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Quantity:</span>
-                <span className="font-medium text-lg">{consensus.quantity} shares</span>
-              </div>
-            </div>
-          )}
-
-          {/* Reasoning */}
-          <div className="space-y-2 mb-6">
-            <div className="text-sm text-muted-foreground">Consensus Reasoning:</div>
-            {typeof consensus.reasoning === 'string' ? (
-              <div className="text-sm leading-relaxed">{consensus.reasoning}</div>
-            ) : (
-              <div className="text-sm space-y-3">
-                {consensus.reasoning.bullishCase && (
-                  <div>
-                    <div className="font-medium text-green-600 mb-1">📈 Bullish Case:</div>
-                    <div className="text-muted-foreground">{consensus.reasoning.bullishCase}</div>
-                  </div>
-                )}
-                {consensus.reasoning.bearishCase && (
-                  <div>
-                    <div className="font-medium text-red-600 mb-1">📉 Bearish Case:</div>
-                    <div className="text-muted-foreground">{consensus.reasoning.bearishCase}</div>
-                  </div>
-                )}
-                {consensus.reasoning.technicalAnalysis && (
-                  <div>
-                    <div className="font-medium mb-1">📊 Technical Analysis:</div>
-                    <div className="text-muted-foreground">{consensus.reasoning.technicalAnalysis}</div>
-                  </div>
-                )}
-                {consensus.reasoning.fundamentalAnalysis && (
-                  <div>
-                    <div className="font-medium mb-1">📋 Fundamental Analysis:</div>
-                    <div className="text-muted-foreground">{consensus.reasoning.fundamentalAnalysis}</div>
-                  </div>
-                )}
-                {consensus.reasoning.sentiment && (
-                  <div>
-                    <div className="font-medium mb-1">💭 Sentiment:</div>
-                    <div className="text-muted-foreground">{consensus.reasoning.sentiment}</div>
-                  </div>
-                )}
-                {consensus.reasoning.timing && (
-                  <div>
-                    <div className="font-medium mb-1">⏰ Timing:</div>
-                    <div className="text-muted-foreground">{consensus.reasoning.timing}</div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-        </div>
-      )}
-
-      {/* Trade Action Card */}
-      {consensus && tradeRecommendation && showTradeCard && (
-        <div className="bg-card rounded-lg border p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <ShoppingCart className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-semibold">Take Action</h3>
-          </div>
-          <TradeCard
-            recommendation={tradeRecommendation}
-            brokerEnvironment={brokerEnv}
-            onExecute={handleExecuteTrade}
-            onDismiss={() => setShowTradeCard(false)}
-          />
-        </div>
+        <ConsensusResults
+          consensus={consensus}
+          tradeRecommendation={tradeRecommendation}
+          showTradeCard={showTradeCard}
+          brokerEnv={brokerEnv}
+          onExecuteTrade={handleExecuteTrade}
+          onDismissTradeCard={() => setShowTradeCard(false)}
+          onStartNew={handleStartNew}
+        />
       )}
 
       {/* Research Activity Summary (Hybrid Research Mode) */}
-      {decisions.length > 0 && decisions.some(d => d.toolsUsed) && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-2xl">🔍</span>
-            <h3 className="text-lg font-semibold">AI Research Activity</h3>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div className="bg-white/50 dark:bg-black/20 rounded-lg p-3">
-              <div className="text-muted-foreground text-xs mb-1">Models with Tools</div>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {decisions.filter(d => d.toolsUsed).length}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                of {decisions.length} total
-              </div>
-            </div>
-            <div className="bg-white/50 dark:bg-black/20 rounded-lg p-3">
-              <div className="text-muted-foreground text-xs mb-1">Total Tool Calls</div>
-              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                {decisions.reduce((sum, d) => sum + (d.toolCallCount || 0), 0)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                research queries
-              </div>
-            </div>
-            <div className="col-span-2 bg-white/50 dark:bg-black/20 rounded-lg p-3">
-              <div className="text-muted-foreground text-xs mb-1">Tools Used</div>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {Array.from(new Set(decisions.flatMap(d => d.toolNames || []))).map((tool, i) => (
-                  <span key={i} className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
-                    {tool.replace('_', ' ')}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ResearchActivitySummary decisions={decisions} />
 
       {/* Individual Model Decisions */}
-      {decisions.length > 0 && (
-        <div className="bg-card rounded-lg border p-6">
-          <h3 className="text-xl font-semibold mb-4">Individual Model Decisions</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {decisions.map((decision, index) => (
-              <TradingDecisionCard key={index} decision={decision} />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ActionBadge({ action }: { action: 'BUY' | 'SELL' | 'HOLD' }) {
-  const config = {
-    BUY: { icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-950' },
-    SELL: { icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-950' },
-    HOLD: { icon: Minus, color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-950' },
-  }
-
-  // Defensive: Default to HOLD if action is invalid
-  const safeAction = (action && config[action]) ? action : 'HOLD'
-  const { icon: Icon, color, bg } = config[safeAction]
-
-  return (
-    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${bg}`}>
-      <Icon className={`w-4 h-4 ${color}`} />
-      <span className={`text-sm font-semibold ${color}`}>{safeAction}</span>
-    </div>
-  )
-}
-
-function VoteCard({ label, count, total }: { label: string; count: number; total: number }) {
-  const percentage = total > 0 ? (count / total) * 100 : 0
-
-  const colorClass = {
-    BUY: 'text-green-600 bg-green-100 dark:bg-green-950',
-    SELL: 'text-red-600 bg-red-100 dark:bg-red-950',
-    HOLD: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-950',
-  }[label] || 'text-gray-600 bg-gray-100 dark:bg-gray-950'
-
-  return (
-    <div className={`p-3 rounded-lg ${colorClass}`}>
-      <div className="text-xs font-semibold mb-1">{label}</div>
-      <div className="text-2xl font-bold">{count}</div>
-      <div className="text-xs mt-1">{percentage.toFixed(0)}%</div>
-    </div>
-  )
-}
-
-function AgreementIcon({ agreement }: { agreement: number }) {
-  if (agreement >= 0.75) {
-    return <CheckCircle className="w-5 h-5 text-green-600" />
-  } else if (agreement >= 0.5) {
-    return <AlertCircle className="w-5 h-5 text-yellow-600" />
-  } else {
-    return <XCircle className="w-5 h-5 text-red-600" />
-  }
-}
-
-function TradingDecisionCard({ decision }: { decision: TradingDecision }) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const modelName = decision.model ? getModelDisplayName(decision.model) : 'Unknown Model'
-
-  const getReasoningPreview = (reasoning: string | ReasoningDetails): string => {
-    if (typeof reasoning === 'string') {
-      return reasoning.length > 150 ? reasoning.substring(0, 150) + '...' : reasoning
-    }
-    // For structured reasoning, show bullish case preview
-    if (typeof reasoning === 'object' && reasoning.bullishCase) {
-      return reasoning.bullishCase.substring(0, 150) + '...'
-    }
-    return 'No reasoning provided'
-  }
-
-  return (
-    <div className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-card">
-      {/* Model Name & Action Badge */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex flex-col gap-1 flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h4 className="font-medium text-sm truncate">{modelName}</h4>
-            <ProviderBadge providerType={decision.providerType} />
-          </div>
-          {decision.toolsUsed && (
-            <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-              <span>🔍</span>
-              <span className="font-medium">{decision.toolCallCount} research {decision.toolCallCount === 1 ? 'call' : 'calls'}</span>
-            </div>
-          )}
-        </div>
-        <ActionBadge action={decision.action} />
-      </div>
-
-      {/* Trade Details */}
-      {decision.action !== 'HOLD' && decision.symbol && (
-        <div className="space-y-2 mb-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Symbol:</span>
-            <span className="font-mono font-medium">{decision.symbol}</span>
-          </div>
-          {decision.quantity && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Quantity:</span>
-              <span className="font-medium">{decision.quantity} shares</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Confidence */}
-      <div className="mb-3">
-        <div className="flex justify-between text-sm mb-1">
-          <span className="text-muted-foreground">Confidence:</span>
-          <span className="font-medium">{Math.round(decision.confidence * 100)}%</span>
-        </div>
-        <Progress value={decision.confidence * 100} className="h-1.5" />
-      </div>
-
-      {/* Reasoning Preview */}
-      <div className="text-sm">
-        <div className="text-muted-foreground mb-1">Reasoning:</div>
-        <div className="text-xs leading-relaxed">
-          {isExpanded ? (
-            !decision.reasoning ? (
-              <div className="text-muted-foreground italic">No reasoning provided</div>
-            ) : typeof decision.reasoning === 'string' ? (
-              <div className="whitespace-pre-wrap">{decision.reasoning}</div>
-            ) : (
-              <div className="space-y-2">
-                {decision.reasoning.bullishCase && (
-                  <div>
-                    <div className="font-medium text-green-600">📈 Bullish:</div>
-                    <div className="text-muted-foreground">{decision.reasoning.bullishCase}</div>
-                  </div>
-                )}
-                {decision.reasoning.bearishCase && (
-                  <div>
-                    <div className="font-medium text-red-600">📉 Bearish:</div>
-                    <div className="text-muted-foreground">{decision.reasoning.bearishCase}</div>
-                  </div>
-                )}
-                {decision.reasoning.technicalAnalysis && (
-                  <div>
-                    <div className="font-medium">📊 Technical:</div>
-                    <div className="text-muted-foreground">{decision.reasoning.technicalAnalysis}</div>
-                  </div>
-                )}
-              </div>
-            )
-          ) : (
-            <div className="text-muted-foreground">
-              {getReasoningPreview(decision.reasoning)}
-            </div>
-          )}
-        </div>
-
-        {/* Show More/Less Button */}
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="mt-2 text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-        >
-          {isExpanded ? (
-            <>
-              <Minus className="h-3 w-3" />
-              Show Less
-            </>
-          ) : (
-            <>
-              <TrendingUp className="h-3 w-3" />
-              Show More
-            </>
-          )}
-        </button>
-      </div>
+      <IndividualDecisions decisions={decisions} />
     </div>
   )
 }

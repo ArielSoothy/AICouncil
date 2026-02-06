@@ -9,6 +9,7 @@ import { TradingModelSelector } from './trading-model-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { TradingHistoryDropdown } from './trading-history-dropdown'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
+import { TradingConversationResponses } from '@/lib/types/conversation'
 import { ModelConfig } from '@/types/consensus'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
 import { getModelsForPreset } from '@/lib/config/model-presets'
@@ -75,8 +76,8 @@ export function IndividualMode() {
     storageKey: 'trading-individual-mode',
     onRestored: (conversation) => {
       console.log('Restoring Individual Mode analysis:', conversation)
-      const responses = conversation.responses as any
-      const evalData = conversation.evaluation_data as any
+      const responses = conversation.responses as TradingConversationResponses
+      const evalData = conversation.evaluation_data
 
       // Restore state
       if (responses.decisions) {
@@ -87,14 +88,15 @@ export function IndividualMode() {
       }
       if (evalData?.metadata) {
         const meta = evalData.metadata
-        if (meta.timeframe) setTimeframe(meta.timeframe)
+        if (meta.timeframe) setTimeframe(meta.timeframe as TradingTimeframe)
         if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
-        if (meta.selectedModels) {
+        if (meta.selectedModels && Array.isArray(meta.selectedModels)) {
           // Restore selected models by matching against current preset models
           const presetModels = getModelsForPreset(globalTier)
+          const selectedModelIds = meta.selectedModels as string[]
           const restoredModels = presetModels.map(m => ({
             ...m,
-            enabled: meta.selectedModels.includes(m.model)
+            enabled: selectedModelIds.includes(m.model)
           }))
           setSelectedModels(restoredModels)
         }

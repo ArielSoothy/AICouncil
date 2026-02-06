@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { SavedConversation } from '@/lib/types/conversation'
+import { SavedConversation, TradingConversationResponses } from '@/lib/types/conversation'
 import { useRouter } from 'next/navigation'
 
 // Simple relative time formatter
@@ -97,8 +97,8 @@ export function ConversationHistoryDropdown({
   }
 
   const getModelCount = (conversation: SavedConversation): number => {
-    const responses = conversation.responses as any
-    
+    const responses = conversation.responses as TradingConversationResponses
+
     // Try to extract model count from responses
     if (responses?.models && Array.isArray(responses.models)) {
       return responses.models.length

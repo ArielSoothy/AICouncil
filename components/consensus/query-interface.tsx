@@ -312,7 +312,7 @@ function QueryInterfaceContent({ testingTierOverride, defaultModels, ultraModeDe
           models={selectedModels}
           onChange={setSelectedModels}
           usePremiumQuery={usePremiumQuery}
-          userTier={effectiveUserTier as any}
+          userTier={effectiveUserTier ?? undefined}
         />
         
         <div className="mt-4">

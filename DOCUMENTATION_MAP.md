@@ -1,7 +1,7 @@
 # 📚 DOCUMENTATION MAP - AI Council Project
 
 **Complete reference of all documentation files and their organized structure**
-**Last Updated**: November 21, 2025
+**Last Updated**: February 6, 2026
 
 ---
 
@@ -53,6 +53,11 @@ These files MUST be read at the start of every development session:
 │   │   ├── TRADING_DATA_TAXONOMY.md    # Data classification & categories
 │   │   ├── TRADING_TOOL_USE_STRATEGY.md # Tool calling patterns
 │   │   ├── RESEARCH_CACHE_TESTING.md   # Cache system testing guide
+│   │   ├── SCREENING_INTEGRATION.md    # Full screening integration guide (Phase 9)
+│   │   ├── DATABASE_BACKED_ARCHITECTURE.md # Why dual-server (event loop fix)
+│   │   ├── TWS_API_MIGRATION_PLAN.md   # 10-phase TWS migration (Phases 1-10 complete)
+│   │   ├── PRE_MARKET_SCREENING_IMPLEMENTATION_STATUS.md # Phase status + timeline
+│   │   ├── IBKR_DATA_AVAILABILITY.md   # What data IBKR TWS provides
 │   │   └── MIGRATION_YAHOO_FINANCE.md  # Historical: Yahoo Finance migration
 │   │
 │   ├── features/                       # Feature-specific documentation
@@ -467,16 +472,71 @@ Historical documentation and research (reference only):
 
 ---
 
+## 🔧 SHARED UTILITIES & REFACTORED COMPONENTS (February 2026)
+
+### New Shared Utilities
+| File | Purpose | When to Use |
+|------|---------|------------|
+| **lib/trading/json-extraction.ts** | JSON extraction from LLM responses | Parsing AI model outputs |
+| **lib/supabase/admin.ts** | Supabase admin client singleton | Server-side DB operations |
+
+### New UI Components
+| File | Purpose |
+|------|---------|
+| **components/ui/error-boundary.tsx** | React error boundary wrapper |
+| **components/ui/page-skeleton.tsx** | Loading skeleton for page layouts |
+
+### Refactored Trading Components (February 2026)
+| File | Purpose | Extracted From |
+|------|---------|---------------|
+| **components/trading/consensus/types.ts** | Shared types for consensus mode | consensus-mode.tsx |
+| **components/trading/consensus/use-consensus-analysis.ts** | State management + API logic hook | consensus-mode.tsx |
+| **components/trading/consensus/consensus-results.tsx** | Consensus results display + helpers | consensus-mode.tsx |
+| **components/trading/consensus/research-panel.tsx** | Research activity, fallbacks, decisions | consensus-mode.tsx |
+| **components/trading/consensus/index.ts** | Barrel exports for consensus module | N/A |
+
+### Refactored Screening Components (February 2026)
+| File | Purpose | Extracted From |
+|------|---------|---------------|
+| **components/trading/screening/types.ts** | Shared types for screening system | PreMarketScreening.tsx |
+| **components/trading/screening/use-screening-data.ts** | Data fetching, caching, state management hook | PreMarketScreening.tsx |
+| **components/trading/screening/scoring-utils.tsx** | Score color/formatting + Winners Strategy display | PreMarketScreening.tsx |
+| **components/trading/screening/screening-filters.tsx** | Filter bar, sort, presets UI | PreMarketScreening.tsx |
+| **components/trading/screening/screening-stats.tsx** | Stats dashboard summary cards | PreMarketScreening.tsx |
+| **components/trading/screening/stock-card.tsx** | Individual stock card + expanded detail view | PreMarketScreening.tsx |
+| **components/trading/screening/screening-history.tsx** | Scan history modal | PreMarketScreening.tsx |
+| **components/trading/screening/index.ts** | Barrel exports for screening module | N/A |
+
+### Refactored Debate Components (February 2026)
+| File | Purpose | Extracted From |
+|------|---------|---------------|
+| **components/agents/debate-types.ts** | Shared types (WebSearchStatus, ModelStatus, etc.) | debate-interface.tsx |
+| **components/agents/debate-presets.tsx** | AGENT_PRESETS tier configuration (free/pro/max/sub) | debate-interface.tsx |
+| **components/agents/hooks/use-debate-session.ts** | Session state, config, agents, persistence hook | debate-interface.tsx |
+| **components/agents/hooks/use-debate-streaming.ts** | SSE streaming, model statuses, flowchart hook | debate-interface.tsx |
+
+### Deleted Files (February 2026 Cleanup)
+- `components/conversations-debug/` - Debug components (removed)
+- `app/api/benchmark/` - Benchmark route (removed)
+- `lib/trading/screening/screening_simple.py` - Superseded by simple_orchestrator.py
+- `scripts/debug-json-parsing.js` - Debug script (removed)
+
+---
+
 ## ✅ DOCUMENTATION HEALTH CHECK
 
 Current documentation status:
 
 - ✅ Core workflow files (WORKFLOW.md, PRIORITIES.md, FEATURES.md) - UP TO DATE
 - ✅ Trading system (TRADING_ENHANCEMENTS.md) - CURRENT (Phase 2)
-- ✅ AI Models (AI_MODELS_SETUP.md) - CURRENT (43 models, 8 providers)
+- ✅ AI Models (AI_MODELS_SETUP.md) - CURRENT (46+ models, 8 providers)
 - ✅ Sub-agents (.claude/agents/) - COMPLETE (12 agents)
 - ✅ Project overview (PROJECT_OVERVIEW.md) - CURRENT
 - ✅ **Folder structure organized** - docs/ folder created with logical categories
+- ✅ **Component refactoring** - 3 large components split into modules (February 2026):
+  - consensus-mode.tsx (1,038 lines -> modular)
+  - PreMarketScreening.tsx (1,700+ lines -> modular)
+  - debate-interface.tsx (2,357 lines -> 1,116 lines + hooks)
 - ⚠️ MVP.md - May need update after trading launch
 - ⚠️ Phase docs - Check if Phase 3 is current phase
 

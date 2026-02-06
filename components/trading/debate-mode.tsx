@@ -10,6 +10,7 @@ import { SingleModelBadgeSelector } from './single-model-badge-selector'
 import { TimeframeSelector, type TradingTimeframe } from './timeframe-selector'
 import { TradingHistoryDropdown } from './trading-history-dropdown'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
+import { TradingConversationResponses } from '@/lib/types/conversation'
 import { useTradingPreset } from '@/contexts/trading-preset-context'
 import { getDebateRolesForPreset, DEBATE_PRESETS, getDebatePresetConfig } from '@/lib/config/model-presets'
 import { TradeCard, type TradeRecommendation } from './trade-card'
@@ -101,8 +102,8 @@ export function DebateMode() {
     storageKey: 'trading-debate-mode',
     onRestored: (conversation) => {
       console.log('Restoring Debate Mode analysis:', conversation)
-      const responses = conversation.responses as any
-      const evalData = conversation.evaluation_data as any
+      const responses = conversation.responses as TradingConversationResponses
+      const evalData = conversation.evaluation_data
 
       // Restore state
       if (responses.debate) {
@@ -111,7 +112,7 @@ export function DebateMode() {
       }
       if (evalData?.metadata) {
         const meta = evalData.metadata
-        if (meta.timeframe) setTimeframe(meta.timeframe)
+        if (meta.timeframe) setTimeframe(meta.timeframe as TradingTimeframe)
         if (meta.targetSymbol) setTargetSymbol(meta.targetSymbol)
         if (meta.analystModel) setAnalystModel(meta.analystModel)
         if (meta.criticModel) setCriticModel(meta.criticModel)

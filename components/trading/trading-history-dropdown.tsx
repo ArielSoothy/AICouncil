@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { SavedConversation } from '@/lib/types/conversation'
+import { SavedConversation, ConversationEvaluationData } from '@/lib/types/conversation'
 import { useRouter } from 'next/navigation'
 
 // Simple relative time formatter
@@ -126,7 +126,7 @@ export function TradingHistoryDropdown({
   }
 
   const getAnalysisLabel = (conversation: SavedConversation): string => {
-    const evalData = conversation.evaluation_data as any
+    const evalData = conversation.evaluation_data
     const symbol = evalData?.target_symbol || evalData?.metadata?.targetSymbol
     const timeframe = evalData?.timeframe || evalData?.metadata?.timeframe || 'swing'
 
