@@ -56,10 +56,7 @@ async function queryWithFallback(
   fallbacks: FallbackInfo[],
   attemptedModels: string[] = []
 ): Promise<{ response: string; modelUsed: string; tokensUsed?: number; providerType: 'CLI' | 'API' }> {
-  // Log warning if model has been unstable
-  if (isModelUnstable(modelId)) {
-    console.warn(`⚠️ [Debate ${options.role} R${options.round}] ${getFallbackModelName(modelId)} has been unstable recently`);
-  }
+  // Skip unstable check silently - fallback system handles failures
 
   try {
     const providerType = getProviderName(modelId);
@@ -106,8 +103,6 @@ async function queryWithFallback(
     const fallbackModelId = getFallbackModel(modelId, [...attemptedModels, modelId]);
 
     if (fallbackModelId) {
-      console.log(`🔄 [Debate ${options.role} R${options.round}] Falling back: ${getFallbackModelName(modelId)} → ${getFallbackModelName(fallbackModelId)}`);
-
       // Track fallback for response
       fallbacks.push({
         originalModel: modelId,
@@ -347,9 +342,8 @@ export async function POST(request: NextRequest) {
     try {
       sharedData = await fetchSharedTradingData(targetSymbol);
       deterministicScore = calculateTradingScore(sharedData, timeframe as TradingTimeframe);
-      console.log(`✅ Deterministic score for ${targetSymbol}: ${deterministicScore.recommendation} (${deterministicScore.weightedScore.toFixed(2)})`);
     } catch (scoreError) {
-      console.warn(`⚠️ Could not calculate deterministic score: ${scoreError}`);
+      // Continue without deterministic score - non-critical
       // Continue without deterministic score - AI will still analyze research
     }
 
@@ -357,10 +351,7 @@ export async function POST(request: NextRequest) {
     // Check cache first
     let researchReport = await researchCache.get(targetSymbol, timeframe as TradingTimeframe);
 
-    if (researchReport) {
-      console.log(`✅ Cache hit for ${targetSymbol}-${timeframe} - using cached research`);
-    } else {
-      console.log(`💨 Cache miss for ${targetSymbol}-${timeframe} - running fresh research`);
+    if (!researchReport) {
       researchReport = await runResearchAgents(
         targetSymbol,
         timeframe as TradingTimeframe,

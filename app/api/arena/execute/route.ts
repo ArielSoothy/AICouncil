@@ -60,10 +60,8 @@ function isSubscriptionTier(tier: UserTier): boolean {
  */
 function getProvidersForTier(tier: UserTier): Record<string, any> {
   if (isSubscriptionTier(tier)) {
-    console.log(`🔷 Using CLI providers for ${tier} tier (subscription billing)`);
     return CLI_PROVIDERS;
   }
-  console.log(`🔶 Using API providers for ${tier} tier (per-call billing)`);
   return API_PROVIDERS;
 }
 
@@ -150,19 +148,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.log(`🎯 Arena models source: ${selectedModels ? 'frontend selection' : 'database config'}`);
-    console.log(`   Models: ${enabledModels.join(', ')}`)
-
     // Get account info
     const account = await getAccount();
     // Use request timeframe if provided, fallback to config default
     const timeframe = (requestTimeframe as TradingTimeframe) || (config.default_timeframe as TradingTimeframe);
-    console.log(`🕐 Using timeframe: ${timeframe} (source: ${requestTimeframe ? 'request' : 'config default'})`)
 
     // Create tier-aware query function
     const queryModel = createQueryFunction(tier as UserTier);
-
-    console.log(`🏟️ Arena Mode: Using ${tier} tier`);
 
     // Handle different phases
     if (phase === 'execute') {

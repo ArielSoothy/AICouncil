@@ -190,6 +190,7 @@ export default function ArenaModePage() {
     fetchConfig()
     fetchTodaysActivity()
     fetchTradeHistory()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchTodaysActivity = async () => {

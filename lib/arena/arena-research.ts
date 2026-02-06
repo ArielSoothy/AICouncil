@@ -92,8 +92,6 @@ export interface StockConflict {
  * Returns map of symbol -> price (or null if fetch failed)
  */
 export async function fetchCurrentPrices(symbols: string[]): Promise<Record<string, number | null>> {
-  console.log(`📊 Fetching current prices for ${symbols.length} stocks...`);
-
   const prices: Record<string, number | null> = {};
 
   // Fetch in parallel with error handling per symbol
@@ -103,14 +101,12 @@ export async function fetchCurrentPrices(symbols: string[]): Promise<Record<stri
         const quote = await getLatestQuote(symbol);
         prices[symbol] = quote.price;
       } catch (error) {
-        console.warn(`⚠️ Failed to get price for ${symbol}:`, error);
         prices[symbol] = null;
       }
     })
   );
 
   const successCount = Object.values(prices).filter(p => p !== null).length;
-  console.log(`📊 Got prices for ${successCount}/${symbols.length} stocks`);
 
   return prices;
 }
@@ -214,8 +210,6 @@ export async function runSingleModelArena(
   const startTime = Date.now();
   const modelName = getModelDisplayName(modelId);
 
-  console.log(`\n🤖 ${modelName}: Starting arena analysis...`);
-
   const result: ArenaModelResult = {
     modelId,
     modelName,
@@ -266,9 +260,6 @@ export async function runSingleModelArena(
     result.status = 'success';
 
     const decision = result.decision;
-    console.log(`   ✅ ${modelName}: ${decision.action} ${selectedSymbol}`);
-    console.log(`      Entry: $${decision.entryPrice || 'market'}, SL: $${decision.stopLoss}, TP: $${decision.takeProfit}`);
-
   } catch (error) {
     result.status = 'error';
     result.error = error instanceof Error ? error.message : 'Unknown error';
@@ -293,13 +284,6 @@ export async function runAllModelsArena(
   currentPrices?: Record<string, number | null>
 ): Promise<ArenaRunResult> {
   const startTime = Date.now();
-
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`🏟️ ARENA MODE: Running ${modelIds.length} models in parallel`);
-  if (stocksTradedToday.length > 0) {
-    console.log(`📊 Stocks already traded today: ${stocksTradedToday.join(', ')}`);
-  }
-  console.log(`${'='.repeat(60)}`);
 
   // Fetch prices once if not provided (for parallel execution)
   const prices = currentPrices ?? await fetchCurrentPrices(ARENA_STOCK_UNIVERSE);
@@ -360,22 +344,6 @@ export async function runAllModelsArena(
     totalDuration: Date.now() - startTime,
   };
 
-  // Log summary
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`🏆 ARENA RESULTS`);
-  console.log(`${'='.repeat(60)}`);
-  console.log(`✅ Successful: ${successfulModels}/${modelIds.length}`);
-  console.log(`📊 Unique stocks selected: ${uniqueStocks.join(', ') || 'none'}`);
-
-  if (conflicts.length > 0) {
-    console.log(`\n⚠️ CONFLICTS DETECTED:`);
-    for (const conflict of conflicts) {
-      console.log(`   ${conflict.symbol}: ${conflict.modelNames.join(', ')}`);
-    }
-  }
-
-  console.log(`\n⏱️ Total time: ${runResult.totalDuration}ms`);
-
   return runResult;
 }
 
@@ -393,8 +361,6 @@ export async function rerunModelsWithExclusions(
   currentPrices?: Record<string, number | null>
 ): Promise<ArenaModelResult[]> {
   const allExclusions = [...new Set([...previousExclusions, ...additionalExclusions])];
-
-  console.log(`\n🔄 Re-running ${modelIds.length} models with exclusions: ${additionalExclusions.join(', ')}`);
 
   // Fetch prices once if not provided
   const prices = currentPrices ?? await fetchCurrentPrices(ARENA_STOCK_UNIVERSE);
@@ -426,7 +392,6 @@ export async function runDeepResearch(
   account: AlpacaAccount,
   tier: ResearchTier = 'free'
 ): Promise<ResearchReport> {
-  console.log(`\n🔬 Running deep research on ${symbol}...`);
   return runResearchAgents(symbol, timeframe, account, tier);
 }
 

@@ -135,11 +135,9 @@ export function getResearchModelForConfig(tier: ResearchTier, researchModel?: Re
 
     // Check if model supports tool calling (required for research)
     if (config.hasToolSupport === false) {
-      console.log(`⚠️ ${config.displayName} doesn't support tool calling, falling back to Sonnet`);
       return RESEARCH_MODEL_PRESETS.sonnet;
     }
 
-    console.log(`🔬 Research model (UI selected): ${config.displayName}`);
     return config;
   }
 
@@ -148,7 +146,6 @@ export function getResearchModelForConfig(tier: ResearchTier, researchModel?: Re
 
   // Also check tier config for tool support
   if (tierConfig.hasToolSupport === false) {
-    console.log(`⚠️ ${tierConfig.displayName} doesn't support tool calling, falling back to Sonnet`);
     return RESEARCH_MODEL_PRESETS.sonnet;
   }
 
@@ -182,7 +179,6 @@ const RESEARCH_TIER_MODELS: Record<ResearchTier, TierModelConfig> = {
  */
 function getProviderForModel(modelConfig: TierModelConfig) {
   // Use the model's actual provider - NOT the tier's default!
-  console.log(`🔧 Research agents using ${modelConfig.provider.toUpperCase()} provider for ${modelConfig.displayName}`);
   switch (modelConfig.provider) {
     case 'groq':
       return new GroqProvider();
@@ -193,7 +189,6 @@ function getProviderForModel(modelConfig: TierModelConfig) {
     case 'google':
       return new GoogleProvider();
     default:
-      console.log(`⚠️ Unknown provider ${modelConfig.provider}, falling back to Anthropic`);
       return new AnthropicProvider();
   }
 }
@@ -266,12 +261,10 @@ export function getModelConfigWithFallback(
   }
 
   if (nextPreset) {
-    console.log(`🔄 Falling back to ${RESEARCH_MODEL_PRESETS[nextPreset].displayName}`);
     return RESEARCH_MODEL_PRESETS[nextPreset];
   }
 
   // All providers exhausted - use last resort (sonnet)
-  console.log(`❌ All fallbacks exhausted, using Sonnet as last resort`);
   return RESEARCH_MODEL_PRESETS.sonnet;
 }
 
@@ -289,11 +282,9 @@ export function handleRateLimitError(
 
   const nextPreset = getNextFallback(currentPreset);
   if (!nextPreset) {
-    console.log(`❌ Rate limit hit on ${currentPreset}, no more fallbacks available`);
     return null;
   }
 
-  console.log(`⚠️ Rate limit hit on ${currentPreset}, falling back to ${nextPreset}`);
   return RESEARCH_MODEL_PRESETS[nextPreset];
 }
 
@@ -338,8 +329,6 @@ async function queryWithFallback(
     triedPresets.add(currentPreset);
     const provider = getProviderForModel(currentConfig);
 
-    console.log(`🔬 Trying ${currentConfig.displayName} for research...`);
-
     const result = await provider.query(prompt, {
       model: currentConfig.model,
       provider: currentConfig.provider,
@@ -352,14 +341,12 @@ async function queryWithFallback(
       const nextPreset = getNextFallback(currentPreset);
 
       if (nextPreset && !triedPresets.has(nextPreset)) {
-        console.log(`⚠️ Rate limit on ${currentConfig.displayName}, falling back to ${RESEARCH_MODEL_PRESETS[nextPreset].displayName}`);
         currentConfig = RESEARCH_MODEL_PRESETS[nextPreset];
         currentPreset = nextPreset;
         continue; // Try next provider
       }
 
       // No more fallbacks - return the error result
-      console.log(`❌ All fallback providers exhausted`);
     }
 
     // Success or non-rate-limit error - return the result
@@ -401,8 +388,6 @@ export async function runTechnicalResearch(
   const currentPreset: ResearchModelPreset = researchModel || 'gpt-mini';
 
   try {
-    console.log(`🔍 Technical Analyst starting research... (${modelConfig.displayName})`);
-
     // Emit agent start event (OPTIONAL - only if callback provided)
     onProgress?.({
       type: 'agent_start',
@@ -420,8 +405,6 @@ export async function runTechnicalResearch(
       minimalData
     );
 
-    console.log(`🔬 Technical Analyst calling ${modelConfig.provider} with useTools=true`);
-
     // Use queryWithFallback for automatic rate limit handling
     const { result, usedConfig } = await queryWithFallback(
       prompt,
@@ -437,12 +420,6 @@ export async function runTechnicalResearch(
 
     const responseTime = Date.now() - startTime;
     const toolCalls = result.toolCalls || [];
-
-    // DEBUG: Log what we got back
-    console.log(`🔬 Technical Analyst RESULT: toolCalls=${JSON.stringify(toolCalls?.length)}, error=${result.error}, responseLen=${result.response?.length}`);
-    console.log(
-      `✅ Technical Analyst complete: ${toolCalls.length} tools used in ${responseTime}ms`
-    );
 
     // Emit agent complete event (OPTIONAL) - include model/provider for cost tracking
     onProgress?.({
@@ -512,8 +489,6 @@ export async function runFundamentalResearch(
   const currentPreset: ResearchModelPreset = researchModel || 'gpt-mini';
 
   try {
-    console.log(`🔍 Fundamental Analyst starting research... (${modelConfig.displayName})`);
-
     // Emit agent start event (OPTIONAL - only if callback provided)
     onProgress?.({
       type: 'agent_start',
@@ -546,10 +521,6 @@ export async function runFundamentalResearch(
 
     const responseTime = Date.now() - startTime;
     const toolCalls = result.toolCalls || [];
-
-    console.log(
-      `✅ Fundamental Analyst complete: ${toolCalls.length} tools used in ${responseTime}ms`
-    );
 
     // Emit agent complete event (OPTIONAL) - include model/provider for cost tracking
     onProgress?.({
@@ -622,8 +593,6 @@ export async function runSentimentResearch(
   const currentPreset: ResearchModelPreset = researchModel || 'gpt-mini';
 
   try {
-    console.log(`🔍 Sentiment Analyst starting research... (${modelConfig.displayName})`);
-
     // Emit agent start event (OPTIONAL - only if callback provided)
     onProgress?.({
       type: 'agent_start',
@@ -656,10 +625,6 @@ export async function runSentimentResearch(
 
     const responseTime = Date.now() - startTime;
     const toolCalls = result.toolCalls || [];
-
-    console.log(
-      `✅ Sentiment Analyst complete: ${toolCalls.length} tools used in ${responseTime}ms`
-    );
 
     // Emit agent complete event (OPTIONAL) - include model/provider for cost tracking
     onProgress?.({
@@ -732,8 +697,6 @@ export async function runRiskAnalysis(
   const currentPreset: ResearchModelPreset = researchModel || 'gpt-mini';
 
   try {
-    console.log(`🔍 Risk Manager starting research... (${modelConfig.displayName})`);
-
     // Emit agent start event (OPTIONAL - only if callback provided)
     onProgress?.({
       type: 'agent_start',
@@ -766,10 +729,6 @@ export async function runRiskAnalysis(
 
     const responseTime = Date.now() - startTime;
     const toolCalls = result.toolCalls || [];
-
-    console.log(
-      `✅ Risk Manager complete: ${toolCalls.length} tools used in ${responseTime}ms`
-    );
 
     // Emit agent complete event (OPTIONAL) - include model/provider for cost tracking
     onProgress?.({
@@ -852,29 +811,12 @@ export async function runResearchAgents(
   // Use explicit researchModel if provided, otherwise fall back to tier config
   const modelConfig = getResearchModelForConfig(tier, researchModel);
 
-  console.log(
-    `\n${'='.repeat(80)}\n🔬 STARTING EXHAUSTIVE RESEARCH PIPELINE FOR ${symbol.toUpperCase()}\n${'='.repeat(80)}`
-  );
-  console.log(`📊 Research Tier: ${tier.toUpperCase()} (${modelConfig.displayName})`);
-  if (researchModel) {
-    console.log(`🔬 Research Model Override: ${researchModel}`);
-  }
-
   try {
     // Step 1: Fetch minimal shared data (just for market validation)
-    console.log('📊 Step 1: Fetching minimal market data for validation...');
     const sharedData = await fetchSharedTradingData(symbol);
     const minimalData = formatMinimalDataForPrompt(sharedData);
 
-    console.log(
-      `✅ Minimal data fetched: ${symbol} at $${sharedData.quote.price.toFixed(2)}`
-    );
-    console.log(
-      '⚠️  Note: This is INTENTIONALLY minimal - agents MUST use tools for real research\n'
-    );
-
     // Step 2: Launch all 4 research agents in parallel
-    console.log('🚀 Step 2: Launching 4 specialized research agents in parallel...\n');
 
     const [technical, fundamental, sentiment, risk] = await Promise.all([
       runTechnicalResearch(symbol, timeframe, account, minimalData, tier, onProgress, researchModel),
@@ -891,25 +833,6 @@ export async function runResearchAgents(
       fundamental.toolCallCount +
       sentiment.toolCallCount +
       risk.toolCallCount;
-
-    console.log(`\n${'='.repeat(80)}`);
-    console.log('✅ RESEARCH PIPELINE COMPLETE');
-    console.log(`${'='.repeat(80)}`);
-    console.log(`⏱️  Total Duration: ${researchDuration}ms`);
-    console.log(`🔧 Total Tool Calls: ${totalToolCalls}`);
-    console.log(`   - Technical: ${technical.toolCallCount} tools`);
-    console.log(`   - Fundamental: ${fundamental.toolCallCount} tools`);
-    console.log(`   - Sentiment: ${sentiment.toolCallCount} tools`);
-    console.log(`   - Risk: ${risk.toolCallCount} tools`);
-    console.log(
-      `📊 Total Tokens: ${
-        technical.tokensUsed +
-        fundamental.tokensUsed +
-        sentiment.tokensUsed +
-        risk.tokensUsed
-      }`
-    );
-    console.log(`${'='.repeat(80)}\n`);
 
     return {
       symbol: symbol.toUpperCase(),

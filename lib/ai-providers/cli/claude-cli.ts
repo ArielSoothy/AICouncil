@@ -128,10 +128,8 @@ export class ClaudeCLIProvider implements AIProvider {
         timeout: 10000,
         shell: '/bin/zsh', // Use zsh to get proper environment
       });
-      console.log('✅ Claude CLI isConfigured: true, version:', result.trim());
       return true;
     } catch (error) {
-      console.log('❌ Claude CLI isConfigured: false, error:', error instanceof Error ? error.message : error);
       return false;
     }
   }
@@ -146,9 +144,6 @@ export class ClaudeCLIProvider implements AIProvider {
     const startTime = Date.now();
 
     try {
-      console.log(`🔷 Claude CLI (Subscription): Querying ${config.model}...`);
-      console.log(`🔷 Claude CLI: Using stdin for prompt (${prompt.length} chars)`);
-
       // Use stdin-based execution to avoid shell escaping issues with complex prompts
       const { stdout, stderr } = await runClaudeCliWithStdin(prompt, config.model);
 
@@ -160,11 +155,6 @@ export class ClaudeCLIProvider implements AIProvider {
         stderr.includes('DeprecationWarning') ||
         stderr.includes('NODE_TLS_REJECT_UNAUTHORIZED')
       );
-
-      // Log stderr if it contains real errors (not just warnings)
-      if (stderr && !isJustWarning) {
-        console.log('🔷 Claude CLI stderr:', stderr);
-      }
 
       if (stderr && !stdout && !isJustWarning) {
         console.error('❌ Claude CLI stderr (no stdout):', stderr);
@@ -179,9 +169,6 @@ export class ClaudeCLIProvider implements AIProvider {
         // If not JSON, treat as plain text response
         response = { result: stdout.trim() };
       }
-
-      // 🔍 DEBUG: Log full response for troubleshooting
-      console.log('🔷 Claude CLI raw response:', JSON.stringify(response, null, 2));
 
       // Check for error in response
       if (response.is_error || response.type === 'error') {
@@ -204,10 +191,6 @@ export class ClaudeCLIProvider implements AIProvider {
         response.usage?.cache_creation_input_tokens ||
         Math.ceil(prompt.length / 4);
       const outputTokens = response.usage?.output_tokens || Math.ceil(responseText.length / 4);
-
-      console.log(`✅ Claude CLI (Subscription): Response received in ${responseTime}ms`);
-      console.log(`   Cost: $${response.total_cost_usd?.toFixed(4) || 'N/A'} (subscription - included in plan)`);
-      console.log(`   Tokens: ${inputTokens} input, ${outputTokens} output`);
 
       return {
         id: `claude-cli-${Date.now()}`,

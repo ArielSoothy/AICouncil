@@ -74,7 +74,6 @@ export function useConsensusAnalysis(): UseConsensusAnalysisReturn {
   const { saveConversation } = useConversationPersistence({
     storageKey: 'trading-consensus-mode',
     onRestored: (conversation) => {
-      console.log('Restoring Consensus Mode analysis:', conversation)
 
       // Check if this is a local (guest) ID
       if (conversation.id.startsWith('local-')) {
@@ -371,12 +370,10 @@ export function useConsensusAnalysis(): UseConsensusAnalysisReturn {
                   if (res.ok) {
                     return res.json().then(saved => {
                       saveConversation(saved.id)
-                      console.log('Consensus analysis saved:', saved.id)
                     })
                   } else {
                     // Guest mode: persist locally only
                     const clientId = `local-${Date.now()}`
-                    console.log('Guest mode: persisting locally with ID:', clientId)
 
                     if (typeof window !== 'undefined') {
                       localStorage.setItem(`trading-consensus-${clientId}`, JSON.stringify({
@@ -394,7 +391,6 @@ export function useConsensusAnalysis(): UseConsensusAnalysisReturn {
                     saveConversation(clientId)
                   }
                 }).catch(() => {
-                  console.log('Local-only mode (save failed)')
                 })
               }
 
@@ -405,7 +401,6 @@ export function useConsensusAnalysis(): UseConsensusAnalysisReturn {
 
               // Handle fallback events - model failed, using alternative
               if (event.type === 'fallback') {
-                console.log(`[${event.errorCategory}] ${event.originalModelName} -> ${event.fallbackModelName}: ${event.userMessage}`)
                 setFallbackMessages(prev => [...prev, {
                   from: event.originalModelName,
                   to: event.fallbackModelName,
@@ -416,7 +411,6 @@ export function useConsensusAnalysis(): UseConsensusAnalysisReturn {
 
               // Handle warning events - unstable model being attempted
               if (event.type === 'warning') {
-                console.warn(`${event.modelName}: ${event.message}`)
               }
             } catch (parseError) {
               console.error('Failed to parse SSE event:', parseError)

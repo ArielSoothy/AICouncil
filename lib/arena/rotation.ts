@@ -72,7 +72,6 @@ export async function getTodayRotation(enabledModels: string[]): Promise<string[
     const newModels = enabledModels.filter(m => !existingOrder.includes(m));
     const finalOrder = [...filteredOrder, ...newModels];
 
-    console.log(`📋 Today's rotation (${today}): ${finalOrder.join(' → ')}`);
     return finalOrder;
   }
 
@@ -116,7 +115,6 @@ export async function getTodayRotation(enabledModels: string[]): Promise<string[
     throw insertError;
   }
 
-  console.log(`📋 Created today's rotation (${today}): ${newOrder.join(' → ')}`);
   return newOrder;
 }
 
@@ -181,7 +179,6 @@ export async function setRotation(date: string, newOrder: string[]): Promise<voi
     throw error;
   }
 
-  console.log(`📋 Set rotation for ${date}: ${newOrder.join(' → ')}`);
 }
 
 /**

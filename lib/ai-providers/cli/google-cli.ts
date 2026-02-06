@@ -136,9 +136,6 @@ export class GoogleCLIProvider implements AIProvider {
     const startTime = Date.now();
 
     try {
-      console.log(`🔵 Gemini CLI (Subscription): Querying ${config.model}...`);
-      console.log(`🔵 Gemini CLI: Using stdin for prompt (${prompt.length} chars)`);
-
       // Use stdin-based execution to avoid shell escaping issues with complex prompts
       const { stdout, stderr } = await runGeminiCliWithStdin(prompt, config.model);
 
@@ -190,9 +187,6 @@ export class GoogleCLIProvider implements AIProvider {
           responseText = stdout.trim();
         }
       }
-
-      console.log(`✅ Gemini CLI (Subscription): Response received in ${responseTime}ms`);
-      console.log(`   Response length: ${responseText.length} chars (subscription - no charge)`);
 
       return {
         id: `gemini-cli-${Date.now()}`,

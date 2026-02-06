@@ -125,28 +125,23 @@ export async function GET() {
   try {
     // First check current status
     let status = await makeGatewayRequest<AuthStatus>('/iserver/auth/status', 'GET')
-    console.log('[IBKR] Initial status:', JSON.stringify(status))
 
     // If Gateway is running but not authenticated, try ssodh/init to complete 2FA
     // This handles the case where user completed phone 2FA but page didn't update
     if (!status.authenticated) {
       try {
-        console.log('[IBKR] Not authenticated, trying ssodh/init to complete 2FA...')
         const initResult = await makeGatewayRequest<SsodhInitResponse>(
           '/iserver/auth/ssodh/init',
           'POST',
           JSON.stringify({ publish: true, compete: true })
         )
-        console.log('[IBKR] ssodh/init result:', JSON.stringify(initResult))
 
         // If init succeeded, check status again
         if (initResult.authenticated || initResult.passed) {
           status = await makeGatewayRequest<AuthStatus>('/iserver/auth/status', 'GET')
-          console.log('[IBKR] Status after ssodh/init:', JSON.stringify(status))
         }
-      } catch (initError) {
+      } catch {
         // ssodh/init may fail if user hasn't completed 2FA yet - that's OK
-        console.log('[IBKR] ssodh/init failed (normal if 2FA not done):', initError)
       }
     }
 
@@ -192,7 +187,6 @@ export async function POST() {
 
   try {
     const status = await makeGatewayRequest<AuthStatus>('/iserver/auth/status', 'GET')
-    console.log('[IBKR] Manual check:', JSON.stringify(status))
 
     return NextResponse.json({
       success: status.authenticated || false,

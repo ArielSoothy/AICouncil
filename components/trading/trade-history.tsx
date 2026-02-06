@@ -28,6 +28,7 @@ export function TradeHistory() {
 
   useEffect(() => {
     fetchTrades()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters])
 
   const fetchTrades = async () => {

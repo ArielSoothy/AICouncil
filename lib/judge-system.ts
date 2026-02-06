@@ -223,7 +223,6 @@ export function parseJudgeResponse(response: string, mode: JudgeResponseMode): J
         cleanText = cleanText.substring(0, jsonEnd + 1)
       }
       
-      console.log('Attempting to parse judge JSON:', cleanText)
       
       const parsed = JSON.parse(cleanText)
       
@@ -237,7 +236,6 @@ export function parseJudgeResponse(response: string, mode: JudgeResponseMode): J
         tokenUsage: 0 // Will be filled by caller
       } as ConciseJudgeResult
       
-      console.log('Successfully parsed judge response:', result)
       return result
       
     } catch (error) {

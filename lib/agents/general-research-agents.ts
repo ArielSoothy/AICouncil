@@ -33,10 +33,6 @@ export async function conductGeneralResearch(
 ): Promise<GeneralResearchReport> {
   const startTime = Date.now();
 
-  console.log(`\n${'='.repeat(80)}`);
-  console.log(`🔬 STARTING GENERAL RESEARCH FOR: "${query}"`);
-  console.log(`${'='.repeat(80)}\n`);
-
   try {
     // Emit research start event
     onProgress?.({
@@ -84,8 +80,6 @@ Provide your findings in this structured format:
 **CONFIDENCE:**
 - [Your confidence in the findings: 0-100%]`;
 
-    console.log('🌐 Searching web with Llama 3.3 70B (Groq - FREE + internet access)...');
-
     // Use Llama 3.3 70B on Groq - FREE, fast, and has internet access
     const result: ModelResponse = await provider.query(researchPrompt, {
       model: 'llama-3.3-70b-versatile',
@@ -96,9 +90,6 @@ Provide your findings in this structured format:
     });
 
     const researchDuration = Date.now() - startTime;
-
-    console.log(`✅ Research complete in ${researchDuration}ms`);
-    console.log(`📝 Response length: ${result.response.length} chars`);
 
     // Emit research complete event
     onProgress?.({
@@ -133,15 +124,6 @@ Provide your findings in this structured format:
       researchDuration,
       timestamp: new Date(),
     };
-
-    console.log(`\n${'='.repeat(80)}`);
-    console.log('✅ RESEARCH REPORT COMPLETE');
-    console.log(`${'='.repeat(80)}`);
-    console.log(`📊 Sources Found: ${sources.length}`);
-    console.log(`💡 Evidence Quality: ${evidenceQuality.toUpperCase()}`);
-    console.log(`🎯 Confidence: ${confidence}%`);
-    console.log(`⏱️  Duration: ${researchDuration}ms`);
-    console.log(`${'='.repeat(80)}\n`);
 
     return report;
   } catch (error) {

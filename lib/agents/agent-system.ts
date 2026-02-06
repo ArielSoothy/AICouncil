@@ -59,13 +59,11 @@ export class AgentDebateOrchestrator {
         const modelHasNativeSearch = hasInternetAccess(agent.model)
         const modelInfo = getModelInfo(agent.model)
         const providerName = modelInfo?.provider ? PROVIDER_NAMES[modelInfo.provider] : 'Unknown'
-        console.log(`🔍 Search capability check: ${agent.persona.role} (${agent.model}) → ${modelHasNativeSearch ? `Native (${providerName})` : 'DuckDuckGo fallback'}`)
         return !modelHasNativeSearch
       })
 
       // Only run DuckDuckGo pre-research for models that lack native search
       if (this.request.enableWebSearch && modelsWithoutNativeSearch.length > 0) {
-        console.log(`🔬 Starting DuckDuckGo pre-research for ${modelsWithoutNativeSearch.length} model(s) without native search...`)
         try {
           this.preResearchResult = await executePreResearch(this.session.query, {
             enabled: true,
@@ -75,13 +73,6 @@ export class AgentDebateOrchestrator {
             roleSpecificQueries: true
           })
 
-          console.log('✅ DuckDuckGo pre-research complete:', {
-            searchesExecuted: this.preResearchResult.searchesExecuted,
-            sourcesFound: this.preResearchResult.sources.length,
-            cacheHit: this.preResearchResult.cacheHit,
-            researchTime: this.preResearchResult.researchTime + 'ms',
-            forModels: modelsWithoutNativeSearch.map(a => a.model)
-          })
 
           // Store pre-research metadata in session for UI display
           this.session.preResearch = {
@@ -93,11 +84,9 @@ export class AgentDebateOrchestrator {
             queryType: this.preResearchResult.queryAnalysis.primaryType
           }
         } catch (preResearchError) {
-          console.warn('⚠️ DuckDuckGo pre-research failed, continuing without:', preResearchError)
           // Continue without pre-research if it fails
         }
       } else if (this.request.enableWebSearch) {
-        console.log('✅ All models have native search capability - skipping DuckDuckGo pre-research')
       }
 
       // Run first round
@@ -105,16 +94,9 @@ export class AgentDebateOrchestrator {
       
       // Calculate enhanced disagreement analysis after round 1
       if (this.session.rounds[0]?.messages.length > 1) {
-        console.log(`[DEBUG] Running disagreement analysis after round 1`)
         const allMessages = this.session.rounds.flatMap(r => r.messages)
-        console.log(`[DEBUG] Found ${allMessages.length} messages for analysis (round 1)`)
         this.session.disagreementAnalysis = DisagreementAnalyzer.analyzeDisagreements(allMessages)
         this.session.disagreementScore = this.session.disagreementAnalysis.score
-        console.log(`[DEBUG] Round 1 disagreement analysis completed:`, {
-          score: this.session.disagreementScore,
-          reasons: this.session.disagreementAnalysis.reasons.length,
-          patterns: this.session.disagreementAnalysis.patterns.length
-        })
         
         // Check if we should pause for user decision
         if (this.request.autoRound2 === false && 
@@ -140,16 +122,9 @@ export class AgentDebateOrchestrator {
         
         // Update disagreement analysis after each round (moved outside conditional)
         if (this.session.rounds.length >= round) {
-          console.log(`[DEBUG] Running disagreement analysis after round ${round}`)
           const allMessages = this.session.rounds.flatMap(r => r.messages)
-          console.log(`[DEBUG] Found ${allMessages.length} messages for analysis`)
           this.session.disagreementAnalysis = DisagreementAnalyzer.analyzeDisagreements(allMessages)
           this.session.disagreementScore = this.session.disagreementAnalysis.score
-          console.log(`[DEBUG] Disagreement analysis completed:`, {
-            score: this.session.disagreementScore,
-            reasons: this.session.disagreementAnalysis.reasons.length,
-            patterns: this.session.disagreementAnalysis.patterns.length
-          })
         }
         
         // Check for abort
@@ -161,27 +136,16 @@ export class AgentDebateOrchestrator {
       
       // Final disagreement analysis after all rounds (Phase 2: Chain-of-debate tracking)
       if (this.session.status !== 'error' && this.session.rounds.length > 0) {
-        console.log(`[DEBUG] Running final disagreement analysis after all rounds`)
         const allMessages = this.session.rounds.flatMap(r => r.messages)
-        console.log(`[DEBUG] Found ${allMessages.length} total messages for final analysis`)
-        
+
         if (allMessages.length > 0) {
           this.session.disagreementAnalysis = DisagreementAnalyzer.analyzeDisagreements(allMessages)
           this.session.disagreementScore = this.session.disagreementAnalysis.score
-          console.log(`[DEBUG] Final disagreement analysis completed:`, {
-            score: this.session.disagreementScore,
-            reasons: this.session.disagreementAnalysis.reasons.length,
-            patterns: this.session.disagreementAnalysis.patterns.length,
-            chainLength: this.session.disagreementAnalysis.chainOfDisagreement.length
-          })
         }
       }
       
       // Synthesize final conclusion (only if not error status)
-      console.log('[DEBUG] PRE-SYNTHESIS: Current session status:', this.session.status)
-      console.log('[DEBUG] PRE-SYNTHESIS: Checking synthesis conditions...')
       if (this.session.status !== 'error' && (this.session.status === 'debating' || this.session.status === 'awaiting-round2')) {
-        console.log('[DEBUG] PRE-SYNTHESIS: Conditions met, starting synthesis')
         this.session.status = 'synthesizing'
         await this.synthesizeDebate()
         
@@ -196,9 +160,6 @@ export class AgentDebateOrchestrator {
         }
         
         this.session.status = 'completed'
-      } else {
-        console.log('[DEBUG] PRE-SYNTHESIS: Conditions NOT met. Session status:', this.session.status)
-        console.log('[DEBUG] PRE-SYNTHESIS: Skipping synthesis')
       }
       
       this.session.endTime = new Date()
@@ -298,15 +259,12 @@ export class AgentDebateOrchestrator {
       if (this.request.enableWebSearch && round === 1) {
         if (modelHasNativeSearch) {
           // Model HAS native search - tell it to use its native search tool
-          console.log(`🌐 ${config.persona.role} (${config.model}): Using NATIVE ${providerName} search`)
           webSearchInstructions = `\n\n🔍 WEB SEARCH REQUIRED: You have access to a web_search tool. You MUST use it to find current, factual information about the query. Search for specific details, statistics, prices, reviews, and recent data to support your arguments with real evidence. Call the web search tool BEFORE writing your response. Do not rely on training data alone - actively search for current information.\n\n`
           useNativeSearch = true
         } else {
           // Model does NOT have native search - inject DuckDuckGo pre-research context
-          console.log(`🦆 ${config.persona.role} (${config.model}): Using DuckDuckGo fallback`)
           if (this.preResearchResult && this.preResearchResult.formattedContext) {
             enhancedPrompt = prompt + this.preResearchResult.formattedContext
-            console.log(`📚 Injected DuckDuckGo pre-research for ${config.persona.role} (${this.preResearchResult.sources.length} sources)`)
           } else {
             // Inline DuckDuckGo search as last resort
             try {
@@ -320,10 +278,8 @@ export class AgentDebateOrchestrator {
 
               if (enriched.searchContext) {
                 enhancedPrompt = prompt + enriched.searchContext
-                console.log(`📚 Inline DuckDuckGo search for ${config.persona.role}`)
               }
             } catch (searchError) {
-              console.warn(`DuckDuckGo search failed for ${config.persona.role}:`, searchError)
             }
           }
         }
@@ -366,30 +322,18 @@ export class AgentDebateOrchestrator {
   }
   
   private async synthesizeDebate(): Promise<void> {
-    console.log('[DEBUG] === SYNTHESIS FUNCTION STARTED ===')
     try {
       // Collect all messages from all rounds
       const allMessages = this.session.rounds.flatMap(r => r.messages)
-      console.log('[DEBUG] SYNTHESIS: Collected', allMessages.length, 'messages from rounds')
-      
+
       // Phase 2: Chain-of-debate tracking - Generate disagreement analysis
-      console.log('[DEBUG] SYNTHESIS: Running disagreement analysis with', allMessages.length, 'messages')
       if (allMessages.length > 0) {
         try {
-          console.log('[DEBUG] SYNTHESIS: About to call DisagreementAnalyzer.analyzeDisagreements')
           this.session.disagreementAnalysis = DisagreementAnalyzer.analyzeDisagreements(allMessages)
           this.session.disagreementScore = this.session.disagreementAnalysis.score
-          console.log('[DEBUG] SYNTHESIS: Disagreement analysis completed successfully:', {
-            score: this.session.disagreementScore,
-            reasons: this.session.disagreementAnalysis.reasons.length,
-            patterns: this.session.disagreementAnalysis.patterns.length,
-            chainLength: this.session.disagreementAnalysis.chainOfDisagreement.length
-          })
         } catch (error) {
-          console.error('[DEBUG] SYNTHESIS: Error in disagreement analysis:', error)
+          console.error('Synthesis: Error in disagreement analysis:', error)
         }
-      } else {
-        console.log('[DEBUG] SYNTHESIS: No messages found for disagreement analysis')
       }
       
       // Use the most capable available model for synthesis

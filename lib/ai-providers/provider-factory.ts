@@ -95,7 +95,6 @@ export function getProviderForTier(
   }
 
   // REGULAR TIERS (free, pro, max): Use API providers
-  console.log(`🔷 Using API provider for ${providerType} (${tier} tier)`);
   return { provider: API_PROVIDERS[provider] };
 }
 
@@ -112,7 +111,6 @@ function getProviderForSubTier(
   // If no CLI provider exists, check if it's a free provider (like Groq)
   if (!cliProvider) {
     if (FREE_PROVIDERS.includes(providerType)) {
-      console.log(`🆓 Using free API provider for ${providerType} (${tier} tier - no billing)`);
       return { provider: API_PROVIDERS[providerType] };
     }
 
@@ -128,7 +126,6 @@ function getProviderForSubTier(
   // CLI provider exists - check if it's configured
   try {
     if (cliProvider.isConfigured && cliProvider.isConfigured()) {
-      console.log(`🔑 Using CLI SUBSCRIPTION provider for ${providerType} (${tier} tier)`);
       return { provider: cliProvider };
     } else {
       // CLI not configured - DO NOT FALL BACK TO API
@@ -157,7 +154,6 @@ function getProviderForSubTier(
  */
 export function getProvidersForTier(tier: PresetTier): Record<ProviderType, any> {
   if (isSubscriptionTier(tier)) {
-    console.log(`🔑 Building CLI provider map for ${tier} tier`);
 
     // For sub tiers: Only CLI providers + free providers
     const providers: Partial<Record<ProviderType, any>> = {};
@@ -177,7 +173,6 @@ export function getProvidersForTier(tier: PresetTier): Record<ProviderType, any>
   }
 
   // Regular tiers: Return all API providers
-  console.log(`🔷 Building API provider map for ${tier} tier`);
   return { ...API_PROVIDERS };
 }
 

@@ -66,9 +66,6 @@ export class AnthropicProvider implements AIProvider {
 
       const hasTools = Object.keys(tools).length > 0;
 
-      // DEBUG: Log tool configuration
-      console.log(`🔧 Anthropic ${config.model}: useTools=${config.useTools}, hasTools=${hasTools}, toolCount=${Object.keys(tools).length}, toolNames=${Object.keys(tools).join(', ')}`);
-
       const result = await generateText({
         model: anthropic(config.model),
         prompt,
@@ -96,23 +93,6 @@ export class AnthropicProvider implements AIProvider {
       });
 
       const responseTime = Date.now() - startTime;
-
-      // DEBUG: Log result structure
-      const extractedToolCalls = config.useTools ? result.steps?.flatMap(s => s.toolCalls || []) : [];
-      console.log(`🔧 Anthropic ${config.model} RESULT: steps=${result.steps?.length || 0}, toolCalls=${extractedToolCalls?.length || 0}, text=${result.text?.substring(0, 100)}...`);
-
-      // DEBUG: Log tool results structure to understand where results are stored
-      if (config.useTools && result.steps?.length > 0) {
-        const firstStep = result.steps[0];
-        console.log(`🔍 TOOL DEBUG - Step 0 structure:`, {
-          toolCallsCount: firstStep.toolCalls?.length || 0,
-          toolResultsCount: (firstStep as any).toolResults?.length || 0,
-          toolCallKeys: firstStep.toolCalls?.[0] ? Object.keys(firstStep.toolCalls[0]) : [],
-          toolResultKeys: (firstStep as any).toolResults?.[0] ? Object.keys((firstStep as any).toolResults[0]) : [],
-          sampleToolCallId: firstStep.toolCalls?.[0]?.toolCallId,
-          sampleToolResultId: (firstStep as any).toolResults?.[0]?.toolCallId,
-        });
-      }
 
       return {
         id: `anthropic-${Date.now()}`,

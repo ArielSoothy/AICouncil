@@ -172,14 +172,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🔍 Analyzing ${stock.symbol} (${mode} mode, ${model}, tier: ${tier})`);
-
     // Calculate Winners Strategy score
     const stockData = toStockData(stock);
     const winnersScore = calculateWinnersScore(stockData);
     const scoreSummary = generateScoreSummaryForPrompt(winnersScore);
-
-    console.log(`📊 Winners Score: ${winnersScore.total}/${winnersScore.maxPossible} → ${winnersScore.conviction}`);
 
     // Generate prompt based on mode
     const prompt = mode === 'quick'
@@ -191,7 +187,6 @@ export async function POST(request: NextRequest) {
     // Using gemini-2.5-flash for fast screening with thinking support
     let response;
     try {
-      console.log(`🔷 Using GeminiCLI provider (subscription mode - gemini-2.5-flash)`);
       response = await geminiCLIProvider.query(prompt, {
         provider: 'google',
         model: 'gemini-2.5-flash', // Fast model with thinking support
@@ -257,8 +252,6 @@ export async function POST(request: NextRequest) {
         analysisTime: Date.now() - startTime,
       };
     }
-
-    console.log(`✅ Analysis complete for ${stock.symbol}: ${analysis.verdict} (${analysis.analysisTime}ms)`);
 
     return NextResponse.json({
       success: true,

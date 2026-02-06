@@ -73,6 +73,7 @@ export function InputModeSelector({
     if ((mode === 'portfolio' || mode === 'position') && positions.length === 0) {
       fetchPositions()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
   const fetchPositions = async () => {

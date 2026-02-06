@@ -38,7 +38,6 @@ export interface ChainLink {
 export class DisagreementAnalyzer {
   
   static analyzeDisagreements(messages: AgentMessage[]): DisagreementAnalysis {
-    console.log('[DEBUG] DisagreementAnalyzer.analyzeDisagreements() called with', messages.length, 'messages')
     
     if (messages.length < 2) {
       return {
@@ -58,7 +57,6 @@ export class DisagreementAnalyzer {
     const score = Math.min(reasons.length / 3, 1) // Cap at 1.0
     const severity = score > 0.7 ? 'high' : score > 0.3 ? 'medium' : 'low'
     
-    console.log('[DEBUG] Found', reasons.length, 'meaningful disagreements, score:', score)
     
     return {
       score,

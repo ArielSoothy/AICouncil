@@ -552,5 +552,6 @@ export function useResearchProgress(
     return () => {
       eventSource?.close()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endpoint, options.enabled])
 }

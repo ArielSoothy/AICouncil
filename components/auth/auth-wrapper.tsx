@@ -18,7 +18,6 @@ export function AuthWrapper({ children, fallback, allowAnonymous = false }: Auth
   React.useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) {
-        console.log('Auth loading timeout, showing fallback')
         setShowFallback(true)
       }
     }, 2000) // Reduced from 3 seconds to 2 seconds

@@ -28,41 +28,26 @@ export function synthesizeFinalRecommendation(
   messages: AgentMessage[],
   researchBased: boolean = false
 ): SynthesisOutput {
-  console.log(`\n${'='.repeat(80)}`)
-  console.log(`🔮 SYNTHESIS ENGINE: Processing ${messages.length} agent responses`)
-  console.log(`${'='.repeat(80)}\n`)
-
   // Extract recommendations from each agent
   const recommendations = extractRecommendations(messages)
-  console.log(`📊 Extracted ${recommendations.length} recommendations`)
 
   // Find consensus recommendation (most mentioned)
   const topRecommendation = findConsensusRecommendation(recommendations)
-  console.log(`✅ Top recommendation: "${topRecommendation}"`)
 
   // Calculate average confidence
   const avgConfidence = calculateAverageConfidence(messages)
-  console.log(`🎯 Average confidence: ${avgConfidence}%`)
 
   // Extract supporting evidence (facts mentioned multiple times)
   const supportingEvidence = extractCommonEvidence(messages)
-  console.log(`📚 Supporting evidence: ${supportingEvidence.length} items`)
 
   // Extract key risks/concerns
   const keyRisks = extractCommonRisks(messages)
-  console.log(`⚠️  Key risks: ${keyRisks.length} items`)
 
   // Extract alternative options with scores
   const alternatives = extractAlternatives(recommendations)
-  console.log(`🔄 Alternative options: ${alternatives.length}`)
 
   // Assess evidence quality (1-5 scale)
   const evidenceScore = assessEvidenceQuality(messages, researchBased)
-  console.log(`📈 Evidence score: ${evidenceScore}/5`)
-
-  console.log(`\n${'='.repeat(80)}`)
-  console.log('✅ SYNTHESIS COMPLETE')
-  console.log(`${'='.repeat(80)}\n`)
 
   return {
     topRecommendation,

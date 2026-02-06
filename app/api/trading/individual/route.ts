@@ -138,7 +138,6 @@ export async function POST(request: NextRequest) {
       }));
     } catch (brokerError) {
       // Graceful fallback - research can proceed without live broker data
-      console.warn(`⚠️ Broker unavailable, using fallback data: ${brokerError}`);
       account = {
         id: 'fallback',
         account_number: 'N/A',
@@ -167,9 +166,8 @@ export async function POST(request: NextRequest) {
     try {
       const sharedData = await fetchSharedTradingData(targetSymbol);
       deterministicScore = calculateTradingScore(sharedData, timeframe as TradingTimeframe);
-      console.log(`✅ Deterministic score for ${targetSymbol}: ${deterministicScore.recommendation} (${deterministicScore.weightedScore.toFixed(2)})`);
     } catch (scoreError) {
-      console.warn(`⚠️ Could not calculate deterministic score: ${scoreError}`);
+      // Continue without deterministic score - non-critical
       // Continue without deterministic score - AI will still analyze research
     }
 
@@ -177,10 +175,7 @@ export async function POST(request: NextRequest) {
     // Check cache first
     let researchReport = await researchCache.get(targetSymbol, timeframe as TradingTimeframe);
 
-    if (researchReport) {
-      console.log(`✅ Cache hit for ${targetSymbol}-${timeframe} - using cached research`);
-    } else {
-      console.log(`💨 Cache miss for ${targetSymbol}-${timeframe} - running fresh research`);
+    if (!researchReport) {
       researchReport = await runResearchAgents(
         targetSymbol,
         timeframe as TradingTimeframe,
@@ -235,9 +230,7 @@ export async function POST(request: NextRequest) {
         const modelName = getModelDisplayName(currentModelId);
 
         // Log if model is unstable
-        if (isModelUnstable(currentModelId)) {
-          console.warn(`⚠️ ${modelName} has been unstable recently, attempting anyway...`);
-        }
+        // Unstable check handled by fallback system
 
         try {
           const providerType = getProviderType(currentModelId);
@@ -318,7 +311,6 @@ export async function POST(request: NextRequest) {
 
           if (fallbackModelId) {
             const fallbackName = getModelDisplayName(fallbackModelId);
-            console.log(`🔄 Fallback: ${modelName} → ${fallbackName} (${errorMessage})`);
 
             // Track fallback for response
             fallbackLog.push({

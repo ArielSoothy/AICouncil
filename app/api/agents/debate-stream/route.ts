@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
   let body: any
   try {
     body = await request.json()
-    console.log('Request body parsed successfully')
   } catch (parseError) {
     console.error('Failed to parse request body:', parseError)
     return new Response('Invalid request body', { status: 400 })
@@ -62,15 +61,6 @@ export async function POST(request: NextRequest) {
     );
   }
   
-  console.log('Debate request received:', {
-    hasQuery: !!query,
-    agentsCount: agents.length,
-    agents: agents.map((a: any) => ({ provider: a.provider, model: a.model })),
-    rounds,
-    responseMode,
-    round1Mode
-  })
-  
   // Set token limits based on response mode - INCREASED for engaging debates
   const getTokenLimit = (mode: string) => {
     switch(mode) {
@@ -87,14 +77,9 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        console.log('Stream started, checking agents...')
-        console.log('Agents array:', JSON.stringify(agents))
-        console.log('Comparison enabled:', includeComparison)
-        console.log('Comparison model:', comparisonModel)
-        
         // Check if we have agents
         if (!agents || agents.length === 0) {
-          console.error('ERROR: No agents provided to debate')
+          console.error('No agents provided to debate')
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             type: 'error',
             message: 'No agents provided to debate',
@@ -103,15 +88,6 @@ export async function POST(request: NextRequest) {
           controller.close()
           return
         }
-        
-        console.log(`Found ${agents.length} agents, proceeding...`)
-        console.log('Agent details:', agents.map((a: any, i: number) => ({ 
-          index: i, 
-          provider: a.provider, 
-          model: a.model, 
-          enabled: a.enabled,
-          hasPersona: !!a.persona 
-        })))
         
         // Send initial connection message
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
@@ -128,7 +104,6 @@ export async function POST(request: NextRequest) {
 
         if (MEMORY_ENABLED) {
           // Memory retrieval enabled - will fetch relevant past conversations
-          console.log('✅ Memory system enabled - checking for relevant past context')
         }
         
         // ==================== SMART SEARCH PHASE ====================
@@ -177,7 +152,6 @@ export async function POST(request: NextRequest) {
 
           // Run DuckDuckGo based on coordinator's decision
           if (researchDecision.shouldRunDuckDuckGo) {
-            console.log(`\n🦆 Starting DuckDuckGo pre-research for ${modelsNeedingDuckDuckGo.length} model(s)...`)
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'pre_research_started',
               message: `Gathering evidence for ${modelsNeedingDuckDuckGo.length} model(s) without native search...`,
@@ -197,12 +171,6 @@ export async function POST(request: NextRequest) {
 
               if (preResearchResult.formattedContext) {
                 preResearchContext = preResearchResult.formattedContext
-                console.log('✅ DuckDuckGo pre-research complete:', {
-                  searchesExecuted: preResearchResult.searchesExecuted,
-                  sourcesFound: preResearchResult.sources.length,
-                  cacheHit: preResearchResult.cacheHit,
-                  researchTime: preResearchResult.researchTime + 'ms'
-                })
 
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'pre_research_completed',
@@ -222,12 +190,11 @@ export async function POST(request: NextRequest) {
                   timestamp: Date.now()
                 })}\n\n`))
               }
-            } catch (preResearchError) {
-              console.warn('⚠️ DuckDuckGo pre-research failed:', preResearchError)
+            } catch {
+              // DuckDuckGo pre-research failed - continue without it
             }
           } else {
             // Coordinator decided to skip DuckDuckGo
-            console.log(`\n✅ ${researchDecision.reason}`)
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'pre_research_skipped',
               reason: researchDecision.reason,
@@ -243,8 +210,6 @@ export async function POST(request: NextRequest) {
 
         // Process each round
         for (let roundNum = 1; roundNum <= rounds; roundNum++) {
-          console.log(`Starting round ${roundNum} of ${rounds} with ${agents.length} agents`)
-          
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             type: 'round_started',
             round: roundNum,
@@ -268,14 +233,10 @@ export async function POST(request: NextRequest) {
           for (let i = 0; i < orderedAgents.length; i++) {
             const agentConfig = orderedAgents[i]
             const index = agents.indexOf(agentConfig) // Get original index for consistency
-            console.log(`Processing agent ${index}: ${agentConfig.provider}/${agentConfig.model}`)
-            console.log(`Agent config:`, JSON.stringify(agentConfig))
-            const modelId = round1Mode === 'llm' 
+            const modelId = round1Mode === 'llm'
               ? `${agentConfig.provider}-${agentConfig.model}-${index}`
               : agentConfig.agentId
-            
-            console.log(`ModelId for agent ${index}: ${modelId}`)
-              
+
             try {
               // Send model started event
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
@@ -311,7 +272,6 @@ export async function POST(request: NextRequest) {
                 memoryContext += 'Please consider these past experiences when forming your response, but focus on the current query.\n'
                 
                 enhancedQuery = query + memoryContext
-                console.log(`🧠 MEMORY: Enhanced query with ${relevantMemories.length} past experiences`)
               }
               
               // Per-agent web search - each agent does their own research
@@ -324,7 +284,6 @@ export async function POST(request: NextRequest) {
               if (enableWebSearch) {
                 if (useNativeSearch) {
                   // Provider has native search - model will search on its own
-                  console.log(`🔍 ${agentConfig.provider}: Using native web search capability`)
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                     type: 'web_search_started',
                     query: query,
@@ -431,7 +390,6 @@ export async function POST(request: NextRequest) {
                     })}\n\n`))
                   } else {
                     // Fallback to basic search if role-based search fails
-                    console.log('Role-based search failed, falling back to basic search');
                     const enriched = await enrichQueryWithWebSearch(query, {
                       enabled: true,
                       provider: 'duckduckgo',
@@ -471,7 +429,6 @@ export async function POST(request: NextRequest) {
                     }
                   }
                 } catch (searchError) {
-                  console.warn('Progressive web search failed for agent debate streaming:', searchError)
                   
                   // Send web search failed event
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -554,10 +511,8 @@ export async function POST(request: NextRequest) {
               let actualProvider = agentConfig.provider
               
               // Try primary provider first
-              console.log(`Getting provider for ${agentConfig.provider}`)
               const provider = providerRegistry.getProvider(agentConfig.provider)
               if (!provider) {
-                console.error(`Provider not found: ${agentConfig.provider}`)
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                   type: 'model_error', 
                   modelId,
@@ -568,14 +523,6 @@ export async function POST(request: NextRequest) {
                 return null
               }
               
-              console.log(`Provider found for ${agentConfig.provider}, attempting query...`)
-
-              // Use the native search flag determined earlier (from line ~204)
-              // useNativeSearch is already set based on provider capability
-              if (useNativeSearch && enableWebSearch) {
-                console.log(`🔍 ${agentConfig.provider}: Using native web search (no DuckDuckGo needed)`)
-              }
-
               if (provider) {
                 // Try primary model first
                 try {
@@ -587,25 +534,21 @@ export async function POST(request: NextRequest) {
 
                   // Check if response is empty/failed
                   if (isResponseFailed(result?.response)) {
-                    console.log(`[Fallback] ${agentConfig.provider}/${agentConfig.model} returned empty response, trying fallbacks`)
                     result = null // Reset to trigger fallback
                   }
-                } catch (providerError: any) {
-                  console.log(`[Fallback] ${agentConfig.provider}/${agentConfig.model} failed:`, providerError.message)
+                } catch {
                   result = null
                 }
 
                 // If primary failed, try fallbacks
                 if (!result) {
                   const fallbacks = getFallbacksForModel(agentConfig.model)
-                  console.log(`[Fallback] Available fallbacks: ${fallbacks.map(f => `${f.provider}/${f.model}`).join(', ')}`)
 
                   for (const fallback of fallbacks.slice(0, 3)) { // Try up to 3 fallbacks
                     try {
                       const fallbackProvider = providerRegistry.getProvider(fallback.provider)
                       if (!fallbackProvider) continue
 
-                      console.log(`[Fallback] Trying ${fallback.provider}/${fallback.model}...`)
                       result = await fallbackProvider.query(fullPrompt, {
                         provider: fallback.provider,
                         model: fallback.model,
@@ -615,7 +558,6 @@ export async function POST(request: NextRequest) {
 
                       if (!isResponseFailed(result?.response)) {
                         actualProvider = fallback.provider
-                        console.log(`[Fallback] Success with ${fallback.provider}/${fallback.model}`)
 
                         // Notify frontend about fallback
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -628,9 +570,8 @@ export async function POST(request: NextRequest) {
                         })}\n\n`))
                         break
                       }
-                      console.log(`[Fallback] ${fallback.provider}/${fallback.model} also returned empty`)
-                    } catch (fallbackError: any) {
-                      console.log(`[Fallback] ${fallback.provider}/${fallback.model} failed:`, fallbackError.message)
+                    } catch {
+                      // Fallback model failed, try next
                     }
                   }
                 }
@@ -641,9 +582,6 @@ export async function POST(request: NextRequest) {
               }
               
               const endTime = Date.now()
-              
-              // Debug the result structure
-              console.log(`[DEBUG] Agent ${modelId} FULL result object:`, JSON.stringify(result, null, 2))
               
               // Use consistent preview format - just first 150 chars like other systems
               const standardizedPreview = result.response?.substring(0, 150) + (result.response?.length > 150 ? '...' : '') || 'No response';
@@ -719,8 +657,6 @@ export async function POST(request: NextRequest) {
         
         if (includeComparison && comparisonModel) {
           try {
-            console.log(`Starting comparison with ${comparisonModel.provider}/${comparisonModel.model}`)
-            
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
               type: 'comparison_started',
               model: comparisonModel.model,
@@ -769,16 +705,12 @@ export async function POST(request: NextRequest) {
         // Query consensus if requested - SIMPLIFIED: just use the same models from the debate
         if (includeComparison && includeConsensusComparison) {
           try {
-            console.log('Starting consensus comparison for three-way display')
-            
             // Use the SAME models that just debated
             const consensusModelsToUse = agents.map((agent: { provider: string; model: string }) => ({
               provider: agent.provider,
               model: agent.model,
               enabled: true
             }))
-
-            console.log('Using these models for consensus:', consensusModelsToUse)
 
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'consensus_comparison_started',
@@ -796,8 +728,6 @@ export async function POST(request: NextRequest) {
               isGuestMode: true
             }
             
-            console.log('Calling consensus API with payload:', JSON.stringify(consensusPayload, null, 2))
-            
             const consensusResponse = await fetch(`${request.nextUrl.origin}/api/consensus`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -806,8 +736,7 @@ export async function POST(request: NextRequest) {
             
             if (consensusResponse.ok) {
               const result = await consensusResponse.json()
-              console.log('Consensus API success! Judge analysis:', result.consensus?.judgeAnalysis)
-              
+
               // Extract the consensus data with judge answer
               consensusData = {
                 response: result.consensus?.unifiedAnswer || 'No consensus generated',
@@ -821,16 +750,13 @@ export async function POST(request: NextRequest) {
                 judgeAnalysis: result.consensus?.judgeAnalysis
               }
               
-              console.log('Consensus data prepared:', consensusData)
-              
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 type: 'consensus_comparison_completed',
                 consensus: consensusData,
                 timestamp: Date.now()
               })}\n\n`))
             } else {
-              const errorText = await consensusResponse.text()
-              console.error('Consensus API failed:', consensusResponse.status, errorText)
+              console.error('Consensus API failed:', consensusResponse.status)
             }
           } catch (error) {
             console.error('Consensus comparison error:', error)
@@ -838,7 +764,6 @@ export async function POST(request: NextRequest) {
         }
         
         // Phase 2: Chain-of-debate tracking - Generate disagreement analysis
-        console.log('[DEBUG] DEBATE-STREAM: Starting disagreement analysis')
         let disagreementAnalysis = null
         let disagreementScore = 0
         
@@ -855,23 +780,12 @@ export async function POST(request: NextRequest) {
         
         if (agentMessages.length > 0) {
           try {
-            console.log('[DEBUG] DEBATE-STREAM: Running disagreement analysis with', agentMessages.length, 'messages')
             disagreementAnalysis = DisagreementAnalyzer.analyzeDisagreements(agentMessages)
             disagreementScore = disagreementAnalysis.score
-            console.log('[DEBUG] DEBATE-STREAM: Disagreement analysis completed:', {
-              score: disagreementScore,
-              reasons: disagreementAnalysis.reasons.length,
-              patterns: disagreementAnalysis.patterns.length,
-              chainLength: disagreementAnalysis.chainOfDisagreement.length
-            })
           } catch (error) {
-            console.error('[DEBUG] DEBATE-STREAM: Error in disagreement analysis:', error)
+            console.error('Error in disagreement analysis:', error)
           }
-        } else {
-          console.log('[DEBUG] DEBATE-STREAM: No messages for disagreement analysis')
         }
-        
-        console.log('Starting synthesis with consensusData:', !!consensusData)
         
         // Start synthesis phase
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
@@ -947,20 +861,10 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
 
               // CRITICAL: Check if Gemini returned empty response
               if (!synthesisResult || !synthesisResult.response || synthesisResult.response.trim().length < 50) {
-                console.warn('⚠️  Gemini returned empty or too short synthesis response:', {
-                  hasResult: !!synthesisResult,
-                  hasError: !!synthesisResult?.error,
-                  errorMsg: synthesisResult?.error || 'none',
-                  responseLength: synthesisResult?.response?.length || 0,
-                  responsePreview: (synthesisResult?.response || 'null').substring(0, 100)
-                })
                 synthesisResult = null // Force fallback to Groq
-              } else {
-                console.log('✅ Gemini synthesis succeeded, response length:', synthesisResult.response.length)
               }
             } catch (googleError: any) {
-              console.error('❌ Google AI failed:', googleError.message)
-              console.error('Google AI error stack:', googleError.stack?.substring(0, 500))
+              console.error('Google AI synthesis failed:', googleError.message)
               synthesisResult = null
             }
           }
@@ -969,7 +873,6 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
           if (!synthesisResult) {
             const groqProvider = providerRegistry.getProvider('groq')
             if (groqProvider) {
-              console.log('📝 Using Groq Llama 3.3 70B for synthesis (Gemini fallback)')
               usedProvider = 'groq'
               try {
                 synthesisResult = await groqProvider.query(synthesisPrompt, {
@@ -981,7 +884,6 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
 
                 // Check if Groq 70B also returned empty
                 if (!synthesisResult || !synthesisResult.response || synthesisResult.response.trim().length < 50) {
-                  console.warn('⚠️  Groq 70B returned empty, trying Llama 3.1 8B...')
 
                   // Try smaller model as third fallback
                   try {
@@ -993,19 +895,15 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
                     })
 
                     if (synthesisResult && synthesisResult.response && synthesisResult.response.trim().length >= 50) {
-                      console.log('✅ Groq Llama 8B synthesis succeeded')
                       usedProvider = 'groq-8b'
                     } else {
-                      console.warn('⚠️  Groq 8B also returned empty')
                       synthesisResult = null
                     }
-                  } catch (smallModelError: any) {
-                    console.error('❌ Groq 8B also failed:', smallModelError.message)
+                  } catch {
                     synthesisResult = null
                   }
                 }
-              } catch (groqError: any) {
-                console.error('❌ Groq 70B failed for synthesis:', groqError.message)
+              } catch {
                 synthesisResult = null
               }
             }
@@ -1013,7 +911,6 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
 
           // Final fallback: Create basic synthesis from agent responses if all LLMs failed
           if (!synthesisResult || !synthesisResult.response) {
-            console.warn('⚠️  All synthesis providers failed, creating fallback synthesis')
             usedProvider = 'fallback'
 
             // Create a simple summary from the last round responses
@@ -1035,12 +932,8 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
           }
 
           if (synthesisResult) {
-            
             // Parse synthesis content with better extraction
             const content = synthesisResult.response
-            
-            // Debug: log the raw synthesis for inspection
-            console.log('Raw synthesis response (first 500 chars):', content.substring(0, 500))
             
             // Extract conclusion FIRST - this is the main answer
             let conclusion = ''
@@ -1117,14 +1010,6 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
                 .filter(line => line.length > 10 && line.includes('?')) // Must be a question
             }
             
-            console.log('Synthesis parsing:', {
-              agreementsCount: agreements.length,
-              disagreementsCount: disagreements.length,
-              hasConclusion: conclusion.length > 0,
-              confidence,
-              followUpQuestionsCount: followUpQuestions.length
-            })
-            
             const synthesis = {
               content: `${content}\n\n[Synthesized by: ${
                 usedProvider === 'groq' ? 'Llama 3.3 70B (Groq)' :
@@ -1197,11 +1082,9 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(trainingPayload)
-              }).then(res => {
-                if (res.ok) console.log('Training data collected successfully')
-              }).catch(err => console.log('Failed to collect training data:', err))
-            } catch (err) {
-              console.log('Training data error:', err)
+              }).catch(() => { /* Non-critical: training data collection */ })
+            } catch {
+              // Non-critical: training data collection
             }
           } else {
             // Fallback if no Google provider or if overloaded
@@ -1269,7 +1152,6 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
             timestamp: Date.now()
           })}\n\n`))
           
-          console.log('💾 MEMORY STORAGE: Storing episodic memory from completed debate...')
           
           // Extract synthesis data from the last successful synthesis
           let finalSynthesis = null
@@ -1294,8 +1176,7 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
           }
           
           const storedMemory = await memoryService.storeEpisodicMemory(episodicMemory)
-          console.log(`✅ MEMORY STORAGE: Stored episodic memory: ${storedMemory?.id}`)
-          
+
           // Also store semantic memory for high confidence results
           if (finalSynthesis?.confidence && finalSynthesis.confidence > 0.7) {
             const semanticMemory = {
@@ -1308,8 +1189,7 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
               validations: 1
             }
             
-            const storedSemantic = await memoryService.storeSemanticMemory(semanticMemory)
-            console.log(`✅ MEMORY STORAGE: Stored high-confidence semantic memory: ${storedSemantic?.id}`)
+            await memoryService.storeSemanticMemory(semanticMemory)
           }
           
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
@@ -1320,7 +1200,7 @@ IMPORTANT: Be SPECIFIC. If agents mentioned specific hotels, products, or option
           })}\n\n`))
           
         } catch (memoryError) {
-          console.error('💾 MEMORY STORAGE ERROR:', memoryError)
+          console.error('Memory storage error:', memoryError)
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             type: 'memory_storage_error',
             message: 'Failed to store experience, but debate completed successfully',

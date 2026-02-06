@@ -30,7 +30,6 @@ const SCHEMA_VERSION = 1;
 export function calculateCost(modelId: string, tokens: TokenUsage): number {
   const pricing = MODEL_COSTS_PER_1K[modelId];
   if (!pricing) {
-    console.warn(`[CostTracker] No pricing found for model: ${modelId}`);
     return 0;
   }
 
@@ -191,7 +190,6 @@ export function getStoredAggregates(): CostStorageSchema | null {
     const parsed = JSON.parse(stored) as CostStorageSchema;
     if (parsed.version !== SCHEMA_VERSION) {
       // Migration could happen here
-      console.log('[CostTracker] Schema version mismatch, resetting storage');
       return null;
     }
 

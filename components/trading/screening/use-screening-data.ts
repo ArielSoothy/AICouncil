@@ -281,7 +281,6 @@ export function useScreeningData() {
 
       const result = await response.json()
       const jobId = result.job_id
-      console.log('[INFO] V2 Screening started, job_id:', jobId)
 
       const pollInterval = setInterval(async () => {
         try {

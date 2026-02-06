@@ -39,20 +39,6 @@ export class OpenAIProvider implements AIProvider {
       // Seed for reproducibility (OpenAI supports seed parameter)
       const seedConfig = config.seed ? { seed: config.seed } : {};
 
-      // 🔍 DEBUG: Log tool configuration
-      console.log('=== OPENAI DEBUG ===');
-      console.log('Model:', config.model);
-      console.log('Is GPT-5:', isGPT5);
-      console.log('Token param:', isGPT5 ? 'maxCompletionTokens' : 'maxTokens');
-      console.log('Token value:', config.maxTokens || 1000);
-      console.log('Temperature:', isGPT5 ? '1 (default only)' : (config.temperature || 0.7));
-      console.log('Seed:', config.seed || 'none');
-      console.log('useTools:', config.useTools);
-      console.log('useWebSearch:', config.useWebSearch);
-      console.log('maxSteps:', config.maxSteps);
-      console.log('Tools passed:', config.useTools ? Object.keys(alpacaTools) : 'none');
-      console.log('====================');
-
       // Build tools object - combine alpaca tools with web search if needed
       const tools: Record<string, any> = {};
 
@@ -64,7 +50,6 @@ export class OpenAIProvider implements AIProvider {
       // Add OpenAI web search if requested (requires GPT-4o+ or GPT-5)
       if (config.useWebSearch) {
         tools.web_search = openai.tools.webSearchPreview({});
-        console.log('OpenAI: Native web search enabled');
       }
 
       const hasTools = Object.keys(tools).length > 0;
@@ -87,19 +72,10 @@ export class OpenAIProvider implements AIProvider {
         stopWhen: hasTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
         onStepFinish: hasTools ? (step) => {
           try {
-            console.log('🔍 OpenAI Step finished:', {
-              text: step.text?.substring(0, 100),
-              toolCalls: step.toolCalls?.length || 0,
-              toolResults: step.toolResults?.length || 0
-            });
             if (step.toolCalls && step.toolCalls.length > 0) {
               step.toolCalls.forEach((call: any) => {
-                if (call.toolName === 'web_search') {
-                  console.log(`🔍 ${config.model} → OpenAI Web Search`);
-                } else {
-                  // Tool call args may be in different properties depending on AI SDK version
+                if (call.toolName !== 'web_search') {
                   const args = call.args || call.input || call.parameters || {};
-                  console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(args)})`);
                   toolTracker.logCall(call.toolName, args?.symbol || 'N/A');
                 }
               });
@@ -111,18 +87,6 @@ export class OpenAIProvider implements AIProvider {
       });
 
       const responseTime = Date.now() - startTime;
-
-      console.log('=== OPENAI SUCCESS ===');
-      console.log('Response length:', result.text?.length || 0);
-      console.log('Has text:', !!result.text);
-      console.log('Token usage:', result.usage);
-      console.log('First 300 chars:', result.text ? result.text.substring(0, 300) : 'NO TEXT');
-      console.log('Last 100 chars:', result.text ? result.text.substring(result.text.length - 100) : 'NO TEXT');
-      if (config.useTools) {
-        console.log('Total steps:', result.steps?.length || 0);
-        console.log('Steps with toolCalls:', result.steps?.filter(s => s.toolCalls && s.toolCalls.length > 0).length || 0);
-      }
-      console.log('======================');
 
       return {
         id: `openai-${Date.now()}`,

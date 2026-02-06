@@ -164,6 +164,7 @@ function ArchitectureTab() {
 
   useEffect(() => {
     loadTradingData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMode])
 
   useEffect(() => {

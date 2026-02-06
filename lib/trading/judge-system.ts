@@ -111,7 +111,6 @@ export function parseTradingJudgeResponse(response: string): TradingJudgeResult 
       cleanText = cleanText.substring(0, jsonEnd + 1)
     }
 
-    console.log('Attempting to parse trading judge JSON:', cleanText.substring(0, 200) + '...')
 
     const parsed = JSON.parse(cleanText)
 
@@ -128,7 +127,6 @@ export function parseTradingJudgeResponse(response: string): TradingJudgeResult 
       tokenUsage: 0 // Will be filled by caller
     }
 
-    console.log('Successfully parsed trading judge response:', result)
     return result
 
   } catch (error) {

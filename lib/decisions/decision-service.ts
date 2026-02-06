@@ -106,7 +106,6 @@ export class DecisionService {
       throw new Error(`Failed to save decision: ${error.message}`)
     }
 
-    console.log(`[DecisionService] Decision saved: ${data.id}`)
     return data as Decision
   }
 
@@ -239,7 +238,6 @@ export class DecisionService {
 
     if (error) {
       // Fallback to ILIKE if function doesn't exist
-      console.warn('[DecisionService] RPC search failed, using fallback:', error)
       const { data: fallbackData, error: fallbackError } = await this.supabase
         .from('decisions')
         .select('*')
@@ -309,7 +307,6 @@ export class DecisionService {
       throw new Error(`Failed to update outcome: ${error.message}`)
     }
 
-    console.log(`[DecisionService] Outcome updated for decision ${id}: ${outcome.outcome_status}`)
     return data as Decision
   }
 
@@ -370,7 +367,6 @@ export class DecisionService {
       throw new Error(`Failed to delete decision: ${error.message}`)
     }
 
-    console.log(`[DecisionService] Decision deleted: ${id}`)
   }
 
   // ==========================================================================
@@ -388,7 +384,6 @@ export class DecisionService {
     })
 
     if (error) {
-      console.warn('[DecisionService] RPC get_model_performance failed:', error)
       // Fallback: manual aggregation
       return this.calculateModelPerformanceManually(userId)
     }

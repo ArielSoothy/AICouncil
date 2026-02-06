@@ -35,7 +35,6 @@ export async function getLockedStocks(): Promise<string[]> {
   }
 
   const symbols = (data || []).map((lock: { symbol: string }) => lock.symbol);
-  console.log(`🔒 Currently locked stocks: ${symbols.length > 0 ? symbols.join(', ') : 'none'}`);
   return symbols;
 }
 
@@ -93,7 +92,6 @@ export async function lockStock(
     throw error;
   }
 
-  console.log(`🔒 Locked ${symbol} to model ${modelId}`);
 }
 
 /**
@@ -114,7 +112,6 @@ export async function unlockStock(symbol: string): Promise<void> {
     throw error;
   }
 
-  console.log(`🔓 Unlocked ${symbol}`);
 }
 
 /**
@@ -206,7 +203,6 @@ export async function unlockAllModelStocks(modelId: string): Promise<void> {
     throw error;
   }
 
-  console.log(`🔓 Unlocked all stocks for model ${modelId}`);
 }
 
 /**
@@ -226,5 +222,4 @@ export async function unlockAllStocks(): Promise<void> {
     throw error;
   }
 
-  console.log(`🔓 Unlocked all stocks`);
 }

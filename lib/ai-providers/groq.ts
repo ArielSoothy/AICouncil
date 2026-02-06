@@ -36,12 +36,6 @@ export class GroqProvider implements AIProvider {
           throw new Error('Groq API key not configured properly');
         }
 
-        console.log('Groq: Attempting query with model:', modelToUse)
-        if (originalModel) {
-          console.log(`Groq: Using fallback model due to rate limit (original: ${originalModel})`)
-        }
-        console.log('Groq: API key configured:', this.isConfigured())
-
         const result = await generateText({
           model: groq(modelToUse),
           prompt,
@@ -57,25 +51,10 @@ export class GroqProvider implements AIProvider {
           toolChoice: config.useTools ? 'required' : undefined,
           stopWhen: config.useTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
           onStepFinish: config.useTools ? (step) => {
-            console.log(`🔧 Step finished: ${step.toolCalls?.length || 0} tool calls, toolResults: ${step.toolResults?.length || 0}`);
             if (step.toolCalls && step.toolCalls.length > 0) {
               step.toolCalls.forEach((call: any) => {
-                // AI SDK uses 'input' not 'args' for tool call parameters
                 const args = call.args || call.input || {};
-                const argsStr = Object.keys(args).length > 0 ? JSON.stringify(args) : 'NO_ARGS';
-                console.log(`🔧 ${config.model} → ${call.toolName}(${argsStr})`);
                 toolTracker.logCall(call.toolName, args.symbol || 'N/A');
-              });
-            }
-            // Also log tool results if available
-            if (step.toolResults && step.toolResults.length > 0) {
-              step.toolResults.forEach((tr: any, i: number) => {
-                // AI SDK toolResults structure: { toolCallId, toolName, result }
-                const resultData = tr.result ?? tr;
-                const resultStr = typeof resultData === 'object'
-                  ? JSON.stringify(resultData).substring(0, 200)
-                  : String(resultData).substring(0, 200);
-                console.log(`🔧 Tool result ${i} (${tr.toolName || 'unknown'}):`, resultStr);
               });
             }
           } : undefined,
@@ -83,7 +62,6 @@ export class GroqProvider implements AIProvider {
 
         const responseTime = Date.now() - startTime;
 
-        console.log('Groq: Success! Response length:', result.text?.length || 0)
         if (!result.text || result.text.trim() === '') {
           console.error('CRITICAL: Groq result.text is empty/undefined!', {
             hasText: !!result.text,
@@ -129,7 +107,6 @@ export class GroqProvider implements AIProvider {
         
         if (isRateLimitError && availableFallbacks && fallbackIndex < availableFallbacks.length) {
           const nextFallback = availableFallbacks[fallbackIndex];
-          console.log(`Groq: Rate limit hit for ${modelToUse}, attempting fallback to ${nextFallback}`)
           return attemptQuery(nextFallback, fallbackIndex + 1, original);
         }
         

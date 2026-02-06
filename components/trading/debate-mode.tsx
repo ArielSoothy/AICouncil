@@ -101,7 +101,6 @@ export function DebateMode() {
   const { saveConversation, isRestoring } = useConversationPersistence({
     storageKey: 'trading-debate-mode',
     onRestored: (conversation) => {
-      console.log('Restoring Debate Mode analysis:', conversation)
       const responses = conversation.responses as TradingConversationResponses
       const evalData = conversation.evaluation_data
 
@@ -348,7 +347,6 @@ export function DebateMode() {
         if (saveResponse.ok) {
           const savedConversation = await saveResponse.json()
           saveConversation(savedConversation.id)
-          console.log('Debate Mode analysis saved:', savedConversation.id)
         }
       } catch (saveError) {
         console.error('Failed to save analysis:', saveError)

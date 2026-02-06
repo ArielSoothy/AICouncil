@@ -156,9 +156,8 @@ export async function POST(request: NextRequest) {
     try {
       const sharedData = await fetchSharedTradingData(targetSymbol);
       deterministicScore = calculateTradingScore(sharedData, timeframe as TradingTimeframe);
-      console.log(`✅ Deterministic score for ${targetSymbol}: ${deterministicScore.recommendation} (${deterministicScore.weightedScore.toFixed(2)})`);
     } catch (scoreError) {
-      console.warn(`⚠️ Could not calculate deterministic score: ${scoreError}`);
+      // Continue without deterministic score - non-critical
       // Continue without deterministic score - AI will still analyze research
     }
 

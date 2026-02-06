@@ -23,11 +23,6 @@ export class GoogleProvider implements AIProvider {
         throw new Error('Google AI API key not configured');
       }
 
-      console.log('Google AI: Attempting query with model:', config.model);
-      console.log('Google AI: API key configured:', !!process.env.GOOGLE_GENERATIVE_AI_API_KEY);
-      console.log('Google AI: Web search enabled:', config.useWebSearch || false);
-      console.log('Google AI: Seed:', config.seed || 'none (Gemini seed support limited)');
-
       // Build tools object - combine alpaca tools with Google Search if needed
       const tools: Record<string, any> = {};
 
@@ -43,12 +38,11 @@ export class GoogleProvider implements AIProvider {
           const googleAny = google as any;
           if (googleAny.tools?.googleSearch) {
             tools.google_search = googleAny.tools.googleSearch({});
-            console.log('Google AI: Native Google Search grounding enabled');
           } else {
-            console.log('Google AI: Web search requested but SDK does not support google.tools.googleSearch');
+            // SDK does not support google.tools.googleSearch
           }
-        } catch (e) {
-          console.log('Google AI: Could not enable native search:', e);
+        } catch {
+          // Could not enable native search
         }
       }
 
@@ -68,20 +62,10 @@ export class GoogleProvider implements AIProvider {
         stopWhen: hasTools ? stepCountIs(config.maxSteps || 15) : stepCountIs(1),
         onStepFinish: hasTools ? (step) => {
           try {
-            console.log('🔍 Google Step finished:', {
-              text: step.text?.substring(0, 100),
-              toolCalls: step.toolCalls?.length || 0,
-              toolResults: step.toolResults?.length || 0
-            });
             if (step.toolCalls && step.toolCalls.length > 0) {
               step.toolCalls.forEach((call: any) => {
-                // Gemini may use different property names for arguments
-                const args = call.args || call.input || call.parameters || {};
-
-                if (call.toolName === 'google_search') {
-                  console.log(`🔍 ${config.model} → Google Search`);
-                } else {
-                  console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(args)})`);
+                if (call.toolName !== 'google_search') {
+                  const args = call.args || call.input || call.parameters || {};
                   toolTracker.logCall(call.toolName, args?.symbol || 'N/A');
                 }
               });
@@ -99,8 +83,6 @@ export class GoogleProvider implements AIProvider {
         console.error('Google AI: Returned empty response');
         throw new Error('Google AI returned empty response');
       }
-
-      console.log('Google AI: Success! Response length:', result.text.length);
 
       return {
         id: `google-${Date.now()}`,

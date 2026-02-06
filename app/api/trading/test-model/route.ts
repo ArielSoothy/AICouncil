@@ -78,7 +78,6 @@ export async function POST(request: NextRequest) {
     // Determine actual test type (testTools is legacy param)
     const actualTestType = testTools ? 'tools' : testType;
 
-    console.log(`🧪 Testing model: ${modelName} (${modelId}) - type=${actualTestType}`);
 
     // Check if provider is configured
     if (!provider.isConfigured()) {
@@ -129,7 +128,6 @@ export async function POST(request: NextRequest) {
 
     // Check for API errors
     if (result.error) {
-      console.log(`❌ ${modelName} API error:`, result.error);
       return NextResponse.json({
         success: false,
         modelId,
@@ -143,7 +141,6 @@ export async function POST(request: NextRequest) {
     // For ping tests, just check for any response
     if (actualTestType === 'ping') {
       const hasResponse = result.response && result.response.trim().length > 0;
-      console.log(`📡 ${modelName} ping: ${hasResponse ? '✅ OK' : '❌ No response'}`);
 
       return NextResponse.json({
         success: hasResponse,
@@ -164,7 +161,6 @@ export async function POST(request: NextRequest) {
       const toolCallCount = toolCalls.length;
       const toolNames = toolCalls.map((tc: { toolName: string }) => tc.toolName);
 
-      console.log(`🔧 ${modelName} tool test: ${toolCallCount} tools called (${toolNames.join(', ')})`);
 
       if (toolCallCount === 0) {
         return NextResponse.json({
@@ -196,7 +192,6 @@ export async function POST(request: NextRequest) {
 
     // Check for empty response (JSON tests only)
     if (!result.response || result.response.trim().length === 0) {
-      console.log(`❌ ${modelName} returned empty response`);
       return NextResponse.json({
         success: false,
         modelId,
@@ -216,7 +211,6 @@ export async function POST(request: NextRequest) {
 
       // Validate required fields
       if (!decision.action || !['BUY', 'SELL', 'HOLD'].includes(decision.action)) {
-        console.log(`⚠️ ${modelName} missing/invalid action field`);
         return NextResponse.json({
           success: false,
           modelId,
@@ -229,7 +223,6 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      console.log(`✅ ${modelName} passed! Action: ${decision.action}, Confidence: ${decision.confidence}`);
 
       return NextResponse.json({
         success: true,
@@ -243,7 +236,6 @@ export async function POST(request: NextRequest) {
       });
 
     } catch (parseError) {
-      console.log(`❌ ${modelName} JSON parse failed:`, parseError);
       return NextResponse.json({
         success: false,
         modelId,

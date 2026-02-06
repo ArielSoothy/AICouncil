@@ -31,13 +31,9 @@ export interface ConversationMetadata {
  * Callers should narrow types at the point of use.
  */
 export interface TradingConversationResponses {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   consensus?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   decisions?: any[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   debate?: any
   models?: { model: string; [key: string]: unknown }[]
   rounds?: { messages?: { agentId?: string }[] }[]

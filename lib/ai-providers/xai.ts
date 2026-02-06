@@ -30,12 +30,6 @@ export class XAIProvider implements AIProvider {
         apiKey: process.env.XAI_API_KEY as string,
       });
 
-      console.log('=== XAI DEBUG ===');
-      console.log('Model:', config.model);
-      console.log('useTools:', config.useTools);
-      console.log('useWebSearch:', config.useWebSearch);
-      console.log('=================');
-
       // Build tools object
       const tools: Record<string, any> = {};
 
@@ -69,16 +63,11 @@ export class XAIProvider implements AIProvider {
         onStepFinish: hasTools ? (step) => {
           if (step.toolCalls && step.toolCalls.length > 0) {
             step.toolCalls.forEach((call: any) => {
-              console.log(`🔧 ${config.model} → ${call.toolName}(${JSON.stringify(call.args)})`);
               toolTracker.logCall(call.toolName, call.args.symbol || 'N/A');
             });
           }
         } : undefined,
       });
-
-      if (config.useWebSearch) {
-        console.log('xAI: Live Search enabled (auto mode)');
-      }
 
       const responseTime = Date.now() - startTime;
 

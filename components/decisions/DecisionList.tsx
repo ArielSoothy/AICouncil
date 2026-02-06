@@ -101,6 +101,7 @@ export function DecisionList({
     if (!initialDecisions) {
       fetchDecisions(true)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
   // Refetch when filters change
@@ -109,6 +110,7 @@ export function DecisionList({
       fetchDecisions(true)
     }, 300)
     return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, domainFilter, outcomeFilter])
 
   // Handle outcome update

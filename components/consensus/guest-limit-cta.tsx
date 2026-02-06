@@ -17,10 +17,10 @@ export function GuestLimitCTA({ queriesUsed, maxFreeQueries }: GuestLimitCTAProp
       <CardHeader>
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          <CardTitle>You've used all your free debates!</CardTitle>
+          <CardTitle>You&apos;ve used all your free debates!</CardTitle>
         </div>
         <CardDescription>
-          You've completed {queriesUsed} of {maxFreeQueries} free AI debates. Sign up to continue getting better answers through multi-model discussions.
+          You&apos;ve completed {queriesUsed} of {maxFreeQueries} free AI debates. Sign up to continue getting better answers through multi-model discussions.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -75,7 +75,6 @@ export function IndividualMode() {
   const { saveConversation, isRestoring } = useConversationPersistence({
     storageKey: 'trading-individual-mode',
     onRestored: (conversation) => {
-      console.log('Restoring Individual Mode analysis:', conversation)
       const responses = conversation.responses as TradingConversationResponses
       const evalData = conversation.evaluation_data
 
@@ -315,7 +314,6 @@ export function IndividualMode() {
         if (saveResponse.ok) {
           const savedConversation = await saveResponse.json()
           saveConversation(savedConversation.id)
-          console.log('Individual Mode analysis saved:', savedConversation.id)
         }
       } catch (saveError) {
         console.error('Failed to save analysis:', saveError)

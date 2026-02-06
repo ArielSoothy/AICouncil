@@ -65,7 +65,6 @@ export function SaveDecisionButton({
       setSavedId(result.decision.id)
       onSave?.(result.decision.id)
 
-      console.log('[SaveDecisionButton] Decision saved:', result.decision.id)
     } catch (err) {
       console.error('[SaveDecisionButton] Error:', err)
       setError(err instanceof Error ? err.message : 'Failed to save')

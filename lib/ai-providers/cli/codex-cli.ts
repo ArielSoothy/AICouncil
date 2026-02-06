@@ -152,9 +152,6 @@ export class CodexCLIProvider implements AIProvider {
       // Sanitize prompt to avoid content filter (Codex CLI is stricter than API)
       const sanitizedPrompt = this.sanitizePromptForCodex(prompt);
 
-      console.log(`🟢 Codex CLI (Subscription): Querying ${config.model}...`);
-      console.log(`🟢 Codex CLI: Using stdin for prompt (${sanitizedPrompt.length} chars)`);
-
       // Use stdin-based execution to avoid shell escaping issues with complex prompts
       const { stdout, stderr } = await runCodexCliWithStdin(sanitizedPrompt, config.model);
 
@@ -286,9 +283,6 @@ export class CodexCLIProvider implements AIProvider {
       if (!responseText) {
         responseText = stdout.trim();
       }
-
-      console.log(`✅ Codex CLI (Subscription): Response received in ${responseTime}ms`);
-      console.log(`   Response length: ${responseText.length} chars (subscription - no charge)`);
 
       return {
         id: `codex-cli-${Date.now()}`,

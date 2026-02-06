@@ -122,7 +122,6 @@ export async function GET(request: NextRequest) {
       .is('pnl', null);
 
     // Format trades
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formattedTrades: TradeHistoryItem[] = (trades || []).map((trade: any) => {
       // Extract reasoning from JSONB if needed
       let reasoning = '';
