@@ -11,6 +11,7 @@ import { DebateConfigModal } from './screening-debate/debate-config-modal'
 import { useScreeningDebate } from './screening-debate/use-screening-debate'
 import { DebateProgressBar } from './screening-debate/debate-progress-bar'
 import type { SortField } from './screening/types'
+import { DEFAULT_SCREENING_DEBATE_CONFIG } from '@/lib/trading/screening-debate/types'
 import type { ScreeningDebateConfig } from '@/lib/trading/screening-debate/types'
 
 export default function PreMarketScreening() {
@@ -89,6 +90,14 @@ export default function PreMarketScreening() {
 
   const handleStartDebate = (config: ScreeningDebateConfig) => {
     debate.startDebate(config)
+  }
+
+  const handleDebateStock = (symbol: string) => {
+    debate.startDebate({
+      ...DEFAULT_SCREENING_DEBATE_CONFIG,
+      symbols: [symbol],
+      topN: 1,
+    })
   }
 
   const sortOptions: { value: SortField; label: string; icon: string }[] = [
@@ -384,6 +393,8 @@ export default function PreMarketScreening() {
               setAnalysisModel={setAnalysisModel}
               onAnalyze={analyzeStock}
               debateResult={debate.results.find(r => r.symbol === stock.symbol)}
+              onDebateStock={handleDebateStock}
+              isDebating={debate.isRunning && debate.currentStock === stock.symbol}
             />
           ))}
 

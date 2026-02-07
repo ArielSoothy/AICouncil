@@ -1,6 +1,6 @@
 'use client'
 
-import { TrendingUp, TrendingDown, ChevronDown, ChevronRight, ExternalLink, Zap, Target, RefreshCw, Bot, Star, Gavel } from 'lucide-react'
+import { TrendingUp, TrendingDown, ChevronDown, ChevronRight, ExternalLink, Zap, Target, RefreshCw, Bot, Star, Gavel, Swords } from 'lucide-react'
 import type { WinnersScore } from '@/lib/trading/screening/winners-scoring'
 import type { StockResult, AnalysisResult } from './types'
 import type { StockDebateResult, ScreeningVerdict } from '@/lib/trading/screening-debate/types'
@@ -16,6 +16,12 @@ const ANALYSIS_MODELS = [
   { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', badge: 'Fastest' },
 ]
 
+const ROLE_LABELS: Record<string, { label: string; color: string; icon: string }> = {
+  analyst: { label: 'Analyst', color: 'text-blue-600 dark:text-blue-400', icon: '📊' },
+  critic: { label: 'Critic', color: 'text-red-600 dark:text-red-400', icon: '🔍' },
+  synthesizer: { label: 'Synthesizer', color: 'text-purple-600 dark:text-purple-400', icon: '🔗' },
+}
+
 interface StockCardProps {
   stock: StockResult
   isExpanded: boolean
@@ -29,6 +35,8 @@ interface StockCardProps {
   setAnalysisModel: (model: string) => void
   onAnalyze: (stock: StockResult) => void
   debateResult?: StockDebateResult
+  onDebateStock?: (symbol: string) => void
+  isDebating?: boolean
 }
 
 const VERDICT_BADGE: Record<ScreeningVerdict, { bg: string; text: string }> = {
@@ -50,6 +58,8 @@ export function StockCard({
   setAnalysisModel,
   onAnalyze,
   debateResult,
+  onDebateStock,
+  isDebating,
 }: StockCardProps) {
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden transition-all duration-200">
@@ -691,14 +701,18 @@ export function StockCard({
                   </>
                 )}
               </button>
-              <button
-                disabled
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white rounded-lg transition-colors text-sm font-medium"
-                title="Coming in Phase 3"
-              >
-                <Star className="w-4 h-4" />
-                Add to Watchlist
-              </button>
+              {/* Debate This Stock */}
+              {onDebateStock && (
+                <button
+                  onClick={() => onDebateStock(stock.symbol)}
+                  disabled={isDebating}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white rounded-lg transition-colors text-sm font-medium"
+                  title="Run AI debate on this stock"
+                >
+                  <Swords className={`w-4 h-4 ${isDebating ? 'animate-pulse' : ''}`} />
+                  {isDebating ? 'Debating...' : 'Debate'}
+                </button>
+              )}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               Score breakdown: Rank {40 - stock.rank * 2}/40 + Gap {Math.min(30, Math.abs(stock.gap_percent) * 3).toFixed(0)}/30 + Vol {Math.min(30, stock.pre_market_volume / 1_000_000 * 10).toFixed(0)}/30
@@ -706,7 +720,8 @@ export function StockCard({
 
             {/* Debate Results Section */}
             {debateResult && (
-              <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+              <div className="col-span-full mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                {/* Judge Verdict Header */}
                 <div className="flex items-center gap-2 mb-3">
                   <Gavel className="w-4 h-4 text-purple-600" />
                   <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Debate Verdict</h4>
@@ -716,6 +731,15 @@ export function StockCard({
                   <span className="text-xs text-gray-500">
                     {debateResult.judgeVerdict.confidence}% confidence
                   </span>
+                  {debateResult.judgeVerdict.riskLevel && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                      debateResult.judgeVerdict.riskLevel === 'Low' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                      debateResult.judgeVerdict.riskLevel === 'High' || debateResult.judgeVerdict.riskLevel === 'Critical' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                      'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    }`}>
+                      {debateResult.judgeVerdict.riskLevel} Risk
+                    </span>
+                  )}
                 </div>
 
                 {/* Confidence bar */}
@@ -729,11 +753,63 @@ export function StockCard({
                   />
                 </div>
 
-                {/* Key arguments */}
+                {/* Judge reasoning */}
                 {debateResult.judgeVerdict.reasoning && (
-                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
                     {debateResult.judgeVerdict.reasoning}
                   </p>
+                )}
+
+                {/* Bull/Bear Points */}
+                {(debateResult.judgeVerdict.keyBullPoints.length > 0 || debateResult.judgeVerdict.keyBearPoints.length > 0) && (
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    {debateResult.judgeVerdict.keyBullPoints.length > 0 && (
+                      <div className="bg-green-50 dark:bg-green-900/10 rounded-lg p-2">
+                        <p className="text-xs font-semibold text-green-700 dark:text-green-400 mb-1">Bull Case</p>
+                        <ul className="space-y-0.5">
+                          {debateResult.judgeVerdict.keyBullPoints.map((p, i) => (
+                            <li key={i} className="text-xs text-green-600 dark:text-green-300 flex gap-1">
+                              <span>+</span><span>{p}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {debateResult.judgeVerdict.keyBearPoints.length > 0 && (
+                      <div className="bg-red-50 dark:bg-red-900/10 rounded-lg p-2">
+                        <p className="text-xs font-semibold text-red-700 dark:text-red-400 mb-1">Bear Case</p>
+                        <ul className="space-y-0.5">
+                          {debateResult.judgeVerdict.keyBearPoints.map((p, i) => (
+                            <li key={i} className="text-xs text-red-600 dark:text-red-300 flex gap-1">
+                              <span>-</span><span>{p}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Agent Summaries (Round 2 final positions) */}
+                {debateResult.debate.round2.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase">Agent Final Positions</p>
+                    {debateResult.debate.round2.map((entry, i) => {
+                      const roleInfo = ROLE_LABELS[entry.role] || { label: entry.role, color: 'text-gray-600', icon: '' }
+                      return (
+                        <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span>{roleInfo.icon}</span>
+                            <span className={`text-xs font-semibold ${roleInfo.color}`}>{roleInfo.label}</span>
+                            <span className="text-xs text-gray-400">{entry.model}</span>
+                          </div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-3">
+                            {entry.content || 'No preview available'}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
                 )}
 
                 {/* Trade parameters for BUY */}
@@ -769,6 +845,13 @@ export function StockCard({
                       ? `Trade executed: ${debateResult.tradeExecution.quantity} shares @ $${debateResult.tradeExecution.filledPrice?.toFixed(2)}`
                       : debateResult.tradeExecution.error || 'Trade not executed'}
                   </div>
+                )}
+
+                {/* Duration */}
+                {debateResult.duration > 0 && (
+                  <p className="text-xs text-gray-400 mt-2 text-right">
+                    Debate completed in {(debateResult.duration / 1000).toFixed(1)}s
+                  </p>
                 )}
               </div>
             )}

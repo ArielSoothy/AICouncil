@@ -90,6 +90,7 @@ export interface DailyBriefing {
 
 export interface ScreeningDebateConfig {
   topN: number // 1-10, default 3
+  symbols?: string[] // Optional: debate specific symbols instead of top N from scan
   analystModel: string
   criticModel: string
   synthesizerModel: string

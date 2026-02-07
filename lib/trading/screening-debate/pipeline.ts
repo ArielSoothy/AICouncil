@@ -215,21 +215,21 @@ export async function debateSingleStock(
   const analystR1 = await queryModel(analystR1Prompt, config.analystModel, tier)
   totalTokens += analystR1.tokensUsed
   debateEntries.round1.push(makeEntry('analyst', analystR1, 1))
-  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'analyst', round: 1, model: analystR1.modelUsed } })
+  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'analyst', round: 1, model: analystR1.modelUsed, preview: analystR1.response.slice(0, 300) } })
 
   // Critic R1
   const criticR1Prompt = generateScreeningCriticPrompt(screeningContext, researchSummary, 1, analystR1.response)
   const criticR1 = await queryModel(criticR1Prompt, config.criticModel, tier)
   totalTokens += criticR1.tokensUsed
   debateEntries.round1.push(makeEntry('critic', criticR1, 1))
-  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'critic', round: 1, model: criticR1.modelUsed } })
+  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'critic', round: 1, model: criticR1.modelUsed, preview: criticR1.response.slice(0, 300) } })
 
   // Synthesizer R1
   const synthR1Prompt = generateScreeningSynthesizerPrompt(screeningContext, researchSummary, 1, analystR1.response, criticR1.response)
   const synthR1 = await queryModel(synthR1Prompt, config.synthesizerModel, tier)
   totalTokens += synthR1.tokensUsed
   debateEntries.round1.push(makeEntry('synthesizer', synthR1, 1))
-  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'synthesizer', round: 1, model: synthR1.modelUsed } })
+  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'synthesizer', round: 1, model: synthR1.modelUsed, preview: synthR1.response.slice(0, 300) } })
 
   emit({ type: 'round_completed', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, round: 1 } })
 
@@ -247,21 +247,21 @@ export async function debateSingleStock(
   const analystR2 = await queryModel(analystR2Prompt, config.analystModel, tier)
   totalTokens += analystR2.tokensUsed
   debateEntries.round2.push(makeEntry('analyst', analystR2, 2))
-  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'analyst', round: 2, model: analystR2.modelUsed } })
+  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'analyst', round: 2, model: analystR2.modelUsed, preview: analystR2.response.slice(0, 300) } })
 
   // Critic R2
   const criticR2Prompt = generateScreeningCriticPrompt(screeningContext, researchSummary, 2, analystR2.response, round1Summary)
   const criticR2 = await queryModel(criticR2Prompt, config.criticModel, tier)
   totalTokens += criticR2.tokensUsed
   debateEntries.round2.push(makeEntry('critic', criticR2, 2))
-  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'critic', round: 2, model: criticR2.modelUsed } })
+  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'critic', round: 2, model: criticR2.modelUsed, preview: criticR2.response.slice(0, 300) } })
 
   // Synthesizer R2
   const synthR2Prompt = generateScreeningSynthesizerPrompt(screeningContext, researchSummary, 2, analystR2.response, criticR2.response, round1Summary)
   const synthR2 = await queryModel(synthR2Prompt, config.synthesizerModel, tier)
   totalTokens += synthR2.tokensUsed
   debateEntries.round2.push(makeEntry('synthesizer', synthR2, 2))
-  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'synthesizer', round: 2, model: synthR2.modelUsed } })
+  emit({ type: 'agent_response', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, role: 'synthesizer', round: 2, model: synthR2.modelUsed, preview: synthR2.response.slice(0, 300) } })
 
   emit({ type: 'round_completed', timestamp: new Date().toISOString(), data: { symbol: stock.symbol, round: 2 } })
 
@@ -289,6 +289,13 @@ export async function debateSingleStock(
       symbol: stock.symbol,
       verdict: judgeVerdict.verdict,
       confidence: judgeVerdict.confidence,
+      reasoning: judgeVerdict.reasoning,
+      entryPrice: judgeVerdict.entryPrice,
+      stopLoss: judgeVerdict.stopLoss,
+      takeProfit: judgeVerdict.takeProfit,
+      keyBullPoints: judgeVerdict.keyBullPoints,
+      keyBearPoints: judgeVerdict.keyBearPoints,
+      riskLevel: judgeVerdict.riskLevel,
       model: judgeResult.modelUsed,
     },
   })
@@ -364,8 +371,16 @@ export async function runScreeningDebatePipeline(
   })
 
   try {
-    // Fetch top stocks
-    const { stocks, scanId: resolvedScanId } = await fetchTopScreenedStocks(config.topN, scanId)
+    // Fetch top stocks (or specific symbols if provided)
+    const { stocks: allStocks, scanId: resolvedScanId } = await fetchTopScreenedStocks(
+      config.symbols ? Math.max(config.symbols.length, config.topN) : config.topN,
+      scanId
+    )
+
+    // Filter to specific symbols if requested
+    const stocks = config.symbols && config.symbols.length > 0
+      ? allStocks.filter(s => config.symbols!.includes(s.symbol))
+      : allStocks
 
     if (stocks.length === 0) {
       throw new Error('No stocks found in screening scan')

@@ -201,8 +201,8 @@ function processEvent(
 }
 
 /**
- * Reconstruct a minimal StockDebateResult from SSE events.
- * The full result is in the DB - this is for real-time UI display.
+ * Reconstruct a StockDebateResult from SSE events with agent previews and judge data.
+ * The full transcript is in the DB - this gives enough for real-time UI display.
  */
 function buildResultFromEvents(
   symbol: string,
@@ -212,23 +212,49 @@ function buildResultFromEvents(
   const judgeEvent = events.find(e => e.type === 'judge_verdict')
   if (!judgeEvent) return null
 
+  // Extract agent response previews from round 2 (final positions)
+  const agentEvents = events.filter(
+    e => e.type === 'agent_response' && (e.data.round as number) === 2
+  )
+  const round2Entries = agentEvents.map(e => ({
+    role: e.data.role as 'analyst' | 'critic' | 'synthesizer',
+    model: e.data.model as string,
+    round: 2,
+    content: (e.data.preview as string) || '',
+    tokensUsed: 0,
+    timestamp: e.timestamp,
+  }))
+
+  // Also get round 1 previews
+  const round1AgentEvents = events.filter(
+    e => e.type === 'agent_response' && (e.data.round as number) === 1
+  )
+  const round1Entries = round1AgentEvents.map(e => ({
+    role: e.data.role as 'analyst' | 'critic' | 'synthesizer',
+    model: e.data.model as string,
+    round: 1,
+    content: (e.data.preview as string) || '',
+    tokensUsed: 0,
+    timestamp: e.timestamp,
+  }))
+
   return {
     symbol,
     screeningData: {} as any, // Full data available when fetching from DB
     researchSummary: '',
-    debate: { round1: [], round2: [] }, // Full transcript available from DB
+    debate: { round1: round1Entries, round2: round2Entries },
     judgeVerdict: {
       verdict: judgeEvent.data.verdict as ScreeningVerdict,
       confidence: judgeEvent.data.confidence as number,
-      reasoning: '',
-      entryPrice: null,
-      stopLoss: null,
-      takeProfit: null,
+      reasoning: (judgeEvent.data.reasoning as string) || '',
+      entryPrice: (judgeEvent.data.entryPrice as number) || null,
+      stopLoss: (judgeEvent.data.stopLoss as number) || null,
+      takeProfit: (judgeEvent.data.takeProfit as number) || null,
       positionSize: null,
-      riskLevel: 'Medium',
+      riskLevel: (judgeEvent.data.riskLevel as 'Low' | 'Medium' | 'High' | 'Critical') || 'Medium',
       riskRewardRatio: null,
-      keyBullPoints: [],
-      keyBearPoints: [],
+      keyBullPoints: (judgeEvent.data.keyBullPoints as string[]) || [],
+      keyBearPoints: (judgeEvent.data.keyBearPoints as string[]) || [],
       timeHorizon: 'Intraday',
     },
     duration: completionData.duration as number,
