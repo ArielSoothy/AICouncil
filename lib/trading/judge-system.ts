@@ -1,5 +1,6 @@
 import { TradeDecision } from '@/lib/alpaca/types'
 import { MODEL_POWER, MODEL_BENCHMARKS } from '@/lib/model-metadata'
+import type { ScreeningJudgeResult, ScreeningVerdict } from '@/lib/trading/screening-debate/types'
 
 export interface TradingJudgeResult {
   consensusScore: number
@@ -141,5 +142,151 @@ export function parseTradingJudgeResponse(response: string): TradingJudgeResult 
       riskLevel: 'High',
       tokenUsage: 0
     }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Screening Judge - BUY/WATCH/SKIP verdicts for pre-market screening debate
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Generate judge prompt for screening debate
+ * Produces BUY/WATCH/SKIP (not BUY/SELL/HOLD) with specific trade parameters
+ */
+export function generateScreeningJudgePrompt(
+  symbol: string,
+  screeningContext: string,
+  debateTranscript: {
+    round1: { analyst: string; critic: string; synthesizer: string }
+    round2: { analyst: string; critic: string; synthesizer: string }
+  }
+): string {
+  return `You are the JUDGE for a pre-market screening debate on ${symbol}.
+
+You have reviewed a 2-round debate between three AI agents analyzing this stock for a potential pre-market/opening trade.
+
+${screeningContext}
+
+═══ ROUND 1 DEBATE ═══
+
+ANALYST (Round 1):
+${debateTranscript.round1.analyst}
+
+CRITIC (Round 1):
+${debateTranscript.round1.critic}
+
+SYNTHESIZER (Round 1):
+${debateTranscript.round1.synthesizer}
+
+═══ ROUND 2 DEBATE (REFINED) ═══
+
+ANALYST (Round 2):
+${debateTranscript.round2.analyst}
+
+CRITIC (Round 2):
+${debateTranscript.round2.critic}
+
+SYNTHESIZER (Round 2):
+${debateTranscript.round2.synthesizer}
+
+═══ YOUR TASK ═══
+
+As the Judge, evaluate ALL arguments and produce a FINAL VERDICT:
+
+- BUY: Strong setup with favorable risk/reward. Specify exact entry, stop, target.
+- WATCH: Interesting but needs confirmation. Specify what trigger would make it a BUY.
+- SKIP: Risk outweighs reward. Explain why.
+
+CRITICAL RULES:
+- Output ONLY valid JSON. No markdown, no explanations.
+- Start with { and end with }
+- Confidence must reflect the consensus quality (low if agents disagreed strongly)
+
+Provide ONLY this JSON:
+{
+  "verdict": "BUY" | "WATCH" | "SKIP",
+  "confidence": 0-100,
+  "reasoning": "Your complete judge reasoning (2-3 sentences)",
+  "entryPrice": number or null,
+  "stopLoss": number or null,
+  "takeProfit": number or null,
+  "positionSize": number or null,
+  "riskLevel": "Low" | "Medium" | "High" | "Critical",
+  "riskRewardRatio": number or null,
+  "keyBullPoints": ["point1", "point2"],
+  "keyBearPoints": ["point1", "point2"],
+  "timeHorizon": "Intraday" | "1-3 days" | "1 week"
+}`
+}
+
+/**
+ * Parse screening judge response into ScreeningJudgeResult
+ */
+export function parseScreeningJudgeResponse(response: string): ScreeningJudgeResult {
+  try {
+    let cleanText = response.trim()
+
+    if (!cleanText) {
+      return getDefaultScreeningJudgeResult('Empty response from judge')
+    }
+
+    // Remove markdown code blocks
+    if (cleanText.startsWith('```json')) {
+      cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+    } else if (cleanText.startsWith('```')) {
+      cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '')
+    }
+
+    // Extract JSON
+    const jsonMatch = cleanText.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      cleanText = jsonMatch[0]
+    }
+
+    const jsonEnd = cleanText.lastIndexOf('}')
+    if (jsonEnd !== -1) {
+      cleanText = cleanText.substring(0, jsonEnd + 1)
+    }
+
+    const parsed = JSON.parse(cleanText)
+
+    const validVerdicts: ScreeningVerdict[] = ['BUY', 'WATCH', 'SKIP']
+    const validRiskLevels = ['Low', 'Medium', 'High', 'Critical'] as const
+
+    return {
+      verdict: validVerdicts.includes(parsed.verdict) ? parsed.verdict : 'SKIP',
+      confidence: Math.min(Math.max(parsed.confidence || 30, 0), 100),
+      reasoning: parsed.reasoning || 'Unable to produce reasoning',
+      entryPrice: typeof parsed.entryPrice === 'number' ? parsed.entryPrice : null,
+      stopLoss: typeof parsed.stopLoss === 'number' ? parsed.stopLoss : null,
+      takeProfit: typeof parsed.takeProfit === 'number' ? parsed.takeProfit : null,
+      positionSize: typeof parsed.positionSize === 'number' ? parsed.positionSize : null,
+      riskLevel: validRiskLevels.includes(parsed.riskLevel) ? parsed.riskLevel : 'High',
+      riskRewardRatio: typeof parsed.riskRewardRatio === 'number' ? parsed.riskRewardRatio : null,
+      keyBullPoints: Array.isArray(parsed.keyBullPoints) ? parsed.keyBullPoints : [],
+      keyBearPoints: Array.isArray(parsed.keyBearPoints) ? parsed.keyBearPoints : [],
+      timeHorizon: parsed.timeHorizon || 'Intraday',
+    }
+  } catch (error) {
+    console.error('Failed to parse screening judge response:', error)
+    console.error('Raw response was:', response)
+    return getDefaultScreeningJudgeResult('Failed to parse judge response')
+  }
+}
+
+function getDefaultScreeningJudgeResult(reason: string): ScreeningJudgeResult {
+  return {
+    verdict: 'SKIP',
+    confidence: 10,
+    reasoning: reason,
+    entryPrice: null,
+    stopLoss: null,
+    takeProfit: null,
+    positionSize: null,
+    riskLevel: 'Critical',
+    riskRewardRatio: null,
+    keyBullPoints: [],
+    keyBearPoints: [],
+    timeHorizon: 'Intraday',
   }
 }

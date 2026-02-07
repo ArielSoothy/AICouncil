@@ -10,7 +10,7 @@ const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL || 'http://localhost:800
 function getScreeningHeaders(): HeadersInit {
   const headers: HeadersInit = { 'Content-Type': 'application/json' }
   if (typeof window !== 'undefined') {
-    const key = sessionStorage.getItem('screening_key')
+    const key = sessionStorage.getItem('screening_auth_key')
     if (key) headers['x-screening-key'] = key
   }
   return headers

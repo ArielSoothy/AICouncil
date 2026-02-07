@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Brain, User, LogOut, BarChart3, Users, Shield, Menu, X, Gem, TrendingUp, Trophy, Layers, ScanLine } from 'lucide-react'
+import { Brain, User, LogOut, BarChart3, Users, Shield, Menu, X, Gem, TrendingUp, Trophy, Layers, ScanLine, Swords } from 'lucide-react'
 import { Button } from './button'
 import { useAuth } from '@/contexts/auth-context'
 import { PROJECT_NAME } from '@/lib/config/branding'
@@ -72,6 +72,14 @@ export function Header() {
               {process.env.NODE_ENV !== 'development' && (
                 <span className="ml-1 text-[10px] text-teal-500 opacity-70">(FastAPI)</span>
               )}
+            </Button>
+          </Link>
+
+          {/* Daily Briefing */}
+          <Link href="/trading/briefing">
+            <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700">
+              <Swords className="h-4 w-4 mr-2" />
+              Briefing
             </Button>
           </Link>
 
@@ -207,6 +215,14 @@ export function Header() {
                 {process.env.NODE_ENV !== 'development' && (
                   <span className="ml-1 text-[10px] text-teal-500 opacity-70">(FastAPI)</span>
                 )}
+              </Button>
+            </Link>
+
+            {/* Daily Briefing */}
+            <Link href="/trading/briefing" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="ghost" size="sm" className="w-full justify-start text-amber-600 hover:text-amber-700">
+                <Swords className="h-4 w-4 mr-2" />
+                Briefing
               </Button>
             </Link>
 

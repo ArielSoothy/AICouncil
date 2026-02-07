@@ -507,6 +507,23 @@ Historical documentation and research (reference only):
 | **components/trading/screening/screening-history.tsx** | Scan history modal | PreMarketScreening.tsx |
 | **components/trading/screening/index.ts** | Barrel exports for screening module | N/A |
 
+### Screening-to-Debate Pipeline (February 2026)
+| File | Purpose | Used By |
+|------|---------|---------|
+| **lib/trading/screening-debate/types.ts** | Bridge types (config, results, events) | Pipeline, API routes, UI |
+| **lib/trading/screening-debate/prompts.ts** | Screening-enhanced debate prompts with ground truth data | Pipeline |
+| **lib/trading/screening-debate/pipeline.ts** | Core orchestrator (research + debate + judge) | API route |
+| **lib/trading/screening-debate/trade-executor.ts** | Multi-broker trade execution via BrokerFactory | Pipeline |
+| **app/api/trading/screening/debate/route.ts** | SSE streaming endpoint | Frontend hook |
+| **app/api/trading/screening/debate/results/route.ts** | Results fetch endpoint | Briefing page |
+| **components/trading/screening-debate/use-screening-debate.ts** | React hook for SSE streaming | PreMarketScreening |
+| **components/trading/screening-debate/debate-config-modal.tsx** | Configuration modal (topN, models, auto-trade) | PreMarketScreening |
+| **components/trading/screening-debate/debate-progress-bar.tsx** | Real-time progress UI | PreMarketScreening |
+| **components/trading/briefing/daily-briefing.tsx** | Historical briefing viewer | Briefing page |
+| **components/trading/briefing/briefing-stock-card.tsx** | Per-stock debate result card | Daily briefing |
+| **app/trading/briefing/page.tsx** | Daily briefing page route | Navigation |
+| **scripts/create-screening-debates-table.sql** | Supabase table for debate results | Manual SQL execution |
+
 ### Refactored Debate Components (February 2026)
 | File | Purpose | Extracted From |
 |------|---------|---------------|

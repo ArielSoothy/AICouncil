@@ -1610,3 +1610,34 @@
 - **Commits**: TBD (pending final testing)
 - **Last Modified**: January 3, 2026
 - **DO NOT**: Attempt to run ib_insync directly in FastAPI (will fail with event loop conflicts), remove database layer, or modify RLS policies without testing
+
+---
+
+### 58. Screening-to-Debate Pipeline
+- **Status**: ✅ ACTIVE & CRITICAL
+- **Purpose**: Connect pre-market screening system to AI debate engine. Each morning's top screened stocks are automatically debated by AI agents (Analyst, Critic, Synthesizer) and a Judge makes actionable BUY/WATCH/SKIP decisions with optional paper trade execution.
+- **Architecture**: `Screening Scan → Supabase → Pipeline (Research + 2-Round Debate + Judge) → Trade Execution → Briefing UI`
+- **Key Components**:
+  - **Bridge Types**: `lib/trading/screening-debate/types.ts` - ScreeningDebateConfig, StockDebateResult, DailyBriefing, ScreeningJudgeResult
+  - **Prompts**: `lib/trading/screening-debate/prompts.ts` - Screening-enhanced debate prompts with ground truth TWS data injection
+  - **Judge System**: `lib/trading/judge-system.ts` - Extended with `generateScreeningJudgePrompt()` + `parseScreeningJudgeResponse()` for BUY/WATCH/SKIP verdicts
+  - **Pipeline Orchestrator**: `lib/trading/screening-debate/pipeline.ts` - Core engine: fetch top N stocks → research → 2-round debate → judge → optional trade execution
+  - **Trade Executor**: `lib/trading/screening-debate/trade-executor.ts` - Multi-broker trade execution via BrokerFactory (Alpaca paper + IBKR paper)
+  - **SSE API**: `app/api/trading/screening/debate/route.ts` - Streaming endpoint with real-time debate progress events
+  - **Results API**: `app/api/trading/screening/debate/results/route.ts` - Fetch latest/historical debate results
+  - **React Hook**: `components/trading/screening-debate/use-screening-debate.ts` - SSE streaming state management
+  - **Config Modal**: `components/trading/screening-debate/debate-config-modal.tsx` - topN, model selection, auto-trade settings
+  - **Progress Bar**: `components/trading/screening-debate/debate-progress-bar.tsx` - Real-time debate progress UI
+  - **Briefing Page**: `app/trading/briefing/page.tsx` + `components/trading/briefing/daily-briefing.tsx` - Historical briefing viewer
+  - **Stock Card Integration**: `components/trading/screening/stock-card.tsx` - Debate verdict badges on screening cards
+  - **Database**: `screening_debates` table (Supabase, JSONB) - SQL at `scripts/create-screening-debates-table.sql`
+- **Design Decisions**:
+  - Sequential stock debates (not parallel) to respect API rate limits
+  - Default free models (Groq Llama 3.3 70B) for zero-cost operation
+  - Auto-trade OFF by default, paper only
+  - Research cache integration for cost savings
+  - Provider factory for tier billing protection
+- **Navigation**: Briefing link in header (desktop + mobile)
+- **Academic Foundation**: Google 2023 (17.7% reasoning improvement), Microsoft 2024 (31% hallucination reduction)
+- **Last Modified**: February 7, 2026
+- **DO NOT**: Remove auto-trade safety checks, bypass paper mode enforcement, change verdict types (BUY/WATCH/SKIP), or break existing screening system

@@ -1,8 +1,9 @@
 'use client'
 
-import { TrendingUp, TrendingDown, ChevronDown, ChevronRight, ExternalLink, Zap, Target, RefreshCw, Bot, Star } from 'lucide-react'
+import { TrendingUp, TrendingDown, ChevronDown, ChevronRight, ExternalLink, Zap, Target, RefreshCw, Bot, Star, Gavel } from 'lucide-react'
 import type { WinnersScore } from '@/lib/trading/screening/winners-scoring'
 import type { StockResult, AnalysisResult } from './types'
+import type { StockDebateResult, ScreeningVerdict } from '@/lib/trading/screening-debate/types'
 import {
   getGapScore, getVolumeScore, getFloatScore, getBorrowFeeScore,
   getShortableScore, getBorrowDifficultyScore, getRelativeVolumeScore,
@@ -27,6 +28,13 @@ interface StockCardProps {
   analysisModel: string
   setAnalysisModel: (model: string) => void
   onAnalyze: (stock: StockResult) => void
+  debateResult?: StockDebateResult
+}
+
+const VERDICT_BADGE: Record<ScreeningVerdict, { bg: string; text: string }> = {
+  BUY: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' },
+  WATCH: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
+  SKIP: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
 }
 
 export function StockCard({
@@ -41,6 +49,7 @@ export function StockCard({
   analysisModel,
   setAnalysisModel,
   onAnalyze,
+  debateResult,
 }: StockCardProps) {
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden transition-all duration-200">
@@ -694,6 +703,75 @@ export function StockCard({
             <div className="text-sm text-gray-500 dark:text-gray-400">
               Score breakdown: Rank {40 - stock.rank * 2}/40 + Gap {Math.min(30, Math.abs(stock.gap_percent) * 3).toFixed(0)}/30 + Vol {Math.min(30, stock.pre_market_volume / 1_000_000 * 10).toFixed(0)}/30
             </div>
+
+            {/* Debate Results Section */}
+            {debateResult && (
+              <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Gavel className="w-4 h-4 text-purple-600" />
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Debate Verdict</h4>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${VERDICT_BADGE[debateResult.judgeVerdict.verdict].bg} ${VERDICT_BADGE[debateResult.judgeVerdict.verdict].text}`}>
+                    {debateResult.judgeVerdict.verdict}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {debateResult.judgeVerdict.confidence}% confidence
+                  </span>
+                </div>
+
+                {/* Confidence bar */}
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-3">
+                  <div
+                    className={`h-1.5 rounded-full transition-all ${
+                      debateResult.judgeVerdict.verdict === 'BUY' ? 'bg-green-500' :
+                      debateResult.judgeVerdict.verdict === 'WATCH' ? 'bg-amber-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${debateResult.judgeVerdict.confidence}%` }}
+                  />
+                </div>
+
+                {/* Key arguments */}
+                {debateResult.judgeVerdict.reasoning && (
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                    {debateResult.judgeVerdict.reasoning}
+                  </p>
+                )}
+
+                {/* Trade parameters for BUY */}
+                {debateResult.judgeVerdict.verdict === 'BUY' && debateResult.judgeVerdict.entryPrice && (
+                  <div className="grid grid-cols-3 gap-2 text-xs mt-2">
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded p-2 text-center">
+                      <p className="text-green-600 dark:text-green-400 font-medium">Entry</p>
+                      <p className="text-green-800 dark:text-green-200 font-bold">${debateResult.judgeVerdict.entryPrice.toFixed(2)}</p>
+                    </div>
+                    {debateResult.judgeVerdict.stopLoss && (
+                      <div className="bg-red-50 dark:bg-red-900/20 rounded p-2 text-center">
+                        <p className="text-red-600 dark:text-red-400 font-medium">Stop</p>
+                        <p className="text-red-800 dark:text-red-200 font-bold">${debateResult.judgeVerdict.stopLoss.toFixed(2)}</p>
+                      </div>
+                    )}
+                    {debateResult.judgeVerdict.takeProfit && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2 text-center">
+                        <p className="text-blue-600 dark:text-blue-400 font-medium">Target</p>
+                        <p className="text-blue-800 dark:text-blue-200 font-bold">${debateResult.judgeVerdict.takeProfit.toFixed(2)}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Trade execution status */}
+                {debateResult.tradeExecution && (
+                  <div className={`mt-2 text-xs px-2 py-1 rounded ${
+                    debateResult.tradeExecution.executed
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                  }`}>
+                    {debateResult.tradeExecution.executed
+                      ? `Trade executed: ${debateResult.tradeExecution.quantity} shares @ $${debateResult.tradeExecution.filledPrice?.toFixed(2)}`
+                      : debateResult.tradeExecution.error || 'Trade not executed'}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -1,12 +1,17 @@
 'use client'
 
-import { RefreshCw, Clock, AlertCircle, Play, Terminal, ArrowUpDown, ChevronDown, History, Database } from 'lucide-react'
+import { useState } from 'react'
+import { RefreshCw, Clock, AlertCircle, Play, Terminal, ArrowUpDown, ChevronDown, History, Database, Swords } from 'lucide-react'
 import { useScreeningData } from './screening/use-screening-data'
 import { ScreeningFilters } from './screening/screening-filters'
 import { ScreeningStats } from './screening/screening-stats'
 import { StockCard } from './screening/stock-card'
 import { ScreeningHistory } from './screening/screening-history'
+import { DebateConfigModal } from './screening-debate/debate-config-modal'
+import { useScreeningDebate } from './screening-debate/use-screening-debate'
+import { DebateProgressBar } from './screening-debate/debate-progress-bar'
 import type { SortField } from './screening/types'
+import type { ScreeningDebateConfig } from '@/lib/trading/screening-debate/types'
 
 export default function PreMarketScreening() {
   const {
@@ -79,6 +84,13 @@ export default function PreMarketScreening() {
     runScreening,
   } = useScreeningData()
 
+  const [showDebateConfig, setShowDebateConfig] = useState(false)
+  const debate = useScreeningDebate()
+
+  const handleStartDebate = (config: ScreeningDebateConfig) => {
+    debate.startDebate(config)
+  }
+
   const sortOptions: { value: SortField; label: string; icon: string }[] = [
     { value: 'gap_percent', label: 'Top Gainers', icon: 'chart' },
     { value: 'score', label: 'Highest Score', icon: 'star' },
@@ -122,6 +134,19 @@ export default function PreMarketScreening() {
             <Play className={`w-4 h-4 ${running ? 'animate-pulse' : ''}`} />
             {running ? 'Running...' : 'Run Screening Now'}
           </button>
+
+          {/* Debate Top Stocks button */}
+          {data && data.stocks.length > 0 && (
+            <button
+              onClick={() => setShowDebateConfig(true)}
+              disabled={debate.isRunning}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white rounded-lg transition-colors"
+              title="Run AI debate on top screened stocks"
+            >
+              <Swords className={`w-4 h-4 ${debate.isRunning ? 'animate-pulse' : ''}`} />
+              {debate.isRunning ? 'Debating...' : 'Debate Top Stocks'}
+            </button>
+          )}
 
           {/* History button */}
           <button
@@ -358,6 +383,7 @@ export default function PreMarketScreening() {
               analysisModel={analysisModel}
               setAnalysisModel={setAnalysisModel}
               onAnalyze={analyzeStock}
+              debateResult={debate.results.find(r => r.symbol === stock.symbol)}
             />
           ))}
 
@@ -370,6 +396,64 @@ export default function PreMarketScreening() {
           )}
         </div>
       )}
+
+      {/* Debate Progress */}
+      {debate.isRunning && (
+        <DebateProgressBar
+          currentStock={debate.currentStock}
+          currentStockIndex={debate.currentStockIndex}
+          totalStocks={debate.totalStocks}
+          currentRound={debate.currentRound}
+          results={debate.results}
+          onStop={debate.stopDebate}
+        />
+      )}
+
+      {/* Debate Results Summary */}
+      {!debate.isRunning && debate.results.length > 0 && debate.summary && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-amber-900 dark:text-amber-100 flex items-center gap-2">
+              <Swords className="w-4 h-4" />
+              Debate Results
+            </h3>
+            <button
+              onClick={debate.reset}
+              className="text-xs text-amber-600 hover:text-amber-800 underline"
+            >
+              Clear
+            </button>
+          </div>
+          <div className="grid grid-cols-4 gap-3 text-center">
+            <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-2">
+              <p className="text-2xl font-bold text-green-700 dark:text-green-400">{debate.summary.buys}</p>
+              <p className="text-xs text-green-600 dark:text-green-500">BUY</p>
+            </div>
+            <div className="bg-amber-100 dark:bg-amber-900/30 rounded-lg p-2">
+              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{debate.summary.watches}</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500">WATCH</p>
+            </div>
+            <div className="bg-red-100 dark:bg-red-900/30 rounded-lg p-2">
+              <p className="text-2xl font-bold text-red-700 dark:text-red-400">{debate.summary.skips}</p>
+              <p className="text-xs text-red-600 dark:text-red-500">SKIP</p>
+            </div>
+            <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-2">
+              <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{debate.summary.tradesExecuted}</p>
+              <p className="text-xs text-blue-600 dark:text-blue-500">TRADES</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-2 text-right">
+            {(debate.summary.totalDuration / 1000).toFixed(0)}s | {debate.summary.totalTokens.toLocaleString()} tokens
+          </p>
+        </div>
+      )}
+
+      {/* Debate Config Modal */}
+      <DebateConfigModal
+        isOpen={showDebateConfig}
+        onClose={() => setShowDebateConfig(false)}
+        onStart={handleStartDebate}
+      />
 
       {/* History Panel Modal */}
       <ScreeningHistory
