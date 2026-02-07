@@ -7,6 +7,15 @@ import type { StockResult, ScreeningResponse, FlowLogEntry, AnalysisResult, Sort
 
 const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL || 'http://localhost:8000'
 
+function getScreeningHeaders(): HeadersInit {
+  const headers: HeadersInit = { 'Content-Type': 'application/json' }
+  if (typeof window !== 'undefined') {
+    const key = sessionStorage.getItem('screening_key')
+    if (key) headers['x-screening-key'] = key
+  }
+  return headers
+}
+
 export function useScreeningData() {
   const [data, setData] = useState<ScreeningResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -122,7 +131,17 @@ export function useScreeningData() {
     }
 
     try {
-      const response = await fetch(`${FASTAPI_URL}/api/screening/latest`)
+      // Try FastAPI first (local development), fall back to Next.js API (deployed/online)
+      let response: Response
+      try {
+        response = await fetch(`${FASTAPI_URL}/api/screening/latest`)
+        if (!response.ok) throw new Error('FastAPI not available')
+      } catch {
+        // FastAPI offline - use Next.js API route (reads from Supabase)
+        response = await fetch('/api/trading/screening/results', {
+          headers: getScreeningHeaders()
+        })
+      }
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -153,13 +172,8 @@ export function useScreeningData() {
       setError(null)
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Failed to fetch screening data'
-      const isConnectionError = errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError') || errMsg.includes('ECONNREFUSED') || errMsg.includes('Load failed')
       if (!data) {
-        if (isConnectionError) {
-          setError('FASTAPI_OFFLINE')
-        } else {
-          setError(errMsg)
-        }
+        setError(errMsg)
       }
       console.error('Screening fetch error:', err)
     } finally {
@@ -373,7 +387,10 @@ export function useScreeningData() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to start screening'
 
-      if (errorMsg.includes('Failed to connect') || errorMsg.includes('TimeoutError')) {
+      const isConnectionError = errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError') || errorMsg.includes('ECONNREFUSED') || errorMsg.includes('Load failed')
+      if (isConnectionError) {
+        setError('Cannot run new scans remotely. Start FastAPI + TWS locally to run scans. You can still view cached results.')
+      } else if (errorMsg.includes('Failed to connect') || errorMsg.includes('TimeoutError')) {
         setError('Cannot connect to TWS Desktop. Please ensure:\n' +
           '1. TWS Desktop or IB Gateway is running\n' +
           '2. API is enabled in TWS settings\n' +
@@ -420,7 +437,20 @@ export function useScreeningData() {
     setShowHistory(true)
     setLoadingHistory(true)
     try {
-      const history = await loadHistory(20)
+      let history = await loadHistory(20)
+      // If local cache returned empty, try server API
+      if (history.length === 0) {
+        try {
+          const res = await fetch('/api/trading/screening/history', {
+            headers: getScreeningHeaders()
+          })
+          if (res.ok) {
+            history = await res.json()
+          }
+        } catch {
+          // Silently fail - no history available
+        }
+      }
       setScanHistory(history)
     } catch (e) {
       console.error('Failed to load history:', e)

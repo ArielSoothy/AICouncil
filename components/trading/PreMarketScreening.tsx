@@ -244,37 +244,8 @@ export default function PreMarketScreening() {
         </div>
       )}
 
-      {/* Error state - FastAPI offline */}
-      {error && error === 'FASTAPI_OFFLINE' && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-6">
-          <div className="flex items-start gap-3">
-            <Terminal className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-amber-900 dark:text-amber-100 text-lg">FastAPI Server Not Running</h3>
-              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                The screening backend is not reachable at <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded text-xs">{FASTAPI_URL}</code>.
-              </p>
-              <div className="mt-3 p-3 bg-gray-900 rounded-md">
-                <p className="text-xs text-gray-400 mb-1">Start the backend:</p>
-                <code className="text-sm text-green-400 font-mono">uvicorn api.main:app --reload --port 8000</code>
-              </div>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                Also requires: TWS Desktop running on port 7496 for live scanning.
-              </p>
-              <button
-                onClick={fetchScreening}
-                disabled={loading}
-                className="mt-3 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm disabled:opacity-50"
-              >
-                {loading ? 'Retrying...' : 'Retry Connection'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Error state - generic */}
-      {error && error !== 'FASTAPI_OFFLINE' && (
+      {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
@@ -294,7 +265,7 @@ export default function PreMarketScreening() {
       )}
 
       {/* Stats summary */}
-      {data && !error && (
+      {data && (
         <ScreeningStats data={data} />
       )}
 
@@ -339,7 +310,7 @@ export default function PreMarketScreening() {
       )}
 
       {/* Sorting Controls */}
-      {data && !error && data.stocks.length > 0 && (
+      {data && data.stocks.length > 0 && (
         <div className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <ArrowUpDown className="w-4 h-4" />
@@ -371,7 +342,7 @@ export default function PreMarketScreening() {
       )}
 
       {/* Stocks list */}
-      {data && !error && (
+      {data && (
         <div className="space-y-3">
           {getSortedStocks().map((stock) => (
             <StockCard
