@@ -4,7 +4,7 @@
  * This is the ONLY place where models should be defined.
  * All other files should import from this registry.
  *
- * Last Updated: 2025-11-22
+ * Last Updated: 2026-02-07
  *
  * ============================================================================
  * GOOGLE GEMINI MODELS - Official Pricing (ai.google.dev, Nov 2025)
@@ -18,12 +18,13 @@
  * - gemini-2.5-flash-lite:        $0.10/M input, $0.40/M output | CHEAPEST PAID Google model
  *
  * FREE TIER (with free API quota):
+ * - gemini-3-flash-preview:       Free tier available | Gemini 3 Flash
  * - gemini-2.5-flash:             $0.30/M input, $2.50/M output | Free tier available
- * - gemini-2.0-flash:             Free tier only | Tested and working
  * - gemini-2.0-flash-lite:        $0.075/M input, $0.30/M output | Free tier available
  *
  * LEGACY (deprecated):
- * - gemini-1.5-flash:             Use 2.0+ instead
+ * - gemini-2.0-flash:             DEPRECATED - shutdown March 31, 2026
+ * - gemini-1.5-flash:             Use 2.5+ instead
  *
  * Source: https://ai.google.dev/gemini-api/docs/models/gemini
  * ============================================================================
@@ -95,15 +96,18 @@ export const PROVIDER_NAMES: Record<Provider, string> = {
 
 const MODELS_WITH_INTERNET = new Set([
   // OpenAI - All GPT-4o and GPT-5 series have web search
+  'gpt-5.2', 'gpt-5.2-chat-latest', 'gpt-5.2-pro', 'gpt-5.2-codex',
   'gpt-5.1', 'gpt-5.1-mini',
   'gpt-5-chat-latest', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano',
   'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano',
   'gpt-4o', 'gpt-4-turbo-preview', 'gpt-4',
   // Anthropic - Claude has web search since March 2025 (FIXED Nov 2025)
+  'claude-opus-4-6',
   'claude-opus-4-5-20251101', 'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001',
   'claude-opus-4-1-20250805', 'claude-opus-4-20250514', 'claude-sonnet-4-20250514',
   'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022',
   // Google - Gemini has Google Search grounding
+  'gemini-3-flash-preview',
   'gemini-3-pro-preview', 'gemini-3-pro-image-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite',
   'gemini-2.0-flash', 'gemini-2.0-flash-lite',
   // xAI - Grok 4 has Live Search API
@@ -125,9 +129,14 @@ const MODELS_WITH_INTERNET = new Set([
 export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
   // ===== OPENAI =====
   openai: [
-    // GPT-5.1 Series (NEW - Nov 2025)
-    { id: 'gpt-5.1', name: 'GPT-5.1', provider: 'openai', tier: 'flagship', badge: '🌟', status: 'untested', lastTested: '2025-11-19T00:00:00.000Z', notes: 'Latest GPT-5 series release. Improved reasoning and performance over GPT-5' },
-    { id: 'gpt-5.1-mini', name: 'GPT-5.1 Mini', provider: 'openai', tier: 'balanced', badge: '⚡', status: 'untested', lastTested: '2025-11-19T00:00:00.000Z', notes: 'Smaller, faster version of GPT-5.1' },
+    // GPT-5.2 Series (NEW - Feb 2026)
+    { id: 'gpt-5.2', name: 'GPT-5.2', provider: 'openai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'Latest GPT-5 series. $1.75/M input, $14/M output. Improved reasoning over GPT-5.1' },
+    { id: 'gpt-5.2-chat-latest', name: 'GPT-5.2 Chat (Latest)', provider: 'openai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'Alias for latest GPT-5.2 chat model' },
+    { id: 'gpt-5.2-pro', name: 'GPT-5.2 Pro', provider: 'openai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'Premium GPT-5.2 with extended reasoning. $21/M input, $168/M output' },
+    { id: 'gpt-5.2-codex', name: 'GPT-5.2 Codex', provider: 'openai', tier: 'flagship', badge: '🌟', isSubscription: true, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'Code-optimized GPT-5.2. Available via Responses API' },
+    // GPT-5.1 Series (Nov 2025)
+    { id: 'gpt-5.1', name: 'GPT-5.1', provider: 'openai', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'GPT-5 series. Improved reasoning and performance over GPT-5' },
+    { id: 'gpt-5.1-mini', name: 'GPT-5.1 Mini', provider: 'openai', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'Smaller, faster version of GPT-5.1' },
     // GPT-5 Series (2025 Flagship)
     { id: 'gpt-5-chat-latest', name: 'GPT-5 Chat (Latest)', provider: 'openai', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     { id: 'gpt-5', name: 'GPT-5', provider: 'openai', tier: 'flagship', badge: '🌟', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
@@ -158,7 +167,9 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
 
   // ===== ANTHROPIC (Web search available since March 2025) =====
   anthropic: [
-    // Claude 4.5 Series (2025 Flagship) - All have web search
+    // Claude 4.6 Series (2026 Flagship) - Newest
+    { id: 'claude-opus-4-6', name: 'Claude 4.6 Opus', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'Released Feb 5, 2026. Latest Anthropic flagship. $5/$25 per M tokens. 200K context' },
+    // Claude 4.5 Series (2025) - All have web search
     { id: 'claude-opus-4-5-20251101', name: 'Claude 4.5 Opus', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-14T00:00:00.000Z', notes: 'Released Nov 24, 2025. Model ID uses 20251101. Best coding model (80.9% SWE-bench). $5/$25 per M tokens' },
     { id: 'claude-sonnet-4-5-20250929', name: 'Claude 4.5 Sonnet', provider: 'anthropic', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. Has web search capability' },
     { id: 'claude-haiku-4-5-20251001', name: 'Claude 4.5 Haiku', provider: 'anthropic', tier: 'balanced', badge: '⚡', hasInternet: true, status: 'working', lastTested: '2025-11-23T00:00:00.000Z', notes: 'Fast, cost-effective model released October 2025. $1/$5 per million tokens' },
@@ -181,26 +192,33 @@ export const MODEL_REGISTRY: Record<Provider, ModelInfo[]> = {
     { id: 'claude-2.0', name: 'Claude 2.0', provider: 'anthropic', tier: 'budget', badge: '💰', isLegacy: true, status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Claude 2.x is deprecated - no longer available via API' }
   ],
 
-  // ===== GOOGLE (Updated Dec 2025 from official docs) =====
+  // ===== GOOGLE (Updated Feb 2026 from official docs) =====
   google: [
-    // Gemini 3 Series (Flagship - Nov 2025) - PREVIEW ONLY, no free tier
+    // Gemini 3 Series (Flagship)
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'Free tier available. Fast Gemini 3 model' },
     { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PAID ONLY: Works with paid API. Returns empty on free tier. $2/M input, $12/M output' },
     { id: 'gemini-3-pro-image-preview', name: 'Gemini 3 Pro Image', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'empty_response', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PREVIEW: No free tier. Image generation model with reasoning-enhanced composition' },
     // Gemini 2.5 Series (Stable - Available)
     { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google', tier: 'flagship', badge: '🌟', hasInternet: true, status: 'working', lastTested: '2025-12-14T00:00:00.000Z', notes: 'PAID ONLY: Works with paid API. Returns empty on free tier. $1.25/M input, $10/M output' },
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Tested and working. Free tier available.' },
     { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Tested and working. Free tier available.' },
-    // Gemini 2.0 Series (Free)
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Free tier. Tested and working' },
+    // Gemini 2.0 Series (DEPRECATED - shutdown March 31, 2026)
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (DEPRECATED)', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'deprecated', lastTested: '2026-02-07T00:00:00.000Z', notes: 'DEPRECATED: Shutdown March 31, 2026. Use gemini-2.5-flash or gemini-3-flash-preview instead', isLegacy: true },
     { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', provider: 'google', tier: 'free', badge: '🎁', hasInternet: true, status: 'working', lastTested: '2025-12-09T00:00:00.000Z', notes: 'Free tier available. May hit quota limits.' },
     // Gemini 1.5 Series (Legacy)
     { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'google', tier: 'free', badge: '🎁', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Deprecated - use 2.0 or 2.5', isLegacy: true }
   ],
 
-  // ===== GROQ (All Free - NO native web search, needs DuckDuckGo fallback) =====
+  // ===== GROQ (Mixed free/paid - NO native web search, needs DuckDuckGo fallback) =====
   groq: [
-    // Llama Models - NO native internet access (open-source models)
-    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'groq', tier: 'free', badge: '🎁', hasInternet: false, status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working. No native web search - use DuckDuckGo fallback' },
+    // Llama 4 Series (NEW - Feb 2026) - Preview models
+    { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout 17B', provider: 'groq', tier: 'budget', badge: '💰', hasInternet: false, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'Llama 4 Scout MoE (16 experts). $0.11/M input, $0.34/M output' },
+    { id: 'meta-llama/llama-4-maverick-17b-128e-instruct', name: 'Llama 4 Maverick 17B', provider: 'groq', tier: 'budget', badge: '💰', hasInternet: false, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'Llama 4 Maverick MoE (128 experts). $0.20/M input, $0.60/M output' },
+    // GPT-OSS on Groq (NEW - Feb 2026)
+    { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', provider: 'groq', tier: 'budget', badge: '💰', hasInternet: false, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'OpenAI open-source 120B on Groq. $0.15/M input, $0.60/M output' },
+    { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', provider: 'groq', tier: 'budget', badge: '💰', hasInternet: false, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'OpenAI open-source 20B on Groq. $0.075/M input, $0.30/M output' },
+    // Llama 3.x Models (NOW PAID as of Jan 2026)
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'groq', tier: 'budget', badge: '💰', hasInternet: false, status: 'working', lastTested: '2026-02-07T00:00:00.000Z', notes: 'Now PAID: $0.59/M input, $0.79/M output (was free). No native web search' },
     { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'groq', tier: 'free', badge: '🎁', status: 'working', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tested and confirmed working' },
     // Tool-Use Specialists (#1 and #3 on Berkeley Function Calling Leaderboard)
     { id: 'llama-3-groq-70b-tool-use', name: 'Llama 3 70B Tool Use', provider: 'groq', tier: 'free', badge: '🎁', status: 'parameter_error', lastTested: '2025-10-28T17:33:11.000Z', notes: 'Tool use models require special parameters - returns empty response with standard query' },
@@ -355,7 +373,9 @@ export function getFreeModels(): { provider: Provider; models: string[] }[] {
     },
     {
       provider: 'groq',
-      models: MODEL_REGISTRY.groq.map(m => m.id)
+      models: MODEL_REGISTRY.groq
+        .filter(m => m.tier === 'free')
+        .map(m => m.id)
     }
   ]
 }

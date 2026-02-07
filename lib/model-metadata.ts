@@ -17,6 +17,14 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   // ============================================================================
   // OpenAI - Source: openai.com/api/pricing
   // ============================================================================
+  // GPT-5.2 Series (Released Feb 2026)
+  'gpt-5.2': { input: 0.00175, output: 0.014, source: 'OpenAI GPT-5.2 per 1M ($1.75 in / $14 out)', lastUpdated: '2026-02-07' },
+  'gpt-5.2-chat-latest': { input: 0.00175, output: 0.014, source: 'OpenAI GPT-5.2 per 1M ($1.75 in / $14 out)', lastUpdated: '2026-02-07' },
+  'gpt-5.2-pro': { input: 0.021, output: 0.168, source: 'OpenAI GPT-5.2 Pro per 1M ($21 in / $168 out)', lastUpdated: '2026-02-07' },
+  'gpt-5.2-codex': { input: 0.00175, output: 0.014, source: 'OpenAI GPT-5.2 Codex - same as GPT-5.2', lastUpdated: '2026-02-07' },
+  // GPT-5.1 Series (Nov 2025)
+  'gpt-5.1': { input: 0.00175, output: 0.014, source: 'OpenAI GPT-5.1 per 1M ($1.75 in / $14 out)', lastUpdated: '2026-02-07' },
+  'gpt-5.1-mini': { input: 0.000175, output: 0.0014, source: 'OpenAI GPT-5.1 Mini per 1M ($0.175 in / $1.40 out)', lastUpdated: '2026-02-07' },
   // GPT-5 Series (Released August 2025)
   'gpt-5-chat-latest': { input: 0.00125, output: 0.01, source: 'OpenAI GPT-5 per 1M ($1.25 in / $10 out)', lastUpdated: '2025-12-09' },
   'gpt-5': { input: 0.00125, output: 0.01, source: 'OpenAI GPT-5 per 1M ($1.25 in / $10 out)', lastUpdated: '2025-12-09' },
@@ -47,8 +55,11 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   // Anthropic - Source: docs.anthropic.com/claude/docs/models-overview
   // Official pricing per 1M tokens, converted to per 1K
   // ============================================================================
-  // Claude 4.5 Series (Latest - November 2025)
+  // Claude 4.6 Series (Latest - February 2026)
+  'claude-opus-4-6': { input: 0.005, output: 0.025, source: 'Anthropic per 1M ($5 in / $25 out)', lastUpdated: '2026-02-07' },
+  // Claude 4.5 Series (November 2025)
   'claude-opus-4-5-20251124': { input: 0.005, output: 0.025, source: 'Anthropic per 1M ($5 in / $25 out)', lastUpdated: '2025-12-09' },
+  'claude-opus-4-5-20251101': { input: 0.005, output: 0.025, source: 'Anthropic per 1M ($5 in / $25 out)', lastUpdated: '2026-02-07' },
   'claude-sonnet-4-5-20250929': { input: 0.003, output: 0.015, source: 'Anthropic per 1M ($3 in / $15 out)', lastUpdated: '2025-12-09' },
   'claude-haiku-4-5-20251001': { input: 0.001, output: 0.005, source: 'Anthropic per 1M ($1 in / $5 out)', lastUpdated: '2025-12-09' },
   // Aliases for Claude 4.5 (some systems use shorter names)
@@ -73,7 +84,8 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   // Google Gemini - Source: ai.google.dev/gemini-api/docs/pricing
   // Free tier for Flash models, paid for Pro
   // ============================================================================
-  // Gemini 3 Series (Flagship - Dec 2025)
+  // Gemini 3 Series (Feb 2026)
+  'gemini-3-flash-preview': { input: 0.0, output: 0.0, source: 'Google FREE tier', lastUpdated: '2026-02-07' },
   'gemini-3-pro-preview': { input: 0.002, output: 0.012, source: 'Google per 1M ($2 in / $12 out)', lastUpdated: '2025-12-09' },
   'gemini-3-pro-image-preview': { input: 0.002, output: 0.012, source: 'Google per 1M ($2 in / $12 out) - image generation', lastUpdated: '2025-12-09' },
   // Gemini 2.5 Series
@@ -85,12 +97,19 @@ export const MODEL_COSTS_PER_1K: Record<string, ModelCost> = {
   'gemini-1.5-flash-8b': { input: 0.0, output: 0.0, source: 'Google FREE tier (legacy)', lastUpdated: '2025-12-09' },
 
   // ============================================================================
-  // Groq - Source: groq.com/pricing
-  // Free tier for most models
+  // Groq - Source: groq.com/pricing (Updated Feb 2026)
+  // Mixed free/paid - Llama 3.3 70B now paid
   // ============================================================================
-  'llama-3.3-70b-versatile': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
+  // Llama 4 Series (NEW)
+  'meta-llama/llama-4-scout-17b-16e-instruct': { input: 0.00011, output: 0.00034, source: 'Groq per 1M ($0.11 in / $0.34 out)', lastUpdated: '2026-02-07' },
+  'meta-llama/llama-4-maverick-17b-128e-instruct': { input: 0.0002, output: 0.0006, source: 'Groq per 1M ($0.20 in / $0.60 out)', lastUpdated: '2026-02-07' },
+  // GPT-OSS on Groq (NEW)
+  'openai/gpt-oss-120b': { input: 0.00015, output: 0.0006, source: 'Groq per 1M ($0.15 in / $0.60 out)', lastUpdated: '2026-02-07' },
+  'openai/gpt-oss-20b': { input: 0.000075, output: 0.0003, source: 'Groq per 1M ($0.075 in / $0.30 out)', lastUpdated: '2026-02-07' },
+  // Llama 3.x (NOW PAID as of Jan 2026)
+  'llama-3.3-70b-versatile': { input: 0.00059, output: 0.00079, source: 'Groq per 1M ($0.59 in / $0.79 out) - was free', lastUpdated: '2026-02-07' },
   'llama-3.1-8b-instant': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
-  'gemma2-9b-it': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
+  'gemma2-9b-it': { input: 0.0, output: 0.0, source: 'Groq FREE tier (decommissioned)', lastUpdated: '2025-12-09' },
   'llama-3-groq-70b-tool-use': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
   'llama-3-groq-8b-tool-use': { input: 0.0, output: 0.0, source: 'Groq FREE tier', lastUpdated: '2025-12-09' },
 
@@ -144,6 +163,14 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // ============================================================================
   // OpenAI - Source: openai.com, ArtificialAnalysis.ai
   // ============================================================================
+  // GPT-5.2 Series (Feb 2026) - Improved reasoning
+  'gpt-5.2': { arenaTier: 'S', aaii: 1450, mmlu: 94, source: 'OpenAI - Latest flagship', lastUpdated: '2026-02-07' },
+  'gpt-5.2-chat-latest': { arenaTier: 'S', aaii: 1450, mmlu: 94, source: 'OpenAI - Latest flagship alias', lastUpdated: '2026-02-07' },
+  'gpt-5.2-pro': { arenaTier: 'S', aaii: 1500, mmlu: 96, source: 'OpenAI - Premium extended reasoning', lastUpdated: '2026-02-07' },
+  'gpt-5.2-codex': { arenaTier: 'S', aaii: 1450, mmlu: 94, source: 'OpenAI - Code-optimized 5.2', lastUpdated: '2026-02-07' },
+  // GPT-5.1 Series (Nov 2025)
+  'gpt-5.1': { arenaTier: 'S', aaii: 1410, mmlu: 93, source: 'OpenAI - Improved GPT-5', lastUpdated: '2026-02-07' },
+  'gpt-5.1-mini': { arenaTier: 'A', aaii: 1250, mmlu: 86, source: 'OpenAI - Mini variant', lastUpdated: '2026-02-07' },
   // GPT-5 (Released Aug 2025) - SWE-bench: 74.9%, AIME: 94.6%, MMMU: 84.2%
   'gpt-5-chat-latest': { arenaTier: 'S', aaii: 1380, mmlu: 92, source: 'OpenAI/AA - SWE-bench 74.9%', lastUpdated: '2025-12-09' },
   'gpt-5': { arenaTier: 'S', aaii: 1380, mmlu: 92, source: 'OpenAI/AA - SWE-bench 74.9%', lastUpdated: '2025-12-09' },
@@ -172,7 +199,10 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // ============================================================================
   // Anthropic - Source: Anthropic docs, ArtificialAnalysis.ai
   // ============================================================================
+  // Claude 4.6 Series (Feb 2026)
+  'claude-opus-4-6': { arenaTier: 'S', aaii: 1480, mmlu: 94, source: 'Anthropic - Latest flagship, Feb 2026', lastUpdated: '2026-02-07' },
   // Claude 4.5 Series - Opus 4.5: MMLU-Pro 89.5%, 80.9% SWE-bench; Sonnet 4.5: MMLU-Pro 87.5%
+  'claude-opus-4-5-20251101': { arenaTier: 'S', aaii: 1450, mmlu: 92, source: 'Anthropic - 80.9% SWE-bench', lastUpdated: '2026-02-07' },
   'claude-opus-4-5-20251124': { arenaTier: 'S', aaii: 1450, mmlu: 92, source: 'Anthropic - 80.9% SWE-bench, best coding model Nov 2025', lastUpdated: '2025-12-09' },
   'claude-sonnet-4-5-20250929': { arenaTier: 'S', aaii: 1320, mmlu: 88, source: 'Anthropic/AA - MMLU-Pro 87.5%', lastUpdated: '2025-12-09' },
   'claude-haiku-4-5-20251001': { arenaTier: 'A', aaii: 1200, mmlu: 80, source: 'Anthropic/AA', lastUpdated: '2025-12-09' },
@@ -193,6 +223,8 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // ============================================================================
   // Google Gemini - Source: Google docs, ArtificialAnalysis.ai
   // ============================================================================
+  // Gemini 3 Series
+  'gemini-3-flash-preview': { arenaTier: 'A', aaii: 1300, mmlu: 80, source: 'Google - Fast Gemini 3 model, free tier', lastUpdated: '2026-02-07' },
   // Gemini 3 Pro: #1 on LMArena, most intelligent Gemini
   'gemini-3-pro-preview': { arenaTier: 'S', aaii: 1420, mmlu: 91, source: 'Google - #1 LMArena, most intelligent model', lastUpdated: '2025-12-09' },
   'gemini-3-pro-image-preview': { arenaTier: 'A', aaii: 1350, mmlu: 88, source: 'Google - image generation with reasoning', lastUpdated: '2025-12-09' },
@@ -209,6 +241,12 @@ export const MODEL_BENCHMARKS: Record<string, ModelBenchmark> = {
   // ============================================================================
   // Groq (Open models) - Source: Meta, Groq, Community benchmarks
   // ============================================================================
+  // Llama 4 Series (NEW - Feb 2026)
+  'meta-llama/llama-4-scout-17b-16e-instruct': { arenaTier: 'A', aaii: 1280, mmlu: 83, source: 'Meta - Llama 4 Scout MoE (16 experts)', lastUpdated: '2026-02-07' },
+  'meta-llama/llama-4-maverick-17b-128e-instruct': { arenaTier: 'A', aaii: 1320, mmlu: 86, source: 'Meta - Llama 4 Maverick MoE (128 experts)', lastUpdated: '2026-02-07' },
+  // GPT-OSS on Groq (NEW)
+  'openai/gpt-oss-120b': { arenaTier: 'A', aaii: 1300, mmlu: 85, source: 'OpenAI open-source 120B on Groq', lastUpdated: '2026-02-07' },
+  'openai/gpt-oss-20b': { arenaTier: 'B', aaii: 1150, mmlu: 76, source: 'OpenAI open-source 20B on Groq', lastUpdated: '2026-02-07' },
   // Llama 3.3 70B: MMLU 86.0%, competitive with 405B
   'llama-3.3-70b-versatile': { arenaTier: 'A', aaii: 1250, mmlu: 86, source: 'Meta/Groq - MMLU 86.0%', lastUpdated: '2025-12-09' },
   'llama-3.1-8b-instant': { arenaTier: 'B', aaii: 1100, mmlu: 68, source: 'Meta/Groq', lastUpdated: '2025-12-09' },
