@@ -72,7 +72,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Arena config updated:', config);
     return NextResponse.json({ config });
 
   } catch (error) {

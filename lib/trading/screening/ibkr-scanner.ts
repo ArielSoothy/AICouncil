@@ -264,8 +264,6 @@ export class IBKRScanner {
    * Returns: Stocks sorted by gap % with pre-market data
    */
   async scanPreMarketGaps(config: PreMarketGapScannerConfig): Promise<ScanResult[]> {
-    console.log('[IBKR Scanner] Starting pre-market gap scan...', config);
-
     // Step 1: Run scanner for top gainers
     const scanSubscription: IBKRScannerSubscription = {
       instrument: 'STK',
@@ -280,7 +278,6 @@ export class IBKRScanner {
     let scanResults: IBKRScannerResult[];
     try {
       scanResults = await this.runScanner(scanSubscription);
-      console.log(`[IBKR Scanner] Found ${scanResults.length} candidates from scanner`);
     } catch (e) {
       console.error('[IBKR Scanner] Scanner failed:', e);
       return [];
@@ -304,7 +301,6 @@ export class IBKRScanner {
         });
 
         if (!bars.data || bars.data.length === 0) {
-          console.warn(`[IBKR Scanner] No bars for ${symbol}`);
           continue;
         }
 
@@ -353,7 +349,6 @@ export class IBKRScanner {
     // Sort by absolute gap %
     results.sort((a, b) => Math.abs(b.gapPercent) - Math.abs(a.gapPercent));
 
-    console.log(`[IBKR Scanner] Completed scan: ${results.length} stocks with ${config.minGapPercent}%+ gap`);
     return results.slice(0, config.maxResults);
   }
 }

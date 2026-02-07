@@ -22,8 +22,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🕐 Cron job triggered - checking Arena Mode config...');
-
     const supabase = await createClient();
 
     // Check if Arena Mode is enabled
@@ -42,14 +40,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (!config.is_enabled) {
-      console.log('⏸️  Arena Mode is disabled - skipping execution');
       return NextResponse.json({
         message: 'Arena Mode is disabled',
         skipped: true,
       });
     }
-
-    console.log('✅ Arena Mode is enabled - triggering execution...');
 
     // Call the execute endpoint internally
     const executeUrl = new URL('/api/arena/execute', request.url);
@@ -69,8 +64,6 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    console.log('✅ Cron execution complete:', executeResult);
 
     return NextResponse.json({
       success: true,

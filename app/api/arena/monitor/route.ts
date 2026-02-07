@@ -33,8 +33,8 @@ async function checkBracketStatus(
           filledPrice: stopOrder.filled_avg_price ? parseFloat(stopOrder.filled_avg_price) : null
         };
       }
-    } catch (err) {
-      console.log(`   ⚠️ Could not check stop-loss order: ${stopLossOrderId}`);
+    } catch {
+      // Could not check stop-loss order
     }
   }
 
@@ -48,8 +48,8 @@ async function checkBracketStatus(
           filledPrice: tpOrder.filled_avg_price ? parseFloat(tpOrder.filled_avg_price) : null
         };
       }
-    } catch (err) {
-      console.log(`   ⚠️ Could not check take-profit order: ${takeProfitOrderId}`);
+    } catch {
+      // Could not check take-profit order
     }
   }
 
@@ -63,8 +63,8 @@ async function checkBracketStatus(
       if (parentOrder?.status === 'canceled' || parentOrder?.status === 'expired') {
         return { status: parentOrder.status, filledPrice: null };
       }
-    } catch (err) {
-      console.log(`   ⚠️ Could not check parent order: ${parentOrderId}`);
+    } catch {
+      // Could not check parent order
     }
   }
 
@@ -80,8 +80,6 @@ async function checkBracketStatus(
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    console.log('🔍 Arena Position Monitor - Starting scan...');
-
     // Step 1: Get all open arena trades (bracket_status = 'active' or pnl is null)
     const { data: openTrades, error: fetchError } = await supabase
       .from('arena_trades')
@@ -100,7 +98,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (!openTrades || openTrades.length === 0) {
-      console.log('✅ No open positions to monitor');
       return NextResponse.json({
         success: true,
         message: 'No open positions to monitor',
@@ -109,14 +106,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`📊 Found ${openTrades.length} open positions to check`);
-
     // Step 2: Get current Alpaca positions for cross-reference
     let alpacaPositions: any[] = [];
     try {
       alpacaPositions = await getPositions();
-    } catch (err) {
-      console.warn('⚠️ Could not fetch Alpaca positions, will use quote prices');
+    } catch {
+      // Could not fetch Alpaca positions, will use quote prices
     }
 
     const results = {
@@ -133,13 +128,6 @@ export async function POST(request: NextRequest) {
       const tradeAgeHours = tradeAge / (1000 * 60 * 60);
       const maxHours = TIMEFRAME_HOURS[trade.timeframe] || 24;
 
-      console.log(`\n📍 Checking: ${trade.symbol} (${trade.model_name || trade.model_id})`);
-      console.log(`   Age: ${tradeAgeHours.toFixed(1)}h / ${maxHours}h max`);
-      console.log(`   Entry: $${trade.entry_price || 'N/A'}`);
-      console.log(`   Stop-Loss: $${trade.stop_loss_price || 'N/A'}`);
-      console.log(`   Take-Profit: $${trade.take_profit_price || 'N/A'}`);
-      console.log(`   Bracket Status: ${trade.bracket_status || 'unknown'}`);
-
       // Determine if position should be closed
       let shouldClose = false;
       let exitReason = '';
@@ -153,22 +141,17 @@ export async function POST(request: NextRequest) {
           trade.take_profit_order_id
         );
 
-        console.log(`   Bracket check: ${bracketCheck.status}`);
-
         if (bracketCheck.status === 'stop_hit') {
           shouldClose = true;
           exitReason = 'stop_loss_hit';
           exitPrice = bracketCheck.filledPrice || trade.stop_loss_price;
-          console.log(`   🛑 Stop-loss order filled at $${exitPrice}`);
         } else if (bracketCheck.status === 'profit_hit') {
           shouldClose = true;
           exitReason = 'take_profit_hit';
           exitPrice = bracketCheck.filledPrice || trade.take_profit_price;
-          console.log(`   🎯 Take-profit order filled at $${exitPrice}`);
         } else if (bracketCheck.status === 'canceled' || bracketCheck.status === 'expired') {
           shouldClose = true;
           exitReason = `order_${bracketCheck.status}`;
-          console.log(`   ⚠️ Order ${bracketCheck.status}`);
         }
       }
 
@@ -176,7 +159,6 @@ export async function POST(request: NextRequest) {
       if (!shouldClose && tradeAgeHours >= maxHours) {
         shouldClose = true;
         exitReason = `timeframe_expired_${trade.timeframe}`;
-        console.log(`   ⏰ Timeframe expired (${trade.timeframe})`);
       }
 
       // Get current price if we need to close manually
@@ -185,7 +167,6 @@ export async function POST(request: NextRequest) {
 
       if (alpacaPos) {
         currentPrice = parseFloat(alpacaPos.current_price);
-        console.log(`   Current price (Alpaca): $${currentPrice}`);
 
         // CHECK 3: Manual stop-loss/take-profit check (if bracket orders not set)
         if (!shouldClose && !trade.stop_loss_order_id) {
@@ -197,12 +178,10 @@ export async function POST(request: NextRequest) {
             shouldClose = true;
             exitReason = 'manual_stop_loss';
             exitPrice = currentPrice;
-            console.log(`   🛑 Manual stop-loss triggered at $${currentPrice}`);
           } else if (currentPrice >= takeProfitPrice) {
             shouldClose = true;
             exitReason = 'manual_take_profit';
             exitPrice = currentPrice;
-            console.log(`   🎯 Manual take-profit triggered at $${currentPrice}`);
           }
         }
       } else if (!exitPrice) {
@@ -210,9 +189,8 @@ export async function POST(request: NextRequest) {
         try {
           const quote = await getLatestQuote(trade.symbol);
           currentPrice = quote.price;
-          console.log(`   Current price (quote): $${currentPrice}`);
-        } catch (err) {
-          console.warn(`   ⚠️ Could not get price for ${trade.symbol}`);
+        } catch {
+          // Could not get price for symbol
         }
       }
 
@@ -223,14 +201,12 @@ export async function POST(request: NextRequest) {
           try {
             if (trade.stop_loss_order_id) {
               await cancelOrder(trade.stop_loss_order_id);
-              console.log(`   Cancelled stop-loss order`);
             }
             if (trade.take_profit_order_id) {
               await cancelOrder(trade.take_profit_order_id);
-              console.log(`   Cancelled take-profit order`);
             }
-          } catch (cancelErr) {
-            console.warn(`   ⚠️ Could not cancel child orders`);
+          } catch {
+            // Could not cancel child orders
           }
         }
 
@@ -241,7 +217,6 @@ export async function POST(request: NextRequest) {
             exitPrice = closeOrder.filled_avg_price
               ? parseFloat(closeOrder.filled_avg_price)
               : currentPrice;
-            console.log(`   ✅ Position closed at $${exitPrice}`);
           } catch (closeError) {
             console.error(`   ❌ Failed to close position:`, closeError);
             results.errors++;
@@ -253,7 +228,6 @@ export async function POST(request: NextRequest) {
           if (!exitReason) {
             exitReason = 'position_not_found';
           }
-          console.log(`   ℹ️ Position already closed or not found`);
         }
 
         // Calculate P&L
@@ -264,8 +238,6 @@ export async function POST(request: NextRequest) {
           // P&L = (exit - entry) * quantity for BUY
           const pnl = (exitPrice - entryPrice) * quantity;
           const pnlPercent = entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice) * 100 : 0;
-
-          console.log(`   💰 P&L: $${pnl.toFixed(2)} (${pnlPercent.toFixed(2)}%)`);
 
           // Update database with REAL P&L
           const { error: updateError } = await supabase
@@ -288,9 +260,8 @@ export async function POST(request: NextRequest) {
             // UNLOCK STOCK when position closes
             try {
               await unlockStock(trade.symbol);
-              console.log(`   🔓 Unlocked ${trade.symbol}`);
-            } catch (unlockErr) {
-              console.warn(`   ⚠️ Could not unlock stock: ${trade.symbol}`);
+            } catch {
+              // Could not unlock stock
             }
 
             results.closed++;
@@ -307,15 +278,13 @@ export async function POST(request: NextRequest) {
             // Update model performance (if table exists)
             try {
               await updateModelPerformance(supabase, trade.model_id, pnl, pnlPercent);
-            } catch (perfErr) {
-              console.warn(`   ⚠️ Could not update model performance`);
+            } catch {
+              // Could not update model performance
             }
           }
         }
       }
     }
-
-    console.log(`\n🏆 Monitor complete: ${results.closed}/${results.checked} positions closed`);
 
     return NextResponse.json({
       success: true,

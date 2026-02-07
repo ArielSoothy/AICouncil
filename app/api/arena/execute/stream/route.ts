@@ -159,8 +159,6 @@ export async function POST(request: NextRequest) {
 
           const providers = getProvidersForTier(tier as UserTier);
           const isSubMode = isSubscriptionTier(tier as UserTier);
-          console.log(`🎯 Arena Mode: tier=${tier}, using ${isSubMode ? 'CLI PROVIDERS (subscription)' : 'API PROVIDERS (per-call)'}`);
-
           const results: ArenaModelResult[] = [];
           const startTime = Date.now();
 
@@ -172,8 +170,6 @@ export async function POST(request: NextRequest) {
             timestamp: Date.now()
           });
           const currentPrices = await fetchCurrentPrices(ARENA_STOCK_UNIVERSE);
-          const priceCount = Object.values(currentPrices).filter(p => p !== null).length;
-          console.log(`📊 Arena: Got ${priceCount}/${ARENA_STOCK_UNIVERSE.length} prices`);
 
           // Run models sequentially to emit progress events in order
           for (const modelId of orderedModels) {

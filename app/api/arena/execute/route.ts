@@ -199,23 +199,15 @@ async function runResearchPhase(
   queryModel: (modelId: string, prompt: string) => Promise<string>,
   tier: UserTier
 ): Promise<NextResponse> {
-  console.log('🏟️  ARENA MODE: Starting Research Phase...');
-  console.log(`   Models competing: ${enabledModels.length}`);
-  console.log(`   Timeframe: ${timeframe}`);
-  console.log(`   Tier: ${tier} (${isSubscriptionTier(tier) ? 'CLI/Subscription' : 'API/Per-call'})`);
-
   // Get today's rotation order for fair selection
   const orderedModels = await getTodayRotation(enabledModels);
-  console.log(`📋 Today's rotation: ${orderedModels.join(' → ')}`);
 
   // Get currently locked stocks (from existing open positions)
   const lockedStocks = await getLockedStocks();
-  console.log(`🔒 Currently locked: ${lockedStocks.length > 0 ? lockedStocks.join(', ') : 'none'}`);
 
   // Get stocks traded today (for soft guidance in prompts)
   const todaysTrades = await getTodaysTrades();
   const stocksTradedToday = todaysTrades.stocksTradedToday;
-  console.log(`📊 Traded today: ${stocksTradedToday.length > 0 ? stocksTradedToday.join(', ') : 'none'}`);
 
   // Create arena run record
   const { data: arenaRun, error: runError } = await supabase
@@ -264,10 +256,6 @@ async function runResearchPhase(
     })
     .eq('id', 1);
 
-  console.log(`\n🏆 Research Phase Complete!`);
-  console.log(`   Successful: ${runResult.successfulModels}/${runResult.totalModels}`);
-  console.log(`   Conflicts: ${runResult.conflicts.length}`);
-
   return NextResponse.json({
     success: true,
     phase: 'research',
@@ -303,10 +291,6 @@ async function rerunModelsWithConflicts(
   timeframe: TradingTimeframe,
   queryModel: (modelId: string, prompt: string) => Promise<string>
 ): Promise<NextResponse> {
-  console.log('🔄 ARENA MODE: Re-running models with exclusions...');
-  console.log(`   Models to re-run: ${modelIds.join(', ')}`);
-  console.log(`   Additional exclusions: ${additionalExclusions.join(', ')}`);
-
   // Get currently locked stocks
   const lockedStocks = await getLockedStocks();
   const allExclusions = [...new Set([...lockedStocks, ...additionalExclusions])];
@@ -364,15 +348,11 @@ async function executeApprovedTrades(
   account: any,
   timeframe: TradingTimeframe
 ): Promise<NextResponse> {
-  console.log('🚀 ARENA MODE: Executing approved trades...');
-  console.log(`   Trades to execute: ${approvedTrades.length}`);
-
   const executedTrades: any[] = [];
   const errors: any[] = [];
 
   for (const trade of approvedTrades) {
     try {
-      console.log(`\n📈 Executing: ${trade.symbol} for ${trade.modelId}`);
 
       // Get current price for reference
       const quote = await getLatestQuote(trade.symbol);
@@ -428,10 +408,6 @@ async function executeApprovedTrades(
         ...savedTrade,
         bracketResult,
       });
-
-      console.log(`✅ ${trade.modelId}: Bracket order placed for ${trade.symbol}`);
-      console.log(`   Entry: ~$${entryPrice}, SL: $${trade.stopLoss}, TP: $${trade.takeProfit}`);
-      console.log(`   Parent Order: ${bracketResult.parentOrder.id}`);
 
     } catch (error) {
       console.error(`❌ Error executing ${trade.modelId}:`, error);

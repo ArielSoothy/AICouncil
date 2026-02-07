@@ -219,8 +219,6 @@ export class YahooFinanceClient {
    * ```
    */
   async enrichBatch(symbols: string[]): Promise<YahooEnrichedData[]> {
-    console.log(`[Yahoo Finance] Enriching ${symbols.length} symbols...`);
-
     const results = await Promise.allSettled(
       symbols.map(symbol => this.getEnrichedData(symbol))
     );
@@ -230,12 +228,9 @@ export class YahooFinanceClient {
     results.forEach((result, i) => {
       if (result.status === 'fulfilled' && result.value) {
         enriched.push(result.value);
-      } else {
-        console.warn(`[Yahoo Finance] Failed to enrich ${symbols[i]}`);
       }
     });
 
-    console.log(`[Yahoo Finance] Successfully enriched ${enriched.length}/${symbols.length} symbols`);
     return enriched;
   }
 

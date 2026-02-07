@@ -103,10 +103,6 @@ export async function get_stock_quote(symbol: string): Promise<StockQuote> {
       lastUpdated: new Date(meta.regularMarketTime * 1000).toISOString(),
     };
 
-    console.log(
-      `[get_stock_quote] REAL data for ${symbolUpper}: $${quote.price} @ ${quote.exchange}, Vol: ${quote.volume.toLocaleString()}`
-    );
-
     return quote;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

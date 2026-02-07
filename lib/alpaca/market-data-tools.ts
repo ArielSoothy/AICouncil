@@ -87,21 +87,18 @@ async function getBarsWithFallback(
     const isConnected = await ibkr.isConnected();
 
     if (isConnected) {
-      console.log(`[MarketData] Trying IBKR for ${symbolUpper} bars...`);
       const bars = await ibkr.getBars(symbolUpper, timeframe, start, end);
 
       if (bars && bars.length > 0) {
-        console.log(`[MarketData] ✅ IBKR returned ${bars.length} bars for ${symbolUpper}`);
         return { bars: bars.slice(-limit), source: 'ibkr' };
       }
     }
   } catch (ibkrError) {
-    console.log(`[MarketData] IBKR failed for ${symbolUpper}: ${ibkrError instanceof Error ? ibkrError.message : 'Unknown'}`);
+    // IBKR failed, fall back to Alpaca
   }
 
   // Fall back to Alpaca
   try {
-    console.log(`[MarketData] Trying Alpaca for ${symbolUpper} bars...`);
     const alpaca = getAlpacaClient();
 
     const barsGenerator = alpaca.getBarsV2(symbolUpper, {
@@ -126,14 +123,12 @@ async function getBarsWithFallback(
     }
 
     if (bars.length > 0) {
-      console.log(`[MarketData] ✅ Alpaca returned ${bars.length} bars for ${symbolUpper}`);
       return { bars: bars.slice(-limit), source: 'alpaca' };
     }
 
     return { bars: [], source: 'alpaca', error: 'No data returned' };
   } catch (alpacaError) {
     const errorMsg = alpacaError instanceof Error ? alpacaError.message : 'Unknown error';
-    console.log(`[MarketData] ❌ Alpaca failed for ${symbolUpper}: ${errorMsg}`);
 
     // Check if it's a 403 subscription error
     if (errorMsg.includes('403') || errorMsg.includes('subscription')) {

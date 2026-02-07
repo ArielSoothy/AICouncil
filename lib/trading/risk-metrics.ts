@@ -69,7 +69,6 @@ export interface TakeProfitLevels {
  */
 export function calculateATR(bars: PriceBar[], period: number = 14): number {
   if (bars.length < period + 1) {
-    console.warn(`ATR requires ${period + 1} bars, got ${bars.length}`);
     return 0;
   }
 
@@ -160,7 +159,6 @@ export function calculateStandardDeviation(returns: number[]): number {
  */
 export function calculateHistoricalVolatility(bars: PriceBar[], period: number = 30): number {
   if (bars.length < period + 1) {
-    console.warn(`Historical volatility requires ${period + 1} bars`);
     return 0;
   }
 
@@ -190,7 +188,6 @@ export function calculateHistoricalVolatility(bars: PriceBar[], period: number =
  */
 export function calculateValueAtRisk(returns: number[], confidence: number = 0.95): number {
   if (returns.length < 10) {
-    console.warn('VaR requires at least 10 data points for reliability');
     return 0;
   }
 

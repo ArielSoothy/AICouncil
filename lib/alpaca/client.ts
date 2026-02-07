@@ -30,15 +30,8 @@ function validateAlpacaEnv(): void {
  * Lazy initialization to ensure env vars are loaded first
  */
 export function getAlpacaClient(): Alpaca {
-  console.log('🔍 [Alpaca Client] Initializing Alpaca client...');
-
   // Validate environment variables before creating client
   validateAlpacaEnv();
-
-  console.log('✅ [Alpaca Client] Environment variables validated');
-  console.log('🔑 [Alpaca Client] API Key:', process.env.ALPACA_API_KEY ? `${process.env.ALPACA_API_KEY.substring(0, 8)}...` : 'MISSING');
-  console.log('🔐 [Alpaca Client] Secret Key:', process.env.ALPACA_SECRET_KEY ? `${process.env.ALPACA_SECRET_KEY.substring(0, 8)}...` : 'MISSING');
-  console.log('🌐 [Alpaca Client] Base URL:', process.env.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets');
 
   const client = new Alpaca({
     keyId: process.env.ALPACA_API_KEY!,
@@ -47,7 +40,6 @@ export function getAlpacaClient(): Alpaca {
     baseUrl: process.env.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets',
   });
 
-  console.log('✅ [Alpaca Client] Client created successfully');
   return client;
 }
 
@@ -57,11 +49,8 @@ export function getAlpacaClient(): Alpaca {
  */
 export async function testConnection(): Promise<AlpacaAccount> {
   try {
-    console.log('🔌 Testing Alpaca connection...');
     const alpaca = getAlpacaClient();
     const account = await alpaca.getAccount();
-    console.log('✅ Connection successful!');
-    console.log('📊 Account Balance:', account.portfolio_value);
     return account as AlpacaAccount;
   } catch (error) {
     console.error('❌ Alpaca connection failed:', error);
@@ -76,7 +65,6 @@ export async function getAccount(): Promise<AlpacaAccount> {
   try {
     const alpaca = getAlpacaClient();
     const account = await alpaca.getAccount();
-    console.log('💰 Current Balance:', account.portfolio_value);
     return account as AlpacaAccount;
   } catch (error) {
     console.error('❌ Failed to get account:', error);
@@ -91,7 +79,6 @@ export async function getPositions(): Promise<any[]> {
   try {
     const alpaca = getAlpacaClient();
     const positions = await alpaca.getPositions();
-    console.log(`📊 Current positions: ${positions.length}`);
     return positions;
   } catch (error) {
     console.error('❌ Failed to get positions:', error);
@@ -111,8 +98,6 @@ export async function placeMarketOrder(
   side: OrderSide
 ): Promise<AlpacaOrder> {
   try {
-    console.log(`📈 Placing ${side.toUpperCase()} order: ${quantity} shares of ${symbol}`);
-
     const alpaca = getAlpacaClient();
     const order = await alpaca.createOrder({
       symbol,
@@ -121,10 +106,6 @@ export async function placeMarketOrder(
       type: 'market',
       time_in_force: 'day',
     });
-
-    console.log('✅ Order placed successfully!');
-    console.log('Order ID:', order.id);
-    console.log('Status:', order.status);
 
     return order as AlpacaOrder;
   } catch (error) {
@@ -151,10 +132,6 @@ export async function placeBracketOrder(
   stopLossPrice: number
 ): Promise<BracketOrderResult> {
   try {
-    console.log(`📈 Placing BRACKET ${side.toUpperCase()} order: ${quantity} shares of ${symbol}`);
-    console.log(`   Take Profit: $${takeProfitPrice}`);
-    console.log(`   Stop Loss: $${stopLossPrice}`);
-
     const alpaca = getAlpacaClient();
 
     // Create bracket order with stop-loss and take-profit legs
@@ -173,10 +150,6 @@ export async function placeBracketOrder(
       },
     }) as any;
 
-    console.log('✅ Bracket order placed successfully!');
-    console.log('Parent Order ID:', order.id);
-    console.log('Status:', order.status);
-
     // Extract child order IDs from legs
     const legs = order.legs || [];
     let stopLossOrderId = '';
@@ -185,10 +158,8 @@ export async function placeBracketOrder(
     for (const leg of legs) {
       if (leg.type === 'stop') {
         stopLossOrderId = leg.id;
-        console.log('Stop-Loss Order ID:', leg.id);
       } else if (leg.type === 'limit') {
         takeProfitOrderId = leg.id;
-        console.log('Take-Profit Order ID:', leg.id);
       }
     }
 

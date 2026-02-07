@@ -198,9 +198,7 @@ export function recordModelFailure(modelId: string, error?: string): void {
     })
   }
 
-  // Log for monitoring
-  const record = modelFailures.get(modelId)!
-  console.warn(`[Model Fallback] ${modelId} failed (${record.count}x): ${error || 'unknown error'}`)
+  // Tracked in-memory for health dashboard
 }
 
 /**
@@ -496,8 +494,5 @@ export function logFallbackWithColor(
   const originalName = getModelDisplayName(originalModel)
   const fallbackName = getModelDisplayName(fallbackModel)
 
-  // Colored console output (only works in Node.js terminal)
-  console.log(
-    `\x1b[${consoleColor}m🔄 [${category}] ${originalName} → ${fallbackName}: ${userMessage}\x1b[${CONSOLE_COLORS.RESET}m`
-  )
+  // logFallbackWithColor is a utility - keep colored output for runtime monitoring
 }

@@ -52,7 +52,6 @@ export function saveToLocalStorage(scan: ScreeningScanResult): void {
 
   try {
     localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(scan))
-    console.log('[ScreeningCache] Saved to localStorage')
   } catch (e) {
     console.error('[ScreeningCache] localStorage save failed:', e)
   }
@@ -68,7 +67,6 @@ export function loadFromLocalStorage(): ScreeningScanResult | null {
     const data = localStorage.getItem(LOCALSTORAGE_KEY)
     if (data) {
       const scan = JSON.parse(data) as ScreeningScanResult
-      console.log('[ScreeningCache] Loaded from localStorage:', scan.stocks_count, 'stocks from', scan.scanned_at)
       return scan
     }
   } catch (e) {
@@ -83,7 +81,6 @@ export function loadFromLocalStorage(): ScreeningScanResult | null {
  */
 export async function saveToSupabase(scan: ScreeningScanResult): Promise<string | null> {
   if (!supabase) {
-    console.warn('[ScreeningCache] Supabase not configured, skipping save')
     return null
   }
 
@@ -104,15 +101,12 @@ export async function saveToSupabase(scan: ScreeningScanResult): Promise<string 
 
     if (error) {
       // Table might not exist yet - don't crash
-      if (error.code === '42P01') {
-        console.warn('[ScreeningCache] Table screening_scans does not exist. Run the SQL script first.')
-      } else {
+      if (error.code !== '42P01') {
         console.error('[ScreeningCache] Supabase save error:', error.message)
       }
       return null
     }
 
-    console.log('[ScreeningCache] Saved to Supabase, id:', data.id)
     return data.id
   } catch (e) {
     console.error('[ScreeningCache] Supabase save failed:', e)
@@ -125,7 +119,6 @@ export async function saveToSupabase(scan: ScreeningScanResult): Promise<string 
  */
 export async function loadHistory(limit: number = 20): Promise<ScreeningScanResult[]> {
   if (!supabase) {
-    console.warn('[ScreeningCache] Supabase not configured')
     return []
   }
 
@@ -137,15 +130,12 @@ export async function loadHistory(limit: number = 20): Promise<ScreeningScanResu
       .limit(limit)
 
     if (error) {
-      if (error.code === '42P01') {
-        console.warn('[ScreeningCache] Table screening_scans does not exist')
-      } else {
+      if (error.code !== '42P01') {
         console.error('[ScreeningCache] Supabase load error:', error.message)
       }
       return []
     }
 
-    console.log('[ScreeningCache] Loaded', data.length, 'scans from history')
     return data as ScreeningScanResult[]
   } catch (e) {
     console.error('[ScreeningCache] Supabase load failed:', e)
@@ -170,7 +160,6 @@ export async function deleteScan(id: string): Promise<boolean> {
       return false
     }
 
-    console.log('[ScreeningCache] Deleted scan:', id)
     return true
   } catch (e) {
     console.error('[ScreeningCache] Delete failed:', e)

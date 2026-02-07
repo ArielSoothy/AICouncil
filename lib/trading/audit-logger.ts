@@ -171,7 +171,6 @@ export class AuditLogger {
     // Persist
     this.persist();
 
-    console.log(`📝 Audit record created: ${id} for ${record.symbol} (${record.mode})`);
     return completeRecord;
   }
 
@@ -339,7 +338,6 @@ export class AuditLogger {
     this.init();
     this.records = [];
     this.persist();
-    console.log('🗑️ Audit log cleared');
   }
 
   /**

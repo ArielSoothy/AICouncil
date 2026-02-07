@@ -9,27 +9,12 @@ type ConversationInsert = Database['public']['Tables']['conversations']['Insert'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Conversations API - Starting request')
-    console.log('Conversations API - Request headers:', {
-      authorization: request.headers.get('authorization'),
-      cookie: request.headers.get('cookie')?.substring(0, 100) + '...',
-      userAgent: request.headers.get('user-agent')
-    })
-
     const supabase = await createClient()
 
     // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    console.log('Conversations API - Auth check:', {
-      userId: user?.id,
-      userEmail: user?.email,
-      authError: authError?.message,
-      hasUser: !!user
-    })
-
     if (authError) {
-      console.log('Conversations API - Auth error:', authError)
       return NextResponse.json({
         error: 'Authentication error',
         details: authError.message
@@ -37,27 +22,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (!user) {
-      console.log('Conversations API - No user found (guest mode), returning empty array')
       // Guests use localStorage only, no cloud history
       return NextResponse.json([])
     }
 
     // Check if user exists in public.users table
-    console.log('Conversations API - Checking if user exists in public.users...')
     const { data: userProfile, error: profileError } = await supabase
       .from('users')
       .select('id')
       .eq('id', user.id)
       .single()
 
-    console.log('Conversations API - User profile check:', {
-      userProfile: userProfile?.id,
-      profileError: profileError?.message
-    })
-
     if (profileError && profileError.code === 'PGRST116') {
       // User doesn't exist in public.users, create them
-      console.log('Conversations API - Creating user in public.users table')
       const { error: insertError } = await supabase
         .from('users')
         .insert({
@@ -78,9 +55,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const modeFilter = searchParams.get('mode')
 
-    // Get conversations for the user
-    console.log('Conversations API - Querying conversations for user:', user.id, 'with mode filter:', modeFilter)
-
     let query = supabase
       .from('conversations')
       .select('*')
@@ -94,12 +68,6 @@ export async function GET(request: NextRequest) {
     const { data: conversations, error } = await query
       .order('created_at', { ascending: false })
 
-    console.log('Conversations API - Query result:', { 
-      conversationsCount: conversations?.length || 0, 
-      error: error?.message,
-      conversations: conversations 
-    })
-
     if (error) {
       console.error('Conversations API - Database error:', error)
       return NextResponse.json({ 
@@ -108,7 +76,6 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    console.log('Conversations API - Returning conversations:', conversations?.length || 0)
     return NextResponse.json(conversations || [])
   } catch (error) {
     console.error('Conversations API - Unexpected error:', error)
@@ -145,10 +112,6 @@ export async function POST(request: NextRequest) {
     // GUEST MODE: Save anonymously for analytics (user_id = NULL)
     // Guests can't retrieve via API (GET returns empty), but admin can analyze
     // This enables product insights and ML training while protecting guest privacy
-    if (isGuestMode) {
-      console.log('📊 Guest mode: Saving anonymously for analytics (user_id = NULL)')
-    }
-
     // Create evaluation data structure
     let evaluationData = null
 
@@ -223,7 +186,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    console.log('✅ Conversation saved:', conversation.id)
     return NextResponse.json(conversation, { status: 201 })
   } catch (error) {
     console.error('❌ Conversation API error:', error)

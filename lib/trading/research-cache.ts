@@ -104,7 +104,6 @@ export class ResearchCache {
         .single();
 
       if (error || !data) {
-        console.log(`💨 Cache miss: ${symbolUpper}-${timeframe}`);
         return null;
       }
 
@@ -112,9 +111,6 @@ export class ResearchCache {
 
       // Check if manually invalidated
       if (row.is_stale) {
-        console.log(
-          `⚠️  Cache invalidated: ${symbolUpper}-${timeframe} (${row.invalidated_reason})`
-        );
         return null;
       }
 
@@ -122,9 +118,6 @@ export class ResearchCache {
       const now = new Date();
       const expiresAt = new Date(row.expires_at);
       if (expiresAt < now) {
-        console.log(
-          `⏰ Cache expired: ${symbolUpper}-${timeframe} (expired ${Math.round((now.getTime() - expiresAt.getTime()) / 1000 / 60)}min ago)`
-        );
         return null;
       }
 
@@ -134,10 +127,6 @@ export class ResearchCache {
       );
       const timeToExpiry = Math.round(
         (expiresAt.getTime() - now.getTime()) / 1000 / 60
-      );
-
-      console.log(
-        `✅ Cache hit: ${symbolUpper}-${timeframe} (age: ${cacheAge}min, expires in: ${timeToExpiry}min, access: ${row.access_count + 1})`
       );
 
       // Update last accessed time and access count (fire and forget)
@@ -203,13 +192,8 @@ export class ResearchCache {
 
       if (error) {
         console.error(
-          `❌ Cache write error for ${symbolUpper}-${timeframe}:`,
+          `Cache write error for ${symbolUpper}-${timeframe}:`,
           error
-        );
-      } else {
-        const ttlMinutes = Math.round(ttl / 1000 / 60);
-        console.log(
-          `💾 Cached research: ${symbolUpper}-${timeframe} (TTL: ${ttlMinutes}min, tools: ${research.totalToolCalls})`
         );
       }
     } catch (error) {
@@ -253,10 +237,7 @@ export class ResearchCache {
       const { error } = await query;
 
       if (error) {
-        console.error(`❌ Cache invalidation error for ${symbolUpper}:`, error);
-      } else {
-        const scope = timeframe ? `${symbolUpper}-${timeframe}` : `${symbolUpper} (all timeframes)`;
-        console.log(`🗑️  Invalidated cache: ${scope} (${reason})`);
+        console.error(`Cache invalidation error for ${symbolUpper}:`, error);
       }
     } catch (error) {
       console.error(`❌ Cache invalidate error for ${symbolUpper}:`, error);
@@ -318,9 +299,7 @@ export class ResearchCache {
         return 0;
       }
 
-      const deletedCount = data?.length || 0;
-      console.log(`🧹 Cleaned up ${deletedCount} expired cache entries`);
-      return deletedCount;
+      return data?.length || 0;
     } catch (error) {
       console.error('❌ Cleanup error:', error);
       return 0;
