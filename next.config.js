@@ -15,6 +15,7 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['@ai-sdk/openai', '@ai-sdk/anthropic', '@ai-sdk/google', '@ai-sdk/groq'],
+    instrumentationHook: true,
   },
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
