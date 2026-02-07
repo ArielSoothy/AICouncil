@@ -8,7 +8,6 @@ export async function callConsensusAPI(
   try {
     // Early return if no models or query
     if (!models || models.length === 0) {
-      console.log('No models provided for consensus API')
       return null
     }
     
@@ -41,15 +40,6 @@ export async function callConsensusAPI(
       isGuestMode: true
     }
 
-    console.log('Consensus API request:', {
-      prompt: query ? query.substring(0, 50) + '...' : 'NO PROMPT',
-      models: validModels,
-      modelCount: validModels.length,
-      responseMode,
-      payloadSize: JSON.stringify(payload).length,
-      fullPayload: payload
-    })
-
     const response = await fetch(`${baseUrl}/api/consensus`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -63,8 +53,7 @@ export async function callConsensusAPI(
     }
 
     const result = await response.json()
-    console.log('Consensus API success, keys:', Object.keys(result))
-    
+
     // Extract the consensus data in a consistent format
     if (result.consensus?.unifiedAnswer) {
       return {

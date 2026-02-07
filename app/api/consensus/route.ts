@@ -148,16 +148,13 @@ async function runJudgeAnalysis(query: string, responses: StructuredModelRespons
       // Free tier: Use Gemini models (fast and free)
       try {
         return await runEnhancedGeminiJudge(query, successfulResponses, responseMode, judgeModel)
-      } catch (geminiError) {
-        console.log(`Gemini judge failed, falling back to Groq:`, geminiError)
-        // Fallback to fast Groq model for free tier if configured
+      } catch {
+        // Gemini judge failed, falling back to Groq
         const groqProvider = providerRegistry.getProvider('groq')
         if (groqProvider && groqProvider.isConfigured()) {
           return await runEnhancedGroqJudge(query, successfulResponses, responseMode)
-        } else {
-          console.log('Groq not configured, using heuristic fallback')
-          // If Groq not configured, skip to heuristic
         }
+        // Groq not configured either, skip to heuristic
       }
     } else if (judgeModel === 'claude-opus-4-1-20250514') {
       // Pro/Enterprise: Use Claude Opus 4 if available
@@ -173,8 +170,8 @@ async function runJudgeAnalysis(query: string, responses: StructuredModelRespons
         return await runEnhancedGPTJudge(query, successfulResponses, responseMode)
       }
     }
-  } catch (error) {
-    console.log(`${judgeModel} judge failed, using heuristic fallback:`, error)
+  } catch {
+    // Judge failed, using heuristic fallback
   }
 
   // Final fallback: Heuristic analysis
@@ -499,9 +496,8 @@ export async function POST(request: NextRequest) {
         
         userTier = profile?.subscription_tier || 'free'
       }
-    } catch (authError) {
+    } catch {
       // If auth fails, continue with free tier
-      console.log('Auth check failed, using free tier:', authError)
       userTier = 'free'
     }
 
@@ -793,16 +789,6 @@ export async function POST(request: NextRequest) {
           sources: webSearchSources || []
         }
       }) // Add web search results if available
-    }
-
-    // MEMORY INTEGRATION: DISABLED - On backlog, not current priority
-    // Memory system foundation is complete but disabled to focus on research validation
-    // See: docs/archived/MEMORY_IMPLEMENTATION_PLAN.md for future implementation
-    const MEMORY_ENABLED = true; // Re-enabled Dec 22, 2025
-
-    if (MEMORY_ENABLED && userTier !== 'guest' && judgeAnalysis.confidence > 0.6) {
-      // Memory code enabled - stores episodic and semantic memories
-      console.log('✅ Memory system enabled - will store high-confidence results')
     }
 
     return NextResponse.json(enhancedResponse, {

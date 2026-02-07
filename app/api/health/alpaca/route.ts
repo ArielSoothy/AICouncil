@@ -16,12 +16,8 @@ import { testConnection } from '@/lib/alpaca/client';
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('🏥 Health Check: Testing Alpaca API connection...');
-
     // Test connection and get account info
     const account = await testConnection();
-
-    console.log('✅ Health Check PASSED: Alpaca API is reachable');
 
     return NextResponse.json({
       status: 'healthy',

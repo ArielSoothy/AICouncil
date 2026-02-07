@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
     let result
     try {
       result = await generateWithGroq(query)
-    } catch (groqError) {
-      console.log('Groq failed, trying Claude:', groqError)
+    } catch {
+      // Groq failed, trying Claude
       result = await generateWithClaude(query)
     }
 

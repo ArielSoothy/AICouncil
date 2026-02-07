@@ -40,39 +40,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Try available models in order of preference
-    console.log('Attempting elaboration with available models...')
-    
     // Try Claude Opus 4 first for elaboration
-    if (process.env.ANTHROPIC_API_KEY && 
+    if (process.env.ANTHROPIC_API_KEY &&
         process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here' &&
         process.env.ANTHROPIC_API_KEY.startsWith('sk-ant-')) {
       try {
-        console.log('Trying Claude Opus 4 for elaboration...')
         return await elaborateWithClaudeOpus(query, responses, currentAnswer, nextLevel)
-      } catch (error) {
-        console.log('Claude Opus 4 elaboration failed:', error)
+      } catch {
+        // Claude Opus 4 elaboration failed
       }
     }
 
     // Fallback to GPT-4o
-    if (process.env.OPENAI_API_KEY && 
+    if (process.env.OPENAI_API_KEY &&
         process.env.OPENAI_API_KEY !== 'your_openai_api_key_here' &&
         process.env.OPENAI_API_KEY.startsWith('sk-')) {
       try {
-        console.log('Trying GPT-4o for elaboration...')
         return await elaborateWithGPT4o(query, responses, currentAnswer, nextLevel)
-      } catch (error) {
-        console.log('GPT-4o elaboration failed:', error)
+      } catch {
+        // GPT-4o elaboration failed
       }
     }
 
     // Try Gemini as fallback
     if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
       try {
-        console.log('Trying Gemini for elaboration...')
         return await elaborateWithGemini(query, responses, currentAnswer, nextLevel)
-      } catch (error) {
-        console.log('Gemini elaboration failed:', error)
+      } catch {
+        // Gemini elaboration failed
       }
     }
 

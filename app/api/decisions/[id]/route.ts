@@ -104,7 +104,6 @@ export async function PATCH(
         outcome_rating: body.outcome_rating,
       }
       decision = await service.updateOutcome(id, body.user_id, outcomeUpdate)
-      console.log(`[API] Outcome updated for decision ${id}: ${body.outcome_status}`)
     }
 
     // Update tags if provided
@@ -167,8 +166,6 @@ export async function DELETE(
 
     const service = getDecisionService()
     await service.deleteDecision(id, userId)
-
-    console.log(`[API] Decision deleted: ${id}`)
 
     return NextResponse.json({
       success: true,

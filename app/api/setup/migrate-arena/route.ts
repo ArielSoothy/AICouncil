@@ -13,8 +13,6 @@ import path from 'path';
  */
 export async function POST(request: NextRequest) {
   try {
-    console.log('🚀 Starting Arena Mode database migration...');
-
     // Get Supabase credentials from environment
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -29,15 +27,6 @@ export async function POST(request: NextRequest) {
     // Read the migration SQL file
     const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '20251024_arena_mode_tables.sql');
     const migrationSQL = fs.readFileSync(migrationPath, 'utf-8');
-
-    console.log('📄 Migration SQL file loaded');
-    console.log('📏 SQL length:', migrationSQL.length, 'characters');
-
-    // Execute the entire SQL migration using Supabase's query endpoint
-    // This uses the Supabase PostgREST extension for raw SQL execution
-    const queryUrl = `${supabaseUrl}/rest/v1/rpc/exec_raw_sql`;
-
-    console.log('🔗 Attempting to execute SQL via Supabase...');
 
     // First, let's try creating the tables directly via Supabase management API
     // Actually, the easiest way is to use Supabase's Database API

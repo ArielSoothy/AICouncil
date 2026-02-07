@@ -60,8 +60,6 @@ export async function POST(request: NextRequest) {
       metadata
     )
 
-    console.log(`[API] Decision saved: ${decision.id}`)
-
     return NextResponse.json({
       success: true,
       decision,

@@ -606,11 +606,6 @@ export async function POST(request: NextRequest) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             const classification = classifyError(errorMessage);
 
-            // Log with color (matches decision model pattern)
-            console.log(
-              `\x1b[${classification.consoleColor}m🚨 [Judge ${classification.category}] ${errorMessage}\x1b[0m`
-            );
-
             // SUB MODE BUG DETECTION: Budget errors should NEVER happen in Sub mode
             const useSubscription = researchTier === 'sub-pro' || researchTier === 'sub-max';
             if (useSubscription && classification.category === 'BUDGET_LIMIT') {

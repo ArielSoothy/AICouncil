@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
           userTier = profile?.subscription_tier || 'free'
         }
       }
-    } catch (authError) {
-      console.log('Auth check failed, using free tier:', authError)
+    } catch {
+      // Auth check failed, using free tier
     }
     
     // Rate limiting
@@ -135,17 +135,8 @@ export async function POST(request: NextRequest) {
     let relevantMemories: any[] = []
     try {
       relevantMemories = await memoryService.searchEpisodicMemories(query, 3)
-      console.log(`🧠 Found ${relevantMemories.length} relevant memories for query: "${query.substring(0, 50)}..."`)
-      
-      // Log memory insights for debugging
-      if (relevantMemories.length > 0) {
-        console.log('📚 Past experiences found:')
-        relevantMemories.forEach((memory, index) => {
-          console.log(`  ${index + 1}. "${memory.consensus_reached.substring(0, 100)}..." (confidence: ${memory.confidence_score})`)
-        })
-      }
-    } catch (memoryError) {
-      console.warn('Memory retrieval failed, continuing without memories:', memoryError)
+    } catch {
+      // Memory retrieval failed, continuing without memories
     }
     
     // Create debate request
@@ -184,8 +175,6 @@ export async function POST(request: NextRequest) {
     // MEMORY INTEGRATION: Store episodic memory after successful debate
     if (session.status === 'completed' && userTier !== 'guest') {
       try {
-        console.log('💾 Storing episodic memory from completed debate...')
-        
         // Extract key information from debate session
         const episodicMemory = {
           query: query,
@@ -202,9 +191,8 @@ export async function POST(request: NextRequest) {
           follow_up_questions: session.followUpQuestions || []
         }
         
-        const storedMemory = await memoryService.storeEpisodicMemory(episodicMemory)
-        console.log(`✅ Stored episodic memory: ${storedMemory?.id}`)
-        
+        await memoryService.storeEpisodicMemory(episodicMemory)
+
         // Also extract and store semantic knowledge if consensus was strong
         if (session.synthesis?.confidence && session.synthesis.confidence > 0.7) {
           const semanticMemory = {
@@ -217,8 +205,7 @@ export async function POST(request: NextRequest) {
             validations: 1  // First validation from this debate
           }
           
-          const storedSemantic = await memoryService.storeSemanticMemory(semanticMemory)
-          console.log(`✅ Stored high-confidence semantic memory: ${storedSemantic?.id}`)
+          await memoryService.storeSemanticMemory(semanticMemory)
         }
         
       } catch (memoryError) {

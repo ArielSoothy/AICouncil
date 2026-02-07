@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
           userTier = profile?.subscription_tier || 'free'
         }
       }
-    } catch (authError) {
-      console.log('Auth check failed, using free tier:', authError)
+    } catch {
+      // Auth check failed, using free tier
     }
     
     // Rate limiting
@@ -176,8 +176,7 @@ export async function POST(request: NextRequest) {
             }))
           }
         }
-      } catch (mixingError) {
-        console.warn('Heterogeneous mixing failed, falling back to default:', mixingError)
+      } catch {
         
         // Fallback to default agent configuration
         agentConfigs = agentRoles.map(role => ({
@@ -278,8 +277,7 @@ export async function POST(request: NextRequest) {
             })
           }
         }
-      } catch (saveError) {
-        console.warn('Failed to save conversation:', saveError)
+      } catch {
         // Continue without saving
       }
     }
