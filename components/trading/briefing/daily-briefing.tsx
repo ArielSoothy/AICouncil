@@ -8,7 +8,7 @@ import type { ScreeningDebateRow, DailyBriefing as DailyBriefingType } from '@/l
 function getScreeningKey(): string | null {
   if (typeof window === 'undefined') return null
   try {
-    return localStorage.getItem('screening_access_key')
+    return sessionStorage.getItem('screening_auth_key')
   } catch {
     return null
   }

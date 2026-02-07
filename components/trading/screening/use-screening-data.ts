@@ -131,13 +131,21 @@ export function useScreeningData() {
     }
 
     try {
-      // Try FastAPI first (local development), fall back to Next.js API (deployed/online)
+      // Try FastAPI first (local development only), fall back to Next.js API (deployed/online)
       let response: Response
-      try {
-        response = await fetch(`${FASTAPI_URL}/api/screening/latest`)
-        if (!response.ok) throw new Error('FastAPI not available')
-      } catch {
-        // FastAPI offline - use Next.js API route (reads from Supabase)
+      const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      if (isLocalhost) {
+        try {
+          response = await fetch(`${FASTAPI_URL}/api/screening/latest`)
+          if (!response.ok) throw new Error('FastAPI not available')
+        } catch {
+          // FastAPI offline - use Next.js API route (reads from Supabase)
+          response = await fetch('/api/trading/screening/results', {
+            headers: getScreeningHeaders()
+          })
+        }
+      } else {
+        // Production - go directly to Next.js API (no FastAPI available)
         response = await fetch('/api/trading/screening/results', {
           headers: getScreeningHeaders()
         })
